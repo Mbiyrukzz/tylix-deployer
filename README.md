@@ -14,6 +14,6 @@ npm run dev
 ## Workflow
 
 - `main` is always deployable
-- Work happens on `feat/*` and `fix/*` branches
+- Solo project: commit small and often straight to `main`
 - Conventional Commits (`feat:`, `fix:`, `chore:`)
 - Tagged `v0.x.0` at the end of each roadmap phase
