@@ -1,3 +1,26 @@
+# Dependencies
 node_modules/
-database.sqlite
+
+# Environment (never commit real secrets)
 .env
+.env.*
+!.env.example
+
+# Local databases
+database.sqlite
+*.sqlite
+
+# Build output
+dist/
+build/
+.tylix/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
