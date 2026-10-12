@@ -1,0 +1,99 @@
+page PostDetail
+
+state
+  post: null
+  loading: true
+  notFound: false
+  deleting: false
+  error: ""
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const postId = params.get("id")
+
+    if not postId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/posts/" + postId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.post = result.data
+        this.loading = false
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+action
+  async deletePost() {
+    if not this.post or this.deleting {
+      return
+    }
+
+    this.deleting = true
+    this.error = ""
+
+    const result = await deleteApi("posts", this.post.id)
+
+    if result.ok {
+      window.location.href = "/dashboard"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.error = "You don't have permission to delete this post."
+      this.deleting = false
+    } else {
+      this.error = "Something went wrong deleting this post."
+      this.deleting = false
+    }
+  }
+
+template
+  <div class="relative min-h-[calc(100vh-4rem)] px-6 lg:px-10 py-10 max-w-2xl mx-auto overflow-hidden">
+    <div class="absolute top-0 right-0 w-[300px] h-[300px] bg-violet-600/10 blur-[100px] rounded-full pointer-events-none"></div>
+
+{{#if loading}}
+    <p class="text-slate-500 text-sm">Loading post&hellip;</p>
+{{/if}}
+
+{{#if notFound}}
+    <div class="rounded-xl border border-slate-800/60 bg-slate-900/40 backdrop-blur p-8 text-center">
+      <div class="w-12 h-12 rounded-lg bg-violet-500/10 flex items-center justify-center text-xl mx-auto mb-4">🔍</div>
+      <h2 class="text-slate-200 font-medium mb-2">Post not found</h2>
+      <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
+      <a href="/dashboard" class="text-violet-400 text-sm hover:underline">&larr; Back to dashboard</a>
+    </div>
+{{/if}}
+
+{{#if post}}
+    <a href="/dashboard" class="relative inline-flex items-center gap-1 text-violet-400 text-sm hover:underline mb-6">
+      &larr; Back to dashboard
+    </a>
+
+    <div class="relative rounded-xl border border-slate-800/60 bg-slate-900/40 backdrop-blur p-8">
+      <h1 class="text-2xl font-semibold text-slate-200 mb-1">{{ post.title }}</h1>
+      <p class="text-slate-600 text-xs mb-6">Post #{{ post.id }}</p>
+      <p class="text-slate-400 text-sm leading-relaxed whitespace-pre-line mb-8">{{ post.body }}</p>
+
+{{#if error}}
+      <p class="text-rose-400 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <button onclick="{{ deletePost() }}" class="text-sm text-rose-400 hover:text-rose-300 border border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-950/30 transition disabled:opacity-50">
+{{#if deleting}}
+        Deleting&hellip;
+{{/if}}
+{{#if not deleting}}
+        Delete Post
+{{/if}}
+      </button>
+    </div>
+{{/if}}
+
+  </div>

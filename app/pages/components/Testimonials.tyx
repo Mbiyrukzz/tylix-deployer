@@ -1,0 +1,24 @@
+component Testimonials
+
+state
+  testimonials: [
+    { quote: "Probably one of the best frameworks for JS. Building new projects has never been this easy.", name: "Amara Osei", role: "Full-stack developer" },
+    { quote: "The compiler output is honestly readable. I can debug generated code like it's my own.", name: "Daniel Kruger", role: "Founder, Loopwave" },
+    { quote: "Went from idea to a working CRUD dashboard in under ten minutes.", name: "Priya Nair", role: "Indie hacker" }
+  ]
+
+template
+  <section class="px-6 py-24 bg-slate-900/50 border-y border-slate-800">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl font-semibold text-slate-200 text-center mb-14 tracking-tight">Built by developers, for developers</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+{{#each t in testimonials}}
+        <div class="rounded-xl border border-slate-800 bg-slate-950 p-6">
+          <p class="text-slate-300 text-sm mb-5 leading-relaxed">"{{ t.quote }}"</p>
+          <p class="text-slate-200 text-sm font-medium">{{ t.name }}</p>
+          <p class="text-slate-500 text-xs">{{ t.role }}</p>
+        </div>
+{{/each}}
+      </div>
+    </div>
+  </section>

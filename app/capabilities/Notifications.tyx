@@ -1,0 +1,24 @@
+
+capability Notifications
+
+state
+  items: []
+  unreadCount: 0
+
+action
+  async load() {
+    const result = await useApi("/api/notifications")
+    if result.ok {
+      this.items = result.data
+      this.unreadCount = result.data.filter(n => n.read is false).length
+    }
+  }
+
+  async unread() {
+    return this.load()
+  }
+
+init
+  async {
+    await this.load()
+  }

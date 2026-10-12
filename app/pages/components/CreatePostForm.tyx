@@ -1,0 +1,111 @@
+component CreatePostForm
+
+import { IconPlus, IconX } from "tylix-icons"
+
+props
+  onCreated: Function
+
+state
+  showModal: false
+  title: ""
+  body: ""
+  creating: false
+  error: ""
+
+action
+  open() {
+    this.showModal = true
+    this.error = ""
+  }
+
+  close() {
+    this.showModal = false
+    this.title = ""
+    this.body = ""
+    this.error = ""
+  }
+
+  async submit() {
+    if this.creating {
+      return null
+    }
+
+    if this.title.trim() is "" {
+      this.error = "Give your post a title."
+      return null
+    }
+
+    this.creating = true
+    this.error = ""
+
+    const result = await postApi("posts", { title: this.title, body: this.body })
+
+    if result.ok {
+      this.onCreated(result.data)
+      this.close()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.error = result.error or "Couldn't create that post. Check the form and try again."
+      this.creating = false
+    }
+  }
+
+template
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+    <IconPlus class="w-4 h-4" /> New Post
+  </button>
+
+{{#if showModal}}
+  <div role="dialog" aria-modal="true" aria-labelledby="create-post-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+    <div class="w-full max-w-md rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="create-post-title" class="text-slate-900 dark:text-slate-200 font-medium">New Post</h3>
+        <button onclick="{{ close() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+          <IconX class="w-4 h-4" />
+        </button>
+      </div>
+
+      <label for="new-post-title" class="block text-slate-500 text-xs mb-1.5">Title</label>
+      <input
+        id="new-post-title"
+        type="text"
+        autofocus
+        value="{{ title }}"
+        oninput="{{ title = $event.target.value }}"
+        class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="e.g. Launch week recap"
+      />
+
+      <label for="new-post-body" class="block text-slate-500 text-xs mb-1.5">Body</label>
+      <textarea
+        id="new-post-body"
+        rows="4"
+        value="{{ body }}"
+        oninput="{{ body = $event.target.value }}"
+        class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 resize-none transition-colors"
+        placeholder="Write something…"
+      ></textarea>
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <div class="flex items-center justify-end gap-3">
+        <button onclick="{{ close() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
+          Cancel
+        </button>
+{{#if creating}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">
+          Creating…
+        </button>
+{{/if}}
+{{#if not creating}}
+        <button onclick="{{ submit() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          <IconPlus class="w-4 h-4" /> Create Post
+        </button>
+{{/if}}
+      </div>
+    </div>
+  </div>
+{{/if}}

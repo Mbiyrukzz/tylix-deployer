@@ -1,0 +1,134 @@
+page Login
+
+uses
+  Auth
+
+state
+  email: ""
+  password: ""
+  remember: false
+  error: ""
+  submitting: false
+
+action
+  setField(field, value) {
+    this[field] = value
+  }
+
+  toggleRemember() {
+    this.remember = not this.remember
+  }
+
+  async submit() {
+    if not this.submitting {
+      this.submitting = true
+      this.error = ""
+
+      const result = await Auth.login(this.email, this.password)
+
+      if result.ok {
+        window.location.href = "/dashboard"
+      } else if result.status is 422 and result.data.errors {
+        const firstField = Object.keys(result.data.errors)[0]
+        this.error = result.data.errors[firstField][0]
+        this.submitting = false
+      } else {
+        this.error = result.error or "Invalid email or password."
+        this.submitting = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-200 dark:bg-slate-950 transition-colors px-6 py-16">
+    <div class="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+
+      <div class="hidden lg:flex flex-col justify-between bg-slate-200 dark:bg-slate-950/60 border-r border-slate-300 dark:border-slate-800 p-10">
+        <a href="/" class="flex items-center gap-2.5">
+          <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
+          <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix</span>
+        </a>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5">
+          <p class="text-slate-800 dark:text-slate-200 text-lg font-medium leading-snug mb-4">
+            "The compiler output is honestly readable. I can debug generated code like it's my own."
+          </p>
+          <p class="text-slate-500 text-sm">Daniel Kruger — Founder, Loopwave</p>
+        </div>
+
+        <p class="text-slate-400 dark:text-slate-600 text-xs">© 2026 Tylix</p>
+      </div>
+
+      <div class="flex items-center justify-center px-6 py-12">
+        <div class="w-full max-w-sm">
+          <a href="/" class="lg:hidden flex items-center gap-2.5 justify-center mb-8">
+            <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
+            <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix</span>
+          </a>
+
+          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Welcome back</p>
+          <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">Log in to Tylix</h1>
+          <p class="text-slate-500 text-sm mb-8">Continue to your dashboard.</p>
+
+{{#if error}}
+          <div role="alert" aria-live="polite" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-100 dark:bg-rose-950/30 px-4 py-3 mb-6">
+            <p class="text-rose-700 dark:text-rose-400 text-sm">{{ error }}</p>
+          </div>
+{{/if}}
+
+          <label for="email" class="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-2">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            autofocus
+            placeholder="you@example.com"
+            value="{{ email }}"
+            oninput="{{ setField('email', event.target.value) }}"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+          />
+
+          <label for="password" class="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-2">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+            value="{{ password }}"
+            oninput="{{ setField('password', event.target.value) }}"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+          />
+
+          <div class="flex items-center justify-between mb-6">
+            <label class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+{{#if remember}}
+              <input type="checkbox" checked onclick="{{ toggleRemember() }}" class="rounded border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
+{{/if}}
+{{#if not remember}}
+              <input type="checkbox" onclick="{{ toggleRemember() }}" class="rounded border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
+{{/if}}
+              Remember me
+            </label>
+            <a href="/forgot-password" class="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">Forgot password?</a>
+          </div>
+
+{{#if submitting}}
+          <button disabled class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-full py-2.5 font-semibold opacity-50 transition">
+            Logging in…
+          </button>
+{{/if}}
+{{#if not submitting}}
+          <button onclick="{{ submit() }}" class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-full py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+            Log In
+          </button>
+{{/if}}
+
+          <p class="text-sm text-slate-500 text-center mt-6">
+            Need an account? <a href="/register" class="text-emerald-700 dark:text-emerald-400 hover:underline">Sign up</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,29 @@
+capability Auth
+
+state
+  user: null
+  loading: true
+
+action
+  async login(email, password) {
+    const result = await useApi("/api/login", { method: "POST", body: { email, password } })
+    if result.ok {
+      this.user = result.data
+    }
+    return result
+  }
+
+  async logout() {
+    await useApi("/api/auth/logout", { method: "POST" })
+    this.user = null
+    window.location.href = "/"
+  }
+
+init
+  async {
+    const me = await useApi("/api/me")
+    if me.ok {
+      this.user = me.data
+    }
+    this.loading = false
+  }

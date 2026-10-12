@@ -1,0 +1,18 @@
+
+capability Analytics
+
+state
+  visitorsToday: 0
+
+action
+  async load() {
+    const result = await useApi("/api/analytics/today")
+    if result.ok {
+      this.visitorsToday = result.data.visitors
+    }
+  }
+
+init
+  async {
+    await this.load()
+  }

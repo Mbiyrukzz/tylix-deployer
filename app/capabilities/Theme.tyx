@@ -1,0 +1,21 @@
+
+capability Theme
+
+state
+  mode: "dark"
+
+action
+  toggle() {
+    this.mode = this.mode is "dark" ? "light" : "dark"
+    document.documentElement.classList.toggle("dark", this.mode is "dark")
+    localStorage.setItem("theme", this.mode)
+  }
+
+init
+  async {
+    const saved = localStorage.getItem("theme")
+    if saved {
+      this.mode = saved
+    }
+    document.documentElement.classList.toggle("dark", this.mode is "dark")
+  }

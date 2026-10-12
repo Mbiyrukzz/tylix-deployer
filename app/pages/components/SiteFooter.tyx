@@ -1,0 +1,16 @@
+component SiteFooter
+
+template
+  <footer class="px-6 py-10 border-t border-slate-800">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <img src="/logo-mark.png" alt="Tylix" class="w-5 h-5 rounded" />
+        <span class="text-slate-500 text-sm">© 2026 Tylix</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="https://tylix.dev/docs" class="text-slate-400 text-sm hover:text-slate-200 transition">Docs</a>
+        <a href="https://github.com/tylixjs" class="text-slate-400 text-sm hover:text-slate-200 transition">GitHub</a>
+        <a href="https://discord.gg/tylix" class="text-slate-400 text-sm hover:text-slate-200 transition">Discord</a>
+      </div>
+    </div>
+  </footer>

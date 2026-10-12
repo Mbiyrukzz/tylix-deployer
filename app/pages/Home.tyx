@@ -1,0 +1,15 @@
+page Home
+
+uses
+  Auth
+
+template
+  <div>
+    <Hero loggedIn="{{ Auth.user }}" />
+    <InstallSnippet />
+    <Stats />
+    <FeatureGrid />
+    <Testimonials />
+    <CTASection loggedIn="{{ Auth.user }}" />
+    <SiteFooter />
+  </div>

@@ -1,0 +1,43 @@
+component Hero
+
+import { IconArrowRight } from "tylix-icons"
+
+props
+  loggedIn: boolean
+
+template
+  <section class="px-6 pt-28 pb-20 text-center bg-slate-200 dark:bg-slate-950 transition-colors">
+    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-xs font-medium mb-8">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      v0.1 is live — now with hot reload
+    </span>
+
+    <h1 class="text-5xl md:text-7xl font-semibold max-w-4xl mx-auto leading-[1.05] mb-6 tracking-tight text-slate-900 dark:text-slate-200">
+      Full-stack JavaScript,
+      <br />
+      <span class="text-emerald-500">without the virtual DOM</span>
+    </h1>
+
+    <p class="text-slate-500 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
+      A reactive compiler, a generator-first CLI, and a database-agnostic
+      ORM — wired together so you write pages, not plumbing.
+    </p>
+
+    <div class="flex items-center justify-center gap-3">
+{{#if loggedIn}}
+      <a href="/dashboard" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        Go to Dashboard
+        <IconArrowRight class="w-4 h-4" />
+      </a>
+{{/if}}
+{{#if not loggedIn}}
+      <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        Get Started
+        <IconArrowRight class="w-4 h-4" />
+      </a>
+      <a href="/dashboard" class="px-7 py-3 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+        Continue as Guest
+      </a>
+{{/if}}
+    </div>
+  </section>

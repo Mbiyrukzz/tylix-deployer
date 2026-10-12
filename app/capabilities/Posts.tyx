@@ -1,0 +1,49 @@
+capability Posts
+
+state
+  data: []
+  loading: false
+  categories: []
+
+action
+  async load() {
+    this.loading = true
+    const result = await useApi("/api/posts")
+    if result.ok {
+      this.data = result.data
+    }
+    this.loading = false
+  }
+
+  add(post) {
+    this.data = [post, ...this.data]
+  }
+
+  async publish(post) {
+    const result = await useApi("/api/posts/" + post.id + "/publish", { method: "POST" })
+    if result.ok {
+      this.data = this.data.map(p => p.id is post.id ? result.data : p)
+    }
+    return result
+  }
+
+  async delete(post) {
+    const result = await useApi("/api/posts/" + post.id, { method: "DELETE" })
+    if result.ok {
+      this.data = this.data.filter(p => p.id is not post.id)
+    }
+    return result
+  }
+
+  where(predicate) {
+    return this.data.filter(predicate)
+  }
+
+  async latest() {
+    return this.load()
+  }
+
+init
+  async {
+    await this.load()
+  }

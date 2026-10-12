@@ -1,0 +1,20 @@
+
+capability Users
+
+state
+  count: 0
+  monthlyGrowth: 0
+
+action
+  async load() {
+    const result = await useApi("/api/users/stats")
+    if result.ok {
+      this.count = result.data.count
+      this.monthlyGrowth = result.data.monthlyGrowth
+    }
+  }
+
+init
+  async {
+    await this.load()
+  }

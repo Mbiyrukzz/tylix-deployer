@@ -1,0 +1,20 @@
+
+capability Mail
+
+state
+  unread: 0
+  available: false
+
+action
+  async load() {
+    const result = await useApi("/api/_tylix/mail-logs")
+    this.available = result.ok
+    if result.ok {
+      this.unread = result.data.data.length
+    }
+  }
+
+init
+  async {
+    await this.load()
+  }

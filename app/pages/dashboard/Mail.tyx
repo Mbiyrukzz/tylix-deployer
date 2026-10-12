@@ -1,0 +1,124 @@
+page MailInbox
+
+import { IconArrowLeft, IconMail } from "tylix-icons"
+
+state
+  user: null
+  checkedAuth: false
+  logs: []
+  logsLoading: true
+  logsAvailable: true
+  selectedLog: null
+
+action
+  selectLog(log) {
+    this.selectedLog = log
+  }
+
+  closeDetail() {
+    this.selectedLog = null
+  }
+
+onMount
+  async {
+    const me = await useApi("/api/me")
+
+    if not me.ok {
+      window.location.href = "/login"
+      return null
+    }
+
+    this.user = me.data
+    this.checkedAuth = true
+
+    const result = await useApi("/api/_tylix/mail-logs")
+    this.logsAvailable = result.ok
+    if result.ok {
+      this.logs = result.data.data
+    }
+    this.logsLoading = false
+  }
+
+template
+{{#if checkedAuth}}
+  <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors px-6 lg:px-10 py-10">
+    <div class="max-w-4xl mx-auto">
+      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500 text-sm hover:underline mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Back to dashboard
+      </a>
+
+      <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-200 mb-1">Mail</h1>
+      <p class="text-slate-500 text-sm mb-8">Emails sent or captured by your app.</p>
+
+{{#if logsLoading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if not logsLoading}}
+{{#if not logsAvailable}}
+      <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+          <IconMail class="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-200 font-medium mb-1.5">Mail logs are only available while developing</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">
+          Logged emails can contain password-reset links, so the production server does not expose them.
+        </p>
+      </div>
+{{/if}}
+
+{{#if logsAvailable}}
+{{#if logs.length is 0}}
+      <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+          <IconMail class="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-200 font-medium mb-1.5">No mail yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">
+          Emails sent through Mail.send() will show up here.
+        </p>
+      </div>
+{{/if}}
+
+{{#if logs.length is not 0}}
+      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 overflow-hidden shadow-sm dark:shadow-none">
+{{#each log in logs}}
+        <button onclick="{{ selectLog(log) }}" class="w-full text-left p-4 hover:bg-slate-200 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-slate-900 dark:text-slate-200 text-sm font-medium truncate">{{ log.subject }}</p>
+            <p class="text-slate-500 text-xs truncate">To: {{ log.recipient }}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+{{#if log.status is "sent"}}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-500">sent</span>
+{{/if}}
+{{#if log.status is "captured"}}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500">captured</span>
+{{/if}}
+{{#if log.status is "failed"}}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-500">failed</span>
+{{/if}}
+          </div>
+        </button>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+{{/if}}
+
+{{#if selectedLog}}
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center p-6 z-50" onclick="{{ closeDetail() }}">
+        <div class="bg-slate-200 dark:bg-slate-900 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 shadow-xl">
+          <h3 class="text-slate-900 dark:text-slate-200 font-medium mb-1">{{ selectedLog.subject }}</h3>
+          <p class="text-slate-500 text-xs mb-4">To: {{ selectedLog.recipient }} · {{ selectedLog.driver }} · {{ selectedLog.status }}</p>
+{{#if selectedLog.error}}
+          <p class="text-red-500 text-sm mb-4">{{ selectedLog.error }}</p>
+{{/if}}
+          <div class="text-slate-600 dark:text-slate-400 text-xs whitespace-pre-wrap bg-slate-50 dark:bg-slate-950 rounded-lg p-4">{{ selectedLog.body }}</div>
+          <button onclick="{{ closeDetail() }}" class="mt-4 text-sm text-emerald-600 dark:text-emerald-500 hover:underline">Close</button>
+        </div>
+      </div>
+{{/if}}
+    </div>
+  </div>
+{{/if}}

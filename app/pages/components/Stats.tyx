@@ -1,0 +1,29 @@
+component Stats
+
+import { IconBolt, IconDatabase, IconTerminal, IconCheckCircle } from "tylix-icons"
+
+template
+  <section class="px-6 py-14 border-y border-slate-800">
+    <div class="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <div>
+        <IconBolt class="w-5 h-5 text-emerald-400 mx-auto mb-2" />
+        <p class="text-3xl font-semibold text-emerald-400 mb-1">0ms</p>
+        <p class="text-slate-500 text-sm">Virtual DOM diffing</p>
+      </div>
+      <div>
+        <IconDatabase class="w-5 h-5 text-emerald-400 mx-auto mb-2" />
+        <p class="text-3xl font-semibold text-emerald-400 mb-1">4</p>
+        <p class="text-slate-500 text-sm">Database drivers</p>
+      </div>
+      <div>
+        <IconTerminal class="w-5 h-5 text-emerald-400 mx-auto mb-2" />
+        <p class="text-3xl font-semibold text-emerald-400 mb-1">1</p>
+        <p class="text-slate-500 text-sm">Command to scaffold</p>
+      </div>
+      <div>
+        <IconCheckCircle class="w-5 h-5 text-emerald-400 mx-auto mb-2" />
+        <p class="text-3xl font-semibold text-emerald-400 mb-1">100%</p>
+        <p class="text-slate-500 text-sm">Readable output</p>
+      </div>
+    </div>
+  </section>
