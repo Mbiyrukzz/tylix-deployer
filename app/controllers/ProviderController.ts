@@ -14,6 +14,7 @@
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Provider } from "../models/Provider.js";
+import { Provision } from "../models/Provision.js";
 import { validateProvider, normalizeProvider } from "../validators/ProviderValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { LinodeClient, LinodeError } from "../services/LinodeClient.js";
@@ -191,8 +192,21 @@ export class ProviderController {
         const provider = await findOwned(req, res);
         if (!provider) return;
 
-        // TODO (step 2.3): refuse to delete while servers provisioned through
-        // this connection still exist, because we'd lose the token needed to manage them.
+        const provisions = (await Provision.all()) as {
+            provider_id: number;
+            instance_id: number;
+            status: string;
+        }[];
+        const inUse = provisions.some(
+            (p) => Number(p.provider_id) === provider.id && Number(p.instance_id) > 0 && p.status !== "deleted",
+        );
+        if (inUse) {
+            res.status(409);
+            return res.json({
+                error: "Servers created through this connection still exist. Delete them first, or you would lose the token needed to manage them.",
+            });
+        }
+
         await Provider.delete(provider.id);
         res.status(204);
         return res.end();

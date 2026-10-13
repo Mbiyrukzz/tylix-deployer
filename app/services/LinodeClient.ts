@@ -48,6 +48,7 @@ export interface LinodeInstance {
     region: string;
     type: string;
     ipv4: string[];
+    tags: string[];
 }
 
 export interface CreateInstanceInput {
@@ -79,6 +80,7 @@ interface RawInstance {
     region: string;
     type: string;
     ipv4: string[];
+    tags: string[];
 }
 
 function toInstance(raw: RawInstance): LinodeInstance {
@@ -89,6 +91,7 @@ function toInstance(raw: RawInstance): LinodeInstance {
         region: raw.region,
         type: raw.type,
         ipv4: raw.ipv4 ?? [],
+        tags: raw.tags ?? [],
     };
 }
 
@@ -97,8 +100,9 @@ async function request<T>(
     path: string,
     token: string | null,
     body?: unknown,
+    extraHeaders: Record<string, string> = {},
 ): Promise<T> {
-    const headers: Record<string, string> = { Accept: "application/json" };
+    const headers: Record<string, string> = { Accept: "application/json", ...extraHeaders };
     if (token) headers.Authorization = `Bearer ${token}`;
     if (body !== undefined) headers["Content-Type"] = "application/json";
 
@@ -166,6 +170,18 @@ export class LinodeClient {
 
     async getInstance(id: number): Promise<LinodeInstance> {
         return toInstance(await request<RawInstance>("GET", `/linode/instances/${id}`, this.token));
+    }
+
+    /** Finds an instance by its exact label, or null. Used to resume a provision safely. */
+    async findByLabel(label: string): Promise<LinodeInstance | null> {
+        const res = await request<{ data: RawInstance[] }>(
+            "GET",
+            "/linode/instances?page_size=25",
+            this.token,
+            undefined,
+            { "X-Filter": JSON.stringify({ label }) },
+        );
+        return res.data.length > 0 ? toInstance(res.data[0]) : null;
     }
 
     async deleteInstance(id: number): Promise<void> {

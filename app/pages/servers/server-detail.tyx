@@ -41,7 +41,7 @@ action
     } else if result.status is 401 {
       window.location.href = "/login"
     } else {
-      this.error = "Something went wrong deleting this server."
+      this.error = result.data?.error or "Something went wrong deleting this server."
       this.deleting = false
       this.confirmDelete = false
     }

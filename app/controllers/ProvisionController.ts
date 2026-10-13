@@ -16,7 +16,10 @@ import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { validateProvision, normalizeProvision } from "../validators/ProvisionValidator.js";
-import { LinodeClient } from "../services/LinodeClient.js";
+import { LinodeClient, LinodeError } from "../services/LinodeClient.js";
+import { CryptoService } from "../services/CryptoService.js";
+import { Server } from "../models/Server.js";
+import { dispatch } from "@tylix/core";
 
 const TYLIX_MIN_MEMORY_MB = 4096;
 
@@ -62,7 +65,7 @@ export class ProvisionController {
     async index(req: TylixRequest, res: TylixResponse) {
         const rows = (await Provision.all()) as ProvisionRow[];
         const own = rows
-            .filter((p) => p.user_id === req.user?.userId)
+            .filter((p) => p.user_id === req.user?.userId && p.status !== "deleted" && p.status !== "dry_run")
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         return res.json(own.map(toPublic));
@@ -94,13 +97,23 @@ export class ProvisionController {
         }
 
         let regions, images, plans;
-        try {
-            [regions, images, plans] = await Promise.all([
-                LinodeClient.regions(),
-                LinodeClient.images(),
-                LinodeClient.plans(input.region),
-            ]);
-        } catch {
+        for (let attempt = 1; attempt <= 3 && !plans; attempt++) {
+            try {
+                [regions, images, plans] = await Promise.all([
+                    LinodeClient.regions(),
+                    LinodeClient.images(),
+                    LinodeClient.plans(input.region),
+                ]);
+            } catch (error) {
+                console.error(
+                    `Provision catalog check failed (attempt ${attempt}):`,
+                    error instanceof Error ? error.message : error,
+                );
+                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+            }
+        }
+
+        if (!regions || !images || !plans) {
             res.status(502);
             return res.json({ error: "Couldn't reach Linode to check your choices. Try again in a moment." });
         }
@@ -157,7 +170,14 @@ export class ProvisionController {
             return res.json({ error: "Could not save the request." });
         }
 
-        // TODO (step 2.4): dispatch("ProvisionServer", { provisionId: row.id })
+        try {
+            await dispatch("ProvisionServer", { provisionId: row.id });
+        } catch {
+            await Provision.update(row.id, {
+                status: "failed",
+                error: "Couldn't queue the provisioning job.",
+            });
+        }
 
         res.status(201);
         return res.json(toPublic(row));
@@ -172,12 +192,53 @@ export class ProvisionController {
         const row = await findOwned(req, res);
         if (!row) return;
 
-        if (Number(row.instance_id) > 0) {
+        if (row.status === "running") {
             res.status(409);
-            return res.json({ error: "This server exists at the provider. Delete it there first." });
+            return res.json({ error: "This server is still being created. Wait for it to finish or fail first." });
         }
 
-        await Provision.delete(row.id);
+        if (Number(row.instance_id) > 0) {
+            const confirm = String(req.query?.confirm ?? "");
+            if (confirm !== row.name) {
+                res.status(422);
+                return res.json({ error: "Type the server name to confirm." });
+            }
+
+            const provider = (await Provider.find(row.provider_id)) as
+                | { user_id: number; api_token: string }
+                | null;
+
+            if (!provider || provider.user_id !== req.user?.userId) {
+                res.status(409);
+                return res.json({
+                    error: "The provider connection is gone, so this server has to be deleted at Linode by hand.",
+                });
+            }
+
+            try {
+                await new LinodeClient(CryptoService.decrypt(provider.api_token)).deleteInstance(
+                    Number(row.instance_id),
+                );
+            } catch (error) {
+                // 404 means it is already gone at the provider, which is what we want.
+                if (!(error instanceof LinodeError && error.status === 404)) {
+                    res.status(502);
+                    const rejected =
+                        error instanceof LinodeError && (error.status === 401 || error.status === 403);
+                    return res.json({
+                        error: rejected
+                            ? "Linode rejected the token. Reconnect the provider, or delete the server in Cloud Manager."
+                            : "Linode didn't delete the server. Nothing was changed. Try again.",
+                    });
+                }
+            }
+        }
+
+        if (Number(row.server_id) > 0) {
+            await Server.delete(row.server_id);
+        }
+
+        await Provision.update(row.id, { status: "deleted", step: "deleted", ssh_key: "", error: "" });
         res.status(204);
         return res.end();
     }

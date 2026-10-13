@@ -1,0 +1,29 @@
+capability Provisions
+
+state
+  data: []
+
+action
+  async load() {
+    const result = await useApi("/api/provisions")
+    if result.ok and Array.isArray(result.data) {
+      this.data = result.data
+    }
+  }
+
+  async retry(id) {
+    const result = await useApi("/api/provisions/" + id + "/retry", { method: "POST" })
+    await this.load()
+    return result
+  }
+
+  async destroy(id, name) {
+    const result = await useApi("/api/provisions/" + id + "?confirm=" + name, { method: "DELETE" })
+    await this.load()
+    return result
+  }
+
+init
+  async {
+    await this.load()
+  }

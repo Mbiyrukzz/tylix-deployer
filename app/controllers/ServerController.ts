@@ -17,6 +17,7 @@
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Server } from "../models/Server.js";
+import { Provision } from "../models/Provision.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 
@@ -175,6 +176,14 @@ export class ServerController {
     async destroy(req: TylixRequest, res: TylixResponse) {
         const server = await findOwned(req, res);
         if (!server) return;
+
+        const provisions = (await Provision.all()) as { server_id: number; status: string }[];
+        if (provisions.some((p) => Number(p.server_id) === server.id && p.status !== "deleted")) {
+            res.status(409);
+            return res.json({
+                error: "This server was created by the deployer. Delete it from the Provisioned servers list so it is removed at Linode too.",
+            });
+        }
 
         // TODO (step 1.4c): refuse to delete while projects are attached.
         // ASSUMPTION: Model exposes delete(id).
