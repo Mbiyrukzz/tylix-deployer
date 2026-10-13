@@ -1,0 +1,38 @@
+capability Providers
+
+state
+  data: []
+  loading: false
+
+action
+   async load() {
+    this.loading = true
+    const result = await useApi("/api/providers")
+    if result.ok and Array.isArray(result.data) {
+      this.data = result.data
+    } else {
+      this.data = []
+    }
+    this.loading = false
+  }
+
+  add(provider) {
+    this.data = [provider, ...this.data]
+  }
+
+  async replace(provider) {
+    await this.load()
+  }
+
+  async remove(id) {
+    const result = await useApi("/api/providers/" + id, { method: "DELETE" })
+    if result.ok {
+      await this.load()
+    }
+    return result
+  }
+
+init
+  async {
+    await this.load()
+  }

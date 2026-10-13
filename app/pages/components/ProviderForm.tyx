@@ -1,0 +1,174 @@
+component ProviderForm
+
+import { IconPlus, IconX } from "tylix-icons"
+
+props
+  provider: Object
+  onSaved: Function
+
+state
+  showModal: false
+  label: ""
+  apiToken: ""
+  saving: false
+  error: ""
+  labelError: ""
+  tokenError: ""
+
+action
+  clearErrors() {
+    this.error = ""
+    this.labelError = ""
+    this.tokenError = ""
+  }
+
+  reset() {
+    this.label = ""
+    this.apiToken = ""
+    this.saving = false
+    this.clearErrors()
+  }
+
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  open() {
+    this.reset()
+    if this.provider {
+      this.label = this.provider.label
+    }
+    this.showModal = true
+  }
+
+  close() {
+    this.showModal = false
+    this.reset()
+  }
+
+  async submit() {
+    if this.saving {
+      return null
+    }
+
+    this.clearErrors()
+    this.saving = true
+
+    const payload = {
+      kind: "linode",
+      label: this.label,
+      api_token: this.apiToken
+    }
+    const url = this.provider ? "/api/providers/" + this.provider.id : "/api/providers"
+    const method = this.provider ? "PUT" : "POST"
+
+    const result = await useApi(url, { method: method, body: payload })
+
+    if result.ok {
+      this.onSaved(result.data)
+      this.close()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.labelError = this.firstError(errors, "label")
+      this.tokenError = this.firstError(errors, "api_token")
+      this.error = result.data?.error or result.error or ""
+      if not this.labelError and not this.tokenError and not this.error {
+        this.error = "Couldn't save the connection. Try again."
+      }
+      this.saving = false
+    }
+  }
+
+template
+{{#if provider}}
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-900 transition-colors">
+    Edit
+  </button>
+{{/if}}
+{{#if not provider}}
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+    <IconPlus class="w-4 h-4" /> Connect Linode
+  </button>
+{{/if}}
+
+{{#if showModal}}
+  <div role="dialog" aria-modal="true" aria-labelledby="provider-form-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="provider-form-title" class="text-slate-900 dark:text-slate-200 font-medium">
+{{#if provider}}
+          Edit connection
+{{/if}}
+{{#if not provider}}
+          Connect Linode (Akamai)
+{{/if}}
+        </h3>
+        <button onclick="{{ close() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+          <IconX class="w-4 h-4" />
+        </button>
+      </div>
+
+      <label for="provider-label" class="block text-slate-500 text-xs mb-1.5">Connection name</label>
+      <input
+        id="provider-label"
+        type="text"
+        autofocus
+        value="{{ label }}"
+        oninput="{{ label = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="e.g. My Linode account"
+      />
+{{#if labelError}}
+      <p class="text-rose-500 text-xs mb-3">{{ labelError }}</p>
+{{/if}}
+{{#if not labelError}}
+      <div class="mb-3"></div>
+{{/if}}
+
+      <label for="provider-token" class="block text-slate-500 text-xs mb-1.5">Personal access token</label>
+      <input
+        id="provider-token"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ apiToken }}"
+        oninput="{{ apiToken = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+      />
+{{#if tokenError}}
+      <p class="text-rose-500 text-xs mb-2">{{ tokenError }}</p>
+{{/if}}
+{{#if provider}}
+      <p class="text-slate-500 text-xs mb-4">Leave blank to keep the current token.</p>
+{{/if}}
+{{#if not provider}}
+      <p class="text-slate-500 text-xs mb-4">Needs Linodes: Read/Write. It is checked with Linode, then encrypted before it is stored, and is never shown again.</p>
+{{/if}}
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <div class="flex items-center justify-end gap-3">
+        <button onclick="{{ close() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
+          Cancel
+        </button>
+{{#if saving}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">
+          Verifying…
+        </button>
+{{/if}}
+{{#if not saving}}
+        <button onclick="{{ submit() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          Save
+        </button>
+{{/if}}
+      </div>
+    </div>
+  </div>
+{{/if}}
