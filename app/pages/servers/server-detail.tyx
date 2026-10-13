@@ -1,0 +1,174 @@
+page ServerDetail
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Server"
+
+state
+  server: null
+  loading: true
+  notFound: false
+  confirmDelete: false
+  deleting: false
+  error: ""
+
+action
+  updated(server) {
+    this.server = server
+  }
+
+  askDelete() {
+    this.error = ""
+    this.confirmDelete = true
+  }
+
+  cancelDelete() {
+    this.confirmDelete = false
+  }
+
+  async deleteServer() {
+    if not this.server or this.deleting {
+      return null
+    }
+
+    this.deleting = true
+    this.error = ""
+
+    const result = await useApi("/api/servers/" + this.server.id, { method: "DELETE" })
+
+    if result.ok {
+      window.location.href = "/servers"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.error = "Something went wrong deleting this server."
+      this.deleting = false
+      this.confirmDelete = false
+    }
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        this.loading = false
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <div class="max-w-2xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading server…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Server not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Servers
+      </a>
+
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 shadow-sm dark:shadow-none mb-6">
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-1">{{ server.name }}</h1>
+{{#if server.status is "online"}}
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Online</span>
+{{/if}}
+{{#if server.status is "pending"}}
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Not tested</span>
+{{/if}}
+{{#if server.status is "offline"}}
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Offline</span>
+{{/if}}
+          </div>
+          <ServerForm server="{{ server }}" onSaved="{{ updated }}" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+          <div>
+            <p class="text-slate-500 text-xs mb-1">Host</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ server.host }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs mb-1">SSH port</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ server.port }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs mb-1">SSH user</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ server.ssh_user }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs mb-1">SSH key</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm">Stored encrypted</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs mb-1">Added</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm">{{ server.created_at.slice(0, 10) }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs mb-1">Last updated</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm">{{ server.updated_at.slice(0, 10) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-rose-900/30 bg-slate-200 dark:bg-slate-900 p-6">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Delete server</h2>
+        <p class="text-slate-500 text-sm mb-4">This removes the server and its stored SSH key. Your machine itself is not touched.</p>
+
+{{#if error}}
+        <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if not confirmDelete}}
+        <button onclick="{{ askDelete() }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-950/30 transition">
+          Delete server
+        </button>
+{{/if}}
+
+{{#if confirmDelete}}
+        <div class="flex items-center gap-3">
+{{#if deleting}}
+          <button disabled class="text-sm text-white bg-rose-600 rounded-lg px-4 py-2 opacity-50">
+            Deleting…
+          </button>
+{{/if}}
+{{#if not deleting}}
+          <button onclick="{{ deleteServer() }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-2 transition">
+            Yes, delete it
+          </button>
+          <button onclick="{{ cancelDelete() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
+            Cancel
+          </button>
+{{/if}}
+        </div>
+{{/if}}
+      </div>
+{{/if}}
+
+    </div>
+  </div>

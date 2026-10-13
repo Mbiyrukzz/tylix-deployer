@@ -1,0 +1,94 @@
+page ServerList
+
+import { IconDatabase, IconArrowLeft } from "tylix-icons"
+
+title "Servers"
+
+needs
+  Auth
+
+uses
+  Servers
+
+state
+  checkedAuth: false
+
+action
+  addServer(server) {
+    Servers.add(server)
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    await Servers.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+  <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Dashboard
+      </a>
+
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Servers</h1>
+          <p class="text-slate-500 text-sm mt-1">The machines you deploy to</p>
+        </div>
+        <ServerForm onSaved="{{ addServer }}" />
+      </div>
+
+{{#if Servers.loading}}
+      <p class="text-slate-500 text-sm">Loading servers…</p>
+{{/if}}
+
+{{#if not Servers.loading}}
+{{#if Servers.data.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1.5">No servers yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">
+          Add a server with its SSH details and you can start deploying to it.
+        </p>
+      </div>
+{{/if}}
+
+{{#if Servers.data.length is not 0}}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+{{#each s in Servers.data}}
+        <a href="{{ '/servers/server-detail?id=' + s.id }}" class="group block rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none hover:border-emerald-500/40 hover:-translate-y-0.5 hover:shadow-lg dark:hover:shadow-emerald-500/5 transition-all">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+              <IconDatabase class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+            </div>
+{{#if s.status is "online"}}
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Online</span>
+{{/if}}
+{{#if s.status is "pending"}}
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Not tested</span>
+{{/if}}
+{{#if s.status is "offline"}}
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Offline</span>
+{{/if}}
+          </div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-semibold mb-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ s.name }}</h3>
+          <p class="text-slate-500 text-sm font-mono truncate">{{ s.ssh_user }}@{{ s.host }}:{{ s.port }}</p>
+        </a>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+{{/if}}

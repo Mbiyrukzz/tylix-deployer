@@ -1,0 +1,24 @@
+capability Servers
+
+state
+  data: []
+  loading: false
+
+action
+  async load() {
+    this.loading = true
+    const result = await useApi("/api/servers")
+    if result.ok {
+      this.data = result.data
+    }
+    this.loading = false
+  }
+
+  add(server) {
+    this.data = [server, ...this.data]
+  }
+
+init
+  async {
+    await this.load()
+  }

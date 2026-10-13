@@ -54,7 +54,7 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ServerR
 }
 
 async function isDuplicate(
-    userId: number | undefined,
+    userId: unknown,
     host: string,
     port: number,
     exceptId?: number,
@@ -110,7 +110,12 @@ export class ServerController {
             ssh_key: CryptoService.encrypt(input.ssh_key),
             status: "pending",
             user_id: req.user?.userId,
-        })) as ServerRow;
+        })) as ServerRow | null;
+
+        if (!server) {
+            res.status(500);
+            return res.json({ error: "Could not save the server." });
+        }
 
         res.status(201);
         return res.json(toPublic(server));
@@ -157,7 +162,12 @@ export class ServerController {
         // ASSUMPTION: Model exposes update(id, data), same as the generated
         // PostController. Re-read the row so we never depend on its return value.
         await Server.update(server.id, patch);
-        const fresh = (await Server.find(server.id)) as ServerRow;
+        const fresh = (await Server.find(server.id)) as ServerRow | null;
+
+        if (!fresh) {
+            res.status(500);
+            return res.json({ error: "Could not reload the server after saving." });
+        }
 
         return res.json(toPublic(fresh));
     }

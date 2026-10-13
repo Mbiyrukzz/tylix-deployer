@@ -1,6 +1,6 @@
 page Dashboard
 
-import { IconHome, IconDocument, IconFolder, IconArrowLeft, IconUser, IconDatabase, IconSun, IconMoon } from "tylix-icons"
+import { IconHome, IconFolder, IconUser, IconDatabase, IconSun, IconMoon, IconArrowLeft } from "tylix-icons"
 
 title "Dashboard"
 
@@ -9,34 +9,21 @@ needs
 
 uses
   Theme
-  Posts
+  Servers
   Mail
   Analytics
-
-prefetch
-  Posts.latest
 
 background
   Analytics
   Mail
 
-permissions
-  posts.view
-
 meta
   transition "fade"
-  keepAlive true
-  cache 5m
 
 state
   checkedAuth: false
-  features: []
 
 action
-  addPost(post) {
-    Posts.add(post)
-  }
-
   async logout() {
     await Auth.logout()
     window.location.href = "/"
@@ -49,11 +36,7 @@ onMount
       return null
     }
 
-    const featuresResult = await useApi("/api/_tylix/features")
-    if featuresResult.ok {
-      this.features = featuresResult.data.data.filter(f => f.table is not "posts")
-    }
-
+    await Servers.load()
     this.checkedAuth = true
   }
 
@@ -66,7 +49,7 @@ template
         <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm dark:shadow-emerald-500/30">
           <IconHome class="w-4 h-4 text-white" />
         </div>
-        <span class="text-slate-800 dark:text-slate-200 font-semibold text-sm">Dashboard</span>
+        <span class="text-slate-800 dark:text-slate-200 font-semibold text-sm">tylix-deploy</span>
       </div>
 
       <a href="/dashboard" aria-current="page" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium mb-1">
@@ -74,18 +57,10 @@ template
         Overview
       </a>
 
-      <p class="px-3 pt-6 pb-2 text-slate-500 dark:text-slate-600 text-[11px] font-semibold uppercase tracking-wider">Data</p>
-{{#if features.length is 0}}
-      <p class="px-3 py-2 text-slate-400 dark:text-slate-600 text-sm italic">
-        No features yet
-      </p>
-{{/if}}
-{{#each f in features}}
-      <a href="{{ '/' + f.name.toLowerCase() + 'dashboard' }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-200 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-        <div class="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-700"></div>
-        {{ f.name }}
+      <a href="/servers" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-200 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors mb-1">
+        <IconDatabase class="w-4 h-4" />
+        Servers
       </a>
-{{/each}}
     </aside>
 
     <div class="px-6 lg:px-12 py-10">
@@ -106,9 +81,9 @@ template
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold shadow-sm dark:shadow-emerald-500/30">
             {{ Auth.user.email[0].toUpperCase() }}
           </div>
-         <button onclick="{{ Auth.logout() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-900 transition-colors">
-  Log out
-</button>
+          <button onclick="{{ Auth.logout() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-900 transition-colors">
+            Log out
+          </button>
         </div>
       </div>
 
@@ -122,22 +97,22 @@ template
           <p class="text-slate-800 dark:text-slate-200 text-sm font-semibold truncate">{{ Auth.user.email }}</p>
         </div>
 
-        <div class="relative overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <a href="/servers" class="relative overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/40 hover:-translate-y-0.5 transition-all">
           <div class="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-emerald-500/5"></div>
           <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3">
             <IconDatabase class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
-          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Visitors today</p>
-          <p class="text-slate-800 dark:text-slate-200 text-2xl font-bold">{{ Analytics.visitorsToday }}</p>
-        </div>
+          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Servers</p>
+          <p class="text-slate-800 dark:text-slate-200 text-2xl font-bold">{{ Servers.data.length }}</p>
+        </a>
 
         <div class="relative overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
           <div class="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-emerald-500/5"></div>
           <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3">
-            <IconDocument class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+            <IconUser class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
-          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Posts</p>
-          <p class="text-slate-800 dark:text-slate-200 text-2xl font-bold">{{ Posts.data.length }}</p>
+          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Visitors today</p>
+          <p class="text-slate-800 dark:text-slate-200 text-2xl font-bold">{{ Analytics.visitorsToday }}</p>
         </div>
 
 {{#if Mail.available}}
@@ -152,63 +127,21 @@ template
 {{/if}}
       </div>
 
-      <div class="flex items-center justify-between mb-5">
-        <div>
-          <h2 class="text-slate-800 dark:text-slate-200 font-semibold text-lg">Posts</h2>
-          <p class="text-slate-500 dark:text-slate-500 text-sm">Everything you've published</p>
-        </div>
-        <CreatePostForm onCreated="{{ addPost }}" />
-      </div>
-
-{{#if Posts.loading}}
-      <p class="text-slate-500 text-sm mb-10">Loading posts…</p>
-{{/if}}
-
-{{#if not Posts.loading}}
-{{#if Posts.data.length is 0}}
+{{#if not Servers.loading}}
+{{#if Servers.data.length is 0}}
       <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-10 text-center mb-10">
         <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
-          <IconDocument class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+          <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
         </div>
-        <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1.5">No posts yet</h3>
-        <p class="text-slate-500 text-sm max-w-sm mx-auto">
-          Click "New Post" above to create your first one.
+        <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1.5">Add your first server</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
+          Connect a server over SSH and you can start deploying to it.
         </p>
-      </div>
-{{/if}}
-
-{{#if Posts.data.length is not 0}}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-{{#each p in Posts.data}}
-        <a href="{{ '/post/post-detail?id=' + p.id }}" class="group block rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none hover:border-emerald-500/40 hover:-translate-y-0.5 hover:shadow-lg dark:hover:shadow-emerald-500/5 transition-all">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-            <span class="text-emerald-700 dark:text-emerald-500 text-[11px] font-semibold uppercase tracking-wider">Post</span>
-          </div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-semibold mb-1.5 group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ p.title }}</h3>
-          <p class="text-slate-500 text-sm line-clamp-2">{{ p.body }}</p>
+        <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          Go to servers
         </a>
-{{/each}}
       </div>
 {{/if}}
-{{/if}}
-
-{{#if features.length is not 0}}
-      <div class="mb-5">
-        <h2 class="text-slate-800 dark:text-slate-200 font-semibold text-lg">Scaffolded Features</h2>
-        <p class="text-slate-500 dark:text-slate-500 text-sm">Generated with tylix make:feature</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-{{#each f in features}}
-        <a href="{{ '/' + f.name.toLowerCase() + 'dashboard' }}" class="group block rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none hover:border-emerald-500/40 hover:-translate-y-0.5 hover:shadow-lg dark:hover:shadow-emerald-500/5 transition-all">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mb-4">
-            <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
-          </div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-semibold mb-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ f.name }}</h3>
-          <p class="text-slate-500 text-sm">Manage {{ f.table }}</p>
-        </a>
-{{/each}}
-      </div>
 {{/if}}
 
       <a href="/" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">

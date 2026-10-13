@@ -1,0 +1,41 @@
+{
+  "name": "Provider",
+  "version": "1.0.0",
+  "table": "providers",
+  "model": "Provider",
+  "controller": "ProviderController",
+  "validator": "ProviderValidator",
+  "language": "typescript",
+  "fields": [
+    {
+      "name": "kind",
+      "type": "string"
+    },
+    {
+      "name": "label",
+      "type": "string"
+    },
+    {
+      "name": "api_token",
+      "type": "text"
+    },
+    {
+      "name": "status",
+      "type": "string"
+    },
+    {
+      "name": "user_id",
+      "type": "integer",
+      "unique": false,
+      "system": false
+    }
+  ],
+  "relations": [],
+  "auth": true,
+  "permissions": [
+    "provider.view",
+    "provider.create",
+    "provider.update",
+    "provider.delete"
+  ]
+}

@@ -1,0 +1,5 @@
+export const listProvider = () => useApi(`/api/providers`)
+export const getProvider = (id: number | string) => useApi(`/api/providers/${id}`)
+export const createProvider = (data: unknown) => useApi(`/api/providers`, { method: 'POST', body: data })
+export const updateProvider = (id: number | string, data: unknown) => useApi(`/api/providers/${id}`, { method: 'PUT', body: data })
+export const deleteProvider = (id: number | string) => useApi(`/api/providers/${id}`, { method: 'DELETE' })
