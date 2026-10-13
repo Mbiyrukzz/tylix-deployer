@@ -21,11 +21,14 @@ state
   memHistory: []
   cpuPoints: ""
   memPoints: ""
+  cpuArea: ""
+  memArea: ""
   cpuNow: 0
   memNow: 0
   memText: ""
   diskPct: 0
   diskText: ""
+  diskDash: "0 226.2"
   loadText: ""
   uptimeText: ""
 
@@ -48,6 +51,12 @@ action
     const step = 300 / 29
     const offset = 29 - (values.length - 1)
     return values.map((v, i) => Math.round((offset + i) * step) + "," + Math.round(78 - v * 0.76)).join(" ")
+  }
+
+  chartArea(values) {
+    const step = 300 / 29
+    const x0 = Math.round((29 - (values.length - 1)) * step)
+    return x0 + ",80 " + this.chartPoints(values) + " 300,80"
   }
 
   formatBytes(n) {
@@ -83,11 +92,14 @@ action
       this.memHistory = mem
       this.cpuPoints = this.chartPoints(cpu)
       this.memPoints = this.chartPoints(mem)
+      this.cpuArea = this.chartArea(cpu)
+      this.memArea = this.chartArea(mem)
       this.cpuNow = s.cpu_pct
       this.memNow = s.mem_pct
       this.memText = this.formatBytes(s.mem_used) + " of " + this.formatBytes(s.mem_total)
       this.diskPct = s.disk_pct
       this.diskText = this.formatBytes(s.disk_used) + " of " + this.formatBytes(s.disk_total)
+      this.diskDash = Math.min(226.2, Math.round(s.disk_pct * 2.262 * 10) / 10) + " 226.2"
       this.loadText = s.load.join("  ")
       this.uptimeText = this.formatUptime(s.uptime)
       this.statsError = ""
@@ -163,14 +175,14 @@ onMount
 
 template
   <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
-    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading server…</p>
 {{/if}}
 
 {{#if notFound}}
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
         <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Server not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
         <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
@@ -182,24 +194,113 @@ template
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 shadow-sm dark:shadow-none mb-6">
-        <div class="flex items-start justify-between mb-6">
-          <div>
-            <h1 class="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-1">{{ server.name }}</h1>
+      <div class="flex items-start justify-between gap-4 mb-8">
+        <div class="min-w-0">
+          <div class="flex items-center gap-3 mb-2">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ server.name }}</h1>
 {{#if status is "online"}}
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Online</span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+            </span>
 {{/if}}
 {{#if status is "pending"}}
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Not tested</span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Not tested
+            </span>
 {{/if}}
 {{#if status is "offline"}}
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Offline</span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Offline
+            </span>
 {{/if}}
           </div>
-          <ServerForm server="{{ server }}" onSaved="{{ updated }}" />
+          <p class="text-slate-500 text-sm font-mono">
+            {{ server.ssh_user }}@{{ server.host }}:{{ server.port }}
+{{#if region}}
+            / {{ region }} / {{ plan }}
+{{/if}}
+{{#if hasStats}}
+            / up {{ uptimeText }}
+{{/if}}
+          </p>
+        </div>
+        <ServerForm server="{{ server }}" onSaved="{{ updated }}" />
+      </div>
+
+{{#if statsError}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ statsError }}</p>
+{{/if}}
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">CPU</p>
+{{#if hasStats}}
+            <p class="text-slate-500 text-xs font-mono">load {{ loadText }}</p>
+{{/if}}
+          </div>
+{{#if hasStats}}
+          <p class="text-3xl font-semibold text-slate-800 dark:text-slate-200">{{ cpuNow }}<span class="text-lg text-slate-500">%</span></p>
+          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-20 mt-3">
+            <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <polygon points="{{ cpuArea }}" fill="#10b981" fill-opacity="0.15" />
+            <polyline points="{{ cpuPoints }}" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+{{/if}}
+{{#if not hasStats}}
+          <div class="h-28 rounded-lg bg-slate-300/40 dark:bg-slate-950/60 animate-pulse"></div>
+{{/if}}
         </div>
 
-        <div class="grid grid-cols-2 gap-6">
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Memory</p>
+{{#if hasStats}}
+            <p class="text-slate-500 text-xs font-mono">{{ memText }}</p>
+{{/if}}
+          </div>
+{{#if hasStats}}
+          <p class="text-3xl font-semibold text-slate-800 dark:text-slate-200">{{ memNow }}<span class="text-lg text-slate-500">%</span></p>
+          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-20 mt-3">
+            <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <polygon points="{{ memArea }}" fill="#38bdf8" fill-opacity="0.15" />
+            <polyline points="{{ memPoints }}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+{{/if}}
+{{#if not hasStats}}
+          <div class="h-28 rounded-lg bg-slate-300/40 dark:bg-slate-950/60 animate-pulse"></div>
+{{/if}}
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Disk</p>
+{{#if hasStats}}
+            <p class="text-slate-500 text-xs font-mono">{{ diskText }}</p>
+{{/if}}
+          </div>
+{{#if hasStats}}
+          <div class="relative w-28 h-28 mx-auto mt-1">
+            <svg viewBox="0 0 100 100" class="w-28 h-28">
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{ diskDash }}" transform="rotate(-90 50 50)" />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <span class="text-xl font-semibold text-slate-800 dark:text-slate-200">{{ diskPct }}%</span>
+            </div>
+          </div>
+{{/if}}
+{{#if not hasStats}}
+          <div class="h-28 rounded-lg bg-slate-300/40 dark:bg-slate-950/60 animate-pulse"></div>
+{{/if}}
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-5">Details</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <p class="text-slate-500 text-xs mb-1">Host</p>
             <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ server.host }}</p>
@@ -235,59 +336,6 @@ template
             <p class="text-slate-800 dark:text-slate-200 text-sm">{{ server.updated_at.slice(0, 10) }}</p>
           </div>
         </div>
-      </div>
-
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 shadow-sm dark:shadow-none mb-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-slate-800 dark:text-slate-200 font-medium">Resources</h2>
-{{#if hasStats}}
-          <p class="text-slate-500 text-xs">Up {{ uptimeText }} / load {{ loadText }}</p>
-{{/if}}
-        </div>
-
-{{#if statsError}}
-        <p role="alert" class="text-rose-500 text-sm mb-4">{{ statsError }}</p>
-{{/if}}
-
-{{#if not hasStats}}
-{{#if not statsError}}
-        <p class="text-slate-500 text-sm">Reading stats over SSH…</p>
-{{/if}}
-{{/if}}
-
-{{#if hasStats}}
-        <div class="mb-6">
-          <div class="flex items-baseline justify-between mb-2">
-            <p class="text-slate-500 text-xs">CPU</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ cpuNow }}%</p>
-          </div>
-          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-24 rounded-lg bg-slate-300/40 dark:bg-slate-950">
-            <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.25" stroke-width="1" vector-effect="non-scaling-stroke" />
-            <polyline points="{{ cpuPoints }}" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-          </svg>
-        </div>
-
-        <div class="mb-6">
-          <div class="flex items-baseline justify-between mb-2">
-            <p class="text-slate-500 text-xs">Memory</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ memNow }}% <span class="text-slate-500 text-xs">({{ memText }})</span></p>
-          </div>
-          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-24 rounded-lg bg-slate-300/40 dark:bg-slate-950">
-            <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.25" stroke-width="1" vector-effect="non-scaling-stroke" />
-            <polyline points="{{ memPoints }}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-          </svg>
-        </div>
-
-        <div>
-          <div class="flex items-baseline justify-between mb-2">
-            <p class="text-slate-500 text-xs">Disk</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ diskPct }}% <span class="text-slate-500 text-xs">({{ diskText }})</span></p>
-          </div>
-          <div class="h-2 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden">
-            <div class="h-2 rounded-full bg-emerald-500" style="width: {{ diskPct }}%"></div>
-          </div>
-        </div>
-{{/if}}
       </div>
 
       <div class="rounded-2xl border border-rose-900/30 bg-slate-200 dark:bg-slate-900 p-6">
