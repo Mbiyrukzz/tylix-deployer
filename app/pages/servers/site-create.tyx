@@ -1,0 +1,547 @@
+page SiteCreate
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Create site"
+
+state
+  serverId: ""
+  server: null
+  loading: true
+  notFound: false
+  sourceControls: []
+  type: "tylix"
+  usesPhp: false
+  usesNode: true
+  usesRepo: true
+  isMern: false
+  isAngular: false
+  showWebDir: false
+  domain: ""
+  aliasText: ""
+  isolatedUser: ""
+  phpVersion: "8.4"
+  port: ""
+  sourceControlId: "0"
+  repos: []
+  visibleRepos: []
+  repoFilter: ""
+  branches: []
+  loadingRepos: false
+  loadingBranches: false
+  branchPicked: false
+  repoError: ""
+  repository: ""
+  branch: "main"
+  webDirectory: ""
+  appDirectory: ""
+  backendDirectory: ""
+  buildCommand: "npm run build"
+  startCommand: "npm start"
+  installDeps: true
+  submitting: false
+  errors: []
+
+action
+  resetSource() {
+    this.sourceControlId = "0"
+    this.repos = []
+    this.visibleRepos = []
+    this.repoFilter = ""
+    this.branches = []
+    this.repository = ""
+    this.branch = "main"
+    this.branchPicked = false
+    this.repoError = ""
+  }
+
+  setType(value) {
+    this.type = value
+    this.usesPhp = false
+    this.usesNode = false
+    this.usesRepo = true
+    this.isMern = false
+    this.isAngular = false
+    this.showWebDir = false
+    this.webDirectory = ""
+    this.appDirectory = ""
+    this.backendDirectory = ""
+    this.buildCommand = ""
+    this.startCommand = ""
+
+    if value is "tylix" {
+      this.usesNode = true
+      this.buildCommand = "npm run build"
+      this.startCommand = "npm start"
+    } else if value is "laravel" {
+      this.usesPhp = true
+      this.showWebDir = true
+      this.webDirectory = "public"
+    } else if value is "php" {
+      this.usesPhp = true
+      this.showWebDir = true
+    } else if value is "wordpress" {
+      this.usesPhp = true
+      this.usesRepo = false
+      this.resetSource()
+    } else if value is "nodejs" {
+      this.usesNode = true
+      this.startCommand = "npm start"
+    } else if value is "nextjs" {
+      this.usesNode = true
+      this.buildCommand = "npm run build"
+      this.startCommand = "npm start"
+    } else if value is "mern" {
+      this.usesNode = true
+      this.isMern = true
+      this.appDirectory = "client"
+      this.backendDirectory = "server"
+      this.buildCommand = "npm run build"
+      this.startCommand = "npm start"
+    } else if value is "angular" {
+      this.isAngular = true
+      this.showWebDir = true
+      this.buildCommand = "npm run build"
+    } else if value is "static" {
+      this.showWebDir = true
+    }
+  }
+
+  async pickConnection(id) {
+    this.sourceControlId = id
+    this.repos = []
+    this.visibleRepos = []
+    this.repoFilter = ""
+    this.branches = []
+    this.repository = ""
+    this.branch = "main"
+    this.branchPicked = false
+    this.repoError = ""
+
+    if id is "0" {
+      return null
+    }
+
+    this.loadingRepos = true
+    const result = await useApi("/api/source-controls/" + id + "/repositories")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok and Array.isArray(result.data) {
+      this.repos = result.data
+      this.visibleRepos = result.data.slice(0, 50)
+    } else {
+      this.repoError = result.data?.error or "Couldn't load repositories."
+    }
+
+    this.loadingRepos = false
+  }
+
+  applyRepoFilter(value) {
+    this.repoFilter = value
+    const needle = value.toLowerCase()
+    this.visibleRepos = this.repos.filter((r) => r.full_name.toLowerCase().includes(needle)).slice(0, 50)
+  }
+
+  async pickRepo(name) {
+    if name is this.repository {
+      return null
+    }
+
+    const repo = this.repos.find((r) => r.full_name is name)
+
+    this.repository = name
+    this.branch = repo ? repo.default_branch : "main"
+    this.branches = []
+    this.branchPicked = false
+    this.repoError = ""
+    this.loadingBranches = true
+
+    const result = await useApi("/api/source-controls/" + this.sourceControlId + "/branches?repo=" + encodeURIComponent(name))
+
+    if result.ok and Array.isArray(result.data) {
+      this.branches = result.data
+    } else {
+      this.repoError = result.data?.error or "Couldn't load branches."
+    }
+
+    this.loadingBranches = false
+  }
+
+  changeRepo() {
+    this.repository = ""
+    this.branches = []
+    this.branch = "main"
+    this.branchPicked = false
+    this.repoError = ""
+    this.repoFilter = ""
+    this.visibleRepos = this.repos.slice(0, 50)
+  }
+
+  pickBranch(name) {
+    this.branch = name
+    this.branchPicked = true
+  }
+
+  changeBranch() {
+    this.branchPicked = false
+  }
+
+  async submit() {
+    if this.submitting {
+      return null
+    }
+
+    this.errors = []
+    this.submitting = true
+
+    const aliases = this.aliasText.split(",").map((a) => a.trim()).filter((a) => a.length > 0)
+
+    const result = await useApi("/api/sites", {
+      method: "POST",
+      body: {
+        server_id: Number(this.serverId),
+        type: this.type,
+        domain: this.domain,
+        aliases: aliases,
+        isolated_user: this.isolatedUser,
+        php_version: this.phpVersion,
+        port: Number(this.port),
+        source_control_id: Number(this.sourceControlId),
+        repository: this.repository,
+        branch: this.branch,
+        web_directory: this.webDirectory,
+        app_directory: this.appDirectory,
+        backend_directory: this.backendDirectory,
+        build_command: this.buildCommand,
+        start_command: this.startCommand,
+        install_deps: this.installDeps
+      }
+    })
+
+    if result.ok {
+      window.location.href = "/servers/site-detail?id=" + result.data.id
+      return null
+    }
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.data?.errors {
+      this.errors = Object.values(result.data.errors).map((m) => m[0])
+    } else {
+      this.errors = [result.data?.error or "Couldn't create the site."]
+    }
+
+    this.submitting = false
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+
+        const sc = await useApi("/api/source-controls")
+        if sc.ok and Array.isArray(sc.data) {
+          this.sourceControls = sc.data.map((c) => ({ id: c.id, label: c.label, kind: c.kind, key: "" + c.id }))
+        }
+
+        this.loading = false
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-2xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Server not found</h2>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Sites
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Create site</h1>
+      <p class="text-slate-500 text-sm mt-1 mb-8">Fill in the details to create a new site on {{ server.name }}.</p>
+
+{{#if errors.length is not 0}}
+      <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 mb-6">
+        <ul class="text-rose-500 text-sm space-y-1">
+{{#each e in errors}}
+          <li>{{ e }}</li>
+{{/each}}
+        </ul>
+      </div>
+{{/if}}
+
+      <div class="space-y-6">
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Site type</label>
+          <select onchange="{{ setType($event.target.value) }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+            <option value="tylix">Tylix</option>
+            <option value="laravel">Laravel</option>
+            <option value="php">PHP</option>
+            <option value="nodejs">Node.js (NPM)</option>
+            <option value="nextjs">Next.js</option>
+            <option value="wordpress">WordPress</option>
+            <option value="mern">MERN (React + Node API)</option>
+            <option value="angular">Angular</option>
+            <option value="static">Static</option>
+          </select>
+{{#if type is "wordpress"}}
+          <p class="text-slate-500 text-xs mt-2">Downloads the latest WordPress and creates its MySQL database. No repository needed.</p>
+{{/if}}
+{{#if isMern}}
+          <p class="text-slate-500 text-xs mt-2">The React client is built and served by nginx. The Node API runs on the port below and is reached at /api/.</p>
+{{/if}}
+{{#if isAngular}}
+          <p class="text-slate-500 text-xs mt-2">Built on the server with npm and served as a single-page app.</p>
+{{/if}}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Domain</label>
+          <input type="text" autocomplete="off" value="{{ domain }}" oninput="{{ domain = $event.target.value }}" placeholder="example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Aliases</label>
+          <input type="text" autocomplete="off" value="{{ aliasText }}" oninput="{{ aliasText = $event.target.value }}" placeholder="www.example.com, app.example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <p class="text-slate-500 text-xs mt-2">Separate aliases with commas.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Isolated user</label>
+          <input type="text" name="site_unix_user" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ isolatedUser }}" oninput="{{ isolatedUser = $event.target.value }}" placeholder="e.g. mysite" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <p class="text-slate-500 text-xs mt-2">The isolated user for the site. Must be unique on the server and not a system name such as root or tylix. Leave blank to use the first part of the domain.</p>
+        </div>
+
+{{#if usesPhp}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">PHP version</label>
+          <select onchange="{{ phpVersion = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+            <option value="8.4">8.4</option>
+            <option value="8.3">8.3</option>
+            <option value="8.2">8.2</option>
+            <option value="8.1">8.1</option>
+          </select>
+          <p class="text-slate-500 text-xs mt-2">PHP-FPM for this version must already be installed on the server.</p>
+        </div>
+{{/if}}
+
+{{#if usesNode}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">App port</label>
+          <input type="text" autocomplete="off" value="{{ port }}" oninput="{{ port = $event.target.value }}" placeholder="Auto (first free port from 3000)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <p class="text-slate-500 text-xs mt-2">Your app gets this as the PORT variable. nginx proxies to 127.0.0.1 on it.</p>
+        </div>
+{{/if}}
+
+{{#if usesRepo}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Source control</label>
+          <select onchange="{{ pickConnection($event.target.value) }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+            <option value="0">None</option>
+{{#each sc in sourceControls}}
+{{#if sc.key is sourceControlId}}
+            <option value="{{ sc.id }}" selected>{{ sc.label }} ({{ sc.kind }})</option>
+{{/if}}
+{{#if sc.key is not sourceControlId}}
+            <option value="{{ sc.id }}">{{ sc.label }} ({{ sc.kind }})</option>
+{{/if}}
+{{/each}}
+          </select>
+        </div>
+{{/if}}
+
+{{#if sourceControlId is not "0"}}
+{{#if loadingRepos}}
+        <p class="text-slate-500 text-sm">Loading repositories…</p>
+{{/if}}
+
+{{#if repoError}}
+        <p role="alert" class="text-rose-500 text-sm">{{ repoError }}</p>
+{{/if}}
+
+{{#if repos.length is not 0}}
+{{#if repository is ""}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Repository ({{ repos.length }} total, showing {{ visibleRepos.length }})</label>
+          <input type="text" autocomplete="off" value="{{ repoFilter }}" oninput="{{ applyRepoFilter($event.target.value) }}" placeholder="Filter repositories…" class="w-full mb-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <div class="max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 divide-y divide-slate-300 dark:divide-slate-800">
+{{#if visibleRepos.length is 0}}
+            <p class="px-4 py-3 text-slate-500 text-sm">No repositories match.</p>
+{{/if}}
+{{#each r in visibleRepos}}
+            <button onclick="{{ pickRepo(r.full_name) }}" class="w-full text-left px-4 py-2.5 text-sm font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">{{ r.full_name }}</button>
+{{/each}}
+          </div>
+        </div>
+{{/if}}
+{{#if repository is not ""}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Repository</label>
+          <div class="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+            <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ repository }}</span>
+            <button onclick="{{ changeRepo() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Change</button>
+          </div>
+        </div>
+{{/if}}
+{{/if}}
+
+{{#if repository is not ""}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Branch</label>
+{{#if branchPicked}}
+          <div class="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+            <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ branch }}</span>
+            <button onclick="{{ changeBranch() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Change</button>
+          </div>
+{{/if}}
+{{#if not branchPicked}}
+{{#if loadingBranches}}
+          <p class="text-slate-500 text-xs">Loading branches…</p>
+{{/if}}
+{{#if branches.length is not 0}}
+          <div class="max-h-48 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 divide-y divide-slate-300 dark:divide-slate-800">
+{{#each b in branches}}
+{{#if b is branch}}
+            <button onclick="{{ pickBranch(b) }}" class="w-full text-left px-4 py-2.5 text-sm font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">{{ b }}</button>
+{{/if}}
+{{#if b is not branch}}
+            <button onclick="{{ pickBranch(b) }}" class="w-full text-left px-4 py-2.5 text-sm font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">{{ b }}</button>
+{{/if}}
+{{/each}}
+          </div>
+{{/if}}
+{{#if branches.length is 0}}
+{{#if not loadingBranches}}
+          <p class="text-slate-500 text-xs">No branches found. Using <span class="font-mono">{{ branch }}</span>.</p>
+{{/if}}
+{{/if}}
+{{/if}}
+        </div>
+{{/if}}
+{{/if}}
+
+{{#if showWebDir}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Web directory</label>
+          <input type="text" autocomplete="off" value="{{ webDirectory }}" oninput="{{ webDirectory = $event.target.value }}" placeholder="e.g., public, www, dist (leave empty for root)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+{{#if isAngular}}
+          <p class="text-slate-500 text-xs mt-2">Leave empty to detect the build output (dist/.../browser) automatically.</p>
+{{/if}}
+{{#if not isAngular}}
+          <p class="text-slate-500 text-xs mt-2">The relative path of your website from the site folder.</p>
+{{/if}}
+        </div>
+{{/if}}
+
+{{#if sourceControlId is not "0"}}
+{{#if usesPhp}}
+        <label class="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+          <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-4 h-4 accent-emerald-500" />
+          Run <code class="font-mono">composer install --no-dev</code>
+        </label>
+{{/if}}
+{{#if usesNode}}
+        <label class="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+          <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-4 h-4 accent-emerald-500" />
+          Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)
+        </label>
+
+{{#if isMern}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Client folder</label>
+          <input type="text" autocomplete="off" value="{{ appDirectory }}" oninput="{{ appDirectory = $event.target.value }}" placeholder="client" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <p class="text-slate-500 text-xs mt-2">The React app. The build command runs here and nginx serves its dist or build output.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">API folder</label>
+          <input type="text" autocomplete="off" value="{{ backendDirectory }}" oninput="{{ backendDirectory = $event.target.value }}" placeholder="server" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <p class="text-slate-500 text-xs mt-2">The Node API. The start command runs here. Add its .env on the server after creating the site.</p>
+        </div>
+{{/if}}
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Build command</label>
+          <input type="text" autocomplete="off" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Start command</label>
+          <input type="text" autocomplete="off" value="{{ startCommand }}" oninput="{{ startCommand = $event.target.value }}" placeholder="npm start" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <p class="text-slate-500 text-xs mt-2">Runs as the isolated user under systemd and restarts if it crashes.</p>
+        </div>
+{{/if}}
+{{#if isAngular}}
+        <label class="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+          <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-4 h-4 accent-emerald-500" />
+          Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)
+        </label>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Build command</label>
+          <input type="text" autocomplete="off" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="npm run build" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+        </div>
+{{/if}}
+{{#if type is "laravel"}}
+        <div>
+          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Build command</label>
+          <input type="text" autocomplete="off" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm ci && npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <p class="text-slate-500 text-xs mt-2">For Vite assets. Needs Node.js on the server.</p>
+        </div>
+{{/if}}
+{{/if}}
+
+        <div class="flex items-center gap-3 pt-2">
+{{#if submitting}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Creating…</button>
+{{/if}}
+{{#if not submitting}}
+          <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Create</button>
+{{/if}}
+          <a href="{{ '/servers/server-sites?id=' + serverId }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</a>
+        </div>
+
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

@@ -1,0 +1,135 @@
+page ServerSites
+
+import { IconArrowLeft, IconDatabase } from "tylix-icons"
+
+title "Sites"
+
+state
+  serverId: ""
+  server: null
+  sites: []
+  loading: true
+  notFound: false
+
+action
+  async load() {
+    const result = await useApi("/api/sites")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok and Array.isArray(result.data) {
+      const sid = Number(this.serverId)
+      this.sites = result.data.filter((s) => Number(s.server_id) is sid)
+    }
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        await this.load()
+        this.loading = false
+        window.setInterval(() => this.load(), 5000)
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading sites…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Server not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Sites</h1>
+          <p class="text-slate-500 text-sm mt-1">Websites and apps running on this server</p>
+        </div>
+        <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create site</a>
+      </div>
+
+{{#if sites.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1.5">No sites yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">Create a site to set up a domain, clone your code and serve it with nginx.</p>
+      </div>
+{{/if}}
+
+{{#if sites.length is not 0}}
+      <div class="space-y-3">
+{{#each s in sites}}
+        <a href="{{ '/servers/site-detail?id=' + s.id }}" class="group block rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/40 transition-all">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <h3 class="text-slate-800 dark:text-slate-200 font-semibold group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors truncate">{{ s.domain }}</h3>
+              <p class="text-slate-500 text-xs font-mono mt-1">{{ s.type }} / {{ s.isolated_user }}</p>
+            </div>
+{{#if s.status is "ready"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
+            </span>
+{{/if}}
+{{#if s.status is "failed"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+            </span>
+{{/if}}
+{{#if s.status is "creating"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Creating
+            </span>
+{{/if}}
+{{#if s.status is "pending"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
+            </span>
+{{/if}}
+          </div>
+        </a>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+    </div>
+  </div>

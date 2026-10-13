@@ -1,0 +1,5 @@
+export const listSite = () => useApi(`/api/sites`)
+export const getSite = (id: number | string) => useApi(`/api/sites/${id}`)
+export const createSite = (data: unknown) => useApi(`/api/sites`, { method: 'POST', body: data })
+export const updateSite = (id: number | string, data: unknown) => useApi(`/api/sites/${id}`, { method: 'PUT', body: data })
+export const deleteSite = (id: number | string) => useApi(`/api/sites/${id}`, { method: 'DELETE' })

@@ -1,0 +1,190 @@
+component RepositoryPicker
+
+props
+  onChange: Function
+
+state
+  connections: []
+  connectionId: ""
+  repos: []
+  visible: []
+  filter: ""
+  repository: ""
+  branches: []
+  branch: ""
+  loadingRepos: false
+  loadingBranches: false
+  error: ""
+
+action
+  emit() {
+    this.onChange({
+      source_control_id: Number(this.connectionId) or 0,
+      repository: this.repository,
+      branch: this.branch
+    })
+  }
+
+  async loadConnections() {
+    const result = await useApi("/api/source-controls")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok and Array.isArray(result.data) {
+      this.connections = result.data
+    }
+  }
+
+  async pickConnection(id) {
+    this.connectionId = id
+    this.repos = []
+    this.visible = []
+    this.branches = []
+    this.filter = ""
+    this.repository = ""
+    this.branch = ""
+    this.error = ""
+    this.emit()
+
+    if id is "" {
+      return null
+    }
+
+    this.loadingRepos = true
+    const result = await useApi("/api/source-controls/" + id + "/repositories")
+    this.loadingRepos = false
+
+    if result.ok and Array.isArray(result.data) {
+      this.repos = result.data
+      this.visible = result.data
+    } else {
+      this.error = result.data?.error or "Couldn't load repositories."
+    }
+  }
+
+  applyFilter(value) {
+    this.filter = value
+    const needle = value.toLowerCase()
+    this.visible = this.repos.filter((r) => r.full_name.toLowerCase().includes(needle))
+  }
+
+  async pickRepo(name) {
+    this.repository = name
+    this.branches = []
+    this.branch = ""
+    this.error = ""
+
+    if name is "" {
+      this.emit()
+      return null
+    }
+
+    const repo = this.repos.find((r) => r.full_name is name)
+    this.branch = repo ? repo.default_branch : "main"
+    this.emit()
+
+    this.loadingBranches = true
+    const result = await useApi("/api/source-controls/" + this.connectionId + "/branches?repo=" + encodeURIComponent(name))
+    this.loadingBranches = false
+
+    if result.ok and Array.isArray(result.data) {
+      this.branches = result.data
+    } else {
+      this.error = result.data?.error or "Couldn't load branches."
+    }
+  }
+
+  pickBranch(name) {
+    this.branch = name
+    this.emit()
+  }
+
+onMount
+  async {
+    await this.loadConnections()
+  }
+
+template
+  <div class="space-y-3">
+    <div>
+      <label for="repo-connection" class="block text-slate-500 text-xs mb-1.5">Source control</label>
+      <select
+        id="repo-connection"
+        onchange="{{ pickConnection($event.target.value) }}"
+        class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+      >
+        <option value="">None (empty site)</option>
+{{#each c in connections}}
+{{#if c.id is connectionId}}
+        <option value="{{ c.id }}" selected>{{ c.label }} ({{ c.kind }}{{ c.username ? ' / ' + c.username : '' }})</option>
+{{/if}}
+{{#if c.id is not connectionId}}
+        <option value="{{ c.id }}">{{ c.label }} ({{ c.kind }}{{ c.username ? ' / ' + c.username : '' }})</option>
+{{/if}}
+{{/each}}
+      </select>
+    </div>
+
+{{#if loadingRepos}}
+    <p class="text-slate-500 text-xs">Loading repositories…</p>
+{{/if}}
+
+{{#if repos.length is not 0}}
+    <div>
+      <label for="repo-filter" class="block text-slate-500 text-xs mb-1.5">Repository ({{ visible.length }} of {{ repos.length }})</label>
+      <input
+        id="repo-filter"
+        type="text"
+        value="{{ filter }}"
+        oninput="{{ applyFilter($event.target.value) }}"
+        placeholder="Filter repositories…"
+        class="w-full mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+      />
+      <select
+        id="repo-select"
+        onchange="{{ pickRepo($event.target.value) }}"
+        class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+      >
+        <option value="">Choose a repository</option>
+{{#each r in visible}}
+{{#if r.full_name is repository}}
+        <option value="{{ r.full_name }}" selected>{{ r.full_name }}</option>
+{{/if}}
+{{#if r.full_name is not repository}}
+        <option value="{{ r.full_name }}">{{ r.full_name }}</option>
+{{/if}}
+{{/each}}
+      </select>
+    </div>
+{{/if}}
+
+{{#if repository}}
+    <div>
+      <label for="repo-branch" class="block text-slate-500 text-xs mb-1.5">Branch</label>
+      <select
+        id="repo-branch"
+        onchange="{{ pickBranch($event.target.value) }}"
+        class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+      >
+{{#each b in branches}}
+{{#if b is branch}}
+        <option value="{{ b }}" selected>{{ b }}</option>
+{{/if}}
+{{#if b is not branch}}
+        <option value="{{ b }}">{{ b }}</option>
+{{/if}}
+{{/each}}
+      </select>
+{{#if loadingBranches}}
+      <p class="text-slate-500 text-xs mt-1">Loading branches…</p>
+{{/if}}
+    </div>
+{{/if}}
+
+{{#if error}}
+    <p role="alert" class="text-rose-500 text-xs">{{ error }}</p>
+{{/if}}
+  </div>

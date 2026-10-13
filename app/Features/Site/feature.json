@@ -1,0 +1,18 @@
+{
+  "name": "Site",
+  "version": "1.0.0",
+  "table": "sites",
+  "model": "Site",
+  "controller": "SiteController",
+  "validator": "SiteValidator",
+  "language": "typescript",
+  "fields": [],
+  "relations": [],
+  "auth": true,
+  "permissions": [
+    "site.view",
+    "site.create",
+    "site.update",
+    "site.delete"
+  ]
+}

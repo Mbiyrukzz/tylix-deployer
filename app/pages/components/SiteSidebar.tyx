@@ -1,0 +1,52 @@
+component SiteSidebar
+
+props
+  active: String
+  siteId: String
+
+template
+  <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible lg:w-44 shrink-0">
+    <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-2 px-3">This site</p>
+{{#if active is "application"}}
+    <a href="{{ '/servers/site-detail?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      Application
+    </a>
+{{/if}}
+{{#if active is not "application"}}
+    <a href="{{ '/servers/site-detail?id=' + siteId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      Application
+    </a>
+{{/if}}
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>Features</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>Commands</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>SSL</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>Workers</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>CronJobs</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>Redirects</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>Logs</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+      <span>Settings</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+    </span>
+  </nav>
