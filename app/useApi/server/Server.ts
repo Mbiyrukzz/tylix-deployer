@@ -1,0 +1,5 @@
+export const listServer = () => useApi(`/api/servers`)
+export const getServer = (id: number | string) => useApi(`/api/servers/${id}`)
+export const createServer = (data: unknown) => useApi(`/api/servers`, { method: 'POST', body: data })
+export const updateServer = (id: number | string, data: unknown) => useApi(`/api/servers/${id}`, { method: 'PUT', body: data })
+export const deleteServer = (id: number | string) => useApi(`/api/servers/${id}`, { method: 'DELETE' })

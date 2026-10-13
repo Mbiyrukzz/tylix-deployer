@@ -1,0 +1,43 @@
+{
+  "name": "Server",
+  "version": "1.0.0",
+  "table": "servers",
+  "model": "Server",
+  "controller": "ServerController",
+  "validator": "ServerValidator",
+  "language": "typescript",
+  "fields": [
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "host",
+      "type": "string"
+    },
+    {
+      "name": "port",
+      "type": "integer"
+    },
+    {
+      "name": "ssh_user",
+      "type": "string"
+    },
+    {
+      "name": "ssh_key",
+      "type": "text"
+    },
+    {
+      "name": "status",
+      "type": "string"
+    }
+  ],
+  "relations": [],
+  "auth": true,
+  "permissions": [
+    "server.view",
+    "server.create",
+    "server.update",
+    "server.delete"
+  ]
+}
