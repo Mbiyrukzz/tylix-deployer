@@ -6,15 +6,33 @@ title "Server"
 
 state
   server: null
+  status: ""
+  region: ""
+  plan: ""
   loading: true
   notFound: false
   confirmDelete: false
   deleting: false
   error: ""
+  statsBusy: false
+  statsError: ""
+  hasStats: false
+  cpuHistory: []
+  memHistory: []
+  cpuPoints: ""
+  memPoints: ""
+  cpuNow: 0
+  memNow: 0
+  memText: ""
+  diskPct: 0
+  diskText: ""
+  loadText: ""
+  uptimeText: ""
 
 action
   updated(server) {
     this.server = server
+    this.status = server.status
   }
 
   askDelete() {
@@ -24,6 +42,65 @@ action
 
   cancelDelete() {
     this.confirmDelete = false
+  }
+
+  chartPoints(values) {
+    const step = 300 / 29
+    const offset = 29 - (values.length - 1)
+    return values.map((v, i) => Math.round((offset + i) * step) + "," + Math.round(78 - v * 0.76)).join(" ")
+  }
+
+  formatBytes(n) {
+    if n >= 1073741824 {
+      return (n / 1073741824).toFixed(1) + " GB"
+    }
+    return Math.round(n / 1048576) + " MB"
+  }
+
+  formatUptime(sec) {
+    const days = Math.floor(sec / 86400)
+    const hours = Math.floor((sec % 86400) / 3600)
+    if days > 0 {
+      return days + "d " + hours + "h"
+    }
+    return hours + "h " + Math.floor((sec % 3600) / 60) + "m"
+  }
+
+  async loadStats() {
+    if not this.server or this.statsBusy {
+      return null
+    }
+
+    this.statsBusy = true
+    const result = await useApi("/api/servers/" + this.server.id + "/stats")
+
+    if result.ok {
+      const s = result.data
+      const cpu = this.cpuHistory.concat([s.cpu_pct]).slice(-30)
+      const mem = this.memHistory.concat([s.mem_pct]).slice(-30)
+
+      this.cpuHistory = cpu
+      this.memHistory = mem
+      this.cpuPoints = this.chartPoints(cpu)
+      this.memPoints = this.chartPoints(mem)
+      this.cpuNow = s.cpu_pct
+      this.memNow = s.mem_pct
+      this.memText = this.formatBytes(s.mem_used) + " of " + this.formatBytes(s.mem_total)
+      this.diskPct = s.disk_pct
+      this.diskText = this.formatBytes(s.disk_used) + " of " + this.formatBytes(s.disk_total)
+      this.loadText = s.load.join("  ")
+      this.uptimeText = this.formatUptime(s.uptime)
+      this.statsError = ""
+      this.hasStats = true
+      this.status = "online"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.statsError = result.data?.error or "Couldn't load stats."
+      this.status = "offline"
+    }
+
+    this.statsBusy = false
   }
 
   async deleteServer() {
@@ -61,8 +138,22 @@ onMount
       if result.status is 401 {
         window.location.href = "/login"
       } else if result.ok {
+        const sid = result.data.id
         this.server = result.data
+        this.status = result.data.status
         this.loading = false
+
+        const prov = await useApi("/api/provisions")
+        if prov.ok and Array.isArray(prov.data) {
+          const match = prov.data.find((p) => p.server_id is sid)
+          if match {
+            this.region = match.region
+            this.plan = match.plan
+          }
+        }
+
+        await this.loadStats()
+        window.setInterval(() => this.loadStats(), 10000)
       } else {
         this.notFound = true
         this.loading = false
@@ -72,7 +163,7 @@ onMount
 
 template
   <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
-    <div class="max-w-2xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading server…</p>
@@ -95,13 +186,13 @@ template
         <div class="flex items-start justify-between mb-6">
           <div>
             <h1 class="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-1">{{ server.name }}</h1>
-{{#if server.status is "online"}}
+{{#if status is "online"}}
             <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Online</span>
 {{/if}}
-{{#if server.status is "pending"}}
+{{#if status is "pending"}}
             <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Not tested</span>
 {{/if}}
-{{#if server.status is "offline"}}
+{{#if status is "offline"}}
             <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Offline</span>
 {{/if}}
           </div>
@@ -125,6 +216,16 @@ template
             <p class="text-slate-500 text-xs mb-1">SSH key</p>
             <p class="text-slate-800 dark:text-slate-200 text-sm">Stored encrypted</p>
           </div>
+{{#if region}}
+          <div>
+            <p class="text-slate-500 text-xs mb-1">Region</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ region }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs mb-1">Plan</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ plan }}</p>
+          </div>
+{{/if}}
           <div>
             <p class="text-slate-500 text-xs mb-1">Added</p>
             <p class="text-slate-800 dark:text-slate-200 text-sm">{{ server.created_at.slice(0, 10) }}</p>
@@ -134,6 +235,59 @@ template
             <p class="text-slate-800 dark:text-slate-200 text-sm">{{ server.updated_at.slice(0, 10) }}</p>
           </div>
         </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 shadow-sm dark:shadow-none mb-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-slate-800 dark:text-slate-200 font-medium">Resources</h2>
+{{#if hasStats}}
+          <p class="text-slate-500 text-xs">Up {{ uptimeText }} / load {{ loadText }}</p>
+{{/if}}
+        </div>
+
+{{#if statsError}}
+        <p role="alert" class="text-rose-500 text-sm mb-4">{{ statsError }}</p>
+{{/if}}
+
+{{#if not hasStats}}
+{{#if not statsError}}
+        <p class="text-slate-500 text-sm">Reading stats over SSH…</p>
+{{/if}}
+{{/if}}
+
+{{#if hasStats}}
+        <div class="mb-6">
+          <div class="flex items-baseline justify-between mb-2">
+            <p class="text-slate-500 text-xs">CPU</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ cpuNow }}%</p>
+          </div>
+          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-24 rounded-lg bg-slate-300/40 dark:bg-slate-950">
+            <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.25" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <polyline points="{{ cpuPoints }}" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+        </div>
+
+        <div class="mb-6">
+          <div class="flex items-baseline justify-between mb-2">
+            <p class="text-slate-500 text-xs">Memory</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ memNow }}% <span class="text-slate-500 text-xs">({{ memText }})</span></p>
+          </div>
+          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-24 rounded-lg bg-slate-300/40 dark:bg-slate-950">
+            <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.25" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <polyline points="{{ memPoints }}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+        </div>
+
+        <div>
+          <div class="flex items-baseline justify-between mb-2">
+            <p class="text-slate-500 text-xs">Disk</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ diskPct }}% <span class="text-slate-500 text-xs">({{ diskText }})</span></p>
+          </div>
+          <div class="h-2 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden">
+            <div class="h-2 rounded-full bg-emerald-500" style="width: {{ diskPct }}%"></div>
+          </div>
+        </div>
+{{/if}}
       </div>
 
       <div class="rounded-2xl border border-rose-900/30 bg-slate-200 dark:bg-slate-900 p-6">

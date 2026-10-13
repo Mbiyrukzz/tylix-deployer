@@ -24,6 +24,7 @@ export async function schedule(scheduler: Scheduler) {
               ? 'No worker picked this up. Is queue:work running? Press Retry.'
               : 'Stopped unexpectedly. Press Retry to resume, or delete it.',
         })
+        console.log(`Provision sweep: marked #${row.id} failed (was ${row.status})`)
       }
     } catch (error) {
       console.error('Provision sweep failed:', error instanceof Error ? error.message : error)

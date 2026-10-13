@@ -16,6 +16,7 @@ state
   confirmId: 0
   confirmText: ""
   actionError: ""
+  doneCount: 0
 
 action
   addServer(server) {
@@ -31,6 +32,20 @@ action
   cancelDelete() {
     this.confirmId = 0
     this.confirmText = ""
+  }
+
+  async refresh() {
+    if this.confirmId is not 0 {
+      return null
+    }
+
+    await Provisions.load()
+
+    const done = Provisions.data.filter((p) => p.status is "done").length
+    if done is not this.doneCount {
+      this.doneCount = done
+      await Servers.load()
+    }
   }
 
   async retryProvision(id) {
@@ -62,8 +77,9 @@ onMount
 
     await Servers.load()
     await Provisions.load()
+    this.doneCount = Provisions.data.filter((p) => p.status is "done").length
     this.checkedAuth = true
-    window.setInterval(() => Provisions.load(), 5000)
+    window.setInterval(() => this.refresh(), 5000)
   }
 
 template
@@ -142,7 +158,12 @@ template
         <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
+{{#if pr.server_id is not 0}}
+              <a href="{{ '/servers/server-detail?id=' + pr.server_id }}" class="text-slate-800 dark:text-slate-200 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 hover:underline transition-colors">{{ pr.name }}</a>
+{{/if}}
+{{#if pr.server_id is 0}}
               <h3 class="text-slate-800 dark:text-slate-200 font-semibold">{{ pr.name }}</h3>
+{{/if}}
               <p class="text-slate-500 text-xs font-mono mt-1">{{ pr.region }} / {{ pr.plan }} / {{ pr.template }}</p>
 {{#if pr.ip}}
               <p class="text-slate-500 text-xs font-mono">{{ pr.ip }}</p>
