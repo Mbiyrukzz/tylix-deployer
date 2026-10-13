@@ -43,7 +43,10 @@ template
           <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Servers</h1>
           <p class="text-slate-500 text-sm mt-1">The machines you deploy to</p>
         </div>
-        <ServerForm onSaved="{{ addServer }}" />
+               <div class="flex items-center gap-3">
+          <a href="/servers/create" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</a>
+          <ServerForm onSaved="{{ addServer }}" />
+        </div>
       </div>
 
 {{#if Servers.loading}}

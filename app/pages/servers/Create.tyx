@@ -1,0 +1,371 @@
+page CreateServer
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Create server"
+
+needs
+  Auth
+
+uses
+  Providers
+
+state
+  checkedAuth: false
+  providerId: 0
+  region: ""
+  plan: ""
+  regionLabel: ""
+  planLabel: ""
+  regionOpen: false
+  planOpen: false
+  image: ""
+  tpl: "tylix"
+  name: ""
+  regions: []
+  images: []
+  plans: []
+  shownPlans: []
+  catalogError: ""
+  saving: false
+  error: ""
+  providerError: ""
+  regionError: ""
+  planError: ""
+  imageError: ""
+  nameError: ""
+  tplError: ""
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  clearErrors() {
+    this.error = ""
+    this.providerError = ""
+    this.regionError = ""
+    this.planError = ""
+    this.imageError = ""
+    this.nameError = ""
+    this.tplError = ""
+  }
+
+       applyPlanFilter() {
+       if this.tpl is "tylix" {
+         this.shownPlans = this.plans.filter((p) => p.memory_mb > 4095)
+       } else {
+         this.shownPlans = this.plans
+       }
+     }
+
+  async loadCatalog() {
+    this.catalogError = ""
+          const url = "/api/catalog/linode?region=" + this.region
+    const result = await useApi(url)
+
+    if result.ok {
+            if this.regions.length is 0 {
+        this.regions = result.data.regions
+      }
+      if this.images.length is 0 {
+        this.images = result.data.images
+      }
+      this.plans = result.data.plans
+      if this.image is "" and this.images.length > 0 {
+        this.image = this.images[0].id
+      }
+      this.applyPlanFilter()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.catalogError = "Couldn't load regions and plans from Linode. Reload the page to try again."
+    }
+  }
+
+  pickProvider(id) {
+    this.providerId = id
+  }
+
+  toggleRegion() {
+    this.planOpen = false
+    if this.regionOpen {
+      this.regionOpen = false
+    } else {
+      this.regionOpen = true
+    }
+  }
+
+  togglePlan() {
+    this.regionOpen = false
+    if this.planOpen {
+      this.planOpen = false
+    } else {
+      this.planOpen = true
+    }
+  }
+
+  async pickRegion(id, label) {
+    this.region = id
+    this.regionLabel = label
+    this.regionOpen = false
+    this.plan = ""
+    this.planLabel = ""
+    await this.loadCatalog()
+  }
+
+  pickPlan(id, label) {
+    this.plan = id
+    this.planLabel = label
+    this.planOpen = false
+  }
+
+  pickImage(id) {
+    this.image = id
+  }
+
+  pickTpl(t) {
+    this.tpl = t
+    this.plan = ""
+    this.planLabel = ""
+    this.planOpen = false
+    this.applyPlanFilter()
+  }
+
+  async submit() {
+    if this.saving {
+      return null
+    }
+
+    this.clearErrors()
+    this.saving = true
+
+    const payload = {
+      provider_id: this.providerId,
+      name: this.name,
+      region: this.region,
+      plan: this.plan,
+      image: this.image,
+      "template": this.tpl
+    }
+
+    const result = await useApi("/api/provisions", { method: "POST", body: payload })
+
+    if result.ok {
+      window.location.href = "/servers"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.providerError = this.firstError(errors, "provider_id")
+      this.regionError = this.firstError(errors, "region")
+      this.planError = this.firstError(errors, "plan")
+      this.imageError = this.firstError(errors, "image")
+      this.nameError = this.firstError(errors, "name")
+      this.tplError = this.firstError(errors, "template")
+      this.error = result.data?.error or result.error or ""
+      if this.error is "" and not errors {
+        this.error = "Couldn't create the server. Check the form and try again."
+      }
+      this.saving = false
+    }
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    await Providers.load()
+    if Providers.data.length is 1 {
+      this.providerId = Providers.data[0].id
+    }
+
+    await this.loadCatalog()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+  <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Servers
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Create server</h1>
+      <p class="text-slate-500 text-sm mb-8">Provision a new machine at your cloud provider.</p>
+
+{{#if catalogError}}
+      <p role="alert" class="text-rose-500 text-sm mb-6">{{ catalogError }}</p>
+{{/if}}
+
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-3">1. Provider</h2>
+{{#if Providers.data.length is 0}}
+      <div class="rounded-xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 mb-2 text-sm text-slate-500">
+        No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect Linode</a> first.
+      </div>
+{{/if}}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+{{#each p in Providers.data}}
+{{#if providerId is p.id}}
+        <button onclick="{{ pickProvider(p.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
+          <span class="block font-medium">{{ p.label }}</span>
+          <span class="block text-xs text-slate-500">Linode (Akamai)</span>
+        </button>
+{{/if}}
+{{#if providerId is not p.id}}
+        <button onclick="{{ pickProvider(p.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+          <span class="block font-medium">{{ p.label }}</span>
+          <span class="block text-xs text-slate-500">Linode (Akamai)</span>
+        </button>
+{{/if}}
+{{/each}}
+      </div>
+{{#if providerError}}
+      <p class="text-rose-500 text-xs mb-2">{{ providerError }}</p>
+{{/if}}
+
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">2. Region</h2>
+      <div class="relative mb-1">
+        <button onclick="{{ toggleRegion() }}" class="w-full flex items-center justify-between text-left rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+{{#if regionLabel}}
+          <span>{{ regionLabel }}</span>
+{{/if}}
+{{#if not regionLabel}}
+          <span class="text-slate-500">Select a region</span>
+{{/if}}
+          <span class="text-slate-500 text-xs">&#9662;</span>
+        </button>
+{{#if regionOpen}}
+        <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-lg">
+{{#each r in regions}}
+          <button onclick="{{ pickRegion(r.id, r.label) }}" class="block w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+            {{ r.label }} <span class="text-xs text-slate-500 font-mono">{{ r.id }}</span>
+          </button>
+{{/each}}
+        </div>
+{{/if}}
+      </div>
+{{#if regionError}}
+      <p class="text-rose-500 text-xs mb-2">{{ regionError }}</p>
+{{/if}}
+
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">3. Template</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+{{#if tpl is "tylix"}}
+        <button onclick="{{ pickTpl('tylix') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
+          <span class="block font-medium">Tylix</span>
+          <span class="block text-xs text-slate-500">Everything Standard has, plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
+        </button>
+{{/if}}
+{{#if tpl is not "tylix"}}
+        <button onclick="{{ pickTpl('tylix') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+          <span class="block font-medium">Tylix</span>
+          <span class="block text-xs text-slate-500">Everything Standard has, plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
+        </button>
+{{/if}}
+{{#if tpl is "standard"}}
+        <button onclick="{{ pickTpl('standard') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
+          <span class="block font-medium">Standard</span>
+          <span class="block text-xs text-slate-500">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
+        </button>
+{{/if}}
+{{#if tpl is not "standard"}}
+        <button onclick="{{ pickTpl('standard') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+          <span class="block font-medium">Standard</span>
+          <span class="block text-xs text-slate-500">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
+        </button>
+{{/if}}
+      </div>
+{{#if tplError}}
+      <p class="text-rose-500 text-xs mb-2">{{ tplError }}</p>
+{{/if}}
+
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">4. Plan</h2>
+{{#if not region}}
+      <p class="text-slate-500 text-sm mb-2">Choose a region first. Prices depend on the region.</p>
+{{/if}}
+{{#if region}}
+      <div class="relative mb-1">
+        <button onclick="{{ togglePlan() }}" class="w-full flex items-center justify-between text-left rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+{{#if planLabel}}
+          <span>{{ planLabel }}</span>
+{{/if}}
+{{#if not planLabel}}
+          <span class="text-slate-500">Select a plan</span>
+{{/if}}
+          <span class="text-slate-500 text-xs">&#9662;</span>
+        </button>
+{{#if planOpen}}
+        <div class="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-lg">
+{{#each p in shownPlans}}
+          <button onclick="{{ pickPlan(p.id, p.label) }}" class="block w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+            <span class="block font-medium">{{ p.label }}</span>
+            <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / USD {{ p.monthly }} per month</span>
+          </button>
+{{/each}}
+        </div>
+{{/if}}
+      </div>
+{{/if}}
+{{#if planError}}
+      <p class="text-rose-500 text-xs mb-2">{{ planError }}</p>
+{{/if}}
+
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">5. Operating system</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
+{{#each i in images}}
+{{#if image is i.id}}
+        <button onclick="{{ pickImage(i.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
+          <span class="block font-medium">{{ i.label }}</span>
+        </button>
+{{/if}}
+{{#if image is not i.id}}
+        <button onclick="{{ pickImage(i.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+          <span class="block font-medium">{{ i.label }}</span>
+        </button>
+{{/if}}
+{{/each}}
+      </div>
+{{#if imageError}}
+      <p class="text-rose-500 text-xs mb-2">{{ imageError }}</p>
+{{/if}}
+
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">6. Server name</h2>
+      <label for="server-name" class="block text-slate-500 text-xs mb-1.5">Lowercase letters, numbers and hyphens</label>
+      <input
+        id="server-name"
+        type="text"
+        value="{{ name }}"
+        oninput="{{ name = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="e.g. web-1"
+      />
+{{#if nameError}}
+      <p class="text-rose-500 text-xs mb-2">{{ nameError }}</p>
+{{/if}}
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mt-6">{{ error }}</p>
+{{/if}}
+
+      <div class="flex items-center justify-end gap-3 mt-8">
+        <a href="/servers" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</a>
+{{#if saving}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Creating…</button>
+{{/if}}
+{{#if not saving}}
+        <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</button>
+{{/if}}
+      </div>
+
+    </div>
+  </div>
+{{/if}}

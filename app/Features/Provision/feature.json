@@ -1,0 +1,75 @@
+{
+  "name": "Provision",
+  "version": "1.0.0",
+  "table": "provisions",
+  "model": "Provision",
+  "controller": "ProvisionController",
+  "validator": "ProvisionValidator",
+  "language": "typescript",
+  "fields": [
+    {
+      "name": "provider_id",
+      "type": "integer"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "region",
+      "type": "string"
+    },
+    {
+      "name": "plan",
+      "type": "string"
+    },
+    {
+      "name": "image",
+      "type": "string"
+    },
+    {
+      "name": "template",
+      "type": "string"
+    },
+    {
+      "name": "step",
+      "type": "string"
+    },
+    {
+      "name": "status",
+      "type": "string"
+    },
+    {
+      "name": "instance_id",
+      "type": "integer"
+    },
+    {
+      "name": "ip",
+      "type": "string"
+    },
+    {
+      "name": "error",
+      "type": "text"
+    },
+    {
+      "name": "ssh_key",
+      "type": "text"
+    },
+    {
+      "name": "server_id",
+      "type": "integer"
+    },
+    {
+      "name": "user_id",
+      "type": "integer"
+    }
+  ],
+  "relations": [],
+  "auth": true,
+  "permissions": [
+    "provision.view",
+    "provision.create",
+    "provision.update",
+    "provision.delete"
+  ]
+}

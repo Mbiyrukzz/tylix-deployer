@@ -1,0 +1,5 @@
+export const listProvision = () => useApi(`/api/provisions`)
+export const getProvision = (id: number | string) => useApi(`/api/provisions/${id}`)
+export const createProvision = (data: unknown) => useApi(`/api/provisions`, { method: 'POST', body: data })
+export const updateProvision = (id: number | string, data: unknown) => useApi(`/api/provisions/${id}`, { method: 'PUT', body: data })
+export const deleteProvision = (id: number | string) => useApi(`/api/provisions/${id}`, { method: 'DELETE' })
