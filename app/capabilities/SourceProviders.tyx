@@ -1,0 +1,33 @@
+capability SourceProviders
+
+state
+  data: []
+
+action
+  async load() {
+    const result = await useApi("/api/sourceproviders")
+    if result.ok and Array.isArray(result.data) {
+      this.data = result.data
+    }
+  }
+
+  add(item) {
+    this.data = [item].concat(this.data)
+  }
+
+  replace(item) {
+    this.data = this.data.map((p) => (p.id is item.id ? item : p))
+  }
+
+  async remove(id) {
+    const result = await useApi("/api/sourceproviders/" + id, { method: "DELETE" })
+    if result.ok {
+      this.data = this.data.filter((p) => p.id is not id)
+    }
+    return result
+  }
+
+init
+  async {
+    await this.load()
+  }

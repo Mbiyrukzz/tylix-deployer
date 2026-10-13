@@ -1,0 +1,195 @@
+component SourceProviderForm
+
+import { IconPlus, IconX } from "tylix-icons"
+
+props
+  provider: Object
+  onSaved: Function
+
+state
+  showModal: false
+  kind: "github"
+  label: ""
+  token: ""
+  saving: false
+  error: ""
+  kindError: ""
+  labelError: ""
+  tokenError: ""
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  clearErrors() {
+    this.error = ""
+    this.kindError = ""
+    this.labelError = ""
+    this.tokenError = ""
+  }
+
+  reset() {
+    this.kind = "github"
+    this.label = ""
+    this.token = ""
+    this.saving = false
+    this.clearErrors()
+  }
+
+  pickKind(k) {
+    this.kind = k
+  }
+
+  open() {
+    this.reset()
+    if this.provider {
+      this.kind = this.provider.kind
+      this.label = this.provider.label
+    }
+    this.showModal = true
+  }
+
+  close() {
+    this.showModal = false
+    this.reset()
+  }
+
+  async submit() {
+    if this.saving {
+      return null
+    }
+
+    this.clearErrors()
+    this.saving = true
+
+    const payload = { kind: this.kind, label: this.label, token: this.token }
+    const url = this.provider ? "/api/sourceproviders/" + this.provider.id : "/api/sourceproviders"
+    const method = this.provider ? "PUT" : "POST"
+
+    const result = await useApi(url, { method: method, body: payload })
+
+    if result.ok {
+      this.onSaved(result.data)
+      this.close()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.kindError = this.firstError(errors, "kind")
+      this.labelError = this.firstError(errors, "label")
+      this.tokenError = this.firstError(errors, "token")
+      this.error = result.data?.error or result.error or ""
+      if this.error is "" and not errors {
+        this.error = "Couldn't save the connection. Check the form and try again."
+      }
+      this.saving = false
+    }
+  }
+
+template
+{{#if provider}}
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-900 transition-colors">
+    Edit
+  </button>
+{{/if}}
+{{#if not provider}}
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+    <IconPlus class="w-4 h-4" /> Connect account
+  </button>
+{{/if}}
+
+{{#if showModal}}
+  <div role="dialog" aria-modal="true" aria-labelledby="source-form-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="source-form-title" class="text-slate-900 dark:text-slate-200 font-medium">
+{{#if provider}}
+          Edit connection
+{{/if}}
+{{#if not provider}}
+          Connect a source control account
+{{/if}}
+        </h3>
+        <button onclick="{{ close() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+          <IconX class="w-4 h-4" />
+        </button>
+      </div>
+
+{{#if not provider}}
+      <p class="block text-slate-500 text-xs mb-1.5">Provider</p>
+      <div class="grid grid-cols-2 gap-3 mb-1">
+{{#if kind is "github"}}
+        <button onclick="{{ pickKind('github') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">GitHub</button>
+{{/if}}
+{{#if kind is not "github"}}
+        <button onclick="{{ pickKind('github') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">GitHub</button>
+{{/if}}
+{{#if kind is "gitlab"}}
+        <button onclick="{{ pickKind('gitlab') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">GitLab</button>
+{{/if}}
+{{#if kind is not "gitlab"}}
+        <button onclick="{{ pickKind('gitlab') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">GitLab</button>
+{{/if}}
+      </div>
+{{#if kindError}}
+      <p class="text-rose-500 text-xs mb-2">{{ kindError }}</p>
+{{/if}}
+      <div class="mb-3"></div>
+{{/if}}
+
+      <label for="source-label" class="block text-slate-500 text-xs mb-1.5">Name</label>
+      <input
+        id="source-label"
+        type="text"
+        autofocus
+        value="{{ label }}"
+        oninput="{{ label = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="e.g. Ashmif GitHub"
+      />
+{{#if labelError}}
+      <p class="text-rose-500 text-xs mb-3">{{ labelError }}</p>
+{{/if}}
+{{#if not labelError}}
+      <div class="mb-3"></div>
+{{/if}}
+
+      <label for="source-token" class="block text-slate-500 text-xs mb-1.5">Personal access token</label>
+      <input
+        id="source-token"
+        type="password"
+        autocomplete="off"
+        value="{{ token }}"
+        oninput="{{ token = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+      />
+{{#if tokenError}}
+      <p class="text-rose-500 text-xs mb-2">{{ tokenError }}</p>
+{{/if}}
+{{#if provider}}
+      <p class="text-slate-500 text-xs mb-4">Leave blank to keep the current token.</p>
+{{/if}}
+{{#if not provider}}
+      <p class="text-slate-500 text-xs mb-4">GitHub needs a token with repo access. GitLab needs read_repository and read_api. The token is checked now, encrypted, and never shown again.</p>
+{{/if}}
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <div class="flex items-center justify-end gap-3">
+        <button onclick="{{ close() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if saving}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Checking…</button>
+{{/if}}
+{{#if not saving}}
+        <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save</button>
+{{/if}}
+      </div>
+    </div>
+  </div>
+{{/if}}

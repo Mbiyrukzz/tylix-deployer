@@ -1,18 +1,18 @@
 /**
  * Job: ProvisionServer
  *
- * Creates a machine at the provider and gets it to "SSH works", then adds it
- * to the Servers list. Run by `npx tylix queue:work`, which has no timeout,
- * no retry and no crash recovery, so this job is written to be re-runnable:
+ * Creates a machine at the provider, waits for SSH, installs the template's
+ * components, then adds it to the Servers list. Run by `npx tylix queue:work`,
+ * which has no timeout, no retry and no crash recovery, so this job is written
+ * to be re-runnable:
  *
  *   - the keypair is saved (encrypted) before anything is created
  *   - the instance is tagged tylix-provision-<id>; a re-run adopts it
  *     instead of creating a second billable machine
  *   - instance_id is saved the moment the provider accepts the create call
+ *   - installers leave marker files on the server, so a re-run skips finished
+ *     components (see services/Installers.ts)
  *   - every failure is written to the provision row (never including tokens)
- *
- * Template installers (nginx, databases, ...) are step 2.5; this job stops at
- * a reachable base machine.
  *
  * PROVISION_DRY_RUN=1 runs every check except the create call.
  */
@@ -28,6 +28,7 @@ import {
     type LinodeInstance,
 } from "../services/LinodeClient.js";
 import { generateKeyPair, derivePublicKey, sshExec } from "../services/Ssh.js";
+import { installStepsFor, runInstallStep } from "../services/Installers.js";
 
 const BOOT_TIMEOUT_MS = 6 * 60 * 1000;
 const BOOT_POLL_MS = 5_000;
@@ -170,14 +171,22 @@ export const ProvisionServer = {
                 row = await load(id);
             }
 
-            // 4. Wait until we can log in with our key.
-            if (row.step !== "installing") {
-                await save(id, { step: "waiting_ssh" });
-                await waitForSsh(row.ip, privateKey);
-                await save(id, { step: "installing" });
-            }
+            // 4. Wait until we can log in with our key. Instant when it is already up.
+            await save(id, { step: "waiting_ssh" });
+            await waitForSsh(row.ip, privateKey);
 
-            // 5. (step 2.5) the template installers run here.
+            // 5. Install the template's components, one step at a time.
+            // Each step is its own row step, so updated_at moves and the sweep
+            // never mistakes a healthy install for a dead one.
+            const target = { host: row.ip, port: 22, user: "root", privateKey };
+            for (const step of installStepsFor(row.template)) {
+                await save(id, { step: `install_${step.id}` });
+
+                const result = await runInstallStep(target, step);
+                if (!result.ok) {
+                    throw new Error(`${step.label} failed. ${result.tail}`);
+                }
+            }
 
             // 6. Add it to the Servers list.
             if (!Number(row.server_id)) {

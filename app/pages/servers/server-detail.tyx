@@ -6,6 +6,7 @@ title "Server"
 
 state
   server: null
+  serverId: ""
   status: ""
   region: ""
   plan: ""
@@ -140,6 +141,7 @@ onMount
   async {
     const params = new URLSearchParams(window.location.search)
     const serverId = params.get("id")
+    this.serverId = serverId or ""
 
     if not serverId {
       this.notFound = true
@@ -174,7 +176,10 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="server" serverId="{{ serverId }}" />
+    <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
 {{#if loading}}
@@ -372,5 +377,6 @@ template
       </div>
 {{/if}}
 
+    </div>
     </div>
   </div>

@@ -1,0 +1,58 @@
+{
+  "name": "ServerTask",
+  "version": "1.0.0",
+  "table": "servertasks",
+  "model": "ServerTask",
+  "controller": "ServerTaskController",
+  "validator": "ServerTaskValidator",
+  "language": "typescript",
+  "fields": [
+    {
+      "name": "server_id",
+      "type": "integer"
+    },
+    {
+      "name": "user_id",
+      "type": "integer"
+    },
+    {
+      "name": "packages",
+      "type": "string",
+      "system": true
+    },
+    {
+      "name": "step",
+      "type": "string",
+      "system": true
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "system": true
+    },
+    {
+      "name": "error",
+      "type": "string",
+      "system": true
+    }
+  ],
+  "relations": [
+    {
+      "type": "belongsTo",
+      "model": "Server",
+      "foreignKey": "server_id"
+    },
+    {
+      "type": "belongsTo",
+      "model": "User",
+      "foreignKey": "user_id"
+    }
+  ],
+  "auth": true,
+  "permissions": [
+    "servertask.view",
+    "servertask.create",
+    "servertask.update",
+    "servertask.delete"
+  ]
+}

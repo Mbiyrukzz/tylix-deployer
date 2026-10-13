@@ -192,7 +192,9 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <div class="min-w-0">
     <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
 
       <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
@@ -283,6 +285,18 @@ template
           <span class="block text-xs text-slate-500">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
         </button>
 {{/if}}
+{{#if tpl is "bare"}}
+        <button onclick="{{ pickTpl('bare') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
+          <span class="block font-medium">Bare</span>
+          <span class="block text-xs text-slate-500">Just the OS and SSH access. Nothing installed. Add packages later from the server's Packages page.</span>
+        </button>
+{{/if}}
+{{#if tpl is not "bare"}}
+        <button onclick="{{ pickTpl('bare') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+          <span class="block font-medium">Bare</span>
+          <span class="block text-xs text-slate-500">Just the OS and SSH access. Nothing installed. Add packages later from the server's Packages page.</span>
+        </button>
+{{/if}}
       </div>
 {{#if tplError}}
       <p class="text-rose-500 text-xs mb-2">{{ tplError }}</p>
@@ -366,6 +380,7 @@ template
 {{/if}}
       </div>
 
+    </div>
     </div>
   </div>
 {{/if}}

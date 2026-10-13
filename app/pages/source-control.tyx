@@ -1,0 +1,121 @@
+page SourceControl
+
+import { IconFolder, IconArrowLeft } from "tylix-icons"
+
+title "Source control"
+
+needs
+  Auth
+
+uses
+  SourceProviders
+
+state
+  checkedAuth: false
+  removing: 0
+  removeError: ""
+
+action
+  addProvider(item) {
+    SourceProviders.add(item)
+  }
+
+  updateProvider(item) {
+    SourceProviders.replace(item)
+  }
+
+  askRemove(id) {
+    this.removeError = ""
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = 0
+  }
+
+  async confirmRemove(id) {
+    const result = await SourceProviders.remove(id)
+    if not result.ok {
+      this.removeError = result.data?.error or "Couldn't remove that connection."
+    }
+    this.removing = 0
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    await SourceProviders.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="source-control" />
+    <div class="min-w-0">
+      <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+        <a href="/dashboard" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+          <IconArrowLeft class="w-4 h-4" /> Dashboard
+        </a>
+
+        <div class="flex items-center justify-between mb-8">
+          <div>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Source control</h1>
+            <p class="text-slate-500 text-sm mt-1">Accounts your sites can deploy code from</p>
+          </div>
+          <SourceProviderForm onSaved="{{ addProvider }}" />
+        </div>
+
+{{#if removeError}}
+        <p role="alert" class="text-rose-500 text-sm mb-4">{{ removeError }}</p>
+{{/if}}
+
+{{#if SourceProviders.data.length is 0}}
+        <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-10 text-center">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+            <IconFolder class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+          </div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1.5">No accounts connected</h3>
+          <p class="text-slate-500 text-sm max-w-sm mx-auto">Connect GitHub or GitLab to create sites from your repositories.</p>
+        </div>
+{{/if}}
+
+{{#if SourceProviders.data.length is not 0}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+{{#each p in SourceProviders.data}}
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center justify-between mb-4">
+{{#if p.kind is "github"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">GitHub</span>
+{{/if}}
+{{#if p.kind is "gitlab"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">GitLab</span>
+{{/if}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">{{ p.status }}</span>
+            </div>
+            <h3 class="text-slate-800 dark:text-slate-200 font-semibold">{{ p.label }}</h3>
+            <p class="text-slate-500 text-sm font-mono mb-4">@{{ p.username }}</p>
+            <div class="flex items-center gap-3">
+              <SourceProviderForm provider="{{ p }}" onSaved="{{ updateProvider }}" />
+{{#if removing is p.id}}
+              <button onclick="{{ confirmRemove(p.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, remove</button>
+              <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+{{#if removing is not p.id}}
+              <button onclick="{{ askRemove(p.id) }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-950/30 transition">Remove</button>
+{{/if}}
+            </div>
+          </div>
+{{/each}}
+        </div>
+{{/if}}
+
+      </div>
+    </div>
+  </div>
+{{/if}}

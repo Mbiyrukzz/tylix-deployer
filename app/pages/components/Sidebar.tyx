@@ -1,0 +1,57 @@
+component Sidebar
+
+import { IconHome, IconDatabase, IconFolder } from "tylix-icons"
+
+props
+  active: String
+
+template
+  <aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
+    <div class="hidden lg:flex items-center gap-2.5 mb-8 px-1">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm dark:shadow-emerald-500/30">
+        <IconHome class="w-4 h-4 text-white" />
+      </div>
+      <span class="text-slate-800 dark:text-slate-200 font-semibold text-sm">tylix-deploy</span>
+    </div>
+
+{{#if active is "overview"}}
+    <a href="/dashboard" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      <IconHome class="w-4 h-4" /> Overview
+    </a>
+{{/if}}
+{{#if active is not "overview"}}
+    <a href="/dashboard" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      <IconHome class="w-4 h-4" /> Overview
+    </a>
+{{/if}}
+{{#if active is "servers"}}
+    <a href="/servers" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      <IconDatabase class="w-4 h-4" /> Servers
+    </a>
+{{/if}}
+{{#if active is not "servers"}}
+    <a href="/servers" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      <IconDatabase class="w-4 h-4" /> Servers
+    </a>
+{{/if}}
+{{#if active is "providers"}}
+    <a href="/providers" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      <IconFolder class="w-4 h-4" /> Providers
+    </a>
+{{/if}}
+{{#if active is not "providers"}}
+    <a href="/providers" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      <IconFolder class="w-4 h-4" /> Providers
+    </a>
+{{/if}}
+{{#if active is "source-control"}}
+    <a href="/source-control" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      <IconFolder class="w-4 h-4" /> Source control
+    </a>
+{{/if}}
+{{#if active is not "source-control"}}
+    <a href="/source-control" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      <IconFolder class="w-4 h-4" /> Source control
+    </a>
+{{/if}}
+  </aside>

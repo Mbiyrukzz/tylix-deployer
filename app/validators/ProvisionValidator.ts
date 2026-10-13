@@ -5,7 +5,7 @@
  * the provider is decided in the controller against the live catalog.
  */
 
-export const TEMPLATES = ["tylix", "standard"];
+export const TEMPLATES = ["tylix", "standard", "bare"];
 
 const NAME = /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/;
 

@@ -54,7 +54,9 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
       <a href="/dashboard" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
@@ -108,5 +110,6 @@ template
 {{/if}}
 
     </div>
+</div>
   </div>
 {{/if}}

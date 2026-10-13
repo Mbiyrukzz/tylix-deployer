@@ -1,0 +1,52 @@
+{
+  "name": "SourceProvider",
+  "version": "1.0.0",
+  "table": "sourceproviders",
+  "model": "SourceProvider",
+  "controller": "SourceProviderController",
+  "validator": "SourceProviderValidator",
+  "language": "typescript",
+  "fields": [
+    {
+      "name": "kind",
+      "type": "string"
+    },
+    {
+      "name": "label",
+      "type": "string"
+    },
+    {
+      "name": "username",
+      "type": "string",
+      "system": true
+    },
+    {
+      "name": "token",
+      "type": "string",
+      "system": true
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "system": true
+    },
+    {
+      "name": "user_id",
+      "type": "integer"
+    }
+  ],
+  "relations": [
+    {
+      "type": "belongsTo",
+      "model": "User",
+      "foreignKey": "user_id"
+    }
+  ],
+  "auth": true,
+  "permissions": [
+    "sourceprovider.view",
+    "sourceprovider.create",
+    "sourceprovider.update",
+    "sourceprovider.delete"
+  ]
+}
