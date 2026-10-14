@@ -43,6 +43,11 @@ state
   diskDash: "0 226.2"
   loadText: ""
   uptimeText: ""
+  rebootConfirm: false
+  rebootBusy: false
+  rebooting: false
+  rebootStartedAt: 0
+  rebootError: ""
 
 action
   updated(server) {
@@ -66,6 +71,40 @@ action
 
   cancelDelete() {
     this.confirmDelete = false
+  }
+
+  askReboot() {
+    this.rebootError = ""
+    this.rebootConfirm = true
+  }
+
+  cancelReboot() {
+    this.rebootConfirm = false
+  }
+
+  async rebootServer() {
+    if not this.server or this.rebootBusy {
+      return null
+    }
+
+    this.rebootBusy = true
+    this.rebootError = ""
+
+    const result = await useApi("/api/servers/" + this.server.id + "/reboot", { method: "POST" })
+
+    this.rebootBusy = false
+    this.rebootConfirm = false
+
+    if result.ok {
+      this.rebooting = true
+      this.rebootStartedAt = Date.now()
+      this.statsError = ""
+      this.status = "rebooting"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.rebootError = result.data?.error or "Couldn't reboot that server."
+    }
   }
 
   async copySsh() {
@@ -129,6 +168,13 @@ action
     const result = await useApi("/api/servers/" + this.server.id + "/stats")
 
     if result.ok {
+      if this.rebooting and Date.now() - this.rebootStartedAt < 15000 {
+        this.statsBusy = false
+        return null
+      }
+
+      this.rebooting = false
+
       const s = result.data
       const cpu = this.cpuHistory.concat([s.cpu_pct]).slice(-30)
       const mem = this.memHistory.concat([s.mem_pct]).slice(-30)
@@ -172,8 +218,13 @@ action
     } else if result.status is 401 {
       window.location.href = "/login"
     } else {
-      this.statsError = result.data?.error or "Couldn't load stats."
-      this.status = "offline"
+      if this.rebooting and Date.now() - this.rebootStartedAt < 180000 {
+        this.status = "rebooting"
+      } else {
+        this.rebooting = false
+        this.statsError = result.data?.error or "Couldn't load stats."
+        this.status = "offline"
+      }
     }
 
     this.statsBusy = false
@@ -290,11 +341,22 @@ template
               <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Offline
             </span>
 {{/if}}
+{{#if status is "rebooting"}}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+              <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span> Rebooting
+            </span>
+{{/if}}
           </div>
           <p class="text-slate-500 text-sm font-mono">{{ server.ssh_user }}@{{ server.host }}:{{ server.port }}</p>
         </div>
         <ServerForm server="{{ server }}" onSaved="{{ updated }}" />
       </div>
+
+{{#if rebooting}}
+      <div role="status" class="rounded-xl border border-sky-300 dark:border-sky-900/50 bg-sky-50 dark:bg-sky-950/30 px-4 py-3 mb-4">
+        <p class="text-sky-800 dark:text-sky-400 text-sm"><span class="font-semibold">Rebooting:</span> the server will be unreachable for a minute or so. This page will pick it up again automatically.</p>
+      </div>
+{{/if}}
 
 {{#if alertText}}
       <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
@@ -490,6 +552,47 @@ template
           </a>
 {{/each}}
         </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Reboot server</h2>
+        <p class="text-slate-500 text-sm mb-4">Restarts the machine over SSH. Sites and services on it will be offline for about a minute. The SSH user needs to be root or have passwordless sudo.</p>
+
+{{#if rebootError}}
+        <p role="alert" class="text-rose-500 text-sm mb-4">{{ rebootError }}</p>
+{{/if}}
+
+{{#if rebooting}}
+        <button disabled class="text-sm text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-900/50 rounded-lg px-4 py-2 opacity-60">
+          Rebooting…
+        </button>
+{{/if}}
+
+{{#if not rebooting}}
+{{#if not rebootConfirm}}
+        <button onclick="{{ askReboot() }}" class="text-sm text-amber-700 dark:text-amber-500 border border-amber-200 dark:border-amber-900/50 rounded-lg px-4 py-2 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition">
+          Reboot server
+        </button>
+{{/if}}
+
+{{#if rebootConfirm}}
+        <div class="flex items-center gap-3">
+{{#if rebootBusy}}
+          <button disabled class="text-sm text-white bg-amber-600 rounded-lg px-4 py-2 opacity-50">
+            Sending…
+          </button>
+{{/if}}
+{{#if not rebootBusy}}
+          <button onclick="{{ rebootServer() }}" class="text-sm text-white bg-amber-600 hover:bg-amber-500 rounded-lg px-4 py-2 transition">
+            Yes, reboot now
+          </button>
+          <button onclick="{{ cancelReboot() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
+            Cancel
+          </button>
+{{/if}}
+        </div>
+{{/if}}
+{{/if}}
       </div>
 
       <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white dark:bg-slate-900 p-6">
