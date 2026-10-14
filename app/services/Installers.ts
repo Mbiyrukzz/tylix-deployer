@@ -1,5 +1,5 @@
 /**
- * Template installers for a fresh Ubuntu 24.04 machine.
+ * Template installers for a fresh Ubuntu machine (24.04 noble or 22.04 jammy).
  *
  * Each step is a bash script run as root over SSH. A finished step leaves a
  * marker file on the server, so re-running a provision (Retry) skips what is
@@ -9,6 +9,9 @@
  * Steps run one at a time and each has its own timeout, so the provision row's
  * step changes often and the stuck-provision sweep never mistakes a healthy
  * install for a dead one.
+ *
+ * The Ubuntu codename is read from /etc/os-release on the server, so repo
+ * lines (MySQL, MongoDB) always match the installed release.
  *
  * remote-monitor needs nothing on the server: stats are read over SSH.
  */
@@ -28,9 +31,18 @@ export interface InstallResult {
 
 const STEP_TIMEOUT_MS = 10 * 60 * 1000;
 
+// Runs at the top of every step:
+//   - waits for cloud-init / unattended-upgrades so they don't hold the dpkg lock
+//   - repairs a half-configured dpkg left by an earlier failed run
+//   - exposes $CODENAME (noble, jammy) for repo lines, and refuses non-Ubuntu
 const HEADER = `set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 APT="apt-get -o DPkg::Lock::Timeout=300 -y"
+cloud-init status --wait >/dev/null 2>&1 || true
+dpkg --configure -a || true
+. /etc/os-release
+CODENAME="$VERSION_CODENAME"
+if [ "$ID" != "ubuntu" ]; then echo "Only Ubuntu images are supported (found $ID)."; exit 1; fi
 `;
 
 /** A step that runs once and leaves a marker. */
@@ -68,11 +80,11 @@ const MYSQL = once(
     "Installing MySQL 8.4",
     `install -d -m 0755 /usr/share/keyrings
 curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 | gpg --dearmor --yes -o /usr/share/keyrings/mysql.gpg
-echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu noble mysql-8.4-lts mysql-tools" > /etc/apt/sources.list.d/mysql.list
+echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu $CODENAME mysql-8.4-lts mysql-tools" > /etc/apt/sources.list.d/mysql.list
 $APT update
 $APT install mysql-server
 systemctl enable --now mysql
-mysqld --version | grep -q "8\\.4"`,
+[[ "$(mysqld --version)" == *"Ver 8.4"* ]]`,
 );
 
 const REDIS = once(
@@ -101,7 +113,7 @@ const MONGO = once(
     "Installing MongoDB",
     `install -d -m 0755 /usr/share/keyrings
 curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" > /etc/apt/sources.list.d/mongodb-org-8.0.list
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu $CODENAME/mongodb-org/8.0 multiverse" > /etc/apt/sources.list.d/mongodb-org-8.0.list
 $APT update
 $APT install mongodb-org
 systemctl enable --now mongod`,
@@ -112,32 +124,41 @@ const NODE = once(
     "Installing Node.js 22",
     `curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 $APT install nodejs
-node --version | grep -q "^v22"`,
+[[ "$(node --version)" == v22* ]]`,
 );
 
 const TOOLS = once("tools", "Installing git and build tools", `$APT install git build-essential`);
 
-// UFW goes last. SSH (22) is allowed before the firewall is switched on.
+// UFW goes last. The server's real SSH port is allowed before the firewall is
+// switched on (servers added by hand may not use 22).
 const UFW = once(
     "ufw",
     "Configuring firewall",
     `$APT install ufw
+SSH_PORT=$(sshd -T 2>/dev/null | awk '/^port /{print $2}' | head -n 1) || true
+[ -n "$SSH_PORT" ] || SSH_PORT=22
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow 22/tcp
+ufw allow "$SSH_PORT"/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
 ufw --force enable`,
 );
 
-function verify(services: string[]): InstallStep {
+function verify(services: string[], checkPostgres = false): InstallStep {
+    // The "postgresql" unit is a wrapper that reports active even when the
+    // cluster is down, so ask pg_lsclusters instead (works on any Ubuntu).
+    const postgres = checkPostgres
+        ? `\n[[ "$(pg_lsclusters -h)" == *online* ]] || { echo "postgresql is not running"; exit 1; }`
+        : "";
+
     return always(
         "verify",
         "Checking services",
         `for s in ${services.join(" ")}; do
   systemctl is-active --quiet "$s" || { echo "$s is not running"; exit 1; }
-done
-ufw status | grep -q "Status: active" || { echo "ufw is not active"; exit 1; }`,
+done${postgres}
+[[ "$(ufw status)" == *"Status: active"* ]] || { echo "ufw is not active"; exit 1; }`,
     );
 }
 
@@ -149,7 +170,7 @@ export function installStepsFor(template: string): InstallStep[] {
     if (template === "tylix") {
         return [
             BASE, NGINX, MYSQL, REDIS, SUPERVISOR, POSTGRES, MONGO, NODE, TOOLS, UFW,
-            verify(["nginx", "mysql", "redis-server", "supervisor", "postgresql", "mongod"]),
+            verify(["nginx", "mysql", "redis-server", "supervisor", "mongod"], true),
         ];
     }
 
@@ -173,7 +194,8 @@ export async function runInstallStep(target: SshTarget, step: InstallStep): Prom
 
     if (result.code === 0) return { ok: true, tail: "" };
 
-    const tail = output ? output.slice(-300) : "No output. The step timed out or the connection dropped.";
+    // 400 chars keeps the real apt error; the job caps the whole message at 500.
+    const tail = output ? output.slice(-400) : "No output. The step timed out or the connection dropped.";
     return { ok: false, tail };
 }
 

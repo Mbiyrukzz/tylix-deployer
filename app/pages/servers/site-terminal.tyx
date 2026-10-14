@@ -1,0 +1,256 @@
+page SiteTerminal
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Terminal"
+
+state
+  siteId: ""
+  serverId: ""
+  site: null
+  loading: true
+  notFound: false
+  phase: "idle"
+  error: ""
+
+action
+  loadScript(src, done) {
+    const el = document.createElement("script")
+    el.src = src
+    el.onload = () => done(true)
+    el.onerror = () => done(false)
+    document.head.appendChild(el)
+  }
+
+  loadAsync(src) {
+    return new Promise((resolve) => this.loadScript(src, resolve))
+  }
+
+  async ensureXterm() {
+    if window.Terminal and window.FitAddon {
+      return true
+    }
+
+    const css = document.createElement("link")
+    css.rel = "stylesheet"
+    css.href = "https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css"
+    document.head.appendChild(css)
+
+    const core = await this.loadAsync("https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js")
+    const fit = await this.loadAsync("https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js")
+
+    if core and fit {
+      return true
+    }
+
+    this.error = "Couldn't load the terminal library. Check your internet connection."
+    return false
+  }
+
+  sendInput(d) {
+    const ws = window.tylixSocket
+    if ws and ws.readyState is 1 {
+      ws.send(JSON.stringify({ t: "i", d: d }))
+    }
+  }
+
+  onMessage(raw) {
+    const msg = JSON.parse(raw)
+    const term = window.tylixTerm
+
+    if msg.t is "out" {
+      term.write(Uint8Array.from(atob(msg.d), (c) => c.charCodeAt(0)))
+    } else if msg.t is "ready" {
+      this.phase = "connected"
+      term.focus()
+    } else if msg.t is "exit" {
+      term.write("\r\n[" + msg.m + "]\r\n")
+    }
+  }
+
+  onClosed() {
+    this.phase = "closed"
+  }
+
+  async connect() {
+    if this.phase is "connecting" or this.phase is "connected" {
+      return null
+    }
+
+    this.error = ""
+    this.phase = "connecting"
+
+    const ready = await this.ensureXterm()
+    if not ready {
+      this.phase = "idle"
+      return null
+    }
+
+    if window.tylixTerm {
+      window.tylixTerm.dispose()
+    }
+
+    const host = document.getElementById("terminal-host")
+    host.innerHTML = ""
+
+    const term = new window.Terminal({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      theme: { background: "#020617" }
+    })
+    const fit = new window.FitAddon.FitAddon()
+    term.loadAddon(fit)
+    term.open(host)
+    fit.fit()
+    window.tylixTerm = term
+
+    const result = await useApi("/api/sites/" + this.siteId + "/terminal", {
+      method: "POST",
+      body: { cols: term.cols, rows: term.rows }
+    })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if not result.ok {
+      this.error = result.data?.error or "Couldn't open a terminal."
+      this.phase = "idle"
+      return null
+    }
+
+    let url = result.data.url
+    if not url {
+      const port = window.__TYLIX_CHANNELS_PORT__ or 6001
+      url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.hostname + ":" + port + "/terminal"
+    }
+
+    const ticket = result.data.ticket
+    const ws = new WebSocket(url)
+    ws.onopen = () => ws.send(JSON.stringify({ t: "auth", ticket: ticket }))
+    ws.onmessage = (e) => this.onMessage(e.data)
+    ws.onclose = () => this.onClosed()
+    window.tylixSocket = ws
+
+    term.onData((d) => this.sendInput(d))
+  }
+
+  disconnect() {
+    const ws = window.tylixSocket
+    if ws {
+      ws.close()
+    }
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    this.siteId = id or ""
+
+    if not id {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/sites/" + id)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.site = result.data
+        this.serverId = "" + result.data.server_id
+        this.loading = false
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-10 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if site}}
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Sites
+      </a>
+
+      <div class="mb-8">
+        <div class="flex items-center gap-3 mb-2">
+          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
+{{#if phase is "connecting"}}
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Connecting
+          </span>
+{{/if}}
+{{#if phase is "connected"}}
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Connected
+          </span>
+{{/if}}
+{{#if phase is "closed"}}
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Closed</span>
+{{/if}}
+        </div>
+        <p class="text-slate-500 text-sm">Terminal</p>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-8">
+        <SiteSidebar active="terminal" siteId="{{ siteId }}" />
+
+        <div class="min-w-0 flex-1">
+
+{{#if error}}
+          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+            <p class="text-rose-500 text-sm break-words">{{ error }}</p>
+          </div>
+{{/if}}
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+              <h2 class="text-slate-800 dark:text-slate-200 font-medium">Web terminal</h2>
+              <div class="flex items-center gap-3">
+{{#if phase is "connecting"}}
+                <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Connecting…</button>
+{{/if}}
+{{#if phase is "connected"}}
+                <button onclick="{{ disconnect() }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-2 hover:bg-rose-500/5 transition-colors">Disconnect</button>
+{{/if}}
+{{#if phase is "idle"}}
+                <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect</button>
+{{/if}}
+{{#if phase is "closed"}}
+                <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Reconnect</button>
+{{/if}}
+              </div>
+            </div>
+            <p class="text-slate-500 text-xs mb-4">A shell as <span class="font-mono">{{ site.isolated_user }}</span> in <span class="font-mono">/home/{{ site.isolated_user }}/{{ site.domain }}</span>. Sessions close after 15 minutes without typing. The terminal size is set when you connect.</p>
+
+            <div id="terminal-host" class="h-[480px] w-full overflow-hidden rounded-xl bg-slate-950 p-2"></div>
+          </div>
+
+        </div>
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>
