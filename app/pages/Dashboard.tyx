@@ -1,6 +1,6 @@
 page Dashboard
 
-import { IconHome, IconFolder, IconUser, IconDatabase, IconSun, IconMoon, IconArrowLeft } from "tylix-icons"
+import { IconDatabase, IconUser, IconFolder, IconSun, IconMoon } from "tylix-icons"
 
 title "Dashboard"
 
@@ -22,8 +22,21 @@ meta
 
 state
   checkedAuth: false
+  fleet: []
+  onlineCount: 0
+  offlineCount: 0
+  pendingCount: 0
+  siteCount: 0
+  stepsDone: 0
+  progressStyle: "width: 0%"
+  step1: false
+  step2: false
 
 action
+  decorate(s) {
+    return Object.assign({}, s, { href: "/server?id=" + s.id })
+  }
+
   async logout() {
     await Auth.logout()
     window.location.href = "/"
@@ -37,23 +50,49 @@ onMount
     }
 
     await Servers.load()
+
+    const list = Servers.data
+    this.fleet = list.map((s) => this.decorate(s))
+    this.onlineCount = list.filter((s) => s.status is "online").length
+    this.offlineCount = list.filter((s) => s.status is "offline").length
+    this.pendingCount = list.filter((s) => s.status is "pending").length
+
+    const sitesRes = await useApi("/api/sites")
+    if sitesRes.ok and Array.isArray(sitesRes.data) {
+      this.siteCount = sitesRes.data.length
+    }
+
+    this.step1 = list.length > 0
+    this.step2 = this.siteCount > 0
+
+    let done = 0
+    if this.step1 {
+      done = done + 1
+    }
+    if this.step2 {
+      done = done + 1
+    }
+    this.stepsDone = done
+    this.progressStyle = "width: " + Math.round((done / 3) * 100) + "%"
+
     this.checkedAuth = true
   }
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
 
     <Sidebar active="overview" />
 
-    <div class="px-6 lg:px-12 py-10">
-      <div class="flex items-center justify-between mb-10">
-        <div>
-          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Welcome back</p>
-          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">{{ Auth.user.name }}</h1>
+    <div class="min-w-0 px-6 lg:px-12 py-10">
+
+      <div class="flex items-center justify-between gap-4 mb-8">
+        <div class="min-w-0">
+          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Overview</p>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">Welcome back, {{ Auth.user.name }}</h1>
         </div>
         <div class="flex items-center gap-3">
-          <button onclick="{{ Theme.toggle() }}" aria-label="Toggle color theme" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors shadow-sm">
+          <button onclick="{{ Theme.toggle() }}" aria-label="Toggle color theme" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors shadow-sm">
 {{#if Theme.mode is "dark"}}
             <IconSun class="w-4 h-4" />
 {{/if}}
@@ -61,75 +100,187 @@ template
             <IconMoon class="w-4 h-4" />
 {{/if}}
           </button>
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold shadow-sm dark:shadow-emerald-500/30">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold shadow-sm">
             {{ Auth.user.email[0].toUpperCase() }}
           </div>
-          <button onclick="{{ Auth.logout() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-900 transition-colors">
+          <button onclick="{{ logout() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
             Log out
           </button>
         </div>
       </div>
 
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <div class="relative overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
-          <div class="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-emerald-500/5"></div>
-          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3">
-            <IconUser class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
-          </div>
-          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Signed in as</p>
-          <p class="text-slate-800 dark:text-slate-200 text-sm font-semibold truncate">{{ Auth.user.email }}</p>
-        </div>
-
-        <a href="/servers" class="relative overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/40 hover:-translate-y-0.5 transition-all">
-          <div class="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-emerald-500/5"></div>
-          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3">
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <a href="/servers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Servers</p>
             <IconDatabase class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
-          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Servers</p>
-          <p class="text-slate-800 dark:text-slate-200 text-2xl font-bold">{{ Servers.data.length }}</p>
+          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ Servers.data.length }}</p>
+          <p class="text-slate-500 text-xs mt-2">
+            <span class="text-emerald-700 dark:text-emerald-500 font-medium">{{ onlineCount }} online</span>
+            · {{ offlineCount }} offline · {{ pendingCount }} untested
+          </p>
         </a>
 
-        <div class="relative overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
-          <div class="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-emerald-500/5"></div>
-          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3">
+        <a href="/sites" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Sites</p>
+            <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+          </div>
+          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ siteCount }}</p>
+          <p class="text-slate-500 text-xs mt-2">Deployed across your fleet</p>
+        </a>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Visitors today</p>
             <IconUser class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
-          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Visitors today</p>
-          <p class="text-slate-800 dark:text-slate-200 text-2xl font-bold">{{ Analytics.visitorsToday }}</p>
+          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ Analytics.visitorsToday }}</p>
+          <p class="text-slate-500 text-xs mt-2">Across the Tylix dashboard</p>
         </div>
 
 {{#if Mail.available}}
-        <a href="/dashboard/mail" class="relative overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/40 hover:-translate-y-0.5 transition-all">
-          <div class="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-emerald-500/5"></div>
-          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3">
+        <a href="/dashboard/mail" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Mail</p>
             <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
-          <p class="text-slate-500 dark:text-slate-500 text-xs mb-1">Mail</p>
-          <p class="text-slate-800 dark:text-slate-200 text-2xl font-bold">{{ Mail.unread }}</p>
+          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ Mail.unread }}</p>
+          <p class="text-slate-500 text-xs mt-2">Unread messages</p>
         </a>
 {{/if}}
+{{#if not Mail.available}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Account</p>
+            <IconUser class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+          </div>
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ Auth.user.email }}</p>
+          <p class="text-slate-500 text-xs mt-2">Signed in</p>
+        </div>
+{{/if}}
       </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Your servers</h2>
+            <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">Manage all</a>
+          </div>
 
 {{#if not Servers.loading}}
 {{#if Servers.data.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-10 text-center mb-10">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
-          <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
-        </div>
-        <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1.5">Add your first server</h3>
-        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
-          Connect a server over SSH and you can start deploying to it.
-        </p>
-        <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-          Go to servers
-        </a>
-      </div>
+          <div class="p-10 text-center">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+              <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+            </div>
+            <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No servers yet</h3>
+            <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
+              Provision a server on Linode or connect your own over SSH, then start deploying to it.
+            </p>
+            <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+              Add your first server
+            </a>
+          </div>
 {{/if}}
 {{/if}}
 
-      <a href="/" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">
-        <IconArrowLeft class="w-4 h-4" /> Back to home
-      </a>
+{{#each s in fleet}}
+          <a href="{{ s.href }}" class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            <div class="flex items-center gap-4 min-w-0">
+{{#if s.status is "online"}}
+              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
+{{/if}}
+{{#if s.status is "offline"}}
+              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.15)]"></span>
+{{/if}}
+{{#if s.status is "pending"}}
+              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"></span>
+{{/if}}
+              <div class="min-w-0">
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ s.name }}</p>
+                <p class="text-slate-500 text-xs font-mono truncate">{{ s.ssh_user }}@{{ s.host }}:{{ s.port }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
+{{#if s.status is "online"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Online</span>
+{{/if}}
+{{#if s.status is "offline"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Offline</span>
+{{/if}}
+{{#if s.status is "pending"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Not tested</span>
+{{/if}}
+              <span class="text-slate-400 text-sm">&rarr;</span>
+            </div>
+          </a>
+{{/each}}
+        </div>
+
+        <div class="space-y-6">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center justify-between mb-1">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Get deployed</h2>
+              <span class="text-slate-500 text-xs font-mono">{{ stepsDone }}/3</span>
+            </div>
+            <p class="text-slate-500 text-xs mb-4">Three steps to your first live site.</p>
+            <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 mb-5 overflow-hidden">
+              <div class="h-full rounded-full bg-emerald-500 transition-all" style="{{ progressStyle }}"></div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="flex items-start gap-3">
+{{#if step1}}
+                <span class="w-6 h-6 shrink-0 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center">✓</span>
+{{/if}}
+{{#if not step1}}
+                <span class="w-6 h-6 shrink-0 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500 text-xs flex items-center justify-center">1</span>
+{{/if}}
+                <div>
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Connect a server</p>
+                  <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline">Add or provision a server</a>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3">
+{{#if step2}}
+                <span class="w-6 h-6 shrink-0 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center">✓</span>
+{{/if}}
+{{#if not step2}}
+                <span class="w-6 h-6 shrink-0 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500 text-xs flex items-center justify-center">2</span>
+{{/if}}
+                <div>
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Create a site</p>
+                  <a href="/sites" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline">Pick a framework and repo</a>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3">
+                <span class="w-6 h-6 shrink-0 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500 text-xs flex items-center justify-center">3</span>
+                <div>
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Deploy and add SSL</p>
+                  <p class="text-slate-500 text-xs">Run your script, then enable Let's Encrypt.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Quick actions</h2>
+            <div class="grid grid-cols-1 gap-2">
+              <a href="/servers" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                New server <span class="text-slate-400">&rarr;</span>
+              </a>
+              <a href="/sites" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                New site <span class="text-slate-400">&rarr;</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 {{/if}}

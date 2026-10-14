@@ -1,5 +1,7 @@
 page Register
 
+title "Create account"
+
 state
   name: ""
   email: ""
@@ -54,56 +56,87 @@ action
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-200 dark:bg-slate-950 transition-colors px-6 py-16">
-    <div class="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-100 dark:bg-slate-950 transition-colors px-6 py-16">
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-300/40 dark:shadow-none overflow-hidden">
 
-      <div class="hidden lg:flex flex-col justify-between bg-slate-200 dark:bg-slate-950/60 border-r border-slate-300 dark:border-slate-800 p-10">
-        <a href="/" class="flex items-center gap-2.5">
+      <div class="hidden lg:flex flex-col justify-between bg-slate-950 p-10 relative overflow-hidden">
+        <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl"></div>
+
+        <a href="/" class="relative flex items-center gap-2.5">
           <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
-          <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix</span>
+          <span class="text-white font-semibold tracking-tight">Tylix Deploy</span>
         </a>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5">
-          <p class="text-slate-800 dark:text-slate-200 text-lg font-medium leading-snug mb-4">
-            "Probably one of the best frameworks for JS. Building new projects has never been this easy."
-          </p>
-          <p class="text-slate-500 text-sm">Amara Osei — Full-stack developer</p>
+        <div class="relative">
+          <p class="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-3">Zero to deployed</p>
+          <h2 class="text-white text-3xl font-bold leading-tight tracking-tight mb-8">Your first deploy is four steps away.</h2>
+
+          <div class="space-y-3">
+            <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">1</span>
+              <div>
+                <p class="text-slate-200 text-sm font-medium">Add a server</p>
+                <p class="text-slate-500 text-xs mt-0.5">Provision one on Linode or connect your own over SSH.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">2</span>
+              <div>
+                <p class="text-slate-200 text-sm font-medium">Create a site</p>
+                <p class="text-slate-500 text-xs mt-0.5">Tylix, Laravel, Node.js, WordPress, MERN and more.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">3</span>
+              <div>
+                <p class="text-slate-200 text-sm font-medium">Connect your repo</p>
+                <p class="text-slate-500 text-xs mt-0.5">Pick a repository and branch, set your env and script.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">4</span>
+              <div>
+                <p class="text-slate-200 text-sm font-medium">Hit Deploy</p>
+                <p class="text-slate-500 text-xs mt-0.5">Watch the log live, then add SSL in one click.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <p class="text-slate-400 dark:text-slate-600 text-xs">© 2026 Tylix</p>
+        <p class="relative text-slate-600 text-xs">© 2026 Tylix</p>
       </div>
 
-      <div class="flex items-center justify-center px-6 py-12">
+      <div class="flex items-center justify-center px-6 py-12 lg:px-12">
         <div class="w-full max-w-sm">
           <a href="/" class="lg:hidden flex items-center gap-2.5 justify-center mb-8">
             <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
-            <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix</span>
+            <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
           </a>
 
 {{#if registered}}
           <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center text-lg mb-5 text-emerald-700 dark:text-emerald-400">✓</div>
-          <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">Check your email</h1>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Check your email</h1>
           <p class="text-slate-500 text-sm mb-8">
-            We sent a verification link to <span class="text-slate-800 dark:text-slate-300">{{ email }}</span>.
-            Click it, then log in below.
+            We sent a verification link to <span class="text-slate-800 dark:text-slate-300 font-medium">{{ email }}</span>.
+            Click it, then log in.
           </p>
-          <a href="/login" class="inline-block w-full text-center bg-emerald-500 text-white dark:text-slate-950 rounded-full py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-            Go to Login
+          <a href="/login" class="inline-block w-full text-center bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+            Go to login
           </a>
 {{/if}}
 
 {{#if not registered}}
           <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Get started</p>
-          <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">Create your account</h1>
-          <p class="text-slate-500 text-sm mb-8">Start building with Tylix in under a minute.</p>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Create your account</h1>
+          <p class="text-slate-500 text-sm mb-8">Deploy your first app in minutes.</p>
 
 {{#if error}}
-          <div role="alert" aria-live="polite" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-100 dark:bg-rose-950/30 px-4 py-3 mb-6">
+          <div role="alert" aria-live="polite" class="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-6">
             <p class="text-rose-700 dark:text-rose-400 text-sm">{{ error }}</p>
           </div>
 {{/if}}
 
-          <label for="name" class="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-2">Name</label>
+          <label for="name" class="block text-slate-600 dark:text-slate-400 text-xs font-medium mb-2">Name</label>
           <input
             id="name"
             name="name"
@@ -112,10 +145,10 @@ template
             placeholder="Jane Doe"
             value="{{ name }}"
             oninput="{{ setField('name', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
           />
 
-          <label for="email" class="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-2">Email</label>
+          <label for="email" class="block text-slate-600 dark:text-slate-400 text-xs font-medium mb-2">Email</label>
           <input
             id="email"
             name="email"
@@ -124,40 +157,45 @@ template
             placeholder="you@example.com"
             value="{{ email }}"
             oninput="{{ setField('email', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
           />
 
-          <label for="password" class="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-2">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autocomplete="new-password"
-            placeholder="••••••••"
-            value="{{ password }}"
-            oninput="{{ setField('password', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
-          />
-          <p class="text-slate-400 dark:text-slate-600 text-xs mb-4">At least 8 characters.</p>
-
-          <label for="confirmPassword" class="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-2">Confirm password</label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            autocomplete="new-password"
-            placeholder="••••••••"
-            value="{{ confirmPassword }}"
-            oninput="{{ setField('confirmPassword', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-2.5 mb-5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
-          />
+          <div class="grid grid-cols-2 gap-3 mb-1">
+            <div>
+              <label for="password" class="block text-slate-600 dark:text-slate-400 text-xs font-medium mb-2">Password</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                placeholder="••••••••"
+                value="{{ password }}"
+                oninput="{{ setField('password', event.target.value) }}"
+                class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+              />
+            </div>
+            <div>
+              <label for="confirmPassword" class="block text-slate-600 dark:text-slate-400 text-xs font-medium mb-2">Confirm</label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autocomplete="new-password"
+                placeholder="••••••••"
+                value="{{ confirmPassword }}"
+                oninput="{{ setField('confirmPassword', event.target.value) }}"
+                class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+              />
+            </div>
+          </div>
+          <p class="text-slate-400 dark:text-slate-600 text-xs mb-5">At least 8 characters.</p>
 
           <label class="flex items-start gap-2.5 text-sm text-slate-500 dark:text-slate-400 mb-6">
 {{#if agreedToTerms}}
-            <input type="checkbox" checked onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
+            <input type="checkbox" checked onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
 {{/if}}
 {{#if not agreedToTerms}}
-            <input type="checkbox" onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
+            <input type="checkbox" onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
 {{/if}}
             <span>
               I agree to the
@@ -168,13 +206,13 @@ template
           </label>
 
 {{#if submitting}}
-          <button disabled class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-full py-2.5 font-semibold opacity-50 transition">
+          <button disabled class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold opacity-50 transition">
             Creating account…
           </button>
 {{/if}}
 {{#if not submitting}}
-          <button onclick="{{ submit() }}" class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-full py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-            Sign Up
+          <button onclick="{{ submit() }}" class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+            Create account
           </button>
 {{/if}}
 
