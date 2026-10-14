@@ -1,6 +1,6 @@
 page Dashboard
 
-import { IconDatabase, IconUser, IconFolder, IconSun, IconMoon } from "tylix-icons"
+import { IconDatabase, IconUser, IconFolder } from "tylix-icons"
 
 title "Dashboard"
 
@@ -8,13 +8,10 @@ needs
   Auth
 
 uses
-  Theme
   Servers
   Mail
-  Analytics
 
 background
-  Analytics
   Mail
 
 meta
@@ -22,24 +19,75 @@ meta
 
 state
   checkedAuth: false
+  todayText: ""
   fleet: []
+  recentSites: []
+  attention: []
+  hasAttention: false
+  newSiteHref: "/servers"
   onlineCount: 0
   offlineCount: 0
   pendingCount: 0
+  totalServers: 0
   siteCount: 0
+  readyCount: 0
+  buildingCount: 0
+  failedCount: 0
+  healthState: "empty"
+  healthText: ""
+  onlineStyle: "width: 0%"
+  offlineStyle: "width: 0%"
+  pendingStyle: "width: 0%"
   stepsDone: 0
+  setupDone: false
   progressStyle: "width: 0%"
   step1: false
   step2: false
+  step3: false
 
 action
-  decorate(s) {
-    return Object.assign({}, s, { href: "/server?id=" + s.id })
+  plural(n, word) {
+    if n is 1 {
+      return "1 " + word
+    }
+    return n + " " + word + "s"
   }
 
-  async logout() {
-    await Auth.logout()
-    window.location.href = "/"
+  typeLabel(t) {
+    const labels = [
+      ["tylix", "Tylix"],
+      ["laravel", "Laravel"],
+      ["php", "PHP"],
+      ["nodejs", "Node.js"],
+      ["nextjs", "Next.js"],
+      ["wordpress", "WordPress"],
+      ["mern", "MERN"],
+      ["angular", "Angular"],
+      ["static", "Static"]
+    ]
+    const hit = labels.find((l) => l[0] is t)
+    return hit ? hit[1] : t
+  }
+
+  siteHref(id) {
+    return "/servers/site?id=" + id
+  }
+
+  decorateServer(s, sites) {
+    const n = sites.filter((x) => x.server_id is s.id).length
+    return Object.assign({}, s, {
+      href: "/server?id=" + s.id,
+      siteLabel: this.plural(n, "site")
+    })
+  }
+
+  decorateSite(site, servers) {
+    const host = servers.find((x) => x.id is site.server_id)
+    return Object.assign({}, site, {
+      href: this.siteHref(site.id),
+      typeText: this.typeLabel(site.type),
+      serverName: host ? host.name : "Unknown server"
+    })
   }
 
 onMount
@@ -49,21 +97,77 @@ onMount
       return null
     }
 
+    this.todayText = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+
     await Servers.load()
 
     const list = Servers.data
-    this.fleet = list.map((s) => this.decorate(s))
-    this.onlineCount = list.filter((s) => s.status is "online").length
-    this.offlineCount = list.filter((s) => s.status is "offline").length
-    this.pendingCount = list.filter((s) => s.status is "pending").length
+    let sites = []
 
     const sitesRes = await useApi("/api/sites")
     if sitesRes.ok and Array.isArray(sitesRes.data) {
-      this.siteCount = sitesRes.data.length
+      sites = sitesRes.data
     }
 
-    this.step1 = list.length > 0
-    this.step2 = this.siteCount > 0
+    const total = list.length
+    const online = list.filter((s) => s.status is "online").length
+    const offline = list.filter((s) => s.status is "offline").length
+    const pending = list.filter((s) => s.status is "pending").length
+
+    const ready = sites.filter((x) => x.status is "ready").length
+    const failed = sites.filter((x) => x.status is "failed").length
+    const building = sites.filter((x) => x.status is "creating" or x.status is "pending").length
+
+    this.totalServers = total
+    this.onlineCount = online
+    this.offlineCount = offline
+    this.pendingCount = pending
+    this.siteCount = sites.length
+    this.readyCount = ready
+    this.failedCount = failed
+    this.buildingCount = building
+
+    if total is 1 {
+      this.newSiteHref = "/servers/server-sites?id=" + list[0].id
+    } else {
+      this.newSiteHref = "/servers"
+    }
+
+    this.fleet = list.map((s) => this.decorateServer(s, sites))
+
+    const sorted = sites.slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    this.recentSites = sorted.slice(0, 5).map((x) => this.decorateSite(x, list))
+
+    const offlineItems = list
+      .filter((s) => s.status is "offline")
+      .map((s) => ({ text: s.name + " is offline", hint: "Check connectivity", href: "/server?id=" + s.id }))
+    const failedItems = sites
+      .filter((x) => x.status is "failed")
+      .map((x) => ({ text: x.domain + " failed to deploy", hint: "View the deployment log", href: this.siteHref(x.id) }))
+
+    this.attention = offlineItems.concat(failedItems).slice(0, 6)
+    this.hasAttention = offline + failed > 0
+
+    if total is 0 {
+      this.healthState = "empty"
+      this.healthText = "No servers connected yet"
+    } else if offline + failed > 0 {
+      this.healthState = "warn"
+      this.healthText = this.plural(offline + failed, "issue") + " need attention"
+    } else {
+      this.healthState = "ok"
+      this.healthText = "All systems operational"
+    }
+
+    if total > 0 {
+      this.onlineStyle = "width: " + (online / total) * 100 + "%"
+      this.offlineStyle = "width: " + (offline / total) * 100 + "%"
+      this.pendingStyle = "width: " + (pending / total) * 100 + "%"
+    }
+
+    this.step1 = total > 0
+    this.step2 = sites.length > 0
+    this.step3 = ready > 0
 
     let done = 0
     if this.step1 {
@@ -72,7 +176,11 @@ onMount
     if this.step2 {
       done = done + 1
     }
+    if this.step3 {
+      done = done + 1
+    }
     this.stepsDone = done
+    this.setupDone = done is 3
     this.progressStyle = "width: " + Math.round((done / 3) * 100) + "%"
 
     this.checkedAuth = true
@@ -84,143 +192,248 @@ template
 
     <Sidebar active="overview" />
 
-    <div class="min-w-0 px-6 lg:px-12 py-10">
+    <div class="min-w-0 px-6 lg:px-10 py-10">
+    <div class="max-w-7xl mx-auto">
 
-      <div class="flex items-center justify-between gap-4 mb-8">
+      <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div class="min-w-0">
-          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Overview</p>
+          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">{{ todayText }}</p>
           <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">Welcome back, {{ Auth.user.name }}</h1>
         </div>
         <div class="flex items-center gap-3">
-          <button onclick="{{ Theme.toggle() }}" aria-label="Toggle color theme" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors shadow-sm">
-{{#if Theme.mode is "dark"}}
-            <IconSun class="w-4 h-4" />
-{{/if}}
-{{#if Theme.mode is not "dark"}}
-            <IconMoon class="w-4 h-4" />
-{{/if}}
-          </button>
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold shadow-sm">
-            {{ Auth.user.email[0].toUpperCase() }}
-          </div>
-          <button onclick="{{ logout() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
-            Log out
-          </button>
+          <a href="/servers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
+            New server
+          </a>
+          <a href="{{ newSiteHref }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+            New site
+          </a>
         </div>
       </div>
 
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        <a href="/servers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Servers</p>
-            <IconDatabase class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
-          </div>
-          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ Servers.data.length }}</p>
-          <p class="text-slate-500 text-xs mt-2">
-            <span class="text-emerald-700 dark:text-emerald-500 font-medium">{{ onlineCount }} online</span>
-            · {{ offlineCount }} offline · {{ pendingCount }} untested
-          </p>
-        </a>
+{{#if hasAttention}}
+      <div class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-amber-800 dark:text-amber-400 font-semibold">Needs attention</h2>
+          <span class="text-amber-800/70 dark:text-amber-400/70 text-xs">Things that stopped working</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+{{#each item in attention}}
+          <a href="{{ item.href }}" class="block rounded-xl border border-amber-200 dark:border-amber-900/40 bg-white/70 dark:bg-slate-900/60 px-4 py-3 hover:border-amber-400 transition-colors">
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ item.text }}</p>
+            <p class="text-slate-500 text-xs mt-0.5">{{ item.hint }}</p>
+          </a>
+{{/each}}
+        </div>
+      </div>
+{{/if}}
 
-        <a href="/sites" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+
+        <div class="md:col-span-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center gap-3 mb-5">
+{{#if healthState is "ok"}}
+            <span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_0_5px_rgba(16,185,129,0.15)]"></span>
+{{/if}}
+{{#if healthState is "warn"}}
+            <span class="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_0_5px_rgba(245,158,11,0.15)]"></span>
+{{/if}}
+{{#if healthState is "empty"}}
+            <span class="w-3 h-3 rounded-full bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.15)]"></span>
+{{/if}}
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">{{ healthText }}</p>
+              <p class="text-slate-500 text-xs mt-0.5">{{ totalServers }} servers · {{ readyCount }} of {{ siteCount }} sites live</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-4 mb-5">
+            <div>
+              <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ onlineCount }}</p>
+              <p class="text-slate-500 text-xs mt-1 inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Online</p>
+            </div>
+            <div>
+              <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ offlineCount }}</p>
+              <p class="text-slate-500 text-xs mt-1 inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Offline</p>
+            </div>
+            <div>
+              <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ pendingCount }}</p>
+              <p class="text-slate-500 text-xs mt-1 inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>Untested</p>
+            </div>
+          </div>
+
+{{#if totalServers is not 0}}
+          <div class="flex h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+            <div class="h-full bg-emerald-500 transition-all" style="{{ onlineStyle }}"></div>
+            <div class="h-full bg-rose-500 transition-all" style="{{ offlineStyle }}"></div>
+            <div class="h-full bg-amber-500 transition-all" style="{{ pendingStyle }}"></div>
+          </div>
+{{/if}}
+{{#if totalServers is 0}}
+          <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800"></div>
+{{/if}}
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-4">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Sites</p>
             <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
-          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ siteCount }}</p>
-          <p class="text-slate-500 text-xs mt-2">Deployed across your fleet</p>
-        </a>
-
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Visitors today</p>
-            <IconUser class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+          <p class="text-4xl font-bold text-slate-900 dark:text-slate-100">{{ siteCount }}</p>
+          <div class="mt-3 space-y-1 text-xs text-slate-500">
+            <p><span class="text-emerald-700 dark:text-emerald-500 font-medium">{{ readyCount }}</span> live</p>
+            <p><span class="text-amber-600 dark:text-amber-500 font-medium">{{ buildingCount }}</span> building</p>
+            <p><span class="text-rose-600 dark:text-rose-500 font-medium">{{ failedCount }}</span> failed</p>
           </div>
-          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ Analytics.visitorsToday }}</p>
-          <p class="text-slate-500 text-xs mt-2">Across the Tylix dashboard</p>
         </div>
 
 {{#if Mail.available}}
-        <a href="/dashboard/mail" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+        <a href="/dashboard/mail" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
           <div class="flex items-center justify-between mb-4">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Mail</p>
             <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
-          <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ Mail.unread }}</p>
-          <p class="text-slate-500 text-xs mt-2">Unread messages</p>
+          <p class="text-4xl font-bold text-slate-900 dark:text-slate-100">{{ Mail.unread }}</p>
+          <p class="text-slate-500 text-xs mt-3">Unread messages</p>
         </a>
 {{/if}}
 {{#if not Mail.available}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-4">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Account</p>
             <IconUser class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
           <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ Auth.user.email }}</p>
-          <p class="text-slate-500 text-xs mt-2">Signed in</p>
+          <p class="text-slate-500 text-xs mt-3">Signed in</p>
         </div>
 {{/if}}
       </div>
 
-      <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-            <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Your servers</h2>
-            <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">Manage all</a>
-          </div>
+        <div class="space-y-6 min-w-0">
+
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Your servers</h2>
+              <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">Manage all</a>
+            </div>
 
 {{#if not Servers.loading}}
 {{#if Servers.data.length is 0}}
-          <div class="p-10 text-center">
-            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-              <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+            <div class="p-10 text-center">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+              </div>
+              <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No servers yet</h3>
+              <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
+                Provision a server on Linode or connect your own over SSH, then start deploying to it.
+              </p>
+              <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                Add your first server
+              </a>
             </div>
-            <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No servers yet</h3>
-            <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
-              Provision a server on Linode or connect your own over SSH, then start deploying to it.
-            </p>
-            <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
-              Add your first server
-            </a>
-          </div>
 {{/if}}
 {{/if}}
 
 {{#each s in fleet}}
-          <a href="{{ s.href }}" class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-            <div class="flex items-center gap-4 min-w-0">
+            <a href="{{ s.href }}" class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              <div class="flex items-center gap-4 min-w-0">
 {{#if s.status is "online"}}
-              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
+                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
 {{/if}}
 {{#if s.status is "offline"}}
-              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.15)]"></span>
+                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.15)]"></span>
 {{/if}}
 {{#if s.status is "pending"}}
-              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"></span>
+                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"></span>
 {{/if}}
-              <div class="min-w-0">
-                <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ s.name }}</p>
-                <p class="text-slate-500 text-xs font-mono truncate">{{ s.ssh_user }}@{{ s.host }}:{{ s.port }}</p>
+                <div class="min-w-0">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ s.name }}</p>
+                  <p class="text-slate-500 text-xs font-mono truncate">{{ s.ssh_user }}@{{ s.host }}:{{ s.port }}</p>
+                </div>
               </div>
-            </div>
-            <div class="flex items-center gap-4 shrink-0">
+              <div class="flex items-center gap-4 shrink-0">
+                <span class="hidden sm:inline text-xs text-slate-500">{{ s.siteLabel }}</span>
 {{#if s.status is "online"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Online</span>
+                <span class="inline-flex rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Online</span>
 {{/if}}
 {{#if s.status is "offline"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Offline</span>
+                <span class="inline-flex rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Offline</span>
 {{/if}}
 {{#if s.status is "pending"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Not tested</span>
+                <span class="inline-flex rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Not tested</span>
 {{/if}}
-              <span class="text-slate-400 text-sm">&rarr;</span>
-            </div>
-          </a>
+                <span class="text-slate-400 text-sm">&rarr;</span>
+              </div>
+            </a>
 {{/each}}
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Recent sites</h2>
+              <span class="text-slate-500 text-xs">{{ siteCount }} total</span>
+            </div>
+
+{{#if siteCount is 0}}
+            <div class="p-10 text-center">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                <IconFolder class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+              </div>
+              <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">Nothing deployed yet</h3>
+              <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
+                Sites are created on a server. Pick a server, then choose a framework and a repository.
+              </p>
+{{#if totalServers is 0}}
+              <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                Add a server first
+              </a>
+{{/if}}
+{{#if totalServers is not 0}}
+              <a href="{{ newSiteHref }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                Create a site
+              </a>
+{{/if}}
+            </div>
+{{/if}}
+
+{{#each site in recentSites}}
+            <a href="{{ site.href }}" class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              <div class="min-w-0">
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ site.domain }}</p>
+                <p class="text-slate-500 text-xs truncate">{{ site.typeText }} · {{ site.serverName }}</p>
+              </div>
+              <div class="flex items-center gap-4 shrink-0">
+{{#if site.status is "ready"}}
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
+                </span>
+{{/if}}
+{{#if site.status is "failed"}}
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+                </span>
+{{/if}}
+{{#if site.status is "creating"}}
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Creating
+                </span>
+{{/if}}
+{{#if site.status is "pending"}}
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
+                </span>
+{{/if}}
+                <span class="text-slate-400 text-sm">&rarr;</span>
+              </div>
+            </a>
+{{/each}}
+          </div>
         </div>
 
         <div class="space-y-6">
+
+{{#if not setupDone}}
           <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center justify-between mb-1">
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Get deployed</h2>
@@ -254,12 +467,17 @@ template
 {{/if}}
                 <div>
                   <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Create a site</p>
-                  <a href="/sites" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline">Pick a framework and repo</a>
+                  <a href="{{ newSiteHref }}" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline">Pick a framework and repo</a>
                 </div>
               </div>
 
               <div class="flex items-start gap-3">
+{{#if step3}}
+                <span class="w-6 h-6 shrink-0 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center">✓</span>
+{{/if}}
+{{#if not step3}}
                 <span class="w-6 h-6 shrink-0 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500 text-xs flex items-center justify-center">3</span>
+{{/if}}
                 <div>
                   <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Deploy and add SSL</p>
                   <p class="text-slate-500 text-xs">Run your script, then enable Let's Encrypt.</p>
@@ -267,6 +485,7 @@ template
               </div>
             </div>
           </div>
+{{/if}}
 
           <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Quick actions</h2>
@@ -274,13 +493,19 @@ template
               <a href="/servers" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 New server <span class="text-slate-400">&rarr;</span>
               </a>
-              <a href="/sites" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              <a href="{{ newSiteHref }}" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 New site <span class="text-slate-400">&rarr;</span>
               </a>
+{{#if Mail.available}}
+              <a href="/dashboard/mail" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                Open mail <span class="text-slate-400">&rarr;</span>
+              </a>
+{{/if}}
             </div>
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 {{/if}}
