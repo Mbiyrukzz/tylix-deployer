@@ -6,25 +6,24 @@ props
   loggedIn: boolean
 
 template
-  <section class="px-6 py-28 text-center bg-slate-200 dark:bg-slate-950 transition-colors">
-{{#if not loggedIn}}
-    <h2 class="text-4xl font-semibold text-slate-900 dark:text-slate-200 mb-4 tracking-tight">Ready to build something real?</h2>
-    <p class="text-slate-500 mb-10 max-w-md mx-auto">
-      Scaffold a full project — auth, database, and styling included — in under a minute.
-    </p>
-    <a href="/register" class="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-      Get Started for Free
-      <IconArrowRight class="w-4 h-4" />
-    </a>
-{{/if}}
+  <section class="px-6 py-20 bg-slate-200 dark:bg-slate-950 transition-colors">
+    <div class="max-w-5xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 shadow-sm dark:shadow-none p-10 md:p-14 text-center">
+      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 mb-4">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready when you are
+      </span>
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">Deploy your first app today</h2>
+      <p class="text-slate-500 max-w-xl mx-auto mb-8">Connect a server and ship your next release in minutes.</p>
 {{#if loggedIn}}
-    <h2 class="text-4xl font-semibold text-slate-900 dark:text-slate-200 mb-4 tracking-tight">Keep building</h2>
-    <p class="text-slate-500 mb-10 max-w-md mx-auto">
-      Jump back into your dashboard to manage your data and features.
-    </p>
-    <a href="/dashboard" class="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-      Go to Dashboard
-      <IconArrowRight class="w-4 h-4" />
-    </a>
+      <a href="/servers" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        Open my servers
+        <IconArrowRight class="w-4 h-4" />
+      </a>
 {{/if}}
+{{#if not loggedIn}}
+      <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        Create your account
+        <IconArrowRight class="w-4 h-4" />
+      </a>
+{{/if}}
+    </div>
   </section>

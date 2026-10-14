@@ -6,10 +6,8 @@ uses
 template
   <div>
     <Hero loggedIn="{{ Auth.user }}" />
-    <InstallSnippet />
-    <Stats />
-    <FeatureGrid />
-    <Testimonials />
+    <StackGrid />
+    <HowItWorks />
     <CTASection loggedIn="{{ Auth.user }}" />
     <SiteFooter />
   </div>

@@ -1,0 +1,62 @@
+component StackGrid
+
+template
+  <section class="px-6 py-20 bg-slate-200 dark:bg-slate-950 transition-colors">
+    <div class="max-w-5xl mx-auto">
+      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-2">Supported stacks</p>
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">One deployer, every stack you run</h2>
+      <p class="text-slate-500 max-w-2xl mb-10">Pick a stack, point it at your repo and server, and Tylix handles the build and release steps.</p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">TY</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Tylix</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">compile · build · serve</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">LV</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Laravel</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">composer · migrate · queues</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">PHP</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">PHP</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">nginx · php-fpm · cron</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">MN</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">MERN</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">api · client build · pm2</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">NG</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Angular</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">ng build · static hosting</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-lime-500/10 text-lime-700 dark:text-lime-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">JS</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Node.js</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">npm install · process manager</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">HT</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Static sites</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">build · sync · cache</p>
+        </div>
+
+        <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-700 bg-slate-200 dark:bg-slate-900/40 p-5 hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">+</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Anything else</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">your own build and release commands</p>
+        </div>
+
+      </div>
+    </div>
+  </section>

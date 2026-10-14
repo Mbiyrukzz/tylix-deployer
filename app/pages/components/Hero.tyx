@@ -6,38 +6,49 @@ props
   loggedIn: boolean
 
 template
-  <section class="px-6 pt-28 pb-20 text-center bg-slate-200 dark:bg-slate-950 transition-colors">
-    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-xs font-medium mb-8">
-      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-      v0.1 is live — now with hot reload
-    </span>
+  <section class="relative overflow-hidden px-6 pt-24 pb-16 bg-slate-200 dark:bg-slate-950 transition-colors">
+    <div class="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 w-[640px] h-[320px] rounded-full bg-emerald-500/10 blur-3xl"></div>
 
-    <h1 class="text-5xl md:text-7xl font-semibold max-w-4xl mx-auto leading-[1.05] mb-6 tracking-tight text-slate-900 dark:text-slate-200">
-      Full-stack JavaScript,
-      <br />
-      <span class="text-emerald-500">without the virtual DOM</span>
-    </h1>
+    <div class="relative text-center">
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-xs font-medium mb-8">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Deploy to your own servers over SSH
+      </span>
 
-    <p class="text-slate-500 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-      A reactive compiler, a generator-first CLI, and a database-agnostic
-      ORM — wired together so you write pages, not plumbing.
-    </p>
+      <h1 class="text-5xl md:text-7xl font-semibold max-w-4xl mx-auto leading-[1.05] mb-6 tracking-tight text-slate-900 dark:text-slate-200">
+        Ship any stack
+        <br />
+        <span class="text-emerald-500">to your own server</span>
+      </h1>
 
-    <div class="flex items-center justify-center gap-3">
+      <p class="text-slate-500 text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+        Connect a server, pick Tylix, Laravel, PHP, MERN or Angular, and deploy.
+        Watch CPU, memory and disk live without leaving the dashboard.
+      </p>
+
+      <div class="flex items-center justify-center gap-3 mb-6">
 {{#if loggedIn}}
-      <a href="/dashboard" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-        Go to Dashboard
-        <IconArrowRight class="w-4 h-4" />
-      </a>
+        <a href="/dashboard" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          Go to Dashboard
+          <IconArrowRight class="w-4 h-4" />
+        </a>
+        <a href="/servers" class="px-7 py-3 rounded-full border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-300/50 dark:hover:bg-slate-900 transition-colors">
+          My Servers
+        </a>
 {{/if}}
 {{#if not loggedIn}}
-      <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-        Get Started
-        <IconArrowRight class="w-4 h-4" />
-      </a>
-      <a href="/dashboard" class="px-7 py-3 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
-        Continue as Guest
-      </a>
+        <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          Get Started
+          <IconArrowRight class="w-4 h-4" />
+        </a>
+        <a href="/dashboard" class="px-7 py-3 rounded-full border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-300/50 dark:hover:bg-slate-900 transition-colors">
+          Continue as Guest
+        </a>
 {{/if}}
+      </div>
+
+      <p class="text-slate-500 text-xs font-mono mb-14">SSH keys stored encrypted · Your machine, your rules</p>
     </div>
+
+    <DeployPreview />
   </section>
