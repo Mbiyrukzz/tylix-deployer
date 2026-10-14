@@ -16,6 +16,9 @@
  * site's isolated user in the site folder. The SSH key sits in a 0600 temp
  * file only until the first output arrives. Limits: 3 terminals per user,
  * 15 minutes idle. The terminal size is fixed at connect time.
+ *
+ * Any failure while opening a session ends that session only; it never
+ * takes the channel server down.
  */
 
 import { spawn } from "node:child_process";
@@ -162,58 +165,55 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
         return;
     }
 
-    try {
-        const target = serverTarget(server);
-        const dir = await mkdtemp(join(tmpdir(), "tylix-term-"));
-        s.dir = dir;
-        if (s.finished) {
-            wipeKey(s);
-            return;
-        }
-
-        const keyFile = join(dir, "key");
-        await writeFile(keyFile, target.privateKey.endsWith("\n") ? target.privateKey : target.privateKey + "\n", {
-            mode: 0o600,
-        });
-
-        const args = [
-            "-tt",
-            "-i", keyFile,
-            "-p", String(target.port),
-            "-o", "BatchMode=yes",
-            "-o", "IdentitiesOnly=yes",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", `UserKnownHostsFile=${join(dir, "known_hosts")}`,
-            "-o", "ConnectTimeout=10",
-            "-o", "ServerAliveInterval=30",
-            "-o", "LogLevel=ERROR",
-            `${target.user}@${target.host}`,
-            remoteCommand(site.isolated_user, site.domain, ticket.c, ticket.r),
-        ];
-
-        const proc = spawn("ssh", args, { env: { ...process.env, TERM: "xterm-256color" } });
-        s.proc = proc;
-
-        let ready = false;
-        const forward = (chunk: Buffer) => {
-            wipeKey(s);
-            if (!ready) {
-                ready = true;
-                send(ws, { t: "ready" });
-            }
-            send(ws, { t: "out", d: chunk.toString("base64") });
-        };
-        proc.stdout?.on("data", forward);
-        proc.stderr?.on("data", forward);
-        proc.on("error", () => finish(ws, s, "Couldn't start ssh on the deployer host."));
-        proc.on("close", (code) => finish(ws, s, code ? `Session ended (exit ${code}).` : "Session ended."));
-
-        s.idle = setTimeout(() => finish(ws, s, "Closed after 15 minutes of inactivity."), IDLE_MS);
-
-        console.log(`[terminal] opened ${site.isolated_user}@${site.domain} for user ${ticket.u}`);
-    } catch {
-        finish(ws, s, "Couldn't start the terminal.");
+    const target = serverTarget(server);
+    const dir = await mkdtemp(join(tmpdir(), "tylix-term-"));
+    s.dir = dir;
+    if (s.finished) {
+        wipeKey(s);
+        return;
     }
+
+    const keyFile = join(dir, "key");
+    await writeFile(keyFile, target.privateKey.endsWith("\n") ? target.privateKey : target.privateKey + "\n", {
+        mode: 0o600,
+    });
+
+    const args = [
+        "-tt",
+        "-i", keyFile,
+        "-p", String(target.port),
+        "-o", "BatchMode=yes",
+        "-o", "IdentitiesOnly=yes",
+        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", `UserKnownHostsFile=${join(dir, "known_hosts")}`,
+        "-o", "ConnectTimeout=10",
+        "-o", "ServerAliveInterval=30",
+        "-o", "LogLevel=ERROR",
+        `${target.user}@${target.host}`,
+        remoteCommand(site.isolated_user, site.domain, ticket.c, ticket.r),
+    ];
+
+    const proc = spawn("ssh", args, { env: { ...process.env, TERM: "xterm-256color" } });
+    s.proc = proc;
+    proc.stdin?.on("error", () => {});
+
+    let ready = false;
+    const forward = (chunk: Buffer) => {
+        wipeKey(s);
+        if (!ready) {
+            ready = true;
+            send(ws, { t: "ready" });
+        }
+        send(ws, { t: "out", d: chunk.toString("base64") });
+    };
+    proc.stdout?.on("data", forward);
+    proc.stderr?.on("data", forward);
+    proc.on("error", () => finish(ws, s, "Couldn't start ssh on the deployer host."));
+    proc.on("close", (code) => finish(ws, s, code ? `Session ended (exit ${code}).` : "Session ended."));
+
+    s.idle = setTimeout(() => finish(ws, s, "Closed after 15 minutes of inactivity."), IDLE_MS);
+
+    console.log(`[terminal] opened ${site.isolated_user}@${site.domain} for user ${ticket.u}`);
 }
 
 function bumpIdle(ws: Socket, s: Session): void {
@@ -258,7 +258,11 @@ export function registerTerminal(server: ChannelHost): void {
 
                 s.authed = true;
                 if (s.authTimer) clearTimeout(s.authTimer);
-                void begin(ws, s, ticket);
+
+                begin(ws, s, ticket).catch((error) => {
+                    console.error("[terminal] failed to open:", error instanceof Error ? error.message : error);
+                    finish(ws, s, "Couldn't start the terminal.");
+                });
                 return;
             }
 

@@ -14,6 +14,14 @@ state
   error: ""
 
 action
+  global(name) {
+    return Reflect.get(window, name)
+  }
+
+  setGlobal(name, value) {
+    Reflect.set(window, name, value)
+  }
+
   loadScript(src, done) {
     const el = document.createElement("script")
     el.src = src
@@ -27,7 +35,7 @@ action
   }
 
   async ensureXterm() {
-    if window.Terminal and window.FitAddon {
+    if this.global("Terminal") and this.global("FitAddon") {
       return true
     }
 
@@ -48,7 +56,7 @@ action
   }
 
   sendInput(d) {
-    const ws = window.tylixSocket
+    const ws = this.global("tylixSocket")
     if ws and ws.readyState is 1 {
       ws.send(JSON.stringify({ t: "i", d: d }))
     }
@@ -56,7 +64,7 @@ action
 
   onMessage(raw) {
     const msg = JSON.parse(raw)
-    const term = window.tylixTerm
+    const term = this.global("tylixTerm")
 
     if msg.t is "out" {
       term.write(Uint8Array.from(atob(msg.d), (c) => c.charCodeAt(0)))
@@ -86,24 +94,33 @@ action
       return null
     }
 
-    if window.tylixTerm {
-      window.tylixTerm.dispose()
+    const oldTerm = this.global("tylixTerm")
+    if oldTerm {
+      oldTerm.dispose()
     }
 
     const host = document.getElementById("terminal-host")
+    if not host {
+      this.error = "The terminal area isn't on the page yet. Reload and try again."
+      this.phase = "idle"
+      return null
+    }
     host.innerHTML = ""
 
-    const term = new window.Terminal({
+    const TerminalClass = this.global("Terminal")
+    const fitModule = this.global("FitAddon")
+
+    const term = new TerminalClass({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
       theme: { background: "#020617" }
     })
-    const fit = new window.FitAddon.FitAddon()
+    const fit = new fitModule.FitAddon()
     term.loadAddon(fit)
     term.open(host)
     fit.fit()
-    window.tylixTerm = term
+    this.setGlobal("tylixTerm", term)
 
     const result = await useApi("/api/sites/" + this.siteId + "/terminal", {
       method: "POST",
@@ -123,7 +140,7 @@ action
 
     let url = result.data.url
     if not url {
-      const port = window.__TYLIX_CHANNELS_PORT__ or 6001
+      const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
       url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.hostname + ":" + port + "/terminal"
     }
 
@@ -132,13 +149,13 @@ action
     ws.onopen = () => ws.send(JSON.stringify({ t: "auth", ticket: ticket }))
     ws.onmessage = (e) => this.onMessage(e.data)
     ws.onclose = () => this.onClosed()
-    window.tylixSocket = ws
+    this.setGlobal("tylixSocket", ws)
 
     term.onData((d) => this.sendInput(d))
   }
 
   disconnect() {
-    const ws = window.tylixSocket
+    const ws = this.global("tylixSocket")
     if ws {
       ws.close()
     }
