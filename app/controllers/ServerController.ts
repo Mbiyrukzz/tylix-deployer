@@ -11,6 +11,9 @@
  *   - changing host / port / user / key resets status to "pending", because
  *     the connection has not been tested with the new details
  *
+ * Deleting a server is refused while it still has sites, so no site record
+ * is ever left pointing at a server that is gone.
+ *
  * All routes sit behind requireAuth ("auth": true in feature.json), so
  * req.user.userId is always present here.
  */
@@ -18,6 +21,7 @@
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { Provision } from "../models/Provision.js";
+import { Site } from "../models/Site.js";
 import { DbUser } from "../models/DbUser.js";
 import { ServerDatabase } from "../models/ServerDatabase.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
@@ -164,7 +168,6 @@ export class ServerController {
             patch.status = "pending";
         }
 
-        // ASSUMPTION: Model exposes update(id, data), same as the generated
         // PostController. Re-read the row so we never depend on its return value.
         await Server.update(server.id, patch);
         const fresh = (await Server.find(server.id)) as ServerRow | null;
@@ -189,23 +192,35 @@ export class ServerController {
             });
         }
 
-                // The machine's databases go with it; drop our records so nothing is orphaned.
+        // Sites must be deleted first (each one cleans up its own files, nginx
+        // config, user and database on the machine), so nothing is left orphaned.
+        const sites = ((await Site.all()) as { server_id: number }[]).filter(
+            (s) => Number(s.server_id) === server.id,
+        );
+        if (sites.length > 0) {
+            res.status(409);
+            return res.json({
+                error:
+                    sites.length === 1
+                        ? "This server still has 1 site. Delete it first, then delete the server."
+                        : `This server still has ${sites.length} sites. Delete them first, then delete the server.`,
+            });
+        }
+
+        // The machine's databases go with it; drop our records so nothing is orphaned.
         for (const d of (await ServerDatabase.all()) as { id: number; server_id: number }[]) {
             if (d.server_id === server.id) await ServerDatabase.delete(d.id);
         }
         for (const u of (await DbUser.all()) as { id: number; server_id: number }[]) {
             if (u.server_id === server.id) await DbUser.delete(u.id);
         }
-
         for (const k of (await ServerSshKey.all()) as { id: number; server_id: number }[]) {
-        if (k.server_id === server.id) await ServerSshKey.delete(k.id);
+            if (k.server_id === server.id) await ServerSshKey.delete(k.id);
+        }
+        for (const w of (await ServerWorker.all()) as { id: number; server_id: number }[]) {
+            if (w.server_id === server.id) await ServerWorker.delete(w.id);
         }
 
-        for (const w of (await ServerWorker.all()) as { id: number; server_id: number }[]) {
-        if (w.server_id === server.id) await ServerWorker.delete(w.id);
-        }
-    
-        // TODO (step 1.4c): refuse to delete while projects are attached.
         // ASSUMPTION: Model exposes delete(id).
         await Server.delete(server.id);
         res.status(204);

@@ -8,6 +8,10 @@
  *
  * Deployment: the env is stored encrypted and only returned by
  * deployment(). deploy() starts SiteDeployer in the background.
+ *
+ * Deleting: destroy() needs ?confirm=<domain> (the API enforces the typed
+ * confirmation, not just the UI), marks the site "deleting" and starts
+ * SiteDestroyer in the background. ?force=1 skips server cleanup.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -18,6 +22,7 @@ import { validateSite, normalizeSite } from "../validators/SiteValidator.js";
 import type { NormalizedSite } from "../validators/SiteValidator.js";
 import { SiteProvisioner } from "../services/SiteProvisioner.js";
 import { SiteDeployer, canDeploy, defaultDeployScript, envPathFor } from "../services/SiteDeployer.js";
+import { SiteDestroyer } from "../services/SiteDestroyer.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { needsPort } from "../services/SiteTypes.js";
 
@@ -56,6 +61,7 @@ interface SiteRow {
 
 const MAX_TEXT = 20_000;
 const STALE_DEPLOY_MS = 30 * 60_000;
+const STALE_DELETE_MS = 10 * 60_000;
 
 function parseAliases(raw: unknown): string[] {
     try {
@@ -221,16 +227,55 @@ export class SiteController {
         return res.json(toPublic(site));
     }
 
-    // Editing and deleting need server-side cleanup (vhost, pool, service,
-    // files), so they come in a later step. The stubs keep the routes safe.
+    // Editing needs server-side changes (vhost, pool, service), so it comes in a later step.
     async update(_req: TylixRequest, res: TylixResponse) {
         res.status(501);
         return res.json({ error: "Editing sites isn't supported yet." });
     }
 
-    async destroy(_req: TylixRequest, res: TylixResponse) {
-        res.status(501);
-        return res.json({ error: "Deleting sites isn't supported yet." });
+    /**
+     * DELETE /api/sites/:id?confirm=<domain>[&force=1]
+     *
+     * Marks the site "deleting" and cleans up in the background. The page polls
+     * GET /api/sites/:id until it answers 404 (gone) or status "delete_failed".
+     */
+    async destroy(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+
+        const query = (req as { query?: Record<string, unknown> }).query ?? {};
+        const confirm = String(query.confirm ?? "");
+        const force = query.force === "1" || query.force === "true";
+
+        if (confirm !== site.domain) {
+            res.status(422);
+            return res.json({
+                error: "Type the site's domain exactly to confirm.",
+                errors: { confirm: ["Type the site's domain exactly to confirm."] },
+            });
+        }
+
+        const age = Date.now() - new Date(site.updated_at).getTime();
+
+        const creating = site.status === "pending" || site.status === "creating";
+        const deploying = site.deploy_status === "deploying";
+        const alreadyDeleting = site.status === "deleting";
+
+        if ((creating || deploying) && age < STALE_DEPLOY_MS) {
+            res.status(409);
+            return res.json({ error: "This site is busy creating or deploying. Wait for it to finish, then try again." });
+        }
+
+        if (alreadyDeleting && age < STALE_DELETE_MS) {
+            res.status(409);
+            return res.json({ error: "This site is already being deleted." });
+        }
+
+        await Site.update(site.id, { status: "deleting", step: "del_services", error: "" });
+        SiteDestroyer.start(site.id, force);
+
+        res.status(202);
+        return res.json({ status: "deleting" });
     }
 
     // ---- deployment ----

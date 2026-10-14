@@ -15,6 +15,11 @@ state
   stepText: ""
   rootPath: ""
   aliasText: ""
+  canDelete: false
+  deleting: false
+  confirmDelete: false
+  confirmText: ""
+  deleteError: ""
 
 action
   describe(site) {
@@ -40,7 +45,13 @@ action
       ["build", "Building the app"],
       ["service", "Starting the app"],
       ["webserver", "Configuring nginx"],
-      ["ready", "Done"]
+      ["ready", "Done"],
+      ["del_services", "Stopping the app"],
+      ["del_webserver", "Removing the nginx site"],
+      ["del_php", "Removing the PHP pool"],
+      ["del_ssl", "Removing the certificate"],
+      ["del_database", "Removing the database"],
+      ["del_user", "Removing the user and files"]
     ]
 
     const typeHit = labels.find((l) => l[0] is site.type)
@@ -52,6 +63,8 @@ action
     this.stepText = stepHit ? stepHit[1] : site.step
     this.rootPath = "/home/" + site.isolated_user + "/" + site.domain
     this.aliasText = site.aliases.join(", ")
+    this.canDelete = ["ready", "failed", "delete_failed"].includes(site.status)
+    this.deleting = site.status is "deleting"
   }
 
   async load() {
@@ -59,6 +72,12 @@ action
 
     if result.status is 401 {
       window.location.href = "/login"
+      return null
+    }
+
+    if result.status is 404 and this.deleting {
+      window.clearInterval(this.timer)
+      window.location.href = "/servers/server-sites?id=" + this.serverId
       return null
     }
 
@@ -72,11 +91,59 @@ action
       if status is "failed" {
         window.clearInterval(this.timer)
       }
+      if status is "delete_failed" {
+        window.clearInterval(this.timer)
+      }
     }
   }
 
   startPolling() {
+    window.clearInterval(this.timer)
     this.timer = window.setInterval(() => this.load(), 3000)
+  }
+
+  askDelete() {
+    this.deleteError = ""
+    this.confirmText = ""
+    this.confirmDelete = true
+  }
+
+  cancelDelete() {
+    this.confirmDelete = false
+    this.confirmText = ""
+    this.deleteError = ""
+  }
+
+  async deleteSite(force) {
+    if this.deleting or not this.site {
+      return null
+    }
+
+    if this.confirmText is not this.site.domain {
+      this.deleteError = "Type the domain exactly to confirm."
+      return null
+    }
+
+    this.deleteError = ""
+
+    let url = "/api/sites/" + this.siteId + "?confirm=" + encodeURIComponent(this.confirmText)
+    if force {
+      url = url + "&force=1"
+    }
+
+    const result = await useApi(url, { method: "DELETE" })
+
+    if result.ok {
+      this.deleting = true
+      this.canDelete = false
+      this.confirmDelete = false
+      this.confirmText = ""
+      this.startPolling()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.deleteError = result.data?.error or "Couldn't delete that site."
+    }
   }
 
 onMount
@@ -102,6 +169,9 @@ onMount
           this.startPolling()
         }
         if status is "creating" {
+          this.startPolling()
+        }
+        if status is "deleting" {
           this.startPolling()
         }
       } else {
@@ -159,6 +229,16 @@ template
               <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
             </span>
 {{/if}}
+{{#if site.status is "deleting"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> Deleting
+            </span>
+{{/if}}
+{{#if site.status is "delete_failed"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Delete failed
+            </span>
+{{/if}}
           </div>
           <p class="text-slate-500 text-sm font-mono">{{ typeLabel }} / {{ site.isolated_user }}</p>
         </div>
@@ -181,6 +261,20 @@ template
           <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
             <p class="text-rose-500 text-sm font-medium mb-1">Failed at: {{ stepText }}</p>
             <p class="text-rose-500 text-sm break-words">{{ site.error }}</p>
+          </div>
+{{/if}}
+
+{{#if site.status is "delete_failed"}}
+          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+            <p class="text-rose-500 text-sm font-medium mb-1">Couldn't finish deleting (stopped at: {{ stepText }})</p>
+            <p class="text-rose-500 text-sm break-words">{{ site.error }}</p>
+          </div>
+{{/if}}
+
+{{#if deleting}}
+          <div role="status" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+            <p class="text-rose-500 text-xs font-medium uppercase tracking-wider mb-1">Deleting site</p>
+            <p class="text-slate-800 dark:text-slate-200 text-sm">{{ stepText }}…</p>
           </div>
 {{/if}}
 
@@ -277,7 +371,7 @@ template
             </div>
           </div>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-4">Deployment log</h2>
 {{#if site.log}}
             <div class="max-h-96 overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ site.log }}</div>
@@ -286,6 +380,46 @@ template
             <p class="text-slate-500 text-sm">Nothing logged yet.</p>
 {{/if}}
           </div>
+
+{{#if canDelete}}
+          <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-slate-200 dark:bg-slate-900 p-6">
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Delete site</h2>
+            <p class="text-slate-500 text-sm mb-4">Permanently removes this site and everything it created on the server: the app service, the nginx site, the PHP pool, the SSL certificate, any WordPress database, the isolated user and every file under <span class="font-mono">/home/{{ site.isolated_user }}</span>. This can't be undone.</p>
+
+{{#if deleteError}}
+            <p role="alert" class="text-rose-500 text-sm mb-4">{{ deleteError }}</p>
+{{/if}}
+
+{{#if not confirmDelete}}
+            <button onclick="{{ askDelete() }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+              Delete site
+            </button>
+{{/if}}
+
+{{#if confirmDelete}}
+            <div class="flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                value="{{ confirmText }}"
+                oninput="{{ confirmText = $event.target.value }}"
+                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                placeholder="Type {{ site.domain }} to confirm"
+              />
+              <button onclick="{{ deleteSite(false) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-2 transition">
+                Delete for good
+              </button>
+{{#if site.status is "delete_failed"}}
+              <button onclick="{{ deleteSite(true) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+                Delete anyway (skip server cleanup)
+              </button>
+{{/if}}
+              <button onclick="{{ cancelDelete() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
+                Cancel
+              </button>
+            </div>
+{{/if}}
+          </div>
+{{/if}}
 
         </div>
       </div>
