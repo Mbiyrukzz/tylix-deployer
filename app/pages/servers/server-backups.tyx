@@ -1,0 +1,519 @@
+page ServerBackups
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Backups"
+
+state
+  server: null
+  serverId: ""
+  loading: true
+  notFound: false
+  busy: false
+  error: ""
+  note: ""
+  dbOptions: []
+  selected: []
+  storages: []
+  storageId: 0
+  backups: []
+  panelId: null
+  panelKind: ""
+  panelBusy: false
+  files: []
+  logText: ""
+  confirmId: null
+  confirmFile: ""
+  showDropbox: false
+  dropboxBusy: false
+  dropboxError: ""
+
+action
+  fail(result, fallback) {
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    this.error = result.data?.error or fallback
+  }
+
+  fieldValue(id) {
+    const el = document.getElementById(id)
+    if not el {
+      return ""
+    }
+    return String(Reflect.get(el, "value") or "")
+  }
+
+  setField(id, value) {
+    const el = document.getElementById(id)
+    if el {
+      Reflect.set(el, "value", value)
+    }
+  }
+
+  fmtSize(n) {
+    if n > 1048576 {
+      return (n / 1048576).toFixed(1) + " MB"
+    }
+    if n > 1024 {
+      return (n / 1024).toFixed(1) + " KB"
+    }
+    return n + " B"
+  }
+
+  schedulePreset(value) {
+    this.setField("bSchedule", value)
+  }
+
+  pickStorage(id) {
+    this.storageId = id
+  }
+
+  toggleDb(id) {
+    const list = this.selected.filter((x) => x is not id)
+    if list.length is this.selected.length {
+      list.push(id)
+    }
+    this.selected = list
+    this.dbOptions = this.dbOptions.map((o) => Object.assign({}, o, { checked: list.includes(o.id) }))
+  }
+
+  async loadDatabases() {
+    const r = await useApi("/api/servers/" + this.serverId + "/databases")
+    if r.ok and Array.isArray(r.data?.databases) {
+      // All databases start selected; untick the ones you don't want.
+      this.selected = r.data.databases.map((d) => d.id)
+      this.dbOptions = r.data.databases.map((d) => ({ id: d.id, name: d.name, checked: true }))
+    }
+  }
+
+  async loadStorages() {
+    const r = await useApi("/api/backup-storages")
+    if r.ok and Array.isArray(r.data) {
+      this.storages = r.data
+    }
+  }
+
+  async loadBackups() {
+    const r = await useApi("/api/servers/" + this.serverId + "/backups")
+    if r.ok and Array.isArray(r.data) {
+      this.backups = r.data.map((b) => Object.assign({}, b, { dbText: b.databases.join(", ") }))
+    }
+  }
+
+  async create() {
+    if this.busy {
+      return null
+    }
+    this.busy = true
+    this.error = ""
+    this.note = ""
+
+    const body = {
+      name: this.fieldValue("bName"),
+      schedule: this.fieldValue("bSchedule"),
+      retention: this.fieldValue("bRetention"),
+      storage_id: this.storageId,
+      database_ids: this.selected
+    }
+
+    const result = await useApi("/api/servers/" + this.serverId + "/backups", { method: "POST", body: body })
+
+    if result.ok {
+      this.setField("bName", "")
+      this.note = "Backup scheduled. Use Run now to take the first one straight away."
+      await this.loadBackups()
+    } else {
+      this.fail(result, "Couldn't create the backup.")
+    }
+    this.busy = false
+  }
+
+  async runNow(id) {
+    this.error = ""
+    this.note = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id + "/run", { method: "POST" })
+    if result.ok {
+      this.note = "Backup started on the server. Open the log to follow it, then Files to download it."
+      this.panelId = null
+      await this.viewLog(id)
+    } else {
+      this.fail(result, "Couldn't start the backup.")
+    }
+  }
+
+  async viewLog(id) {
+    if this.panelId is id and this.panelKind is "log" {
+      this.panelId = null
+      return null
+    }
+    this.panelId = id
+    this.panelKind = "log"
+    this.panelBusy = true
+    this.logText = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id + "/log")
+    if result.ok {
+      this.logText = result.data.log
+    } else {
+      this.logText = result.data?.error or "Couldn't read the log."
+    }
+    this.panelBusy = false
+  }
+
+  async loadFiles(id) {
+    const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id + "/files")
+    if result.ok and Array.isArray(result.data) {
+      this.files = result.data.map((f) => Object.assign({}, f, {
+        sizeText: this.fmtSize(f.size),
+        dateText: new Date(f.mtime * 1000).toISOString().slice(0, 16).replace("T", " ") + " UTC"
+      }))
+    } else {
+      this.files = []
+      this.fail(result, "Couldn't list the backup files.")
+    }
+  }
+
+  async viewFiles(id) {
+    if this.panelId is id and this.panelKind is "files" {
+      this.panelId = null
+      return null
+    }
+    this.panelId = id
+    this.panelKind = "files"
+    this.panelBusy = true
+    this.confirmFile = ""
+    this.files = []
+    await this.loadFiles(id)
+    this.panelBusy = false
+  }
+
+  askDeleteFile(name) {
+    this.confirmFile = name
+  }
+
+  cancelDeleteFile() {
+    this.confirmFile = ""
+  }
+
+  async deleteFile(id, name) {
+    this.error = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id + "/files?name=" + name, { method: "DELETE" })
+    if result.ok {
+      this.confirmFile = ""
+      await this.loadFiles(id)
+    } else {
+      this.fail(result, "Couldn't delete the file.")
+    }
+  }
+
+  askRemove(id) {
+    this.confirmId = id
+  }
+
+  cancelRemove() {
+    this.confirmId = null
+  }
+
+  async remove(id) {
+    this.error = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id, { method: "DELETE" })
+    if result.ok {
+      this.confirmId = null
+      this.panelId = null
+      await this.loadBackups()
+    } else {
+      this.fail(result, "Couldn't remove the backup.")
+    }
+  }
+
+  toggleDropbox() {
+    this.showDropbox = not this.showDropbox
+    this.dropboxError = ""
+  }
+
+  async connectDropbox() {
+    if this.dropboxBusy {
+      return null
+    }
+    this.dropboxBusy = true
+    this.dropboxError = ""
+
+    const body = {
+      name: this.fieldValue("dName"),
+      app_key: this.fieldValue("dKey"),
+      app_secret: this.fieldValue("dSecret"),
+      refresh_token: this.fieldValue("dRefresh")
+    }
+    const result = await useApi("/api/backup-storages", { method: "POST", body: body })
+
+    if result.ok {
+      this.setField("dSecret", "")
+      this.setField("dRefresh", "")
+      this.showDropbox = false
+      await this.loadStorages()
+      this.storageId = result.data.id
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.dropboxError = result.data?.error or "Couldn't connect Dropbox."
+    }
+    this.dropboxBusy = false
+  }
+
+  async removeStorage(id) {
+    this.error = ""
+    const result = await useApi("/api/backup-storages/" + id, { method: "DELETE" })
+    if result.ok {
+      if this.storageId is id {
+        this.storageId = 0
+      }
+      await this.loadStorages()
+    } else {
+      this.fail(result, "Couldn't remove the connection.")
+    }
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        this.loading = false
+        await this.loadDatabases()
+        await this.loadStorages()
+        await this.loadBackups()
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="backups" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Backups</h1>
+      <p class="text-slate-500 text-sm mb-6">Scheduled MySQL backups. The schedule runs on the server itself, so it keeps working even when this app is offline.</p>
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
+{{/if}}
+{{#if note}}
+      <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ note }}</p>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">New backup</h2>
+
+        <label class="block text-slate-500 text-xs mb-1" for="bName">Name</label>
+        <input id="bName" type="text" placeholder="e.g. Nightly databases" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-4" />
+
+        <p class="text-slate-500 text-xs mb-2">Databases to back up</p>
+{{#if dbOptions.length is 0}}
+        <p class="text-amber-600 dark:text-amber-500 text-sm mb-4">This server has no databases yet. Create one on the Database page first.</p>
+{{/if}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+{{#each o in dbOptions}}
+{{#if o.checked}}
+          <button onclick="{{ toggleDb(o.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">&#10003; {{ o.name }}</button>
+{{/if}}
+{{#if not o.checked}}
+          <button onclick="{{ toggleDb(o.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ o.name }}</button>
+{{/if}}
+{{/each}}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-slate-500 text-xs mb-1" for="bSchedule">Schedule (server time)</label>
+            <input id="bSchedule" type="text" value="0 2 * * *" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-2" />
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="{{ schedulePreset('0 * * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Hourly</button>
+              <button onclick="{{ schedulePreset('0 */6 * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Every 6 hours</button>
+              <button onclick="{{ schedulePreset('0 2 * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Daily 02:00</button>
+              <button onclick="{{ schedulePreset('0 2 * * 0') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Weekly (Sun 02:00)</button>
+              <button onclick="{{ schedulePreset('0 2 1 * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Monthly</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-slate-500 text-xs mb-1" for="bRetention">Backups to keep per database</label>
+            <input id="bRetention" type="number" min="1" max="60" value="7" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2" />
+            <p class="text-slate-400 text-xs mt-1">Older ones are deleted after each run.</p>
+          </div>
+        </div>
+
+        <p class="text-slate-500 text-xs mb-2">Where to store them</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+{{#if storageId is 0}}
+          <button onclick="{{ pickStorage(0) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">This server only</button>
+{{/if}}
+{{#if storageId is not 0}}
+          <button onclick="{{ pickStorage(0) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">This server only</button>
+{{/if}}
+{{#each s in storages}}
+{{#if storageId is s.id}}
+          <button onclick="{{ pickStorage(s.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">Dropbox: {{ s.name }}</button>
+{{/if}}
+{{#if storageId is not s.id}}
+          <button onclick="{{ pickStorage(s.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">Dropbox: {{ s.name }}</button>
+{{/if}}
+{{/each}}
+        </div>
+        <p class="text-slate-400 text-xs mb-1">Files are always kept on the server in <span class="font-mono">/var/backups/tylix/</span> so you can download them here. Dropbox gets a copy too.</p>
+        <button onclick="{{ toggleDropbox() }}" class="text-sm text-emerald-700 dark:text-emerald-500 hover:underline font-medium mb-4">Connect Dropbox</button>
+
+{{#if showDropbox}}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
+          <p class="text-slate-500 text-xs mb-3">
+            Create an app at dropbox.com/developers/apps, enable the permissions
+            <span class="font-mono">files.content.write</span> and <span class="font-mono">files.metadata.read</span>,
+            then generate a <span class="font-semibold">refresh token</span> with offline access (a plain access token expires after a few hours and would break scheduled backups).
+          </p>
+          <label class="block text-slate-500 text-xs mb-1" for="dName">Connection name</label>
+          <input id="dName" type="text" placeholder="e.g. Company Dropbox" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-3" />
+          <label class="block text-slate-500 text-xs mb-1" for="dKey">App key</label>
+          <input id="dKey" type="text" autocomplete="off" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
+          <label class="block text-slate-500 text-xs mb-1" for="dSecret">App secret</label>
+          <input id="dSecret" type="password" autocomplete="off" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
+          <label class="block text-slate-500 text-xs mb-1" for="dRefresh">Refresh token</label>
+          <input id="dRefresh" type="password" autocomplete="off" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
+{{#if dropboxError}}
+          <p role="alert" class="text-rose-500 text-sm mb-3 break-words">{{ dropboxError }}</p>
+{{/if}}
+{{#if dropboxBusy}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking with Dropbox…</button>
+{{/if}}
+{{#if not dropboxBusy}}
+          <button onclick="{{ connectDropbox() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Connect</button>
+{{/if}}
+        </div>
+{{/if}}
+
+{{#each s in storages}}
+        <p class="text-slate-500 text-xs mb-1">Dropbox: <span class="font-mono">{{ s.name }}</span>
+          <button onclick="{{ removeStorage(s.id) }}" class="text-rose-600 dark:text-rose-500 hover:underline ml-2">Remove</button>
+        </p>
+{{/each}}
+
+        <div class="mt-5">
+{{#if busy}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not busy}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Schedule backup</button>
+{{/if}}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Scheduled backups</h2>
+
+{{#if backups.length is 0}}
+        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+          <p class="text-slate-500 text-sm">No backups yet.</p>
+        </div>
+{{/if}}
+
+{{#each b in backups}}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ b.name }}
+                <span class="text-xs font-mono text-emerald-700 dark:text-emerald-500 ml-2">{{ b.schedule }}</span>
+              </p>
+              <p class="text-slate-500 text-xs font-mono truncate">{{ b.dbText }}</p>
+              <p class="text-slate-400 text-xs truncate">{{ b.storage_name }} · keeps {{ b.retention }} per database</p>
+            </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <button onclick="{{ runNow(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Run now</button>
+              <button onclick="{{ viewFiles(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Files</button>
+              <button onclick="{{ viewLog(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Log</button>
+              <button onclick="{{ askRemove(b.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-2 py-1">Delete</button>
+            </div>
+          </div>
+
+{{#if confirmId is b.id}}
+          <div class="mt-3">
+            <p class="text-slate-500 text-xs mb-2">This stops the schedule. Backup files already on the server are kept.</p>
+            <div class="flex items-center gap-3">
+              <button onclick="{{ remove(b.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-1.5 transition">Yes, delete it</button>
+              <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-1.5">Cancel</button>
+            </div>
+          </div>
+{{/if}}
+
+{{#if panelId is b.id}}
+{{#if panelBusy}}
+          <p class="text-slate-500 text-xs mt-3">Loading…</p>
+{{/if}}
+{{#if not panelBusy}}
+{{#if panelKind is "log"}}
+          <pre class="rounded-lg bg-slate-950 text-emerald-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
+{{/if}}
+{{#if panelKind is "files"}}
+{{#if files.length is 0}}
+          <p class="text-slate-500 text-xs mt-3">No backup files yet.</p>
+{{/if}}
+          <div class="mt-3 space-y-1">
+{{#each f in files}}
+            <div class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-3 py-2">
+              <div class="min-w-0">
+                <p class="text-slate-800 dark:text-slate-200 text-xs font-mono truncate">{{ f.name }}</p>
+                <p class="text-slate-500 text-xs">{{ f.sizeText }} · {{ f.dateText }}</p>
+              </div>
+              <div class="flex shrink-0 items-center gap-2">
+                <a href="{{ '/api/servers/' + serverId + '/backups/' + b.id + '/files/download?name=' + f.name }}" class="text-xs text-emerald-700 dark:text-emerald-500 hover:underline font-medium">Download</a>
+{{#if confirmFile is f.name}}
+                <button onclick="{{ deleteFile(b.id, f.name) }}" class="text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-md px-2 py-1">Delete for good</button>
+                <button onclick="{{ cancelDeleteFile() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-1 py-1">Cancel</button>
+{{/if}}
+{{#if confirmFile is not f.name}}
+                <button onclick="{{ askDeleteFile(f.name) }}" class="text-xs text-rose-600 dark:text-rose-500 hover:underline">Delete</button>
+{{/if}}
+              </div>
+            </div>
+{{/each}}
+          </div>
+{{/if}}
+{{/if}}
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

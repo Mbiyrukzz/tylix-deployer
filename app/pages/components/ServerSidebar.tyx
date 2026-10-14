@@ -27,10 +27,7 @@ template
       Database
     </a>
 {{/if}}
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Backups</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
+   {{#if active is "backups"}} <a href="{{ '/servers/server-backups?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium"> Backups </a> {{/if}} {{#if active is not "backups"}} <a href="{{ '/servers/server-backups?id=' + serverId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"> Backups </a> {{/if}}
 {{#if active is "sites"}}
     <a href="{{ '/servers/server-sites?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       Sites
@@ -45,10 +42,16 @@ template
       <span>Firewall</span>
       <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
     </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>CronJobs</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
+    {{#if active is "cron"}}
+    <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      CronJobs
+    </a>
+{{/if}}
+{{#if active is not "cron"}}
+    <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      CronJobs
+    </a>
+{{/if}}
    {{#if active is "workers"}}
     <a href="{{ '/servers/server-workers?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       Workers

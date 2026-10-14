@@ -1,0 +1,325 @@
+page ServerCronJobs
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Cron jobs"
+
+state
+  server: null
+  serverId: ""
+  loading: true
+  notFound: false
+  busy: false
+  error: ""
+  jobs: []
+  users: []
+  usersError: ""
+  busyId: null
+  logId: null
+  logText: ""
+  logBusy: false
+  confirmId: null
+
+action
+  fail(result, fallback) {
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    this.error = result.data?.error or fallback
+  }
+
+  fieldValue(id) {
+    const el = document.getElementById(id)
+    if not el {
+      return ""
+    }
+    return String(Reflect.get(el, "value") or "")
+  }
+
+  setField(id, value) {
+    const el = document.getElementById(id)
+    if el {
+      Reflect.set(el, "value", value)
+    }
+  }
+
+  schedulePreset(value) {
+    this.setField("cSchedule", value)
+  }
+
+  preset(kind) {
+    if kind is "laravel" {
+      this.setField("cName", "Laravel scheduler")
+      this.setField("cSchedule", "* * * * *")
+      this.setField("cCommand", "cd /home/tylix/example.com/current && php artisan schedule:run")
+    }
+  }
+
+  async loadJobs() {
+    const r = await useApi("/api/servers/" + this.serverId + "/cron-jobs")
+    if r.ok and Array.isArray(r.data) {
+      this.jobs = r.data
+    }
+  }
+
+  async loadUsers() {
+    const r = await useApi("/api/servers/" + this.serverId + "/ssh-users")
+    if r.ok and Array.isArray(r.data) {
+      this.users = r.data
+      this.usersError = ""
+    } else {
+      this.users = [this.server.ssh_user]
+      this.usersError = r.data?.error or "Couldn't list users on the server."
+    }
+  }
+
+  async create() {
+    if this.busy {
+      return null
+    }
+    this.busy = true
+    this.error = ""
+
+    const body = {
+      name: this.fieldValue("cName"),
+      command: this.fieldValue("cCommand"),
+      schedule: this.fieldValue("cSchedule"),
+      user: this.fieldValue("cUser")
+    }
+
+    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs", { method: "POST", body: body })
+
+    if result.ok {
+      this.setField("cName", "")
+      this.setField("cCommand", "")
+      await this.loadJobs()
+    } else {
+      this.fail(result, "Couldn't create the cron job.")
+    }
+    this.busy = false
+  }
+
+  async runNow(id) {
+    if this.busyId {
+      return null
+    }
+    this.busyId = id
+    this.error = ""
+    this.logId = id
+    this.logBusy = true
+    this.logText = ""
+
+    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs/" + id + "/run", { method: "POST" })
+    if result.ok {
+      this.logText = result.data.output or "No output."
+    } else {
+      this.logText = result.data?.error or "Couldn't run the command."
+    }
+    this.logBusy = false
+    this.busyId = null
+  }
+
+  async viewLog(id) {
+    if this.logId is id {
+      this.logId = null
+      this.logText = ""
+      return null
+    }
+    this.logId = id
+    this.logBusy = true
+    this.logText = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs/" + id + "/log")
+    if result.ok {
+      this.logText = result.data.log
+    } else {
+      this.logText = result.data?.error or "Couldn't read the log."
+    }
+    this.logBusy = false
+  }
+
+  askRemove(id) {
+    this.confirmId = id
+  }
+
+  cancelRemove() {
+    this.confirmId = null
+  }
+
+  async remove(id) {
+    if this.busyId {
+      return null
+    }
+    this.busyId = id
+    this.error = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs/" + id, { method: "DELETE" })
+
+    if result.ok {
+      this.confirmId = null
+      if this.logId is id {
+        this.logId = null
+      }
+      await this.loadJobs()
+    } else {
+      this.fail(result, "Couldn't remove the cron job.")
+    }
+    this.busyId = null
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        this.loading = false
+        await this.loadJobs()
+        await this.loadUsers()
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="cron" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Cron jobs</h1>
+      <p class="text-slate-500 text-sm mb-6">Commands that run on a schedule. Each job's output is appended to its own log on the server.</p>
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">New cron job</h2>
+
+        <p class="text-slate-500 text-xs mb-2">Start from a preset</p>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="{{ preset('laravel') }}" class="text-sm rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-slate-700 dark:text-slate-300 hover:border-emerald-500/50">Laravel scheduler</button>
+        </div>
+
+        <label class="block text-slate-500 text-xs mb-1" for="cName">Name</label>
+        <input id="cName" type="text" placeholder="e.g. Nightly cleanup" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-4" />
+
+        <label class="block text-slate-500 text-xs mb-1" for="cCommand">Command</label>
+        <input id="cCommand" type="text" placeholder="cd /home/tylix/example.com/current &amp;&amp; php artisan schedule:run" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-1" />
+        <p class="text-slate-400 text-xs mb-4">Cron has no working directory. Start with <span class="font-mono">cd /path &amp;&amp;</span> when the command needs one.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-500 text-xs mb-1" for="cSchedule">Schedule</label>
+            <input id="cSchedule" type="text" value="* * * * *" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-2" />
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="{{ schedulePreset('* * * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Every minute</button>
+              <button onclick="{{ schedulePreset('*/5 * * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Every 5 min</button>
+              <button onclick="{{ schedulePreset('0 * * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Hourly</button>
+              <button onclick="{{ schedulePreset('0 0 * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Nightly</button>
+              <button onclick="{{ schedulePreset('0 0 * * 0') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Weekly</button>
+              <button onclick="{{ schedulePreset('0 0 1 * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Monthly</button>
+              <button onclick="{{ schedulePreset('@reboot') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">On reboot</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-slate-500 text-xs mb-1" for="cUser">Run as user</label>
+            <select id="cUser" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2">
+{{#each u in users}}
+              <option value="{{ u }}">{{ u }}</option>
+{{/each}}
+            </select>
+{{#if usersError}}
+            <p class="text-amber-600 dark:text-amber-500 text-xs mt-1">{{ usersError }}</p>
+{{/if}}
+          </div>
+        </div>
+
+        <div class="mt-5">
+{{#if busy}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not busy}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Create cron job</button>
+{{/if}}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Active cron jobs</h2>
+
+{{#if jobs.length is 0}}
+        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+          <p class="text-slate-500 text-sm">No cron jobs yet.</p>
+        </div>
+{{/if}}
+
+{{#each c in jobs}}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ c.name }}
+                <span class="text-xs font-mono text-emerald-700 dark:text-emerald-500 ml-2">{{ c.schedule }}</span>
+              </p>
+              <p class="text-slate-500 text-xs font-mono truncate">{{ c.command }}</p>
+              <p class="text-slate-400 text-xs font-mono truncate">{{ c.ssh_user }}</p>
+            </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <button onclick="{{ runNow(c.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Run now</button>
+              <button onclick="{{ viewLog(c.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Log</button>
+              <button onclick="{{ askRemove(c.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-2 py-1">Delete</button>
+            </div>
+          </div>
+
+{{#if confirmId is c.id}}
+          <div class="flex items-center gap-3 mt-3">
+            <button onclick="{{ remove(c.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-1.5 transition">Yes, delete it</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-1.5">Cancel</button>
+          </div>
+{{/if}}
+
+{{#if logId is c.id}}
+{{#if logBusy}}
+          <p class="text-slate-500 text-xs mt-3">Loading…</p>
+{{/if}}
+{{#if not logBusy}}
+          <pre class="rounded-lg bg-slate-950 text-emerald-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
+{{/if}}
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

@@ -28,6 +28,8 @@ import { validateServer, normalizeServer } from "../validators/ServerValidator.j
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerSshKey } from "../models/ServerSshKey.js";
 import { ServerWorker } from "../models/ServerWorker.js";
+import { ServerCronJob } from "../models/ServerCronJob.js";
+import { ServerBackup } from "../models/ServerBackup.js";
 
 interface ServerRow {
     id: number;
@@ -220,6 +222,13 @@ export class ServerController {
         for (const w of (await ServerWorker.all()) as { id: number; server_id: number }[]) {
             if (w.server_id === server.id) await ServerWorker.delete(w.id);
         }
+
+        for (const c of (await ServerCronJob.all()) as { id: number; server_id: number }[]) {
+        if (c.server_id === server.id) await ServerCronJob.delete(c.id);
+        }
+
+        for (const b of (await ServerBackup.all()) as { id: number; server_id: number }[]) {
+             if (b.server_id === server.id) await ServerBackup.delete(b.id); }
 
         // ASSUMPTION: Model exposes delete(id).
         await Server.delete(server.id);
