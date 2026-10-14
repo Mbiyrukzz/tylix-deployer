@@ -62,6 +62,12 @@
     {
       "name": "user_id",
       "type": "integer"
+    },
+    {
+      "name": "root_password",
+      "type": "text",
+      "unique": false,
+      "system": false
     }
   ],
   "relations": [],

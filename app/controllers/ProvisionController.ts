@@ -45,7 +45,7 @@ interface ProvisionRow {
 }
 
 function toPublic(row: ProvisionRow) {
-    const { ssh_key, ...rest } = row;
+    const { ssh_key, root_password, ...rest } = row;
     return rest;
 }
 
