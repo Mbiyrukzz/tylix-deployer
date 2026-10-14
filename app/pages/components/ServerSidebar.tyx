@@ -49,10 +49,16 @@ template
       <span>CronJobs</span>
       <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
     </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Workers</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
+   {{#if active is "workers"}}
+    <a href="{{ '/servers/server-workers?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      Workers
+    </a>
+{{/if}}
+{{#if active is not "workers"}}
+    <a href="{{ '/servers/server-workers?id=' + serverId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      Workers
+    </a>
+{{/if}}
     {{#if active is "ssh-keys"}}
     <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       SSH Keys

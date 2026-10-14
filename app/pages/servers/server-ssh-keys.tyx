@@ -255,7 +255,7 @@ template
 
 {{#if mode is "new"}}
         <label class="block text-slate-500 text-xs mb-1" for="keyName">Name</label>
-        <input id="keyName" type="text" placeholder="e.g. Gloria's laptop" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-4" />
+        <input id="keyName" type="text" placeholder="e.g. Tylix's laptop" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-4" />
 
         <label class="block text-slate-500 text-xs mb-1" for="keyPublic">Public key <span class="text-slate-400">(leave empty to generate a new pair)</span></label>
         <textarea id="keyPublic" rows="3" placeholder="ssh-ed25519 AAAA…" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3 py-2 mb-4"></textarea>

@@ -1,0 +1,368 @@
+page ServerWorkers
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Workers"
+
+state
+  server: null
+  serverId: ""
+  loading: true
+  notFound: false
+  busy: false
+  error: ""
+  workers: []
+  users: []
+  usersError: ""
+  statusError: ""
+  statuses: {}
+  busyId: null
+  logId: null
+  logText: ""
+  logBusy: false
+  confirmId: null
+  poller: null
+
+action
+  fail(result, fallback) {
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    this.error = result.data?.error or fallback
+  }
+
+  fieldValue(id) {
+    const el = document.getElementById(id)
+    if not el {
+      return ""
+    }
+    return String(Reflect.get(el, "value") or "")
+  }
+
+  setField(id, value) {
+    const el = document.getElementById(id)
+    if el {
+      Reflect.set(el, "value", value)
+    }
+  }
+
+  preset(kind) {
+    if kind is "laravel" {
+      this.setField("wName", "Laravel queue")
+      this.setField("wCommand", "php artisan queue:work --sleep=3 --tries=3 --max-time=3600")
+    }
+    if kind is "reverb" {
+      this.setField("wName", "Laravel Reverb")
+      this.setField("wCommand", "php artisan reverb:start")
+    }
+    if kind is "tylix" {
+      this.setField("wName", "Tylix queue")
+      this.setField("wCommand", "npx tylix queue:work")
+    }
+  }
+
+  badge(w) {
+    const s = this.statuses[String(w.id)]
+    if not s {
+      return { text: "Not loaded", color: "#94a3b8" }
+    }
+    if s.running is s.total {
+      return { text: "Running " + s.running + "/" + s.total, color: "#10b981" }
+    }
+    if s.running is 0 {
+      return { text: s.states[0].toLowerCase(), color: "#f43f5e" }
+    }
+    return { text: "Running " + s.running + "/" + s.total, color: "#f59e0b" }
+  }
+
+  decorate(list) {
+    return list.map((w) => Object.assign({}, w, { badgeText: this.badge(w).text, badgeColor: this.badge(w).color }))
+  }
+
+  async loadWorkers() {
+    const r = await useApi("/api/servers/" + this.serverId + "/workers")
+    if r.ok and Array.isArray(r.data) {
+      this.workers = this.decorate(r.data)
+    }
+  }
+
+  async loadStatus() {
+    const r = await useApi("/api/servers/" + this.serverId + "/workers/status")
+    if r.ok {
+      this.statuses = r.data
+      this.statusError = ""
+      this.workers = this.decorate(this.workers)
+    } else if r.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.statusError = r.data?.error or "Couldn't read worker status."
+    }
+  }
+
+  async loadUsers() {
+    const r = await useApi("/api/servers/" + this.serverId + "/ssh-users")
+    if r.ok and Array.isArray(r.data) {
+      this.users = r.data
+      this.usersError = ""
+    } else {
+      this.users = [this.server.ssh_user]
+      this.usersError = r.data?.error or "Couldn't list users on the server."
+    }
+  }
+
+  async create() {
+    if this.busy {
+      return null
+    }
+    this.busy = true
+    this.error = ""
+
+    const body = {
+      name: this.fieldValue("wName"),
+      command: this.fieldValue("wCommand"),
+      directory: this.fieldValue("wDirectory"),
+      user: this.fieldValue("wUser"),
+      processes: this.fieldValue("wProcesses")
+    }
+
+    const result = await useApi("/api/servers/" + this.serverId + "/workers", { method: "POST", body: body })
+
+    if result.ok {
+      this.setField("wName", "")
+      this.setField("wCommand", "")
+      await this.loadWorkers()
+      await this.loadStatus()
+    } else {
+      this.fail(result, "Couldn't create the worker.")
+    }
+    this.busy = false
+  }
+
+  async act(id, what) {
+    if this.busyId {
+      return null
+    }
+    this.busyId = id
+    this.error = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/workers/" + id + "/" + what, { method: "POST" })
+
+    if not result.ok {
+      this.fail(result, "Couldn't " + what + " the worker.")
+    }
+    await this.loadStatus()
+    this.busyId = null
+  }
+
+  async viewLog(id) {
+    if this.logId is id {
+      this.logId = null
+      this.logText = ""
+      return null
+    }
+    this.logId = id
+    this.logBusy = true
+    this.logText = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/workers/" + id + "/log")
+    if result.ok {
+      this.logText = result.data.log
+    } else {
+      this.logText = result.data?.error or "Couldn't read the log."
+    }
+    this.logBusy = false
+  }
+
+  askRemove(id) {
+    this.confirmId = id
+  }
+
+  cancelRemove() {
+    this.confirmId = null
+  }
+
+  async remove(id) {
+    if this.busyId {
+      return null
+    }
+    this.busyId = id
+    this.error = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/workers/" + id, { method: "DELETE" })
+
+    if result.ok {
+      this.confirmId = null
+      if this.logId is id {
+        this.logId = null
+      }
+      await this.loadWorkers()
+    } else {
+      this.fail(result, "Couldn't remove the worker.")
+    }
+    this.busyId = null
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        this.loading = false
+        await this.loadWorkers()
+        await this.loadUsers()
+        await this.loadStatus()
+        if not this.poller {
+          this.poller = window.setInterval(() => this.loadStatus(), 15000)
+        }
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="workers" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Workers</h1>
+      <p class="text-slate-500 text-sm mb-6">Long-running processes kept alive by Supervisor: queue workers, Reverb, or any command.</p>
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">New worker</h2>
+
+        <p class="text-slate-500 text-xs mb-2">Start from a preset</p>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="{{ preset('laravel') }}" class="text-sm rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-slate-700 dark:text-slate-300 hover:border-emerald-500/50">Laravel queue</button>
+          <button onclick="{{ preset('reverb') }}" class="text-sm rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-slate-700 dark:text-slate-300 hover:border-emerald-500/50">Laravel Reverb</button>
+          <button onclick="{{ preset('tylix') }}" class="text-sm rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-slate-700 dark:text-slate-300 hover:border-emerald-500/50">Tylix queue</button>
+        </div>
+
+        <label class="block text-slate-500 text-xs mb-1" for="wName">Name</label>
+        <input id="wName" type="text" placeholder="e.g. Laravel queue" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-4" />
+
+        <label class="block text-slate-500 text-xs mb-1" for="wCommand">Command</label>
+        <input id="wCommand" type="text" placeholder="php artisan queue:work --sleep=3 --tries=3" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-4" />
+
+        <label class="block text-slate-500 text-xs mb-1" for="wDirectory">Directory</label>
+        <input id="wDirectory" type="text" placeholder="/home/tylix/example.com/current" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-4" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-500 text-xs mb-1" for="wUser">Run as user</label>
+            <select id="wUser" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2">
+{{#each u in users}}
+              <option value="{{ u }}">{{ u }}</option>
+{{/each}}
+            </select>
+{{#if usersError}}
+            <p class="text-amber-600 dark:text-amber-500 text-xs mt-1">{{ usersError }}</p>
+{{/if}}
+          </div>
+          <div>
+            <label class="block text-slate-500 text-xs mb-1" for="wProcesses">Processes</label>
+            <input id="wProcesses" type="number" min="1" max="20" value="1" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2" />
+          </div>
+        </div>
+
+        <div class="mt-5">
+{{#if busy}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not busy}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Create worker</button>
+{{/if}}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Active workers</h2>
+          <button onclick="{{ loadStatus() }}" class="text-sm text-emerald-700 dark:text-emerald-500 hover:underline font-medium">Refresh</button>
+        </div>
+        <p class="text-slate-500 text-sm mb-4">Status refreshes every 15 seconds.</p>
+
+{{#if statusError}}
+        <p role="alert" class="text-amber-600 dark:text-amber-500 text-sm mb-4">{{ statusError }}</p>
+{{/if}}
+
+{{#if workers.length is 0}}
+        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+          <p class="text-slate-500 text-sm">No workers yet.</p>
+        </div>
+{{/if}}
+
+{{#each w in workers}}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ w.name }}
+                <span class="text-xs font-semibold ml-2" style="color: {{ w.badgeColor }}">{{ w.badgeText }}</span>
+              </p>
+              <p class="text-slate-500 text-xs font-mono truncate">{{ w.command }}</p>
+              <p class="text-slate-400 text-xs font-mono truncate">{{ w.ssh_user }} · {{ w.directory }} · {{ w.processes }} process(es)</p>
+            </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <button onclick="{{ act(w.id, 'restart') }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Restart</button>
+              <button onclick="{{ act(w.id, 'stop') }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-amber-600 px-2 py-1">Stop</button>
+              <button onclick="{{ act(w.id, 'start') }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Start</button>
+              <button onclick="{{ viewLog(w.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Log</button>
+              <button onclick="{{ askRemove(w.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-2 py-1">Delete</button>
+            </div>
+          </div>
+
+{{#if confirmId is w.id}}
+          <div class="flex items-center gap-3 mt-3">
+            <button onclick="{{ remove(w.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-1.5 transition">Yes, delete it</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-1.5">Cancel</button>
+          </div>
+{{/if}}
+
+{{#if logId is w.id}}
+{{#if logBusy}}
+          <p class="text-slate-500 text-xs mt-3">Loading log…</p>
+{{/if}}
+{{#if not logBusy}}
+          <pre class="rounded-lg bg-slate-950 text-emerald-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
+{{/if}}
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>
