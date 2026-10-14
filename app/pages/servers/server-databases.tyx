@@ -1,0 +1,599 @@
+page ServerDatabases
+
+import { IconArrowLeft, IconX } from "tylix-icons"
+
+title "Databases"
+
+state
+  serverId: ""
+  server: null
+  loading: true
+  notFound: false
+  users: []
+  databases: []
+  modal: ""
+  busy: false
+  error: ""
+  actionError: ""
+  newUserName: ""
+  newDbName: ""
+  newDbUserId: 0
+  newDbCharset: "utf8mb4"
+  newDbCollation: "utf8mb4_unicode_ci"
+  collations: ["utf8mb4_unicode_ci", "utf8mb4_general_ci", "utf8mb4_0900_ai_ci", "utf8mb4_bin"]
+  credsTitle: ""
+  credsDb: ""
+  credsUser: ""
+  credsPass: ""
+  envText: ""
+  copied: false
+  confirmDb: 0
+  confirmUser: 0
+  confirmText: ""
+
+action
+  openModal(name) {
+    this.error = ""
+    this.actionError = ""
+    this.modal = name
+
+    if name is "user" {
+      this.newUserName = ""
+    }
+
+    if name is "database" {
+      this.newDbName = ""
+      this.newDbUserId = 0
+      this.pickCharset("utf8mb4")
+      if this.users.length is 1 {
+        this.newDbUserId = this.users[0].id
+      }
+    }
+  }
+
+  closeModal() {
+    this.modal = ""
+    this.error = ""
+    this.copied = false
+  }
+
+  pickUser(id) {
+    this.newDbUserId = id
+  }
+
+  pickCharset(cs) {
+    this.newDbCharset = cs
+    if cs is "latin1" {
+      this.collations = ["latin1_swedish_ci", "latin1_general_ci"]
+      this.newDbCollation = "latin1_swedish_ci"
+    } else {
+      this.collations = ["utf8mb4_unicode_ci", "utf8mb4_general_ci", "utf8mb4_0900_ai_ci", "utf8mb4_bin"]
+      this.newDbCollation = "utf8mb4_unicode_ci"
+    }
+  }
+
+  pickCollation(c) {
+    this.newDbCollation = c
+  }
+
+  buildEnv(dbName, userName, password) {
+    let text = "DB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_PORT=3306\n"
+    if dbName is not "" {
+      text = text + "DB_DATABASE=" + dbName + "\n"
+    }
+    text = text + "DB_USERNAME=" + userName + "\nDB_PASSWORD=" + password
+    return text
+  }
+
+  showCreds(title, dbName, userName, password) {
+    this.credsTitle = title
+    this.credsDb = dbName
+    this.credsUser = userName
+    this.credsPass = password
+    this.envText = this.buildEnv(dbName, userName, password)
+    this.copied = false
+    this.modal = "creds"
+  }
+
+  async copy(text) {
+    await navigator.clipboard.writeText(text)
+    this.copied = true
+  }
+
+  askDeleteDb(id) {
+    this.actionError = ""
+    this.confirmUser = 0
+    this.confirmText = ""
+    this.confirmDb = id
+  }
+
+  askDeleteUser(id) {
+    this.actionError = ""
+    this.confirmDb = 0
+    this.confirmText = ""
+    this.confirmUser = id
+  }
+
+  cancelDelete() {
+    this.confirmDb = 0
+    this.confirmUser = 0
+    this.confirmText = ""
+  }
+
+  async load() {
+    const result = await useApi("/api/servers/" + this.serverId + "/databases")
+
+    if result.ok {
+      this.users = result.data.users
+      this.databases = result.data.databases
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't load the databases."
+    }
+  }
+
+  async createUser() {
+    if this.busy {
+      return null
+    }
+
+    this.error = ""
+    this.busy = true
+
+    const result = await useApi("/api/servers/" + this.serverId + "/db-users", {
+      method: "POST",
+      body: { name: this.newUserName }
+    })
+
+    this.busy = false
+
+    if result.ok {
+      await this.load()
+      this.showCreds("Database user created", "", result.data.name, result.data.password)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.data?.errors {
+      this.error = Object.values(result.data.errors).map((m) => m[0]).join(" ")
+    } else {
+      this.error = result.data?.error or "Couldn't create the user."
+    }
+  }
+
+  async createDatabase() {
+    if this.busy {
+      return null
+    }
+
+    this.error = ""
+    this.busy = true
+
+    const result = await useApi("/api/servers/" + this.serverId + "/databases", {
+      method: "POST",
+      body: {
+        name: this.newDbName,
+        db_user_id: this.newDbUserId,
+        charset: this.newDbCharset,
+        collation: this.newDbCollation
+      }
+    })
+
+    this.busy = false
+
+    if result.ok {
+      await this.load()
+      this.showCreds("Database created", result.data.name, result.data.user_name, result.data.password)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.data?.errors {
+      this.error = Object.values(result.data.errors).map((m) => m[0]).join(" ")
+    } else {
+      this.error = result.data?.error or "Couldn't create the database."
+    }
+  }
+
+  async showUserPassword(userId, userName) {
+    this.actionError = ""
+    const result = await useApi("/api/db-users/" + userId + "/password")
+
+    if result.ok {
+      this.showCreds("Database user", "", userName, result.data.password)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't load the password."
+    }
+  }
+
+  async showDbEnv(userId, dbName, userName) {
+    this.actionError = ""
+    const result = await useApi("/api/db-users/" + userId + "/password")
+
+    if result.ok {
+      this.showCreds("Connection details", dbName, userName, result.data.password)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't load the connection details."
+    }
+  }
+
+  async resetPassword(userId, userName) {
+    if this.busy {
+      return null
+    }
+
+    this.actionError = ""
+    this.busy = true
+    const result = await useApi("/api/db-users/" + userId + "/password", { method: "POST" })
+    this.busy = false
+
+    if result.ok {
+      this.showCreds("New password set", "", userName, result.data.password)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't reset the password."
+    }
+  }
+
+  async deleteUser(id) {
+    if this.busy {
+      return null
+    }
+
+    this.actionError = ""
+    this.busy = true
+    const result = await useApi("/api/db-users/" + id, { method: "DELETE" })
+    this.busy = false
+
+    if result.ok {
+      this.confirmUser = 0
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't delete the user."
+      this.confirmUser = 0
+    }
+  }
+
+  async deleteDb(id, name) {
+    if this.busy {
+      return null
+    }
+
+    if this.confirmText is not name {
+      this.actionError = "Type the database name to confirm."
+      return null
+    }
+
+    this.actionError = ""
+    this.busy = true
+    const result = await useApi("/api/databases/" + id, { method: "DELETE" })
+    this.busy = false
+
+    if result.ok {
+      this.confirmDb = 0
+      this.confirmText = ""
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't delete the database."
+    }
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    this.serverId = id or ""
+
+    if not id {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + id)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        await this.load()
+        this.loading = false
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="databases" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Server not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Databases</h1>
+      <p class="text-slate-500 text-sm mb-8">MySQL users and databases on this server. Create a user first, then a database owned by that user.</p>
+
+{{#if actionError}}
+      <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4 mb-6">
+        <p class="text-rose-500 text-sm break-words">{{ actionError }}</p>
+      </div>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <div class="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium">Database users</h2>
+            <p class="text-slate-500 text-sm mt-1">Accounts your sites log in with. Passwords are generated and stored encrypted.</p>
+          </div>
+          <button onclick="{{ openModal('user') }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create user</button>
+        </div>
+
+{{#if users.length is 0}}
+        <p class="text-slate-500 text-sm">No database users yet.</p>
+{{/if}}
+
+        <div class="space-y-3">
+{{#each u in users}}
+          <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/60 px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-slate-800 dark:text-slate-200 font-semibold font-mono text-sm">{{ u.name }}</p>
+                <p class="text-slate-500 text-xs font-mono">@{{ u.host }}</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button onclick="{{ showUserPassword(u.id, u.name) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Show password</button>
+                <button onclick="{{ resetPassword(u.id, u.name) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Reset password</button>
+{{#if confirmUser is u.id}}
+                <button onclick="{{ deleteUser(u.id) }}" class="text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-full px-3 py-1.5 transition">Delete user</button>
+                <button onclick="{{ cancelDelete() }}" class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-2 py-1.5 transition-colors">Cancel</button>
+{{/if}}
+{{#if confirmUser is not u.id}}
+                <button onclick="{{ askDeleteUser(u.id) }}" class="text-xs text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-full px-3 py-1.5 hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+              </div>
+            </div>
+          </div>
+{{/each}}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium">Databases</h2>
+            <p class="text-slate-500 text-sm mt-1">Use "Connection details" to copy the values for a site's .env.</p>
+          </div>
+{{#if users.length is 0}}
+          <button disabled class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Create database</button>
+{{/if}}
+{{#if users.length is not 0}}
+          <button onclick="{{ openModal('database') }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create database</button>
+{{/if}}
+        </div>
+
+{{#if users.length is 0}}
+        <p class="text-slate-500 text-sm mb-3">Create a database user first.</p>
+{{/if}}
+{{#if databases.length is 0}}
+        <p class="text-slate-500 text-sm">No databases yet.</p>
+{{/if}}
+
+        <div class="space-y-3">
+{{#each d in databases}}
+          <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/60 px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-slate-800 dark:text-slate-200 font-semibold font-mono text-sm">{{ d.name }}</p>
+                <p class="text-slate-500 text-xs">Owner: <span class="font-mono">{{ d.user_name }}</span></p>
+{{#if d.collation}}
+                <p class="text-slate-500 text-xs font-mono">{{ d.charset }} / {{ d.collation }}</p>
+{{/if}}
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button onclick="{{ showDbEnv(d.db_user_id, d.name, d.user_name) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Connection details</button>
+{{#if confirmDb is not d.id}}
+                <button onclick="{{ askDeleteDb(d.id) }}" class="text-xs text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-full px-3 py-1.5 hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+              </div>
+            </div>
+{{#if confirmDb is d.id}}
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                value="{{ confirmText }}"
+                oninput="{{ confirmText = $event.target.value }}"
+                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                placeholder="Type {{ d.name }} to confirm"
+              />
+              <button onclick="{{ deleteDb(d.id, d.name) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Delete for good</button>
+              <button onclick="{{ cancelDelete() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+            </div>
+            <p class="text-rose-500 text-xs mt-2">This drops the database and all its data on the server. It can't be undone.</p>
+{{/if}}
+          </div>
+{{/each}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "user"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="user-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-md rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="user-title" class="text-slate-900 dark:text-slate-200 font-medium">Create database user</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">Lowercase letters, digits and underscores. A strong password is generated for you.</p>
+          <label for="db-user-name" class="block text-slate-500 text-xs mb-1.5">User name</label>
+          <input
+            id="db-user-name"
+            type="text"
+            autocomplete="off"
+            value="{{ newUserName }}"
+            oninput="{{ newUserName = $event.target.value }}"
+            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            placeholder="e.g. safari"
+          />
+{{#if error}}
+          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+          <div class="flex items-center justify-end gap-3">
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if busy}}
+            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not busy}}
+            <button onclick="{{ createUser() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create user</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "database"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="db-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="db-title" class="text-slate-900 dark:text-slate-200 font-medium">Create database</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">The chosen user gets full access to this database and nothing else.</p>
+          <label for="db-name" class="block text-slate-500 text-xs mb-1.5">Database name</label>
+          <input
+            id="db-name"
+            type="text"
+            autocomplete="off"
+            value="{{ newDbName }}"
+            oninput="{{ newDbName = $event.target.value }}"
+            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            placeholder="e.g. safarihub"
+          />
+          <p class="block text-slate-500 text-xs mb-1.5">Character set</p>
+          <div class="grid grid-cols-2 gap-2 mb-4">
+{{#if newDbCharset is "utf8mb4"}}
+            <button onclick="{{ pickCharset('utf8mb4') }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">utf8mb4</button>
+{{/if}}
+{{#if newDbCharset is not "utf8mb4"}}
+            <button onclick="{{ pickCharset('utf8mb4') }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">utf8mb4</button>
+{{/if}}
+{{#if newDbCharset is "latin1"}}
+            <button onclick="{{ pickCharset('latin1') }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">latin1</button>
+{{/if}}
+{{#if newDbCharset is not "latin1"}}
+            <button onclick="{{ pickCharset('latin1') }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">latin1</button>
+{{/if}}
+          </div>
+          <p class="block text-slate-500 text-xs mb-1.5">Collation</p>
+          <div class="grid grid-cols-1 gap-2 mb-4">
+{{#each c in collations}}
+{{#if newDbCollation is c}}
+            <button onclick="{{ pickCollation(c) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ c }}</button>
+{{/if}}
+{{#if newDbCollation is not c}}
+            <button onclick="{{ pickCollation(c) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ c }}</button>
+{{/if}}
+{{/each}}
+          </div>
+          <p class="block text-slate-500 text-xs mb-1.5">Owner</p>
+          <div class="grid grid-cols-1 gap-2 mb-4">
+{{#each u in users}}
+{{#if newDbUserId is u.id}}
+            <button onclick="{{ pickUser(u.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ u.name }}</button>
+{{/if}}
+{{#if newDbUserId is not u.id}}
+            <button onclick="{{ pickUser(u.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ u.name }}</button>
+{{/if}}
+{{/each}}
+          </div>
+{{#if error}}
+          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+          <div class="flex items-center justify-end gap-3">
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if busy}}
+            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not busy}}
+            <button onclick="{{ createDatabase() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create database</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "creds"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="creds-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 id="creds-title" class="text-slate-900 dark:text-slate-200 font-medium">{{ credsTitle }}</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 mb-4 text-sm">
+{{#if credsDb}}
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Database</p>
+              <p class="text-slate-800 dark:text-slate-200 font-mono break-all">{{ credsDb }}</p>
+            </div>
+{{/if}}
+            <div>
+              <p class="text-slate-500 text-xs mb-1">User</p>
+              <p class="text-slate-800 dark:text-slate-200 font-mono break-all">{{ credsUser }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Password</p>
+              <p class="text-slate-800 dark:text-slate-200 font-mono break-all">{{ credsPass }}</p>
+            </div>
+          </div>
+
+          <p class="text-slate-500 text-xs mb-2">Paste into the site's Environment (.env):</p>
+          <div class="rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-all mb-4">{{ envText }}</div>
+
+          <div class="flex items-center justify-between gap-3">
+{{#if copied}}
+            <span class="text-emerald-700 dark:text-emerald-500 text-sm">Copied.</span>
+{{/if}}
+{{#if not copied}}
+            <span></span>
+{{/if}}
+            <div class="flex items-center gap-3">
+              <button onclick="{{ copy(credsPass) }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Copy password</button>
+              <button onclick="{{ copy(envText) }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Copy .env</button>
+            </div>
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

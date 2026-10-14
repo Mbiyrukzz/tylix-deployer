@@ -78,7 +78,12 @@ export function defaultDeployScript(site: DeployRow): string {
     const build = s(site.build_command).trim();
     const npmInstall = "if [ -f package-lock.json ]; then npm ci; else npm install; fi";
     const cd = (dir: string) => (dir ? `cd "$SITE_ROOT/${dir}"` : `cd "$SITE_ROOT"`);
-    const composer = `php$PHP_VERSION "$(command -v composer)" install --no-dev --no-interaction --prefer-dist --optimize-autoloader`;
+
+    // Fails loudly if Composer is missing, so an empty path can never reach php.
+    // error_reporting=22527 is E_ALL minus E_DEPRECATED and E_STRICT: Ubuntu's
+    // packaged Composer is old and prints thousands of deprecation lines on PHP 8.4.
+    const composer = `COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }
+php$PHP_VERSION -d error_reporting=22527 "$COMPOSER_BIN" install --no-dev --no-interaction --prefer-dist --optimize-autoloader`;
 
     if (site.type === "laravel") {
         return [
@@ -96,7 +101,7 @@ export function defaultDeployScript(site: DeployRow): string {
     }
 
     if (runtime === "php") {
-        return [`cd "$SITE_ROOT"`, `if [ -f composer.json ]; then`, `  ${composer}`, `fi`].join("\n");
+        return [`cd "$SITE_ROOT"`, `if [ -f composer.json ]; then`, composer, `fi`].join("\n");
     }
 
     if (runtime === "mern") {
@@ -109,6 +114,16 @@ export function defaultDeployScript(site: DeployRow): string {
     const lines = [cd(s(site.app_directory)), npmInstall];
     if (build) lines.push(build);
     return lines.join("\n");
+}
+
+// The deploy_log column is TEXT-sized (64 KB in bytes). Keep the tail, because
+// that is where the error is, and stay under the limit even for 4-byte chars.
+// Sized for a MEDIUMTEXT column (16 MB); lower it if the column is plain TEXT.
+const MAX_LOG_CHARS = 200_000;
+
+function clip(text: string): string {
+    if (text.length <= MAX_LOG_CHARS) return text;
+    return "[... earlier output trimmed ...]\n" + text.slice(-MAX_LOG_CHARS);
 }
 
 function lastLine(stderr: string, stdout: string): string {
@@ -174,12 +189,31 @@ echo "Wrote $ENV_PATH"`,
 
     // ---- script ----
     const userScript = s(site.deploy_script).trim() !== "" ? s(site.deploy_script) : defaultDeployScript(site);
-    const runner = '#!/bin/bash\nset -eo pipefail\ncd "$SITE_ROOT"\n' + userScript.replace(/\r\n/g, "\n") + "\n";
+    // The ERR trap prints which command failed as the last stderr line, so the
+    // failure message names the real culprit (not whatever a tool printed last).
+    const runner =
+        `#!/bin/bash
+set -eEo pipefail
+trap 'echo "Command failed (exit $?): $BASH_COMMAND" >&2' ERR
+cd "$SITE_ROOT"
+` +
+        userScript.replace(/\r\n/g, "\n") +
+        "\n";
+
+    // Preflight: PHP sites need the chosen PHP version on the server. Say so
+    // plainly instead of failing with "php8.x: command not found" mid-script.
+    // (Composer is checked by the default script itself, only when it needs it.)
+    const phpCheck =
+        runtime === "php" && site.type !== "wordpress"
+            ? `
+command -v "php$PHP_VERSION" >/dev/null 2>&1 || { echo "PHP $PHP_VERSION is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }`
+            : "";
+
     phases.push({
         title: "Running the deployment script",
         script: shellScript(
             { ...base, SCRIPT_B64: Buffer.from(runner, "utf8").toString("base64") },
-            `
+            `${phpCheck}
 RUNNER="/home/$SITE_USER/.deploy-$SITE_USER.sh"
 printf %s "$SCRIPT_B64" | base64 -d | $SUDO tee "$RUNNER" >/dev/null
 $SUDO chown "$SITE_USER:$SITE_USER" "$RUNNER"
@@ -236,11 +270,29 @@ fi`,
 
 export class SiteDeployer {
     static start(siteId: number): void {
-        void SiteDeployer.run(siteId);
+        // run() handles its own errors; this is a last line of defence so a
+        // bug here can never become an unhandled rejection that kills the server.
+        SiteDeployer.run(siteId).catch((err) => {
+            console.error(`Deploy of site ${siteId} crashed:`, err);
+        });
     }
 
     static async run(siteId: number): Promise<void> {
         let log = "";
+
+        // Never throws. If the log can't be saved, the status still is.
+        const save = async (patch: Record<string, unknown>) => {
+            try {
+                await Site.update(siteId, { ...patch, deploy_log: clip(log) });
+            } catch (err) {
+                console.error(`Couldn't save the deploy log for site ${siteId}:`, err);
+                try {
+                    if (Object.keys(patch).length > 0) await Site.update(siteId, patch);
+                } catch (err2) {
+                    console.error(`Couldn't save the deploy status for site ${siteId}:`, err2);
+                }
+            }
+        };
 
         try {
             const site = (await Site.find(siteId)) as DeployRow | null;
@@ -264,17 +316,17 @@ export class SiteDeployer {
             const mask = (text: string) => (token ? text.split(token).join("***") : text);
             const target = serverTarget(server);
 
-            await Site.update(siteId, { deploy_status: "deploying", deploy_log: "" });
+            await save({ deploy_status: "deploying" });
 
             for (const phase of buildPhases(site, source)) {
                 log += `==> ${phase.title}\n`;
-                await Site.update(siteId, { deploy_log: log });
+                await save({});
 
                 const result = await sshExec(target, phase.script, DEPLOY_TIMEOUT_MS);
                 const out = mask([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
                 if (out) log += out + "\n";
                 log += "\n";
-                await Site.update(siteId, { deploy_log: log });
+                await save({});
 
                 if (result.code !== 0) {
                     throw new Error(mask(lastLine(result.stderr, result.stdout)));
@@ -282,15 +334,11 @@ export class SiteDeployer {
             }
 
             log += "Deployed successfully.\n";
-            await Site.update(siteId, {
-                deploy_status: "success",
-                deploy_log: log,
-                deployed_at: new Date().toISOString(),
-            });
+            await save({ deploy_status: "success", deployed_at: new Date().toISOString() });
         } catch (err) {
             const message = err instanceof Error ? err.message : "Deployment failed.";
             log += `\nFAILED: ${message}\n`;
-            await Site.update(siteId, { deploy_status: "failed", deploy_log: log });
+            await save({ deploy_status: "failed" });
         }
     }
 }

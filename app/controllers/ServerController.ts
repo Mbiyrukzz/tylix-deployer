@@ -18,6 +18,8 @@
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { Provision } from "../models/Provision.js";
+import { DbUser } from "../models/DbUser.js";
+import { ServerDatabase } from "../models/ServerDatabase.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 
@@ -183,6 +185,14 @@ export class ServerController {
             return res.json({
                 error: "This server was created by the deployer. Delete it from the Provisioned servers list so it is removed at Linode too.",
             });
+        }
+
+                // The machine's databases go with it; drop our records so nothing is orphaned.
+        for (const d of (await ServerDatabase.all()) as { id: number; server_id: number }[]) {
+            if (d.server_id === server.id) await ServerDatabase.delete(d.id);
+        }
+        for (const u of (await DbUser.all()) as { id: number; server_id: number }[]) {
+            if (u.server_id === server.id) await DbUser.delete(u.id);
         }
 
         // TODO (step 1.4c): refuse to delete while projects are attached.
