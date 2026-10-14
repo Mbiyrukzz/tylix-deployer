@@ -17,16 +17,32 @@ template
       Application
     </a>
 {{/if}}
+{{#if active is "deployment"}}
+    <a href="{{ '/servers/site-deploy?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      Deployment
+    </a>
+{{/if}}
+{{#if active is not "deployment"}}
+    <a href="{{ '/servers/site-deploy?id=' + siteId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      Deployment
+    </a>
+{{/if}}
+{{#if active is "ssl"}}
+    <a href="{{ '/servers/site-ssl?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      SSL
+    </a>
+{{/if}}
+{{#if active is not "ssl"}}
+    <a href="{{ '/servers/site-ssl?id=' + siteId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      SSL
+    </a>
+{{/if}}
     <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
       <span>Features</span>
       <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
     </span>
     <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
       <span>Commands</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>SSL</span>
       <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
     </span>
     <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">

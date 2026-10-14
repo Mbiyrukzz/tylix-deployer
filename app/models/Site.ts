@@ -23,6 +23,17 @@ export interface SiteAttributes {
     step: string;
     error: string;
     log: string;
+    deploy_script: string;
+    env_content: string;
+    deploy_status: string;
+    deploy_log: string;
+    deployed_at: string;
+    ssl_mode: string;
+    ssl_status: string;
+    ssl_email: string;
+    ssl_error: string;
+    ssl_log: string;
+    ssl_expires_at: string;
     created_at: string;
     updated_at: string;
 }
@@ -51,5 +62,16 @@ export class Site extends Model {
         "step",
         "error",
         "log",
+        "deploy_script",
+        "env_content",
+        "deploy_status",
+        "deploy_log",
+        "deployed_at",
+        "ssl_mode",
+        "ssl_status",
+        "ssl_email",
+        "ssl_error",
+        "ssl_log",
+        "ssl_expires_at",
     ];
 }

@@ -30,6 +30,19 @@ export const up = async (schema: Schema) => {
         table.text("error");
         table.text("log");
 
+        table.text("deploy_script");
+        table.text("env_content");
+        table.string("deploy_status");
+        table.text("deploy_log");
+        table.string("deployed_at");
+
+        table.string("ssl_mode");
+        table.string("ssl_status");
+        table.string("ssl_email");
+        table.text("ssl_error");
+        table.text("ssl_log");
+        table.string("ssl_expires_at");
+
         table.timestamps();
     });
 };

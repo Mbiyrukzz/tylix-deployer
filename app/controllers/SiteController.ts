@@ -5,6 +5,9 @@
  * Anything not owned answers 404, never 403. store() saves the row as
  * "pending", starts the provisioner in the background, and returns right
  * away so the browser can go to the site details page and watch progress.
+ *
+ * Deployment: the env is stored encrypted and only returned by
+ * deployment(). deploy() starts SiteDeployer in the background.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -14,6 +17,8 @@ import { SourceProvider } from "../models/SourceProvider.js";
 import { validateSite, normalizeSite } from "../validators/SiteValidator.js";
 import type { NormalizedSite } from "../validators/SiteValidator.js";
 import { SiteProvisioner } from "../services/SiteProvisioner.js";
+import { SiteDeployer, canDeploy, defaultDeployScript, envPathFor } from "../services/SiteDeployer.js";
+import { CryptoService } from "../services/CryptoService.js";
 import { needsPort } from "../services/SiteTypes.js";
 
 interface SiteRow {
@@ -39,10 +44,18 @@ interface SiteRow {
     step: string;
     error: string;
     log: string;
+    deploy_script: string;
+    env_content: string;
+    deploy_status: string;
+    deploy_log: string;
+    deployed_at: string;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;
 }
+
+const MAX_TEXT = 20_000;
+const STALE_DEPLOY_MS = 30 * 60_000;
 
 function parseAliases(raw: unknown): string[] {
     try {
@@ -53,15 +66,25 @@ function parseAliases(raw: unknown): string[] {
     }
 }
 
-/** The log can get big, so only the details endpoint sends it. */
+/** The log can get big, so only the details endpoint sends it. Secrets never leave here. */
 function toPublic(row: SiteRow, withLog = false) {
-    const { log, aliases, ...rest } = row;
+    const { log, aliases, env_content, deploy_script, deploy_log, ...rest } = row;
     return {
         ...rest,
         aliases: parseAliases(aliases),
         install_deps: Boolean(rest.install_deps),
+        deploy_status: String(rest.deploy_status || "idle"),
         ...(withLog ? { log: String(log ?? "") } : {}),
     };
+}
+
+function readEnv(row: SiteRow): string {
+    if (!row.env_content) return "";
+    try {
+        return CryptoService.decrypt(String(row.env_content));
+    } catch {
+        return "";
+    }
 }
 
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
@@ -180,6 +203,11 @@ export class SiteController {
             step: "pending",
             error: "",
             log: "",
+            deploy_script: "",
+            env_content: "",
+            deploy_status: "idle",
+            deploy_log: "",
+            deployed_at: "",
         })) as SiteRow | null;
 
         if (!site) {
@@ -203,5 +231,106 @@ export class SiteController {
     async destroy(_req: TylixRequest, res: TylixResponse) {
         res.status(501);
         return res.json({ error: "Deleting sites isn't supported yet." });
+    }
+
+    // ---- deployment ----
+
+    /** GET /api/sites/:id/deployment: script, env, status and log for the Deployment tab. */
+    async deployment(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+
+        const defaultScript = defaultDeployScript(site);
+
+        return res.json({
+            can_deploy: canDeploy(site),
+            deploy_script: String(site.deploy_script || "") || defaultScript,
+            default_script: defaultScript,
+            env: readEnv(site),
+            env_path: envPathFor(site),
+            deploy_status: String(site.deploy_status || "idle"),
+            deploy_log: String(site.deploy_log ?? ""),
+            deployed_at: String(site.deployed_at ?? ""),
+        });
+    }
+
+    /** PUT /api/sites/:id/deployment: body { deploy_script?, env? }. Omitted fields are left alone. */
+    async saveDeployment(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+
+        const body = (req.body ?? {}) as Record<string, unknown>;
+        const errors: Record<string, string[]> = {};
+        const patch: Record<string, unknown> = {};
+
+        const check = (field: string, label: string): string | null => {
+            const raw = body[field];
+            if (raw === undefined) return null;
+            if (typeof raw !== "string") {
+                errors[field] = [`${label} must be text.`];
+                return null;
+            }
+            const value = raw.replace(/\r\n/g, "\n");
+            if (value.includes("\0")) {
+                errors[field] = [`${label} contains an invalid character.`];
+                return null;
+            }
+            if (value.length > MAX_TEXT) {
+                errors[field] = [`${label} is too long (max ${MAX_TEXT} characters).`];
+                return null;
+            }
+            return value;
+        };
+
+        const script = check("deploy_script", "The deployment script");
+        const env = check("env", "The environment");
+
+        if (Object.keys(errors).length > 0) {
+            res.status(422);
+            return res.json({ errors });
+        }
+
+        if (script !== null) {
+            // Saving the untouched default stores nothing, so later default improvements still apply.
+            patch.deploy_script = script.trim() === defaultDeployScript(site).trim() ? "" : script;
+        }
+        if (env !== null) {
+            patch.env_content = env.trim() === "" ? "" : CryptoService.encrypt(env);
+        }
+
+        if (Object.keys(patch).length > 0) {
+            await Site.update(site.id, patch);
+        }
+
+        res.status(204);
+        return res.end();
+    }
+
+    /** POST /api/sites/:id/deploy */
+    async deploy(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+
+        if (site.status !== "ready") {
+            res.status(409);
+            return res.json({ error: "The site isn't ready yet. Wait for it to finish creating." });
+        }
+
+        if (!canDeploy(site)) {
+            res.status(422);
+            return res.json({ error: "This site has no repository to deploy from." });
+        }
+
+        const age = Date.now() - new Date(site.updated_at).getTime();
+        if (site.deploy_status === "deploying" && age < STALE_DEPLOY_MS) {
+            res.status(409);
+            return res.json({ error: "A deployment is already running." });
+        }
+
+        await Site.update(site.id, { deploy_status: "deploying", deploy_log: "" });
+        SiteDeployer.start(site.id);
+
+        res.status(202);
+        return res.json({ deploy_status: "deploying" });
     }
 }

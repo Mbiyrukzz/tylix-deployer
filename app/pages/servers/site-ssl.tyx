@@ -1,0 +1,409 @@
+page SiteSsl
+
+import { IconArrowLeft, IconX } from "tylix-icons"
+
+title "SSL"
+
+state
+  siteId: ""
+  serverId: ""
+  site: null
+  loading: true
+  notFound: false
+  mode: "none"
+  modeLabel: "None"
+  status: "idle"
+  sslError: ""
+  sslLog: ""
+  domainText: ""
+  expiresText: ""
+  daysLeft: 0
+  emailInput: ""
+  certText: ""
+  keyText: ""
+  modal: ""
+  busy: false
+  error: ""
+  timer: 0
+
+action
+  applyStatus(d) {
+    this.mode = d.mode
+    this.status = d.status
+    this.sslError = d.error
+    this.sslLog = d.log
+    this.domainText = d.domains.join(", ")
+    this.expiresText = d.expires_at ? d.expires_at.slice(0, 10) : ""
+    this.daysLeft = d.expires_at ? Math.ceil((Date.parse(d.expires_at) - Date.now()) / 86400000) : 0
+    this.busy = false
+
+    if d.status is "working" {
+      this.busy = true
+    }
+
+    if d.mode is "letsencrypt" {
+      this.modeLabel = "Let's Encrypt"
+    } else if d.mode is "custom" {
+      this.modeLabel = "Custom certificate"
+    } else {
+      this.modeLabel = "None"
+    }
+  }
+
+  openModal(name) {
+    this.error = ""
+    this.modal = name
+  }
+
+  closeModal() {
+    this.modal = ""
+    this.error = ""
+  }
+
+  async poll() {
+    const result = await useApi("/api/sites/" + this.siteId + "/ssl")
+
+    if result.ok {
+      this.applyStatus(result.data)
+      if result.data.status is not "working" {
+        window.clearInterval(this.timer)
+      }
+    }
+  }
+
+  startPolling() {
+    window.clearInterval(this.timer)
+    this.timer = window.setInterval(() => this.poll(), 2000)
+  }
+
+  async send(url, body) {
+    this.error = ""
+    this.busy = true
+
+    const result = await useApi(url, { method: "POST", body: body })
+
+    if result.ok {
+      this.status = "working"
+      this.sslError = ""
+      this.sslLog = ""
+      this.modal = "log"
+      this.keyText = ""
+      this.startPolling()
+      return null
+    }
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.data?.errors {
+      this.error = Object.values(result.data.errors).map((m) => m[0]).join(" ")
+    } else {
+      this.error = result.data?.error or "Something went wrong."
+    }
+
+    this.busy = false
+  }
+
+  enableLetsEncrypt() {
+    if this.busy {
+      return null
+    }
+    this.send("/api/sites/" + this.siteId + "/ssl", { mode: "letsencrypt", email: this.emailInput })
+  }
+
+  installCustom() {
+    if this.busy {
+      return null
+    }
+    this.send("/api/sites/" + this.siteId + "/ssl", { mode: "custom", certificate: this.certText, private_key: this.keyText })
+  }
+
+  disable() {
+    if this.busy {
+      return null
+    }
+    if not window.confirm("Turn HTTPS off for this site? It will be served over HTTP only.") {
+      return null
+    }
+    this.send("/api/sites/" + this.siteId + "/ssl/disable", {})
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    this.siteId = id or ""
+
+    if not id {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/sites/" + id)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.site = result.data
+        this.serverId = "" + result.data.server_id
+
+        const ssl = await useApi("/api/sites/" + id + "/ssl")
+        if ssl.ok {
+          this.applyStatus(ssl.data)
+          this.emailInput = ssl.data.email
+
+          if ssl.data.status is "working" {
+            this.startPolling()
+          }
+        }
+
+        this.loading = false
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-10 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if site}}
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Sites
+      </a>
+
+      <div class="mb-8">
+        <div class="flex items-center gap-3 mb-2">
+          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
+{{#if status is "working"}}
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
+          </span>
+{{/if}}
+{{#if status is "failed"}}
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+          </span>
+{{/if}}
+{{#if status is "active"}}
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Secured
+          </span>
+{{/if}}
+        </div>
+        <p class="text-slate-500 text-sm">SSL</p>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-8">
+        <SiteSidebar active="ssl" siteId="{{ siteId }}" />
+
+        <div class="min-w-0 flex-1">
+
+{{#if error}}
+{{#if modal is ""}}
+          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+            <p class="text-rose-500 text-sm break-words">{{ error }}</p>
+          </div>
+{{/if}}
+{{/if}}
+
+{{#if status is "failed"}}
+          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+            <p class="text-rose-500 text-sm font-medium mb-1">The last SSL change failed</p>
+            <p class="text-rose-500 text-sm break-words">{{ sslError }}</p>
+          </div>
+{{/if}}
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-5">HTTPS</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Method</p>
+                <p class="text-slate-800 dark:text-slate-200 text-sm">{{ modeLabel }}</p>
+              </div>
+              <div class="col-span-2">
+                <p class="text-slate-500 text-xs mb-1">Domains</p>
+                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ domainText }}</p>
+              </div>
+{{#if expiresText}}
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Expires</p>
+                <p class="text-slate-800 dark:text-slate-200 text-sm">{{ expiresText }} ({{ daysLeft }} days)</p>
+              </div>
+{{/if}}
+{{#if mode is "letsencrypt"}}
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Renewal</p>
+                <p class="text-slate-800 dark:text-slate-200 text-sm">Automatic</p>
+              </div>
+{{/if}}
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Certificate</h2>
+            <p class="text-slate-500 text-sm mb-5">Get a free certificate from Let's Encrypt, or install one you bought.</p>
+
+            <div class="flex flex-wrap items-center gap-3">
+{{#if busy}}
+              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Working…</button>
+{{/if}}
+{{#if not busy}}
+              <button onclick="{{ openModal('le') }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Let's Encrypt</button>
+              <button onclick="{{ openModal('custom') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Custom certificate</button>
+{{#if mode is not "none"}}
+              <button onclick="{{ disable() }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-2.5 hover:bg-rose-500/5 transition-colors">Disable HTTPS</button>
+{{/if}}
+{{/if}}
+              <button onclick="{{ openModal('log') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">SSL log</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "le"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="le-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="le-title" class="text-slate-900 dark:text-slate-200 font-medium">Let's Encrypt</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">One certificate covering {{ domainText }}. The domain and every alias must already point at this server (DNS), and port 80 must be reachable. It renews automatically.</p>
+
+          <label for="le-email" class="block text-slate-500 text-xs mb-1.5">Email for expiry notices</label>
+          <input
+            id="le-email"
+            type="text"
+            autocomplete="off"
+            value="{{ emailInput }}"
+            oninput="{{ emailInput = $event.target.value }}"
+            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            placeholder="you@example.com"
+          />
+
+{{#if error}}
+          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+          <div class="flex items-center justify-end gap-3">
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if busy}}
+            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Working…</button>
+{{/if}}
+{{#if not busy}}
+            <button onclick="{{ enableLetsEncrypt() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Get certificate</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "custom"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="custom-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="custom-title" class="text-slate-900 dark:text-slate-200 font-medium">Custom certificate</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">Paste the certificate (your certificate first, then any intermediates) and its private key, both in PEM format. The server checks that they match before anything is switched on. The key is sent to the server and is not stored by tylix-deploy.</p>
+
+          <label for="custom-cert" class="block text-slate-500 text-xs mb-1.5">Certificate</label>
+          <textarea
+            id="custom-cert"
+            rows="7"
+            spellcheck="false"
+            autocomplete="off"
+            value="{{ certText }}"
+            oninput="{{ certText = $event.target.value }}"
+            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 resize-none transition-colors"
+            placeholder="-----BEGIN CERTIFICATE-----"
+          ></textarea>
+
+          <label for="custom-key" class="block text-slate-500 text-xs mb-1.5">Private key</label>
+          <textarea
+            id="custom-key"
+            rows="7"
+            spellcheck="false"
+            autocomplete="off"
+            value="{{ keyText }}"
+            oninput="{{ keyText = $event.target.value }}"
+            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 resize-none transition-colors"
+            placeholder="-----BEGIN PRIVATE KEY-----"
+          ></textarea>
+
+{{#if error}}
+          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+          <div class="flex items-center justify-end gap-3">
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if busy}}
+            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Working…</button>
+{{/if}}
+{{#if not busy}}
+            <button onclick="{{ installCustom() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Install certificate</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "log"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="ssl-log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <h3 id="ssl-log-title" class="text-slate-900 dark:text-slate-200 font-medium">SSL log</h3>
+{{#if status is "working"}}
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
+              </span>
+{{/if}}
+{{#if status is "active"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Secured</span>
+{{/if}}
+{{#if status is "failed"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Failed</span>
+{{/if}}
+            </div>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+{{#if sslLog}}
+          <div class="max-h-[60vh] overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ sslLog }}</div>
+{{/if}}
+{{#if not sslLog}}
+          <p class="text-slate-500 text-sm">Nothing logged yet.</p>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

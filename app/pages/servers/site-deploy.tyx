@@ -1,0 +1,396 @@
+page SiteDeploy
+
+import { IconArrowLeft, IconX } from "tylix-icons"
+
+title "Deployment"
+
+state
+  siteId: ""
+  serverId: ""
+  site: null
+  loading: true
+  notFound: false
+  canDeploy: false
+  scriptText: ""
+  defaultScript: ""
+  envText: ""
+  envPath: ""
+  deployStatus: "idle"
+  deployLog: ""
+  deployedText: ""
+  modal: ""
+  busy: false
+  saving: false
+  saved: false
+  error: ""
+  timer: 0
+
+action
+  applyStatus(data) {
+    this.deployStatus = data.deploy_status
+    this.deployLog = data.deploy_log
+    this.deployedText = data.deployed_at ? data.deployed_at.slice(0, 16).replace("T", " ") : ""
+    this.busy = false
+    if data.deploy_status is "deploying" {
+      this.busy = true
+    }
+  }
+
+  openModal(name) {
+    this.error = ""
+    this.saved = false
+    this.modal = name
+  }
+
+  closeModal() {
+    this.modal = ""
+    this.error = ""
+  }
+
+  async poll() {
+    const result = await useApi("/api/sites/" + this.siteId + "/deployment")
+
+    if result.ok {
+      this.applyStatus(result.data)
+      if result.data.deploy_status is not "deploying" {
+        window.clearInterval(this.timer)
+      }
+    }
+  }
+
+  startPolling() {
+    window.clearInterval(this.timer)
+    this.timer = window.setInterval(() => this.poll(), 2000)
+  }
+
+  resetScript() {
+    this.scriptText = this.defaultScript
+  }
+
+  async persist() {
+    const result = await useApi("/api/sites/" + this.siteId + "/deployment", {
+      method: "PUT",
+      body: {
+        deploy_script: this.scriptText,
+        env: this.envText
+      }
+    })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return false
+    }
+
+    if result.ok {
+      return true
+    }
+
+    if result.data?.errors {
+      this.error = Object.values(result.data.errors).map((m) => m[0]).join(" ")
+    } else {
+      this.error = result.data?.error or "Couldn't save."
+    }
+
+    return false
+  }
+
+  async save() {
+    if this.saving {
+      return null
+    }
+
+    this.error = ""
+    this.saved = false
+    this.saving = true
+
+    const ok = await this.persist()
+    if ok {
+      this.saved = true
+      this.modal = ""
+    }
+
+    this.saving = false
+  }
+
+  async deploy() {
+    if this.busy {
+      return null
+    }
+
+    this.error = ""
+    this.saved = false
+    this.busy = true
+
+    const ok = await this.persist()
+    if not ok {
+      this.busy = false
+      return null
+    }
+
+    const result = await useApi("/api/sites/" + this.siteId + "/deploy", { method: "POST" })
+
+    if result.ok {
+      this.deployStatus = "deploying"
+      this.deployLog = ""
+      this.modal = "log"
+      this.startPolling()
+      return null
+    }
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    this.error = result.data?.error or "Couldn't start the deployment."
+    this.busy = false
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    this.siteId = id or ""
+
+    if not id {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/sites/" + id)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.site = result.data
+        this.serverId = "" + result.data.server_id
+
+        const config = await useApi("/api/sites/" + id + "/deployment")
+        if config.ok {
+          this.canDeploy = config.data.can_deploy
+          this.scriptText = config.data.deploy_script
+          this.defaultScript = config.data.default_script
+          this.envText = config.data.env
+          this.envPath = config.data.env_path
+          this.applyStatus(config.data)
+
+          if config.data.deploy_status is "deploying" {
+            this.startPolling()
+          }
+        }
+
+        this.loading = false
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-10 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if site}}
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Sites
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-8">
+        <div class="min-w-0">
+          <div class="flex items-center gap-3 mb-2">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
+{{#if deployStatus is "success"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed
+            </span>
+{{/if}}
+{{#if deployStatus is "failed"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+            </span>
+{{/if}}
+{{#if deployStatus is "deploying"}}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Deploying
+            </span>
+{{/if}}
+          </div>
+          <p class="text-slate-500 text-sm">
+            Deployment
+{{#if deployedText}}
+            &middot; last deployed {{ deployedText }} UTC
+{{/if}}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-8">
+        <SiteSidebar active="deployment" siteId="{{ siteId }}" />
+
+        <div class="min-w-0 flex-1">
+
+{{#if error}}
+{{#if modal is ""}}
+          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+            <p class="text-rose-500 text-sm break-words">{{ error }}</p>
+          </div>
+{{/if}}
+{{/if}}
+
+{{#if not canDeploy}}
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5">
+            <p class="text-slate-800 dark:text-slate-200 text-sm">This site has no repository, so there is nothing to deploy.</p>
+          </div>
+{{/if}}
+
+{{#if canDeploy}}
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Deploy</h2>
+            <p class="text-slate-500 text-sm mb-5">Pulls the latest code, writes the environment, runs the deployment script and restarts the app.</p>
+
+            <div class="flex flex-wrap items-center gap-3">
+{{#if busy}}
+              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Deploying…</button>
+{{/if}}
+{{#if not busy}}
+              <button onclick="{{ deploy() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Deploy now</button>
+{{/if}}
+              <button onclick="{{ openModal('script') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Deployment script</button>
+{{#if envPath}}
+              <button onclick="{{ openModal('env') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Environment (.env)</button>
+{{/if}}
+              <button onclick="{{ openModal('log') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Deployment log</button>
+            </div>
+
+{{#if saved}}
+            <p class="text-emerald-700 dark:text-emerald-500 text-sm mt-4">Saved.</p>
+{{/if}}
+          </div>
+{{/if}}
+
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "script"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="script-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="script-title" class="text-slate-900 dark:text-slate-200 font-medium">Deployment script</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">Runs as the isolated user after the latest code is pulled, starting in the site folder. A failing command stops the deployment. Available variables: <span class="font-mono">$SITE_ROOT $DOMAIN $BRANCH $PHP_VERSION $APP_DIR $BACKEND_DIR $PORT</span>.</p>
+          <textarea
+            rows="16"
+            spellcheck="false"
+            autocomplete="off"
+            value="{{ scriptText }}"
+            oninput="{{ scriptText = $event.target.value }}"
+            class="w-full mb-4 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 resize-y"
+          ></textarea>
+{{#if error}}
+          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+          <div class="flex items-center justify-between gap-3">
+            <button onclick="{{ resetScript() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Reset to default</button>
+            <div class="flex items-center gap-3">
+              <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if saving}}
+              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Saving…</button>
+{{/if}}
+{{#if not saving}}
+              <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Save</button>
+{{/if}}
+            </div>
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "env"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="env-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="env-title" class="text-slate-900 dark:text-slate-200 font-medium">Environment</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">Written to <span class="font-mono break-all">{{ envPath }}</span> on every deploy (permissions 600). Stored encrypted. Leave empty to keep the file on the server as it is.</p>
+          <textarea
+            rows="14"
+            spellcheck="false"
+            autocomplete="off"
+            value="{{ envText }}"
+            oninput="{{ envText = $event.target.value }}"
+            class="w-full mb-4 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 resize-y"
+            placeholder="APP_ENV=production"
+          ></textarea>
+{{#if error}}
+          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+          <div class="flex items-center justify-end gap-3">
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if saving}}
+            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Saving…</button>
+{{/if}}
+{{#if not saving}}
+            <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Save</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "log"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <h3 id="log-title" class="text-slate-900 dark:text-slate-200 font-medium">Deployment log</h3>
+{{#if deployStatus is "deploying"}}
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Deploying
+              </span>
+{{/if}}
+{{#if deployStatus is "success"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Deployed</span>
+{{/if}}
+{{#if deployStatus is "failed"}}
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Failed</span>
+{{/if}}
+            </div>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+{{#if deployLog}}
+          <div class="max-h-[60vh] overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ deployLog }}</div>
+{{/if}}
+{{#if not deployLog}}
+          <p class="text-slate-500 text-sm">No deployment yet.</p>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

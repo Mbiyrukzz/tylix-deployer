@@ -24,6 +24,7 @@ import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
 import { getType, isPhp } from "./SiteTypes.js";
+import { serverTarget } from "./Shell.js";
 
 interface SiteRow {
     id: number;
@@ -553,8 +554,7 @@ export class SiteProvisioner {
                 await Site.update(siteId, { step: phase.step });
                 log += `==> ${phase.title}\n`;
 
-                const result = await sshExec(server as never, phase.script);
-                const out = mask([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
+const result = await sshExec(serverTarget(server as never), phase.script, 20 * 60_000);                const out = mask([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
                 if (out) log += out + "\n";
                 log += "\n";
                 await Site.update(siteId, { log });
