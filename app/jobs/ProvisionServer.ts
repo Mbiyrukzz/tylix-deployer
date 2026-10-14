@@ -51,6 +51,7 @@ interface ProvisionRow {
     error: string;
     ssh_key: string;
     server_id: number;
+        root_password: string;
     [key: string]: unknown;
 }
 
@@ -136,6 +137,13 @@ export const ProvisionServer = {
             }
             const privateKey = CryptoService.decrypt(row.ssh_key);
 
+
+            if (!row.root_password) {
+                await save(id, { root_password: CryptoService.encrypt(generateRootPassword()) });
+                row = await load(id);
+            }
+            const rootPassword = CryptoService.decrypt(row.root_password);
+
             // 2. Create (or adopt) the instance.
             if (!Number(row.instance_id)) {
                 await save(id, { step: "creating" });
@@ -153,7 +161,7 @@ export const ProvisionServer = {
                         type: row.plan,
                         image: row.image,
                         label: row.name,
-                        rootPassword: generateRootPassword(),
+                        rootPassword,
                         authorizedKeys: [await derivePublicKey(privateKey)],
                         tags: [tag, "tylix-deploy"],
                     });

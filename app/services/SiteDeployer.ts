@@ -132,6 +132,20 @@ function lastLine(stderr: string, stdout: string): string {
     return (lines[lines.length - 1] ?? "Command failed.").slice(0, 300);
 }
 
+/** Same pool file the site-creation job writes (socket name matches the nginx vhost). */
+function fpmPool(site: DeployRow): string {
+    return `[${site.isolated_user}]
+user = ${site.isolated_user}
+group = ${site.isolated_user}
+listen = /run/php/php${s(site.php_version)}-fpm-${site.isolated_user}.sock
+listen.owner = www-data
+listen.group = www-data
+pm = ondemand
+pm.max_children = 10
+pm.process_idle_timeout = 10s
+`;
+}
+
 function buildPhases(site: DeployRow, source: { kind: string; token: string } | null): Phase[] {
     const runtime = getType(site.type)?.runtime ?? "static";
     const root = `/home/${site.isolated_user}/${site.domain}`;
@@ -183,6 +197,39 @@ printf %s "$ENV_B64" | base64 -d | $SUDO tee "$ENV_PATH" >/dev/null
 $SUDO chown "$SITE_USER:$SITE_USER" "$ENV_PATH"
 $SUDO chmod 600 "$ENV_PATH"
 echo "Wrote $ENV_PATH"`,
+            ),
+        });
+    }
+
+    // ---- php-fpm pool ----
+    // Self-healing, and deliberately BEFORE the build: nginx sends PHP to this
+    // site's own FPM socket, so a missing pool means a 502 no matter what the
+    // app does. Doing this first means a failing build can't leave it broken.
+    if (runtime === "php") {
+        phases.push({
+            title: "Checking PHP-FPM",
+            script: shellScript(
+                { ...base, POOL_B64: Buffer.from(fpmPool(site), "utf8").toString("base64") },
+                `
+if [ ! -d "/etc/php/$PHP_VERSION/fpm" ]; then
+  echo "PHP-FPM $PHP_VERSION is not installed on this server. Install PHP $PHP_VERSION from the server's Packages page, then deploy again." >&2
+  exit 1
+fi
+POOL="/etc/php/$PHP_VERSION/fpm/pool.d/$SITE_USER.conf"
+CREATED=0
+if [ ! -f "$POOL" ]; then
+  printf %s "$POOL_B64" | base64 -d | $SUDO tee "$POOL" >/dev/null
+  CREATED=1
+  echo "Created the PHP-FPM pool for $SITE_USER"
+fi
+$SUDO "php-fpm$PHP_VERSION" -t
+if [ "$CREATED" = "1" ]; then
+  $SUDO systemctl restart "php$PHP_VERSION-fpm"
+fi
+echo "--- PHP-FPM sockets"
+ls -l /run/php/ 2>&1 || true
+echo "--- recent nginx errors"
+$SUDO tail -n 15 /var/log/nginx/error.log 2>&1 || true`,
             ),
         });
     }
@@ -255,12 +302,8 @@ fi`,
             script: shellScript(
                 base,
                 `
-if [ -d "/etc/php/$PHP_VERSION/fpm" ]; then
-  $SUDO systemctl reload "php$PHP_VERSION-fpm"
-  echo "PHP-FPM reloaded"
-else
-  echo "PHP $PHP_VERSION FPM not found, skipping reload."
-fi`,
+$SUDO systemctl reload "php$PHP_VERSION-fpm"
+echo "PHP-FPM reloaded"`,
             ),
         });
     }

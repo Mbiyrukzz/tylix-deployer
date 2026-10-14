@@ -1,6 +1,6 @@
 page ServerList
 
-import { IconDatabase, IconArrowLeft } from "tylix-icons"
+import { IconDatabase, IconArrowLeft, IconX } from "tylix-icons"
 
 title "Servers"
 
@@ -20,6 +20,12 @@ state
   rows: []
   onlineCount: 0
   busyCount: 0
+  pwOpen: false
+  pwName: ""
+  pwIp: ""
+  pwValue: ""
+  pwCopied: false
+  pwBusy: false
 
 action
   addServer(server) {
@@ -107,6 +113,40 @@ action
     } else {
       this.actionError = result.data?.error or "Couldn't delete that server."
     }
+  }
+
+    async showRootPassword(id, name, ip) {
+    if this.pwBusy {
+      return null
+    }
+
+    this.pwBusy = true
+    this.actionError = ""
+    this.pwCopied = false
+    this.pwName = name
+    this.pwIp = ip
+
+    const result = await useApi("/api/provisions/" + id + "/root-password")
+    this.pwBusy = false
+
+    if result.ok {
+      this.pwValue = result.data.password
+      this.pwOpen = true
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't load the root password."
+    }
+  }
+
+  closePassword() {
+    this.pwOpen = false
+    this.pwValue = ""
+  }
+
+  async copyPassword() {
+    await navigator.clipboard.writeText(this.pwValue)
+    this.pwCopied = true
   }
 
 onMount
@@ -259,6 +299,7 @@ template
               </span>
 {{/if}}
               <p class="text-slate-500 text-xs mt-1">{{ pr.label }}</p>
+              <button onclick="{{ showRootPassword(pr.id, pr.name, pr.ip) }}" class="mt-2 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Root password</button>
             </div>
           </div>
 
@@ -308,5 +349,36 @@ template
 
     </div>
     </div>
+    {{#if pwOpen}}
+      <div role="dialog" aria-modal="true" aria-labelledby="pw-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-md rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 id="pw-title" class="text-slate-900 dark:text-slate-200 font-medium">Root password for {{ pwName }}</h3>
+            <button onclick="{{ closePassword() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+{{#if pwIp}}
+          <p class="text-slate-500 text-xs mb-1">Connect with</p>
+          <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all mb-4">ssh root@{{ pwIp }}</p>
+{{/if}}
+{{#if not pwIp}}
+          <p class="text-slate-500 text-xs mb-4">The IP address appears once the machine has booted.</p>
+{{/if}}
+          <p class="text-slate-500 text-xs mb-1">Password</p>
+          <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all mb-4">{{ pwValue }}</p>
+          <p class="text-slate-500 text-xs mb-4">Anyone with this password and the server's IP can log in as root. Keep it private. Prefer an SSH key where you can.</p>
+          <div class="flex items-center justify-between gap-3">
+{{#if pwCopied}}
+            <span class="text-emerald-700 dark:text-emerald-500 text-sm">Copied.</span>
+{{/if}}
+{{#if not pwCopied}}
+            <span></span>
+{{/if}}
+            <button onclick="{{ copyPassword() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Copy password</button>
+          </div>
+        </div>
+      </div>
+{{/if}}
   </div>
 {{/if}}
