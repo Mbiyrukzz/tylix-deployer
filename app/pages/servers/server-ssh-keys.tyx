@@ -1,0 +1,308 @@
+page ServerSshKeys
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "SSH Keys"
+
+state
+  server: null
+  serverId: ""
+  loading: true
+  notFound: false
+  busy: false
+  error: ""
+  mode: "existing"
+  keys: []
+  deployments: []
+  users: []
+  usersError: ""
+  generated: ""
+  generatedName: ""
+  removingId: null
+
+action
+  setMode(m) {
+    this.mode = m
+    this.error = ""
+  }
+
+  fail(result, fallback) {
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    this.error = result.data?.error or fallback
+  }
+
+  async loadKeys() {
+    const r = await useApi("/api/ssh-keys")
+    if r.ok and Array.isArray(r.data) {
+      this.keys = r.data
+      if r.data.length is 0 {
+        this.mode = "new"
+      }
+    }
+  }
+
+  async loadDeployments() {
+    const r = await useApi("/api/servers/" + this.serverId + "/ssh-keys")
+    if r.ok and Array.isArray(r.data) {
+      this.deployments = r.data
+    }
+  }
+
+  async loadUsers() {
+    const r = await useApi("/api/servers/" + this.serverId + "/ssh-users")
+    if r.ok and Array.isArray(r.data) {
+      this.users = r.data
+      this.usersError = ""
+    } else {
+      this.users = [this.server.ssh_user]
+      this.usersError = r.data?.error or "Couldn't list users on the server."
+    }
+  }
+
+    fieldValue(id) {
+    const el = document.getElementById(id)
+    if not el {
+      return ""
+    }
+    return String(Reflect.get(el, "value") or "")
+  }
+
+   async deploy() {
+    if this.busy {
+      return null
+    }
+    this.busy = true
+    this.error = ""
+    this.generated = ""
+
+    const user = this.fieldValue("deployUser")
+    let keyId = null
+
+    if this.mode is "new" {
+      const name = this.fieldValue("keyName")
+      const pub = this.fieldValue("keyPublic")
+      const created = await useApi("/api/ssh-keys", { method: "POST", body: { name: name, public_key: pub } })
+
+      if not created.ok {
+        this.fail(created, "Couldn't save the key.")
+        this.busy = false
+        return null
+      }
+
+      keyId = created.data.key.id
+      if created.data.private_key {
+        this.generated = created.data.private_key
+        this.generatedName = created.data.key.name
+      }
+      await this.loadKeys()
+    } else {
+      keyId = this.fieldValue("existingKey")
+    }
+
+    const result = await useApi("/api/servers/" + this.serverId + "/ssh-keys", {
+      method: "POST",
+      body: { ssh_key_id: keyId, user: user }
+    })
+
+    if result.ok {
+      await this.loadDeployments()
+      this.mode = "existing"
+    } else {
+      this.fail(result, "Couldn't deploy the key.")
+    }
+
+    this.busy = false
+  }
+
+  async remove(id) {
+    if this.removingId {
+      return null
+    }
+    this.removingId = id
+    this.error = ""
+    const result = await useApi("/api/servers/" + this.serverId + "/ssh-keys/" + id, { method: "DELETE" })
+
+    if result.ok {
+      await this.loadDeployments()
+    } else {
+      this.fail(result, "Couldn't remove the key.")
+    }
+    this.removingId = null
+  }
+
+  dismissPrivate() {
+    this.generated = ""
+  }
+
+   safeChar(ch) {
+    const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+    if allowed.includes(ch) {
+      return ch
+    }
+    return "-"
+  }
+
+  downloadPrivate() {
+    const safe = this.generatedName.split("").map((ch) => this.safeChar(ch)).join("")
+    const blob = new Blob([this.generated], { type: "text/plain" })
+    const a = document.createElement("a")
+    a.href = URL.createObjectURL(blob)
+    a.download = "id_ed25519_" + safe
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        this.loading = false
+        await this.loadKeys()
+        await this.loadDeployments()
+        await this.loadUsers()
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="ssh-keys" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">SSH Keys</h1>
+      <p class="text-slate-500 text-sm mb-6">Give people or machines SSH access to this server, as any user on it.</p>
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if generated}}
+      <div class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-4 mb-6">
+        <p class="text-amber-800 dark:text-amber-400 text-sm font-semibold mb-1">Save the private key now</p>
+        <p class="text-amber-800 dark:text-amber-400 text-sm mb-3">This is the only time it is shown. It is not stored anywhere.</p>
+        <pre class="rounded-lg bg-slate-950 text-emerald-400 text-xs font-mono p-3 overflow-x-auto mb-3">{{ generated }}</pre>
+        <div class="flex gap-3">
+          <button onclick="{{ downloadPrivate() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Download</button>
+          <button onclick="{{ dismissPrivate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">I've saved it</button>
+        </div>
+      </div>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Deploy a key</h2>
+
+        <div class="flex gap-2 mb-4">
+{{#if keys.length is not 0}}
+{{#if mode is "existing"}}
+          <button class="text-sm rounded-lg px-3 py-1.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-medium">Existing key</button>
+{{/if}}
+{{#if mode is not "existing"}}
+          <button onclick="{{ setMode('existing') }}" class="text-sm rounded-lg px-3 py-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200">Existing key</button>
+{{/if}}
+{{/if}}
+{{#if mode is "new"}}
+          <button class="text-sm rounded-lg px-3 py-1.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-medium">New key</button>
+{{/if}}
+{{#if mode is not "new"}}
+          <button onclick="{{ setMode('new') }}" class="text-sm rounded-lg px-3 py-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200">New key</button>
+{{/if}}
+        </div>
+
+{{#if mode is "existing"}}
+        <label class="block text-slate-500 text-xs mb-1" for="existingKey">Key</label>
+        <select id="existingKey" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-4">
+{{#each k in keys}}
+          <option value="{{ k.id }}">{{ k.name }}</option>
+{{/each}}
+        </select>
+{{/if}}
+
+{{#if mode is "new"}}
+        <label class="block text-slate-500 text-xs mb-1" for="keyName">Name</label>
+        <input id="keyName" type="text" placeholder="e.g. Gloria's laptop" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-4" />
+
+        <label class="block text-slate-500 text-xs mb-1" for="keyPublic">Public key <span class="text-slate-400">(leave empty to generate a new pair)</span></label>
+        <textarea id="keyPublic" rows="3" placeholder="ssh-ed25519 AAAA…" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3 py-2 mb-4"></textarea>
+{{/if}}
+
+        <label class="block text-slate-500 text-xs mb-1" for="deployUser">Deploy for user</label>
+        <select id="deployUser" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-2">
+{{#each u in users}}
+          <option value="{{ u }}">{{ u }}</option>
+{{/each}}
+        </select>
+{{#if usersError}}
+        <p class="text-amber-600 dark:text-amber-500 text-xs mb-2">{{ usersError }}</p>
+{{/if}}
+
+        <div class="mt-4">
+{{#if busy}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Deploying…</button>
+{{/if}}
+{{#if not busy}}
+          <button onclick="{{ deploy() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Deploy key</button>
+{{/if}}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Deployed keys</h2>
+        <p class="text-slate-500 text-sm mb-4">Keys that can log in to this server.</p>
+
+{{#if deployments.length is 0}}
+        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+          <p class="text-slate-500 text-sm">No keys deployed yet.</p>
+        </div>
+{{/if}}
+
+{{#each d in deployments}}
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+          <div class="min-w-0">
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ d.name }} <span class="text-slate-500 font-mono font-normal">→ {{ d.ssh_user }}</span></p>
+            <p class="text-slate-500 text-xs font-mono truncate">{{ d.fingerprint }}</p>
+          </div>
+          <button onclick="{{ remove(d.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-3 py-1.5">Remove</button>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

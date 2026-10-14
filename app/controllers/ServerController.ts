@@ -22,6 +22,7 @@ import { DbUser } from "../models/DbUser.js";
 import { ServerDatabase } from "../models/ServerDatabase.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
+import { ServerSshKey } from "../models/ServerSshKey.js";
 
 interface ServerRow {
     id: number;
@@ -194,6 +195,10 @@ export class ServerController {
         for (const u of (await DbUser.all()) as { id: number; server_id: number }[]) {
             if (u.server_id === server.id) await DbUser.delete(u.id);
         }
+
+        for (const k of (await ServerSshKey.all()) as { id: number; server_id: number }[]) {
+    if (k.server_id === server.id) await ServerSshKey.delete(k.id);
+}
 
         // TODO (step 1.4c): refuse to delete while projects are attached.
         // ASSUMPTION: Model exposes delete(id).
