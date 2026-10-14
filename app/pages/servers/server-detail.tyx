@@ -18,6 +18,12 @@ state
   statsBusy: false
   statsError: ""
   hasStats: false
+  poller: null
+  copied: false
+  sshCommand: ""
+  lastChecked: ""
+  alertText: ""
+  sites: []
   cpuHistory: []
   memHistory: []
   cpuPoints: ""
@@ -26,6 +32,11 @@ state
   memArea: ""
   cpuNow: 0
   memNow: 0
+  cpuColor: "#10b981"
+  memColor: "#38bdf8"
+  diskColor: "#10b981"
+  cpuBar: "width: 0%"
+  memBar: "width: 0%"
   memText: ""
   diskPct: 0
   diskText: ""
@@ -37,6 +48,15 @@ action
   updated(server) {
     this.server = server
     this.status = server.status
+    this.sshCommand = this.buildSsh(server)
+  }
+
+  buildSsh(server) {
+    let cmd = "ssh " + server.ssh_user + "@" + server.host
+    if server.port is not 22 {
+      cmd = cmd + " -p " + server.port
+    }
+    return cmd
   }
 
   askDelete() {
@@ -46,6 +66,30 @@ action
 
   cancelDelete() {
     this.confirmDelete = false
+  }
+
+  async copySsh() {
+    await navigator.clipboard.writeText(this.sshCommand)
+    this.copied = true
+    window.setTimeout(() => this.resetCopied(), 1800)
+  }
+
+  resetCopied() {
+    this.copied = false
+  }
+
+  toneColor(p, fallback) {
+    if p >= 90 {
+      return "#f43f5e"
+    }
+    if p >= 75 {
+      return "#f59e0b"
+    }
+    return fallback
+  }
+
+  decorateSite(site) {
+    return Object.assign({}, site, { href: "/sites?id=" + site.id })
   }
 
   chartPoints(values) {
@@ -97,12 +141,31 @@ action
       this.memArea = this.chartArea(mem)
       this.cpuNow = s.cpu_pct
       this.memNow = s.mem_pct
+      this.cpuColor = this.toneColor(s.cpu_pct, "#10b981")
+      this.memColor = this.toneColor(s.mem_pct, "#38bdf8")
+      this.diskColor = this.toneColor(s.disk_pct, "#10b981")
+      this.cpuBar = "width: " + Math.min(100, s.cpu_pct) + "%"
+      this.memBar = "width: " + Math.min(100, s.mem_pct) + "%"
       this.memText = this.formatBytes(s.mem_used) + " of " + this.formatBytes(s.mem_total)
       this.diskPct = s.disk_pct
       this.diskText = this.formatBytes(s.disk_used) + " of " + this.formatBytes(s.disk_total)
       this.diskDash = Math.min(226.2, Math.round(s.disk_pct * 2.262 * 10) / 10) + " 226.2"
       this.loadText = s.load.join("  ")
       this.uptimeText = this.formatUptime(s.uptime)
+      this.lastChecked = new Date().toLocaleTimeString()
+
+      const warn = []
+      if s.cpu_pct >= 85 {
+        warn.push("CPU is at " + s.cpu_pct + "%")
+      }
+      if s.mem_pct >= 90 {
+        warn.push("memory is at " + s.mem_pct + "%")
+      }
+      if s.disk_pct >= 90 {
+        warn.push("disk is at " + s.disk_pct + "%")
+      }
+      this.alertText = warn.join(" · ")
+
       this.statsError = ""
       this.hasStats = true
       this.status = "online"
@@ -155,6 +218,7 @@ onMount
         const sid = result.data.id
         this.server = result.data
         this.status = result.data.status
+        this.sshCommand = this.buildSsh(result.data)
         this.loading = false
 
         const prov = await useApi("/api/provisions")
@@ -166,8 +230,16 @@ onMount
           }
         }
 
+        const siteRes = await useApi("/api/sites")
+        if siteRes.ok and Array.isArray(siteRes.data) {
+          const mine = siteRes.data.filter((x) => x.server_id is sid)
+          this.sites = mine.map((x) => this.decorateSite(x))
+        }
+
         await this.loadStats()
-        window.setInterval(() => this.loadStats(), 10000)
+        if not this.poller {
+          this.poller = window.setInterval(() => this.loadStats(), 10000)
+        }
       } else {
         this.notFound = true
         this.loading = false
@@ -176,7 +248,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
     <ServerSidebar active="server" serverId="{{ serverId }}" />
     <div class="min-w-0">
@@ -187,8 +259,8 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
-        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Server not found</h2>
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
         <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
@@ -199,66 +271,103 @@ template
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
-      <div class="flex items-start justify-between gap-4 mb-8">
+      <div class="flex items-start justify-between gap-4 mb-6">
         <div class="min-w-0">
           <div class="flex items-center gap-3 mb-2">
-            <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ server.name }}</h1>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ server.name }}</h1>
 {{#if status is "online"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
             </span>
 {{/if}}
 {{#if status is "pending"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
               <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Not tested
             </span>
 {{/if}}
 {{#if status is "offline"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
               <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Offline
             </span>
 {{/if}}
           </div>
-          <p class="text-slate-500 text-sm font-mono">
-            {{ server.ssh_user }}@{{ server.host }}:{{ server.port }}
-{{#if region}}
-            / {{ region }} / {{ plan }}
-{{/if}}
-{{#if hasStats}}
-            / up {{ uptimeText }}
-{{/if}}
-          </p>
+          <p class="text-slate-500 text-sm font-mono">{{ server.ssh_user }}@{{ server.host }}:{{ server.port }}</p>
         </div>
         <ServerForm server="{{ server }}" onSaved="{{ updated }}" />
       </div>
+
+{{#if alertText}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm"><span class="font-semibold">High usage:</span> {{ alertText }}</p>
+      </div>
+{{/if}}
 
 {{#if statsError}}
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ statsError }}</p>
 {{/if}}
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Uptime</p>
+{{#if hasStats}}
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ uptimeText }}</p>
+{{/if}}
+{{#if not hasStats}}
+          <p class="text-slate-400 text-lg font-semibold">—</p>
+{{/if}}
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Load average</p>
+{{#if hasStats}}
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold font-mono">{{ loadText }}</p>
+{{/if}}
+{{#if not hasStats}}
+          <p class="text-slate-400 text-lg font-semibold">—</p>
+{{/if}}
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Region</p>
+{{#if region}}
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold font-mono">{{ region }}</p>
+{{/if}}
+{{#if not region}}
+          <p class="text-slate-400 text-lg font-semibold">Custom</p>
+{{/if}}
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Plan</p>
+{{#if plan}}
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold font-mono">{{ plan }}</p>
+{{/if}}
+{{#if not plan}}
+          <p class="text-slate-400 text-lg font-semibold">—</p>
+{{/if}}
+        </div>
+      </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-3">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">CPU</p>
-{{#if hasStats}}
-            <p class="text-slate-500 text-xs font-mono">load {{ loadText }}</p>
-{{/if}}
           </div>
 {{#if hasStats}}
-          <p class="text-3xl font-semibold text-slate-800 dark:text-slate-200">{{ cpuNow }}<span class="text-lg text-slate-500">%</span></p>
+          <p class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cpuNow }}<span class="text-lg text-slate-500">%</span></p>
+          <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 mt-3 overflow-hidden">
+            <div class="h-full rounded-full transition-all" style="{{ cpuBar }}; background: {{ cpuColor }}"></div>
+          </div>
           <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-20 mt-3">
             <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
-            <polygon points="{{ cpuArea }}" fill="#10b981" fill-opacity="0.15" />
-            <polyline points="{{ cpuPoints }}" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+            <polygon points="{{ cpuArea }}" fill="{{ cpuColor }}" fill-opacity="0.15" />
+            <polyline points="{{ cpuPoints }}" fill="none" stroke="{{ cpuColor }}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
           </svg>
 {{/if}}
 {{#if not hasStats}}
-          <div class="h-28 rounded-lg bg-slate-300/40 dark:bg-slate-950/60 animate-pulse"></div>
+          <div class="h-28 rounded-lg bg-slate-200/60 dark:bg-slate-950/60 animate-pulse"></div>
 {{/if}}
         </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-3">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Memory</p>
 {{#if hasStats}}
@@ -266,19 +375,22 @@ template
 {{/if}}
           </div>
 {{#if hasStats}}
-          <p class="text-3xl font-semibold text-slate-800 dark:text-slate-200">{{ memNow }}<span class="text-lg text-slate-500">%</span></p>
+          <p class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ memNow }}<span class="text-lg text-slate-500">%</span></p>
+          <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 mt-3 overflow-hidden">
+            <div class="h-full rounded-full transition-all" style="{{ memBar }}; background: {{ memColor }}"></div>
+          </div>
           <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-20 mt-3">
             <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
-            <polygon points="{{ memArea }}" fill="#38bdf8" fill-opacity="0.15" />
-            <polyline points="{{ memPoints }}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+            <polygon points="{{ memArea }}" fill="{{ memColor }}" fill-opacity="0.15" />
+            <polyline points="{{ memPoints }}" fill="none" stroke="{{ memColor }}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
           </svg>
 {{/if}}
 {{#if not hasStats}}
-          <div class="h-28 rounded-lg bg-slate-300/40 dark:bg-slate-950/60 animate-pulse"></div>
+          <div class="h-28 rounded-lg bg-slate-200/60 dark:bg-slate-950/60 animate-pulse"></div>
 {{/if}}
         </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-3">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Disk</p>
 {{#if hasStats}}
@@ -286,65 +398,102 @@ template
 {{/if}}
           </div>
 {{#if hasStats}}
-          <div class="relative w-28 h-28 mx-auto mt-1">
+          <div class="relative w-28 h-28 mx-auto mt-3">
             <svg viewBox="0 0 100 100" class="w-28 h-28">
               <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{ diskDash }}" transform="rotate(-90 50 50)" />
+              <circle cx="50" cy="50" r="36" fill="none" stroke="{{ diskColor }}" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{ diskDash }}" transform="rotate(-90 50 50)" />
             </svg>
             <div class="absolute inset-0 flex items-center justify-center">
-              <span class="text-xl font-semibold text-slate-800 dark:text-slate-200">{{ diskPct }}%</span>
+              <span class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ diskPct }}%</span>
             </div>
           </div>
 {{/if}}
 {{#if not hasStats}}
-          <div class="h-28 rounded-lg bg-slate-300/40 dark:bg-slate-950/60 animate-pulse"></div>
+          <div class="h-28 rounded-lg bg-slate-200/60 dark:bg-slate-950/60 animate-pulse"></div>
 {{/if}}
         </div>
 
       </div>
 
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
-        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-5">Details</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div>
-            <p class="text-slate-500 text-xs mb-1">Host</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ server.host }}</p>
+{{#if hasStats}}
+      <p class="text-slate-400 text-xs mb-6">Live · refreshes every 10s · last checked {{ lastChecked }}</p>
+{{/if}}
+{{#if not hasStats}}
+      <div class="mb-6"></div>
+{{/if}}
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Connect</h2>
+          <p class="text-slate-500 text-sm mb-4">Open a shell on this server from your machine.</p>
+          <div class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3">
+            <code class="flex-1 text-emerald-400 text-sm font-mono truncate">{{ sshCommand }}</code>
+{{#if copied}}
+            <button class="text-xs text-emerald-400 font-medium">Copied</button>
+{{/if}}
+{{#if not copied}}
+            <button onclick="{{ copySsh() }}" class="text-xs text-slate-400 hover:text-white font-medium transition-colors">Copy</button>
+{{/if}}
           </div>
-          <div>
-            <p class="text-slate-500 text-xs mb-1">SSH port</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ server.port }}</p>
+          <div class="grid grid-cols-2 gap-4 mt-5">
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Host</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ server.host }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">SSH port</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ server.port }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">SSH user</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ server.ssh_user }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">SSH key</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">Stored encrypted</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Added</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ server.created_at.slice(0, 10) }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Last updated</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ server.updated_at.slice(0, 10) }}</p>
+            </div>
           </div>
-          <div>
-            <p class="text-slate-500 text-xs mb-1">SSH user</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ server.ssh_user }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between mb-1">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Sites</h2>
+            <a href="/sites" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">New site</a>
           </div>
-          <div>
-            <p class="text-slate-500 text-xs mb-1">SSH key</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm">Stored encrypted</p>
-          </div>
-{{#if region}}
-          <div>
-            <p class="text-slate-500 text-xs mb-1">Region</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ region }}</p>
-          </div>
-          <div>
-            <p class="text-slate-500 text-xs mb-1">Plan</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ plan }}</p>
+          <p class="text-slate-500 text-sm mb-4">Apps deployed on this server.</p>
+
+{{#if sites.length is 0}}
+          <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+            <p class="text-slate-500 text-sm mb-3">Nothing deployed here yet.</p>
+            <a href="/sites" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+              Create a site
+            </a>
           </div>
 {{/if}}
-          <div>
-            <p class="text-slate-500 text-xs mb-1">Added</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm">{{ server.created_at.slice(0, 10) }}</p>
-          </div>
-          <div>
-            <p class="text-slate-500 text-xs mb-1">Last updated</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm">{{ server.updated_at.slice(0, 10) }}</p>
-          </div>
+
+{{#each site in sites}}
+          <a href="{{ site.href }}" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ site.name }}</p>
+              <p class="text-slate-500 text-xs font-mono truncate">{{ site.domain }}</p>
+            </div>
+            <span class="text-slate-400 text-sm">&rarr;</span>
+          </a>
+{{/each}}
         </div>
       </div>
 
-      <div class="rounded-2xl border border-rose-900/30 bg-slate-200 dark:bg-slate-900 p-6">
-        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Delete server</h2>
+      <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white dark:bg-slate-900 p-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1">Delete server</h2>
         <p class="text-slate-500 text-sm mb-4">This removes the server and its stored SSH key. Your machine itself is not touched.</p>
 
 {{#if error}}
@@ -352,7 +501,7 @@ template
 {{/if}}
 
 {{#if not confirmDelete}}
-        <button onclick="{{ askDelete() }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-950/30 transition">
+        <button onclick="{{ askDelete() }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
           Delete server
         </button>
 {{/if}}
