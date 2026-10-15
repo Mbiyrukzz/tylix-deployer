@@ -6,7 +6,7 @@ await schema.createTable("server_backups", (table: CreateTableBuilder) => {
         table.integer("user_id");
         table.integer("server_id");
         table.string("name");
-        table.text("databases");
+       table.text("db_names");
         table.integer("storage_id");
         table.string("schedule");
         table.integer("retention");

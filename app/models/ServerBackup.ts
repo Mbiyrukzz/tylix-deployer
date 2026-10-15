@@ -5,7 +5,7 @@ export interface ServerBackupAttributes {
     user_id: number;
     server_id: number;
     name: string;
-    databases: string;
+   db_names: string;
     storage_id: number;
     schedule: string;
     retention: number;
@@ -19,7 +19,7 @@ static fillable: (keyof ServerBackupAttributes)[] = [
 "user_id",
 "server_id",
 "name",
-"databases",
+"db_names",
 "storage_id",
 "schedule",
 "retention",
