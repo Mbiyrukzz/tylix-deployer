@@ -70,13 +70,13 @@ action
   }
 
   siteHref(id) {
-    return "/servers/site?id=" + id
+    return "/servers/site-detail?id=" + id
   }
 
   decorateServer(s, sites) {
     const n = sites.filter((x) => x.server_id is s.id).length
     return Object.assign({}, s, {
-      href: "/server?id=" + s.id,
+      href: "/servers/server-detail?id=" + s.id,
       siteLabel: this.plural(n, "site")
     })
   }
@@ -140,7 +140,7 @@ onMount
 
     const offlineItems = list
       .filter((s) => s.status is "offline")
-      .map((s) => ({ text: s.name + " is offline", hint: "Check connectivity", href: "/server?id=" + s.id }))
+      .map((s) => ({ text: s.name + " is offline", hint: "Check connectivity", href: "/servers/server-detail?id=" + s.id }))
     const failedItems = sites
       .filter((x) => x.status is "failed")
       .map((x) => ({ text: x.domain + " failed to deploy", hint: "View the deployment log", href: this.siteHref(x.id) }))
