@@ -13,6 +13,7 @@ uses
 state
   checkedAuth: false
   providerId: 0
+  providerKind: "linode"
   region: ""
   plan: ""
   regionLabel: ""
@@ -54,21 +55,36 @@ action
     this.tplError = ""
   }
 
-       applyPlanFilter() {
-       if this.tpl is "tylix" {
-         this.shownPlans = this.plans.filter((p) => p.memory_mb > 4095)
-       } else {
-         this.shownPlans = this.plans
-       }
-     }
+  applyPlanFilter() {
+    if this.tpl is "tylix" {
+      this.shownPlans = this.plans.filter((p) => p.memory_mb > 4095)
+    } else {
+      this.shownPlans = this.plans
+    }
+  }
 
   async loadCatalog() {
     this.catalogError = ""
-          const url = "/api/catalog/linode?region=" + this.region
+
+    if this.providerId is 0 {
+      return null
+    }
+
+    let url = "/api/catalog/" + this.providerKind
+
+    if this.providerKind is "hetzner" {
+      url = url + "?provider=" + this.providerId
+      if this.region is not "" {
+        url = url + "&region=" + this.region
+      }
+    } else if this.region is not "" {
+      url = url + "?region=" + this.region
+    }
+
     const result = await useApi(url)
 
     if result.ok {
-            if this.regions.length is 0 {
+      if this.regions.length is 0 {
         this.regions = result.data.regions
       }
       if this.images.length is 0 {
@@ -82,12 +98,32 @@ action
     } else if result.status is 401 {
       window.location.href = "/login"
     } else {
-      this.catalogError = "Couldn't load regions and plans from Linode. Reload the page to try again."
+      this.catalogError = result.data?.error or "Couldn't load regions and plans from the provider. Try again."
     }
   }
 
-  pickProvider(id) {
+  async pickProvider(id, kind) {
+    if this.providerId is id {
+      return null
+    }
+
     this.providerId = id
+    this.providerKind = kind
+    this.providerError = ""
+
+    this.region = ""
+    this.regionLabel = ""
+    this.regionOpen = false
+    this.plan = ""
+    this.planLabel = ""
+    this.planOpen = false
+    this.image = ""
+    this.regions = []
+    this.images = []
+    this.plans = []
+    this.shownPlans = []
+
+    await this.loadCatalog()
   }
 
   toggleRegion() {
@@ -184,6 +220,7 @@ onMount
     await Providers.load()
     if Providers.data.length is 1 {
       this.providerId = Providers.data[0].id
+      this.providerKind = Providers.data[0].kind or "linode"
     }
 
     await this.loadCatalog()
@@ -211,21 +248,31 @@ template
       <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-3">1. Provider</h2>
 {{#if Providers.data.length is 0}}
       <div class="rounded-xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 mb-2 text-sm text-slate-500">
-        No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect Linode</a> first.
+        No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect a provider</a> first.
       </div>
 {{/if}}
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
 {{#each p in Providers.data}}
 {{#if providerId is p.id}}
-        <button onclick="{{ pickProvider(p.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
+        <button onclick="{{ pickProvider(p.id, p.kind) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
           <span class="block font-medium">{{ p.label }}</span>
+{{#if p.kind is "hetzner"}}
+          <span class="block text-xs text-slate-500">Hetzner Cloud</span>
+{{/if}}
+{{#if p.kind is not "hetzner"}}
           <span class="block text-xs text-slate-500">Linode (Akamai)</span>
+{{/if}}
         </button>
 {{/if}}
 {{#if providerId is not p.id}}
-        <button onclick="{{ pickProvider(p.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+        <button onclick="{{ pickProvider(p.id, p.kind) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
           <span class="block font-medium">{{ p.label }}</span>
+{{#if p.kind is "hetzner"}}
+          <span class="block text-xs text-slate-500">Hetzner Cloud</span>
+{{/if}}
+{{#if p.kind is not "hetzner"}}
           <span class="block text-xs text-slate-500">Linode (Akamai)</span>
+{{/if}}
         </button>
 {{/if}}
 {{/each}}
@@ -322,7 +369,7 @@ template
 {{#each p in shownPlans}}
           <button onclick="{{ pickPlan(p.id, p.label) }}" class="block w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
             <span class="block font-medium">{{ p.label }}</span>
-            <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / USD {{ p.monthly }} per month</span>
+            <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / {{ p.currency }} {{ p.monthly }} per month</span>
           </button>
 {{/each}}
         </div>

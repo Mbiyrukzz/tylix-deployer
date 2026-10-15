@@ -6,7 +6,7 @@
  * actually works is decided by calling the provider's API in the controller.
  */
 
-const KINDS = ["linode"];
+const KINDS = ["linode", "hetzner"];
 const TOKEN = /^[A-Za-z0-9._-]{20,256}$/;
 
 export interface NormalizedProvider {

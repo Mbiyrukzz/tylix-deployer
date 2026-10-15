@@ -1,6 +1,6 @@
 page ProviderList
 
-import { IconDatabase, IconArrowLeft } from "tylix-icons"
+import { IconArrowLeft } from "tylix-icons"
 
 title "Cloud providers"
 
@@ -12,16 +12,67 @@ uses
 
 state
   checkedAuth: false
+  items: []
+  linodeCount: 0
+  hetznerCount: 0
+  serverCount: 0
   removing: 0
   removeError: ""
 
 action
-  addProvider(provider) {
-    Providers.add(provider)
+  // Adds display-only fields to a connection: how many servers still use it,
+  // plus the label and tile colours for its provider.
+  decorate(p, rows) {
+    const used = rows.filter((r) => r.provider_id is p.id and Number(r.instance_id) > 0 and r.status is not "deleted").length
+
+    let usageText = used + " servers"
+    if used is 0 {
+      usageText = "No servers yet"
+    }
+    if used is 1 {
+      usageText = "1 server"
+    }
+
+    let kindName = "Linode (Akamai)"
+    let tileLetter = "L"
+    let tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    if p.kind is "hetzner" {
+      kindName = "Hetzner Cloud"
+      tileLetter = "H"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+
+    let since = "-"
+    if p.created_at {
+      since = p.created_at.slice(0, 10)
+    }
+
+    return Object.assign({}, p, { inUse: used, usageText: usageText, kindName: kindName, tileLetter: tileLetter, tileClass: tileClass, since: since })
   }
 
-  updateProvider(provider) {
-    Providers.replace(provider)
+  // Rebuilds the cards and the stat row from the loaded connections.
+  async refresh() {
+    const prov = await useApi("/api/provisions")
+    let rows = []
+    if prov.ok and Array.isArray(prov.data) {
+      rows = prov.data
+    }
+    const list = Providers.data.map((p) => this.decorate(p, rows))
+
+    this.items = list
+    this.linodeCount = list.filter((p) => p.kind is "linode").length
+    this.hetznerCount = list.filter((p) => p.kind is "hetzner").length
+    this.serverCount = list.reduce((n, p) => n + p.inUse, 0)
+  }
+
+  async addProvider(provider) {
+    Providers.add(provider)
+    await this.refresh()
+  }
+
+  async updateProvider(provider) {
+    await Providers.replace(provider)
+    await this.refresh()
   }
 
   askRemove(id) {
@@ -39,6 +90,7 @@ action
       this.removeError = result.data?.error or "Couldn't remove that connection."
     }
     this.removing = 0
+    await this.refresh()
   }
 
 onMount
@@ -49,12 +101,13 @@ onMount
     }
 
     await Providers.load()
+    await this.refresh()
     this.checkedAuth = true
   }
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
   <Sidebar active="providers" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
@@ -63,53 +116,104 @@ template
         <IconArrowLeft class="w-4 h-4" /> Dashboard
       </a>
 
-      <div class="flex items-center justify-between mb-8">
-        <div>
-          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Cloud providers</h1>
-          <p class="text-slate-500 text-sm mt-1">Accounts the deployer can create servers in</p>
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div class="min-w-0">
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Cloud providers</h1>
+          <p class="text-slate-500 text-sm">Accounts the deployer can create servers in.</p>
         </div>
         <ProviderForm onSaved="{{ addProvider }}" />
       </div>
 
-{{#if removeError}}
-      <p role="alert" class="text-rose-500 text-sm mb-4">{{ removeError }}</p>
-{{/if}}
-
-{{#if Providers.data.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-10 text-center">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
-          <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Connections</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ items.length }}</p>
         </div>
-        <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1.5">No providers connected</h3>
-        <p class="text-slate-500 text-sm max-w-sm mx-auto">Connect your Linode account to create servers from here.</p>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Linode</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ linodeCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Hetzner</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ hetznerCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Servers created</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ serverCount }}</p>
+        </div>
+      </div>
+
+{{#if removeError}}
+      <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
+        <p class="text-rose-800 dark:text-rose-400 text-sm">{{ removeError }}</p>
       </div>
 {{/if}}
 
-{{#if Providers.data.length is not 0}}
+{{#if items.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="flex items-center justify-center gap-3 mb-4">
+          <span class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-lg font-bold">L</span>
+          <span class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-lg font-bold">H</span>
+        </div>
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No providers connected</h2>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">Connect a Linode or Hetzner account to create servers from here. You only need an API token.</p>
+        <ProviderForm onSaved="{{ addProvider }}" />
+      </div>
+{{/if}}
+
+{{#if items.length is not 0}}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-{{#each p in Providers.data}}
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Linode (Akamai)</span>
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">{{ p.status }}</span>
+{{#each p in items}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+
+          <div class="flex items-start justify-between gap-3 mb-5">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="{{ p.tileClass }}">{{ p.tileLetter }}</span>
+              <div class="min-w-0">
+                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ p.label }}</h3>
+                <p class="text-slate-500 text-xs">{{ p.kindName }}</p>
+              </div>
+            </div>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ p.status }}
+            </span>
           </div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-semibold mb-4">{{ p.label }}</h3>
-          <div class="flex items-center gap-3">
+
+          <div class="grid grid-cols-2 gap-4 mb-5">
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Servers</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ p.usageText }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Connected</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ p.since }}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 pt-5 border-t border-slate-200 dark:border-slate-800">
             <ProviderForm provider="{{ p }}" onSaved="{{ updateProvider }}" />
+
 {{#if removing is p.id}}
-            <button onclick="{{ confirmRemove(p.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, remove</button>
-            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+            <button onclick="{{ confirmRemove(p.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-2 transition">Yes, remove</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{/if}}
+
 {{#if removing is not p.id}}
-            <button onclick="{{ askRemove(p.id) }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-950/30 transition">Remove</button>
+{{#if p.inUse is 0}}
+            <button onclick="{{ askRemove(p.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Remove</button>
+{{/if}}
+{{#if p.inUse is not 0}}
+            <span class="text-slate-400 text-xs">Delete its servers to remove this connection.</span>
+{{/if}}
 {{/if}}
           </div>
+
         </div>
 {{/each}}
       </div>
 {{/if}}
 
     </div>
-</div>
   </div>
+</div>
 {{/if}}

@@ -2,26 +2,35 @@
  * Feature: Provision (create a server at a cloud provider)
  *
  * A provision row tracks one "create server" request from the form until
- * the machine is online. Step 2.3 only records the request (step "queued").
- * Step 2.4 adds the job that creates the instance and advances `step`.
+ * the machine is online. The ProvisionServer job creates the instance and
+ * advances `step`.
  *
  *   - ssh_key (encrypted private key, filled in by the job) is NEVER returned
  *   - region, plan and image are checked against the live provider catalog
  *   - someone else's provision answers 404, not 403
- *   - a provision that already has a provider instance cannot be deleted
- *     here, because that would orphan a billable machine (see step 2.6)
+ *   - a provision that already has a provider instance is deleted at the
+ *     provider first (through ProviderAdapter), so no billable machine is orphaned
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { validateProvision, normalizeProvision } from "../validators/ProvisionValidator.js";
-import { LinodeClient, LinodeError } from "../services/LinodeClient.js";
 import { CryptoService } from "../services/CryptoService.js";
+import { adapterFor } from "../services/ProviderAdapter.js";
 import { Server } from "../models/Server.js";
 import { dispatch } from "@tylix/core";
 
 const TYLIX_MIN_MEMORY_MB = 4096;
+
+const PROVIDER_NAMES: Record<string, string> = {
+    linode: "Linode",
+    hetzner: "Hetzner",
+};
+
+function providerName(kind: string): string {
+    return PROVIDER_NAMES[kind] ?? "the provider";
+}
 
 interface ProvisionRow {
     id: number;
@@ -88,34 +97,61 @@ export class ProvisionController {
         const input = normalizeProvision(req.body);
 
         const provider = (await Provider.find(input.provider_id)) as
-            | { id: number; user_id: number; kind: string }
+            | { id: number; user_id: number; kind: string; api_token: string }
             | null;
 
-        if (!provider || provider.user_id !== req.user?.userId || provider.kind !== "linode") {
+        if (!provider || provider.user_id !== req.user?.userId) {
             res.status(422);
             return res.json({ errors: { provider_id: ["Choose a provider connection."] } });
         }
 
+        const name = providerName(provider.kind);
+
+        let adapter;
+        try {
+            adapter = adapterFor(provider.kind, CryptoService.decrypt(provider.api_token));
+        } catch (error) {
+            console.error("Provision: couldn't build the provider adapter:", error);
+            res.status(422);
+            return res.json({ errors: { provider_id: ["This provider connection can't be used. Edit it and paste the token again."] } });
+        }
+
         let regions, images, plans;
+        let authRejected = false;
+
         for (let attempt = 1; attempt <= 3 && !plans; attempt++) {
             try {
                 [regions, images, plans] = await Promise.all([
-                    LinodeClient.regions(),
-                    LinodeClient.images(),
-                    LinodeClient.plans(input.region),
+                    adapter.regions(),
+                    adapter.images(),
+                    adapter.plans(input.region),
                 ]);
             } catch (error) {
                 console.error(
-                    `Provision catalog check failed (attempt ${attempt}):`,
+                    `Provision catalog check failed (${provider.kind}, attempt ${attempt}):`,
                     error instanceof Error ? error.message : error,
                 );
+
+                // A rejected token won't get better on retry.
+                if (adapter.isAuthError(error)) {
+                    authRejected = true;
+                    break;
+                }
+
                 await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
             }
         }
 
+        if (authRejected) {
+            res.status(422);
+            return res.json({
+                error: `${name} rejected this connection's token. Edit the connection and paste a new one.`,
+            });
+        }
+
         if (!regions || !images || !plans) {
             res.status(502);
-            return res.json({ error: "Couldn't reach Linode to check your choices. Try again in a moment." });
+            return res.json({ error: `Couldn't reach ${name} to check your choices. Try again in a moment.` });
         }
 
         const errors: Record<string, string[]> = {};
@@ -205,32 +241,44 @@ export class ProvisionController {
             }
 
             const provider = (await Provider.find(row.provider_id)) as
-                | { user_id: number; api_token: string }
+                | { user_id: number; kind: string; api_token: string }
                 | null;
 
             if (!provider || provider.user_id !== req.user?.userId) {
                 res.status(409);
                 return res.json({
-                    error: "The provider connection is gone, so this server has to be deleted at Linode by hand.",
+                    error: "The provider connection is gone, so this server has to be deleted at the provider by hand.",
                 });
             }
 
+            const name = providerName(provider.kind);
+
             try {
-                await new LinodeClient(CryptoService.decrypt(provider.api_token)).deleteInstance(
-                    Number(row.instance_id),
-                );
-            } catch (error) {
-                // 404 means it is already gone at the provider, which is what we want.
-                if (!(error instanceof LinodeError && error.status === 404)) {
+                const adapter = adapterFor(provider.kind, CryptoService.decrypt(provider.api_token));
+
+                try {
+                    // remove() already treats "already deleted" (404) as success.
+                    await adapter.remove(Number(row.instance_id));
+                } catch (error) {
+                    console.error(
+                        `Provision ${row.id}: ${provider.kind} delete failed:`,
+                        error instanceof Error ? error.message : error,
+                    );
+
                     res.status(502);
-                    const rejected =
-                        error instanceof LinodeError && (error.status === 401 || error.status === 403);
                     return res.json({
-                        error: rejected
-                            ? "Linode rejected the token. Reconnect the provider, or delete the server in Cloud Manager."
-                            : "Linode didn't delete the server. Nothing was changed. Try again.",
+                        error: adapter.isAuthError(error)
+                            ? `${name} rejected the token. Reconnect the provider, or delete the server in the ${name} dashboard.`
+                            : `${name} didn't delete the server. Nothing was changed. Try again.`,
                     });
                 }
+            } catch (error) {
+                // Couldn't even build the adapter (bad stored token, unknown kind).
+                console.error(`Provision ${row.id}: couldn't prepare the ${provider.kind} delete:`, error);
+                res.status(502);
+                return res.json({
+                    error: `Couldn't connect to ${name}. Reconnect the provider, or delete the server in the ${name} dashboard.`,
+                });
             }
         }
 

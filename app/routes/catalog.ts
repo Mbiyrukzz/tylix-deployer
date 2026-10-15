@@ -2,18 +2,41 @@
  * Read-only catalog for the create-server form: regions, plans and OS
  * images for a provider. Behind auth like every other API route.
  *
- *   GET /api/catalog/linode               -> { regions, images, plans }
- *   GET /api/catalog/linode?region=us-ord -> plans priced for that region
+ *   GET /api/catalog/linode                          -> { regions, images, plans }
+ *   GET /api/catalog/linode?region=us-ord            -> plans priced for that region
+ *   GET /api/catalog/hetzner?provider=<id>           -> same shape, via that connection
+ *   GET /api/catalog/hetzner?provider=<id>&region=nbg1
  *
- * Linode's catalog is public and changes rarely, so each answer is cached
- * in memory for 10 minutes.
+ * HETZNER: the path is now /api/catalog/:kind, so the existing
+ * /api/catalog/linode calls keep working unchanged.
+ *
+ *   - Linode's catalog is public: no token, no `provider` param needed.
+ *   - Hetzner needs a project token for EVERY call, including the catalog.
+ *     The caller passes the id of one of their own connections, and the token
+ *     is decrypted here, server-side. It never reaches the client.
+ *
+ * Each answer is cached in memory for 10 minutes. Hetzner answers are cached
+ * per connection, so one user's token is never what serves another user.
+ * Failed lookups are not cached.
+ *
+ * Every plan carries `currency` ("USD" for Linode, "EUR" for Hetzner).
  */
 
-import type { Router, TylixRequest, TylixResponse } from "@tylix/core";
-import { LinodeClient } from "../services/LinodeClient.js";
+import type { Router } from "@tylix/core";
+import { Provider } from "../models/Provider.js";
+import { CryptoService } from "../services/CryptoService.js";
+import { adapterFor } from "../services/ProviderAdapter.js";
 
 const TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; value: unknown }>();
+
+// Keep in sync with adapterFor() in ProviderAdapter.ts.
+const KINDS = ["linode", "hetzner"];
+
+const PROVIDER_NAMES: Record<string, string> = {
+    linode: "Linode",
+    hetzner: "Hetzner",
+};
 
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
     const hit = cache.get(key);
@@ -28,17 +51,55 @@ type Handler = Parameters<Router["get"]>[1];
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
     router.get(
-        "/api/catalog/linode",
+        "/api/catalog/:kind",
         auth(async (req, res) => {
+            const kind = String(req.params.kind ?? "").toLowerCase();
+
+            if (!KINDS.includes(kind)) {
+                res.status(404);
+                return res.json({ error: "Unknown provider." });
+            }
+
             // ASSUMPTION: the request exposes parsed query params as req.query.
             const query = (req as unknown as { query?: Record<string, string> }).query ?? {};
             const region = typeof query.region === "string" ? query.region : "";
 
+            // Which token (if any) the catalog call is made with.
+            let token = "";
+            let scope = "public";
+
+            if (kind === "hetzner") {
+                const providerId = Number(query.provider);
+
+                if (!Number.isInteger(providerId) || providerId <= 0) {
+                    res.status(422);
+                    return res.json({ error: "Choose a Hetzner connection first." });
+                }
+
+                const row = (await Provider.find(providerId)) as {
+                    id: number;
+                    user_id: number;
+                    kind: string;
+                    api_token: string;
+                } | null;
+
+                // Someone else's connection (or the wrong kind) answers 404, like everywhere else.
+                if (!row || row.user_id !== req.user?.userId || row.kind !== kind) {
+                    res.status(404);
+                    return res.json({ error: "Provider connection not found." });
+                }
+
+                token = CryptoService.decrypt(row.api_token);
+                scope = `provider:${row.id}`;
+            }
+
+            const adapter = adapterFor(kind, token);
+
             try {
                 const [regions, images, plans] = await Promise.all([
-                    cached("linode:regions", () => LinodeClient.regions()),
-                    cached("linode:images", () => LinodeClient.images()),
-                    cached(`linode:plans:${region}`, () => LinodeClient.plans(region || undefined)),
+                    cached(`${kind}:${scope}:regions`, () => adapter.regions()),
+                    cached(`${kind}:${scope}:images`, () => adapter.images()),
+                    cached(`${kind}:${scope}:plans:${region}`, () => adapter.plans(region || undefined)),
                 ]);
 
                 if (region && !regions.some((r) => r.id === region)) {
@@ -47,9 +108,23 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 }
 
                 return res.json({ regions, images, plans });
-            } catch {
+            } catch (error) {
+                const name = PROVIDER_NAMES[kind] ?? "the provider";
+
+                // Log the real cause server-side. The client only gets a generic message.
+                console.error(`[catalog] ${kind} lookup failed (region="${region}"):`, error);
+
+                // A revoked or expired Hetzner token: tell them how to fix it
+                // instead of showing a generic "try again".
+                if (adapter.isAuthError(error)) {
+                    res.status(422);
+                    return res.json({
+                        error: `${name} rejected this connection's token. Edit the connection and paste a new one.`,
+                    });
+                }
+
                 res.status(502);
-                return res.json({ error: "Couldn't load the Linode catalog. Try again in a moment." });
+                return res.json({ error: `Couldn't load the ${name} catalog. Try again in a moment.` });
             }
         }),
     );

@@ -1,8 +1,9 @@
 /**
  * Feature: Provider (cloud provider connections)
  *
- * A provider row is one connected cloud account (for now: a Linode personal
- * access token). Same owner-scoped shape as ServerController:
+ * A provider row is one connected cloud account (a Linode personal access
+ * token or a Hetzner Cloud project token). Same owner-scoped shape as
+ * ServerController:
  *
  *   - api_token is encrypted with CryptoService before it is stored and is
  *     NEVER returned to the client (responses carry has_token instead)
@@ -17,7 +18,8 @@ import { Provider } from "../models/Provider.js";
 import { Provision } from "../models/Provision.js";
 import { validateProvider, normalizeProvider } from "../validators/ProviderValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
-import { LinodeClient, LinodeError } from "../services/LinodeClient.js";
+// HETZNER: replaces the direct LinodeClient/LinodeError imports.
+import { adapterFor } from "../services/ProviderAdapter.js";
 
 interface ProviderRow {
     id: number;
@@ -30,6 +32,17 @@ interface ProviderRow {
     updated_at: string;
     [key: string]: unknown;
 }
+
+// HETZNER: per-provider wording for token errors.
+const PROVIDER_NAMES: Record<string, string> = {
+    linode: "Linode",
+    hetzner: "Hetzner",
+};
+
+const TOKEN_HELP: Record<string, string> = {
+    linode: "Create a personal access token with Linodes: Read/Write and try again.",
+    hetzner: "Create an API token with Read & Write permission in your Cloud project and try again.",
+};
 
 /** Strips the encrypted token from anything that leaves the API. */
 function toPublic(row: ProviderRow) {
@@ -64,25 +77,32 @@ async function isDuplicateLabel(
     );
 }
 
-/** Returns null if the token works, otherwise the HTTP status and message to answer with. */
+/**
+ * Returns null if the token works, otherwise the HTTP status and message to answer with.
+ *
+ * HETZNER: now provider-agnostic. verify() is a read-only call on both providers,
+ * so a Hetzner token with Read-only permission passes here and only fails later,
+ * when a server is created. Write access can't be checked without writing.
+ */
 async function checkToken(
     kind: string,
     token: string,
 ): Promise<{ status: number; message: string } | null> {
+    const adapter = adapterFor(kind, token); // kind is validated before we get here
+
     try {
-        if (kind === "linode") {
-            await new LinodeClient(token).verify();
-        }
+        await adapter.verify();
         return null;
     } catch (error) {
-        if (error instanceof LinodeError && (error.status === 401 || error.status === 403)) {
+        const name = PROVIDER_NAMES[kind] ?? "the provider";
+
+        if (adapter.isAuthError(error)) {
             return {
                 status: 422,
-                message:
-                    "Linode rejected this token. Create a personal access token with Linodes: Read/Write and try again.",
+                message: `${name} rejected this token. ${TOKEN_HELP[kind] ?? ""}`.trim(),
             };
         }
-        return { status: 502, message: "Couldn't reach Linode to verify the token. Try again in a moment." };
+        return { status: 502, message: `Couldn't reach ${name} to verify the token. Try again in a moment.` };
     }
 }
 
@@ -166,6 +186,7 @@ export class ProviderController {
         const patch: Record<string, unknown> = { label: input.label };
 
         if (input.api_token) {
+            // The stored kind decides, never the request body: the type is fixed.
             const problem = await checkToken(provider.kind, input.api_token);
             if (problem) {
                 res.status(problem.status);

@@ -297,7 +297,7 @@ template
         </div>
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No servers yet</h3>
         <p class="text-slate-500 text-sm max-w-sm mx-auto">
-          Create one at Linode, or add an existing server with its SSH details.
+          Create one at your cloud provider, or add an existing server with its SSH details.
         </p>
       </div>
 {{/if}}
@@ -378,8 +378,8 @@ template
 {{#if rows.length is not 0}}
       <div class="flex items-end justify-between mt-12 mb-4">
         <div>
-          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Provisioned at Linode</h2>
-          <p class="text-slate-500 text-sm mt-1">Machines created from this app. Deleting one here destroys it at Linode too.</p>
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Provisioned servers</h2>
+          <p class="text-slate-500 text-sm mt-1">Machines created from this app. Deleting one here destroys it at your cloud provider too.</p>
         </div>
       </div>
 

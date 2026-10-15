@@ -190,7 +190,7 @@ export class ServerController {
         if (provisions.some((p) => Number(p.server_id) === server.id && p.status !== "deleted")) {
             res.status(409);
             return res.json({
-                error: "This server was created by the deployer. Delete it from the Provisioned servers list so it is removed at Linode too.",
+                error: "This server was created by the deployer. Delete it from the Provisioned servers list so it is removed at your cloud provider too.",
             });
         }
 
@@ -222,13 +222,12 @@ export class ServerController {
         for (const w of (await ServerWorker.all()) as { id: number; server_id: number }[]) {
             if (w.server_id === server.id) await ServerWorker.delete(w.id);
         }
-
         for (const c of (await ServerCronJob.all()) as { id: number; server_id: number }[]) {
-        if (c.server_id === server.id) await ServerCronJob.delete(c.id);
+            if (c.server_id === server.id) await ServerCronJob.delete(c.id);
         }
-
         for (const b of (await ServerBackup.all()) as { id: number; server_id: number }[]) {
-             if (b.server_id === server.id) await ServerBackup.delete(b.id); }
+            if (b.server_id === server.id) await ServerBackup.delete(b.id);
+        }
 
         // ASSUMPTION: Model exposes delete(id).
         await Server.delete(server.id);

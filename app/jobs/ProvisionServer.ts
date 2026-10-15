@@ -7,26 +7,25 @@
  * to be re-runnable:
  *
  *   - the keypair is saved (encrypted) before anything is created
- *   - the instance is tagged tylix-provision-<id>; a re-run adopts it
- *     instead of creating a second billable machine
+ *   - the instance is tagged (Linode) or labelled (Hetzner) tylix-provision-<id>;
+ *     a re-run adopts it instead of creating a second billable machine
  *   - instance_id is saved the moment the provider accepts the create call
  *   - installers leave marker files on the server, so a re-run skips finished
  *     components (see services/Installers.ts)
  *   - every failure is written to the provision row (never including tokens)
  *
  * PROVISION_DRY_RUN=1 runs every check except the create call.
+ *
+ * HETZNER: all provider-specific work now goes through ProviderAdapter, so this
+ * file has no Linode- or Hetzner-specific code left in it.
  */
 
 import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
-import {
-    LinodeClient,
-    LinodeError,
-    generateRootPassword,
-    type LinodeInstance,
-} from "../services/LinodeClient.js";
+// HETZNER: replaces the direct LinodeClient imports.
+import { adapterFor, type ProviderAdapter } from "../services/ProviderAdapter.js";
 import { generateKeyPair, derivePublicKey, sshExec } from "../services/Ssh.js";
 import { installStepsFor, runInstallStep } from "../services/Installers.js";
 
@@ -51,7 +50,7 @@ interface ProvisionRow {
     error: string;
     ssh_key: string;
     server_id: number;
-        root_password: string;
+    root_password: string;
     [key: string]: unknown;
 }
 
@@ -67,18 +66,20 @@ async function save(id: number, patch: Record<string, unknown>): Promise<void> {
     await Provision.update(id, patch);
 }
 
-async function waitForRunning(linode: LinodeClient, instanceId: number): Promise<string> {
+// HETZNER: takes the adapter instead of a LinodeClient. "running" is the status
+// name on both providers, and the adapter hands back the IP already normalised.
+async function waitForRunning(adapter: ProviderAdapter, instanceId: number): Promise<string> {
     const deadline = Date.now() + BOOT_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
         try {
-            const instance: LinodeInstance = await linode.getInstance(instanceId);
-            if (instance.status === "running" && instance.ipv4[0]) {
-                return instance.ipv4[0];
+            const instance = await adapter.get(instanceId);
+            if (instance.status === "running" && instance.ip) {
+                return instance.ip;
             }
         } catch (error) {
-            const transient = error instanceof LinodeError && (error.status === 0 || error.status >= 500);
-            if (!transient) throw error;
+            // Network blips, 5xx and rate limits: keep polling. Anything else is real.
+            if (!adapter.isTransient(error)) throw error;
         }
         await sleep(BOOT_POLL_MS);
     }
@@ -109,19 +110,23 @@ export const ProvisionServer = {
         let row = await load(id);
         if (row.status === "done") return;
 
+        // HETZNER: declared out here so the catch block can use it to word errors.
+        let adapter: ProviderAdapter | null = null;
+
         try {
+            // HETZNER: also select `kind` so we know which provider to build.
             const provider = (await Provider.find(row.provider_id)) as
-                | { user_id: number; api_token: string }
+                | { user_id: number; kind: string; api_token: string }
                 | null;
 
             if (!provider || provider.user_id !== row.user_id) {
                 throw new Error("The provider connection no longer exists.");
             }
 
-            const linode = new LinodeClient(CryptoService.decrypt(provider.api_token));
+            adapter = adapterFor(provider.kind, CryptoService.decrypt(provider.api_token));
 
             if (dryRun) {
-                await linode.verify();
+                await adapter.verify();
                 await generateKeyPair(`dry-run-${id}`);
                 await save(id, { step: "dry_run_ok", status: "dry_run", error: "" });
                 return;
@@ -137,44 +142,58 @@ export const ProvisionServer = {
             }
             const privateKey = CryptoService.decrypt(row.ssh_key);
 
-
+            // HETZNER: the root password has two sources now.
+            //   Linode:  we generate it here and save it before creating (as before).
+            //   Hetzner: the provider generates it, so presetRootPassword() is null
+            //            and the password is saved in step 2, right after create.
             if (!row.root_password) {
-                await save(id, { root_password: CryptoService.encrypt(generateRootPassword()) });
-                row = await load(id);
+                const preset = adapter.presetRootPassword();
+                if (preset) {
+                    await save(id, { root_password: CryptoService.encrypt(preset) });
+                    row = await load(id);
+                }
             }
-            const rootPassword = CryptoService.decrypt(row.root_password);
+            const rootPassword = row.root_password ? CryptoService.decrypt(row.root_password) : null;
 
             // 2. Create (or adopt) the instance.
             if (!Number(row.instance_id)) {
                 await save(id, { step: "creating" });
 
-                const tag = `tylix-provision-${id}`;
-                let instance = await linode.findByLabel(row.name);
-
-                if (instance && !instance.tags.includes(tag)) {
-                    throw new Error(`A Linode named "${row.name}" already exists in this account. Choose another name.`);
-                }
+                // HETZNER: the adapter knows how to recognise our own machine
+                // (Linode: tag + label, Hetzner: label selector) and refuses
+                // to adopt anyone else's.
+                let instance = await adapter.findOurs(id, row.name);
+                let providerPassword: string | null = null;
 
                 if (!instance) {
-                    instance = await linode.createInstance({
+                    const created = await adapter.create({
+                        provisionId: id,
+                        name: row.name,
                         region: row.region,
-                        type: row.plan,
+                        plan: row.plan,
                         image: row.image,
-                        label: row.name,
                         rootPassword,
-                        authorizedKeys: [await derivePublicKey(privateKey)],
-                        tags: [tag, "tylix-deploy"],
+                        publicKey: await derivePublicKey(privateKey),
                     });
+                    instance = created.instance;
+                    providerPassword = created.rootPassword;
                 }
 
-                await save(id, { instance_id: instance.id, step: "booting" });
+                // instance_id is saved the moment the provider accepts the create.
+                // For Hetzner the password rides in the SAME write: it is only ever
+                // returned once, so it must never wait for a later save.
+                const patch: Record<string, unknown> = { instance_id: instance.id, step: "booting" };
+                if (providerPassword && !row.root_password) {
+                    patch.root_password = CryptoService.encrypt(providerPassword);
+                }
+                await save(id, patch);
                 row = await load(id);
             }
 
             // 3. Wait for it to boot and get its address.
             if (!row.ip) {
                 await save(id, { step: "booting" });
-                const ip = await waitForRunning(linode, Number(row.instance_id));
+                const ip = await waitForRunning(adapter, Number(row.instance_id));
                 await save(id, { ip, step: "waiting_ssh" });
                 row = await load(id);
             }
@@ -214,12 +233,10 @@ export const ProvisionServer = {
 
             await save(id, { step: "provisioned", status: "done", error: "" });
         } catch (error) {
+            // HETZNER: "Linode: ..." / "Hetzner: ..." prefix comes from the adapter.
             const message =
-                error instanceof LinodeError
-                    ? `Linode: ${error.message}`
-                    : error instanceof Error
-                      ? error.message
-                      : "Unknown error.";
+                adapter?.describeError(error) ??
+                (error instanceof Error ? error.message : "Unknown error.");
 
             await save(id, { status: "failed", error: message.slice(0, 500) }).catch(() => {});
             throw error;
