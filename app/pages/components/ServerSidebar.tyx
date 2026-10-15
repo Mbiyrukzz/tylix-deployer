@@ -17,7 +17,7 @@ template
       Overview
     </a>
 {{/if}}
-    {{#if active is "databases"}}
+{{#if active is "databases"}}
     <a href="{{ '/servers/server-databases?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       Database
     </a>
@@ -27,7 +27,16 @@ template
       Database
     </a>
 {{/if}}
-   {{#if active is "backups"}} <a href="{{ '/servers/server-backups?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium"> Backups </a> {{/if}} {{#if active is not "backups"}} <a href="{{ '/servers/server-backups?id=' + serverId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"> Backups </a> {{/if}}
+{{#if active is "backups"}}
+    <a href="{{ '/servers/server-backups?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      Backups
+    </a>
+{{/if}}
+{{#if active is not "backups"}}
+    <a href="{{ '/servers/server-backups?id=' + serverId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      Backups
+    </a>
+{{/if}}
 {{#if active is "sites"}}
     <a href="{{ '/servers/server-sites?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       Sites
@@ -42,7 +51,7 @@ template
       <span>Firewall</span>
       <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
     </span>
-    {{#if active is "cron"}}
+{{#if active is "cron"}}
     <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       CronJobs
     </a>
@@ -52,7 +61,7 @@ template
       CronJobs
     </a>
 {{/if}}
-   {{#if active is "workers"}}
+{{#if active is "workers"}}
     <a href="{{ '/servers/server-workers?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       Workers
     </a>
@@ -62,7 +71,7 @@ template
       Workers
     </a>
 {{/if}}
-    {{#if active is "ssh-keys"}}
+{{#if active is "ssh-keys"}}
     <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
       SSH Keys
     </a>
@@ -86,10 +95,16 @@ template
       Packages
     </a>
 {{/if}}
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Logs</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
+{{#if active is "logs"}}
+    <a href="{{ '/servers/server-logs?id=' + serverId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+      Logs
+    </a>
+{{/if}}
+{{#if active is not "logs"}}
+    <a href="{{ '/servers/server-logs?id=' + serverId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      Logs
+    </a>
+{{/if}}
     <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
       <span>Settings</span>
       <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>

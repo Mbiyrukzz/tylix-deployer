@@ -1,0 +1,222 @@
+page ServerLogs
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Logs"
+
+state
+  server: null
+  serverId: ""
+  loading: true
+  notFound: false
+  busy: false
+  error: ""
+  logs: []
+  filters: []
+  level: ""
+  openId: null
+
+action
+  fail(result, fallback) {
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    this.error = result.data?.error or fallback
+  }
+
+  fmtDate(value) {
+    const d = new Date(value)
+    if isNaN(d.getTime()) {
+      return String(value or "")
+    }
+    return d.toISOString().slice(0, 19).replace("T", " ") + " UTC"
+  }
+
+  dotClass(level) {
+    if level is "success" {
+      return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-emerald-500"
+    }
+    if level is "warning" {
+      return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-amber-500"
+    }
+    if level is "error" {
+      return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-rose-500"
+    }
+    return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-sky-500"
+  }
+
+  badgeClass(level) {
+    if level is "success" {
+      return "text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
+    }
+    if level is "warning" {
+      return "text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
+    }
+    if level is "error" {
+      return "text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500"
+    }
+    return "text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400"
+  }
+
+  buildFilters(active) {
+    const all = [
+      { id: "", label: "All" },
+      { id: "info", label: "Info" },
+      { id: "success", label: "Success" },
+      { id: "warning", label: "Warning" },
+      { id: "error", label: "Error" }
+    ]
+    return all.map((f) => Object.assign({}, f, { active: f.id is active }))
+  }
+
+  setLevel(value) {
+    this.level = value
+    this.filters = this.buildFilters(value)
+    this.openId = null
+    this.load()
+  }
+
+  toggleMeta(id) {
+    if this.openId is id {
+      this.openId = null
+    } else {
+      this.openId = id
+    }
+  }
+
+  async load() {
+    this.busy = true
+    this.error = ""
+
+    // The level is one of four fixed words from the filter buttons, so it is
+    // safe to append as is. (No URLSearchParams.toString(): the compiler
+    // currently chokes on a property named toString.)
+    const base = "/api/servers/" + this.serverId + "/logs?limit=200"
+    const url = this.level and (base + "&level=" + this.level) or base
+
+    const result = await useApi(url)
+
+    if result.ok and Array.isArray(result.data) {
+      this.logs = result.data.map((l) => Object.assign({}, l, {
+        dateText: this.fmtDate(l.created_at),
+        dotCls: this.dotClass(l.level),
+        badgeCls: this.badgeClass(l.level),
+        hasMeta: Object.keys(l.meta or {}).length > 0,
+        metaText: JSON.stringify(l.meta or {}, null, 2)
+      }))
+    } else {
+      this.fail(result, "Couldn't load the logs.")
+    }
+    this.busy = false
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+    this.filters = this.buildFilters("")
+
+    if not serverId {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+        this.loading = false
+        await this.load()
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+    <ServerSidebar active="logs" serverId="{{ serverId }}" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Logs</h1>
+      <p class="text-slate-500 text-sm mb-6">Everything that happened to this server, newest first: creation, edits, reboots and blocked actions. Keys and passwords are never recorded.</p>
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex flex-wrap gap-1.5">
+{{#each f in filters}}
+{{#if f.active}}
+            <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ f.label }}</button>
+{{/if}}
+{{#if not f.active}}
+            <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">{{ f.label }}</button>
+{{/if}}
+{{/each}}
+          </div>
+{{#if busy}}
+          <button disabled class="text-sm text-slate-400 px-2 py-1">Loading…</button>
+{{/if}}
+{{#if not busy}}
+          <button onclick="{{ load() }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Refresh</button>
+{{/if}}
+        </div>
+
+{{#if logs.length is 0}}
+        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+          <p class="text-slate-500 text-sm">No events yet.</p>
+        </div>
+{{/if}}
+
+{{#each l in logs}}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+          <div class="flex items-start gap-3">
+            <span class="{{ l.dotCls }}"></span>
+            <div class="min-w-0 flex-1">
+              <p class="text-slate-900 dark:text-slate-100 text-sm break-words">{{ l.message }}</p>
+              <p class="text-slate-500 text-xs mt-0.5">
+                <span class="{{ l.badgeCls }}">{{ l.level }}</span>
+                <span class="font-mono ml-2">{{ l.event }}</span>
+                <span class="ml-2">{{ l.dateText }}</span>
+              </p>
+            </div>
+{{#if l.hasMeta}}
+            <button onclick="{{ toggleMeta(l.id) }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Details</button>
+{{/if}}
+          </div>
+{{#if openId is l.id}}
+          <pre class="rounded-lg bg-slate-950 text-emerald-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ l.metaText }}</pre>
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

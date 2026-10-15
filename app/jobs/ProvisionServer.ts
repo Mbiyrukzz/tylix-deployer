@@ -18,6 +18,10 @@
  *
  * HETZNER: all provider-specific work now goes through ProviderAdapter, so this
  * file has no Linode- or Hetzner-specific code left in it.
+ *
+ * LOGS: every milestone is written to the server log with provision_id set.
+ * Once the server record exists, attachProvision() links the whole creation
+ * history to it. Passwords, keys and tokens are never logged.
  */
 
 import { Provision } from "../models/Provision.js";
@@ -28,6 +32,7 @@ import { CryptoService } from "../services/CryptoService.js";
 import { adapterFor, type ProviderAdapter } from "../services/ProviderAdapter.js";
 import { generateKeyPair, derivePublicKey, sshExec } from "../services/Ssh.js";
 import { installStepsFor, runInstallStep } from "../services/Installers.js";
+import { ServerLogService, type LogLevel } from "../services/ServerLogService.js";
 
 const BOOT_TIMEOUT_MS = 6 * 60 * 1000;
 const BOOT_POLL_MS = 5_000;
@@ -64,6 +69,25 @@ async function load(id: number): Promise<ProvisionRow> {
 
 async function save(id: number, patch: Record<string, unknown>): Promise<void> {
     await Provision.update(id, patch);
+}
+
+/** Writes one event for this provision. Never throws (ServerLogService.record is safe). */
+function log(
+    row: ProvisionRow,
+    event: string,
+    message: string,
+    level: LogLevel = "info",
+    meta?: Record<string, unknown>,
+) {
+    return ServerLogService.record({
+        userId: row.user_id,
+        provisionId: row.id,
+        serverId: Number(row.server_id) || null,
+        event,
+        level,
+        message,
+        meta,
+    });
 }
 
 // HETZNER: takes the adapter instead of a LinodeClient. "running" is the status
@@ -129,16 +153,37 @@ export const ProvisionServer = {
                 await adapter.verify();
                 await generateKeyPair(`dry-run-${id}`);
                 await save(id, { step: "dry_run_ok", status: "dry_run", error: "" });
+                await log(row, "provision.dry_run_ok", "Dry run passed. Nothing was created.", "info", {
+                    provider: provider.kind,
+                });
                 return;
             }
 
+            // A saved step or instance means an earlier run got somewhere: this is a resume.
+            const resuming = Boolean(row.step) || Boolean(Number(row.instance_id));
             await save(id, { status: "running", error: "" });
+            await log(
+                row,
+                resuming ? "provision.resumed" : "provision.started",
+                resuming
+                    ? `Provisioning of "${row.name}" resumed from step "${row.step || "start"}".`
+                    : `Provisioning of "${row.name}" started.`,
+                "info",
+                {
+                    provider: provider.kind,
+                    region: row.region,
+                    plan: row.plan,
+                    image: row.image,
+                    template: row.template,
+                },
+            );
 
             // 1. Keypair: saved before anything billable exists.
             if (!row.ssh_key) {
                 const pair = await generateKeyPair(`tylix-deploy-${id}`);
                 await save(id, { ssh_key: CryptoService.encrypt(pair.privateKey) });
                 row = await load(id);
+                await log(row, "provision.keypair_created", "Deploy keypair generated and stored encrypted.");
             }
             const privateKey = CryptoService.decrypt(row.ssh_key);
 
@@ -164,8 +209,10 @@ export const ProvisionServer = {
                 // to adopt anyone else's.
                 let instance = await adapter.findOurs(id, row.name);
                 let providerPassword: string | null = null;
+                let adopted = true;
 
                 if (!instance) {
+                    adopted = false;
                     const created = await adapter.create({
                         provisionId: id,
                         name: row.name,
@@ -188,6 +235,16 @@ export const ProvisionServer = {
                 }
                 await save(id, patch);
                 row = await load(id);
+
+                await log(
+                    row,
+                    adopted ? "provision.instance_adopted" : "provision.instance_created",
+                    adopted
+                        ? "Found the machine from an earlier attempt and reused it."
+                        : "The provider accepted the create request.",
+                    "success",
+                    { provider: provider.kind, instance_id: instance.id },
+                );
             }
 
             // 3. Wait for it to boot and get its address.
@@ -196,11 +253,13 @@ export const ProvisionServer = {
                 const ip = await waitForRunning(adapter, Number(row.instance_id));
                 await save(id, { ip, step: "waiting_ssh" });
                 row = await load(id);
+                await log(row, "provision.booted", `The machine is running at ${ip}.`, "success", { ip });
             }
 
             // 4. Wait until we can log in with our key. Instant when it is already up.
             await save(id, { step: "waiting_ssh" });
             await waitForSsh(row.ip, privateKey);
+            await log(row, "provision.ssh_ready", "SSH is reachable with the deploy key.", "success");
 
             // 5. Install the template's components, one step at a time.
             // Each step is its own row step, so updated_at moves and the sweep
@@ -208,11 +267,22 @@ export const ProvisionServer = {
             const target = { host: row.ip, port: 22, user: "root", privateKey };
             for (const step of installStepsFor(row.template)) {
                 await save(id, { step: `install_${step.id}` });
+                await log(row, "provision.install.started", `Installing ${step.label}.`, "info", {
+                    step: step.id,
+                });
 
                 const result = await runInstallStep(target, step);
                 if (!result.ok) {
+                    await log(row, "provision.install.failed", `${step.label} failed.`, "error", {
+                        step: step.id,
+                        tail: result.tail,
+                    });
                     throw new Error(`${step.label} failed. ${result.tail}`);
                 }
+
+                await log(row, "provision.install.completed", `${step.label} installed.`, "success", {
+                    step: step.id,
+                });
             }
 
             // 6. Add it to the Servers list.
@@ -229,9 +299,19 @@ export const ProvisionServer = {
 
                 if (!server) throw new Error("The machine is up, but the server record couldn't be saved.");
                 await save(id, { server_id: server.id });
+                row = await load(id);
             }
 
+            // Link every earlier event of this provision to the server record.
+            // Runs on resumes too, so a crash between create and attach heals itself.
+            await ServerLogService.attachProvision(id, Number(row.server_id));
+
+            await log(row, "provision.server_added", `"${row.name}" was added to your servers.`, "success", {
+                host: row.ip,
+            });
+
             await save(id, { step: "provisioned", status: "done", error: "" });
+            await log(row, "provision.completed", "Provisioning finished.", "success");
         } catch (error) {
             // HETZNER: "Linode: ..." / "Hetzner: ..." prefix comes from the adapter.
             const message =
@@ -239,6 +319,11 @@ export const ProvisionServer = {
                 (error instanceof Error ? error.message : "Unknown error.");
 
             await save(id, { status: "failed", error: message.slice(0, 500) }).catch(() => {});
+
+            // Re-read the row so the failure event carries the step it died on.
+            const latest = await load(id).catch(() => row);
+            await log(latest, "provision.failed", message, "error", { step: latest.step });
+
             throw error;
         }
     },

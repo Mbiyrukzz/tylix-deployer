@@ -7,6 +7,9 @@
  *                                         a retry never creates a second billable machine.
  * GET  /api/provisions/:id/root-password  returns the decrypted root password
  * POST /api/servers/:id/reboot            reboots a server over SSH (owner only)
+ *
+ * Each of these writes an event to the server log. The root password is
+ * never logged, only the fact that someone viewed it.
  */
 
 import type { Router } from "@tylix/core";
@@ -15,6 +18,7 @@ import { Provision } from "../models/Provision.js";
 import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerRebootService } from "../services/ServerRebootService.js";
+import { ServerLogService } from "../services/ServerLogService.js";
 
 type Handler = Parameters<Router["post"]>[1];
 
@@ -35,7 +39,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         "/api/provisions/:id/retry",
         auth(async (req, res) => {
             const row = (await Provision.find(req.params.id)) as
-                | { id: number; user_id: number; status: string }
+                | { id: number; user_id: number; status: string; server_id?: number }
                 | null;
 
             if (!row || row.user_id !== req.user?.userId) {
@@ -51,6 +55,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             await Provision.update(row.id, { status: "pending", error: "" });
             await dispatch("ProvisionServer", { provisionId: row.id });
 
+            await ServerLogService.record({
+                userId: row.user_id,
+                provisionId: row.id,
+                serverId: Number(row.server_id) || null,
+                event: "provision.retried",
+                message: "A failed provision was retried.",
+            });
+
             res.status(202);
             return res.json({ ok: true });
         }),
@@ -60,7 +72,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         "/api/provisions/:id/root-password",
         auth(async (req, res) => {
             const row = (await Provision.find(req.params.id)) as
-                | { id: number; user_id: number; root_password?: string }
+                | { id: number; user_id: number; server_id?: number; root_password?: string }
                 | null;
 
             if (!row || row.user_id !== req.user?.userId) {
@@ -74,6 +86,15 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                     error: "No root password is stored for this server. It was created before passwords were saved. Reset it from your provider's dashboard instead.",
                 });
             }
+
+            await ServerLogService.record({
+                userId: row.user_id,
+                provisionId: row.id,
+                serverId: Number(row.server_id) || null,
+                event: "provision.root_password_viewed",
+                level: "warning",
+                message: "The root password was viewed.",
+            });
 
             return res.json({ password: CryptoService.decrypt(row.root_password) });
         }),
@@ -90,6 +111,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             }
 
             if (rebooting.has(server.id)) {
+                await ServerLogService.record({
+                    userId: server.user_id,
+                    serverId: server.id,
+                    event: "server.reboot.blocked",
+                    level: "warning",
+                    message: "Reboot refused: one is already in progress.",
+                });
+
                 res.status(409);
                 return res.json({ error: "A reboot is already in progress for this server." });
             }
@@ -99,6 +128,13 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             let hold = 0;
 
             try {
+                await ServerLogService.record({
+                    userId: server.user_id,
+                    serverId: server.id,
+                    event: "server.reboot.requested",
+                    message: "Reboot requested.",
+                });
+
                 const result = await ServerRebootService.reboot({
                     host: server.host,
                     port: Number(server.port),
@@ -107,9 +143,25 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 });
 
                 if (!result.ok) {
+                    await ServerLogService.record({
+                        userId: server.user_id,
+                        serverId: server.id,
+                        event: "server.reboot.failed",
+                        level: "error",
+                        message: result.error ?? "The reboot command failed.",
+                    });
+
                     res.status(502);
                     return res.json({ error: result.error ?? "The reboot command failed." });
                 }
+
+                await ServerLogService.record({
+                    userId: server.user_id,
+                    serverId: server.id,
+                    event: "server.reboot.sent",
+                    level: "success",
+                    message: "Reboot command accepted by the server.",
+                });
 
                 hold = 60_000;
                 res.status(202);

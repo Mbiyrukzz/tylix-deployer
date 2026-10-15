@@ -14,6 +14,9 @@
  * Deleting a server is refused while it still has sites, so no site record
  * is ever left pointing at a server that is gone.
  *
+ * Every state change is written to the server log (ServerLogService). Log
+ * entries never contain the key itself, only the fact that it changed.
+ *
  * All routes sit behind requireAuth ("auth": true in feature.json), so
  * req.user.userId is always present here.
  */
@@ -26,6 +29,7 @@ import { DbUser } from "../models/DbUser.js";
 import { ServerDatabase } from "../models/ServerDatabase.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
+import { ServerLogService } from "../services/ServerLogService.js";
 import { ServerSshKey } from "../models/ServerSshKey.js";
 import { ServerWorker } from "../models/ServerWorker.js";
 import { ServerCronJob } from "../models/ServerCronJob.js";
@@ -128,6 +132,15 @@ export class ServerController {
             return res.json({ error: "Could not save the server." });
         }
 
+        await ServerLogService.record({
+            userId: server.user_id,
+            serverId: server.id,
+            event: "server.created",
+            level: "success",
+            message: `Server "${server.name}" was added.`,
+            meta: { host: server.host, port: Number(server.port), ssh_user: server.ssh_user },
+        });
+
         res.status(201);
         return res.json(toPublic(server));
     }
@@ -170,6 +183,19 @@ export class ServerController {
             patch.status = "pending";
         }
 
+        // Work out what changed BEFORE the write, while `server` is still the old row.
+        const changes: Record<string, { from: unknown; to: unknown }> = {};
+        if (input.name !== server.name) changes.name = { from: server.name, to: input.name };
+        if (input.host !== server.host) changes.host = { from: server.host, to: input.host };
+        if (input.port !== Number(server.port)) {
+            changes.port = { from: Number(server.port), to: input.port };
+        }
+        if (input.ssh_user !== server.ssh_user) {
+            changes.ssh_user = { from: server.ssh_user, to: input.ssh_user };
+        }
+        const keyRotated = Boolean(input.ssh_key);
+        const previousStatus = server.status;
+
         // PostController. Re-read the row so we never depend on its return value.
         await Server.update(server.id, patch);
         const fresh = (await Server.find(server.id)) as ServerRow | null;
@@ -177,6 +203,39 @@ export class ServerController {
         if (!fresh) {
             res.status(500);
             return res.json({ error: "Could not reload the server after saving." });
+        }
+
+        const changedFields = [...Object.keys(changes), ...(keyRotated ? ["ssh_key"] : [])];
+
+        if (changedFields.length > 0) {
+            await ServerLogService.record({
+                userId: server.user_id,
+                serverId: server.id,
+                event: "server.updated",
+                message: `Server updated: ${changedFields.join(", ")}.`,
+                meta: { changes, ssh_key_replaced: keyRotated },
+            });
+        }
+
+        if (keyRotated) {
+            await ServerLogService.record({
+                userId: server.user_id,
+                serverId: server.id,
+                event: "server.key_replaced",
+                level: "warning",
+                message: "The SSH private key was replaced.",
+            });
+        }
+
+        if (connectionChanged && previousStatus !== "pending") {
+            await ServerLogService.record({
+                userId: server.user_id,
+                serverId: server.id,
+                event: "server.status_reset",
+                level: "warning",
+                message: "Connection details changed, so the status was reset to pending.",
+                meta: { from: previousStatus, to: "pending" },
+            });
         }
 
         return res.json(toPublic(fresh));
@@ -188,6 +247,14 @@ export class ServerController {
 
         const provisions = (await Provision.all()) as { server_id: number; status: string }[];
         if (provisions.some((p) => Number(p.server_id) === server.id && p.status !== "deleted")) {
+            await ServerLogService.record({
+                userId: server.user_id,
+                serverId: server.id,
+                event: "server.delete_blocked",
+                level: "warning",
+                message: "Delete refused: this server was created by the deployer.",
+            });
+
             res.status(409);
             return res.json({
                 error: "This server was created by the deployer. Delete it from the Provisioned servers list so it is removed at your cloud provider too.",
@@ -200,6 +267,15 @@ export class ServerController {
             (s) => Number(s.server_id) === server.id,
         );
         if (sites.length > 0) {
+            await ServerLogService.record({
+                userId: server.user_id,
+                serverId: server.id,
+                event: "server.delete_blocked",
+                level: "warning",
+                message: `Delete refused: the server still has ${sites.length} site${sites.length === 1 ? "" : "s"}.`,
+                meta: { sites: sites.length },
+            });
+
             res.status(409);
             return res.json({
                 error:
@@ -228,6 +304,9 @@ export class ServerController {
         for (const b of (await ServerBackup.all()) as { id: number; server_id: number }[]) {
             if (b.server_id === server.id) await ServerBackup.delete(b.id);
         }
+
+        // The server's log goes with it, like every other child record.
+        await ServerLogService.deleteForServer(server.id);
 
         // ASSUMPTION: Model exposes delete(id).
         await Server.delete(server.id);
