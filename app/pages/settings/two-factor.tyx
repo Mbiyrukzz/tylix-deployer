@@ -70,7 +70,7 @@ action
 
     if result.ok {
       this.secret = result.data.secret
-      this.secretText = (result.data.secret.match(/.{1,4}/g) or []).join(" ")
+      this.secretText = result.data.secret
       this.uri = result.data.uri
       this.step = "setup"
     } else if result.status is 401 {
