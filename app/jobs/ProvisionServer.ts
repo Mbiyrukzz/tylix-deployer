@@ -28,11 +28,11 @@ import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
-// HETZNER: replaces the direct LinodeClient imports.
 import { adapterFor, type ProviderAdapter } from "../services/ProviderAdapter.js";
 import { generateKeyPair, derivePublicKey, sshExec } from "../services/Ssh.js";
 import { installStepsFor, runInstallStep } from "../services/Installers.js";
 import { ServerLogService, type LogLevel } from "../services/ServerLogService.js";
+import { syncFirewall } from "../services/FirewallSync.js";
 
 const BOOT_TIMEOUT_MS = 6 * 60 * 1000;
 const BOOT_POLL_MS = 5_000;
@@ -302,6 +302,38 @@ export const ProvisionServer = {
                 row = await load(id);
             }
 
+
+                        // 6b. Firewall defaults (SSH, HTTP, HTTPS) and switch ufw on.
+            // Skipped for Bare, which has no ufw. A failure here never fails the
+            // provision: the machine is usable, and the Firewall page's Sync retries it.
+            if (row.template !== "bare") {
+                await save(id, { step: "firewall" });
+                try {
+                    const fw = await syncFirewall(
+                        { id: Number(row.server_id), user_id: row.user_id, port: 22 },
+                        target,
+                    );
+
+                    if (fw.enableError || fw.failed > 0) {
+                        await log(
+                            row,
+                            "provision.firewall.warning",
+                            fw.enableError || `${fw.failed} firewall rule(s) failed. Open Firewall and press Sync.`,
+                            "warning",
+                        );
+                    } else {
+                        await log(row, "provision.firewall.ready", "Firewall rules applied and ufw enabled.", "success");
+                    }
+                } catch (error) {
+                    await log(
+                        row,
+                        "provision.firewall.warning",
+                        "Couldn't set up the firewall. Open Firewall and press Sync.",
+                        "warning",
+                    );
+                    console.error(`Provision ${id}: firewall setup failed:`, error instanceof Error ? error.message : error);
+                }
+            }
             // Link every earlier event of this provision to the server record.
             // Runs on resumes too, so a crash between create and attach heals itself.
             await ServerLogService.attachProvision(id, Number(row.server_id));

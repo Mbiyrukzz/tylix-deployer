@@ -41,6 +41,10 @@ export interface ServerLogRow {
 }
 
 const LEVELS: LogLevel[] = ["info", "success", "warning", "error"];
+/** Named groups of events for the Logs filter. Only these names are accepted. */
+const CATEGORIES: Record<string, string[]> = {
+    firewall: ["firewall.", "provision.firewall."],
+};
 const SENSITIVE_KEY = /key|password|passphrase|token|secret|credential/i;
 const MAX_STRING = 300;
 const MAX_DEPTH = 3;
@@ -114,13 +118,14 @@ export const ServerLogService = {
     },
 
     /** Newest first. Only this user's events for this server. */
-    async list(
+       async list(
         serverId: number,
         userId: number,
-        options: { level?: string; limit?: number } = {},
+        options: { level?: string; category?: string; limit?: number } = {},
     ) {
         const limit = Math.min(Math.max(Number(options.limit) || 100, 1), 500);
         const level = LEVELS.includes(options.level as LogLevel) ? options.level : "";
+        const prefixes = options.category ? CATEGORIES[options.category] : undefined;
 
         const rows = (await ServerLog.all()) as ServerLogRow[];
 
@@ -129,7 +134,8 @@ export const ServerLogService = {
                 (r) =>
                     Number(r.server_id) === serverId &&
                     r.user_id === userId &&
-                    (!level || r.level === level),
+                    (!level || r.level === level) &&
+                    (!prefixes || prefixes.some((p) => String(r.event).startsWith(p))),
             )
             .sort((a, b) => {
                 const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();

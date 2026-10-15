@@ -26,11 +26,11 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             // ASSUMPTION: the request exposes parsed query params as req.query.
             const query = (req as unknown as { query?: Record<string, string> }).query ?? {};
 
-            const logs = await ServerLogService.list(server.id, server.user_id, {
-                level: typeof query.level === "string" ? query.level : "",
-                limit: Number(query.limit),
-            });
-
+           const logs = await ServerLogService.list(server.id, server.user_id, {
+    level: typeof query.level === "string" ? query.level : "",
+    category: typeof query.category === "string" ? query.category : "",
+    limit: Number(query.limit),
+});
             return res.json(logs);
         }),
     );

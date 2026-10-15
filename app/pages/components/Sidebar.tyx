@@ -6,52 +6,83 @@ props
   active: String
 
 template
-  <aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
-    <div class="hidden lg:flex items-center gap-2.5 mb-8 px-1">
-      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm dark:shadow-emerald-500/30">
-        <IconHome class="w-4 h-4 text-white" />
-      </div>
-      <span class="text-slate-800 dark:text-slate-200 font-semibold text-sm">tylix-deploy</span>
+<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
+
+  <div class="hidden lg:flex items-center gap-2.5 mb-6 px-1">
+    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm dark:shadow-emerald-500/30">
+      <IconHome class="w-4 h-4 text-white" />
     </div>
+    <span class="text-slate-800 dark:text-slate-200 font-semibold text-sm">tylix-deploy</span>
+  </div>
+
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1">Workspace</p>
 
 {{#if active is "overview"}}
-    <a href="/dashboard" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-      <IconHome class="w-4 h-4" /> Overview
-    </a>
+  <a href="/dashboard" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconHome class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Overview
+  </a>
 {{/if}}
 {{#if active is not "overview"}}
-    <a href="/dashboard" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      <IconHome class="w-4 h-4" /> Overview
-    </a>
+  <a href="/dashboard" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconHome class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Overview
+  </a>
 {{/if}}
+
 {{#if active is "servers"}}
-    <a href="/servers" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-      <IconDatabase class="w-4 h-4" /> Servers
-    </a>
+  <a href="/servers" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconDatabase class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Servers
+  </a>
 {{/if}}
 {{#if active is not "servers"}}
-    <a href="/servers" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      <IconDatabase class="w-4 h-4" /> Servers
-    </a>
+  <a href="/servers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconDatabase class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Servers
+  </a>
 {{/if}}
+
 {{#if active is "providers"}}
-    <a href="/providers" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-      <IconFolder class="w-4 h-4" /> Providers
-    </a>
+  <a href="/providers" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconFolder class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Providers
+  </a>
 {{/if}}
 {{#if active is not "providers"}}
-    <a href="/providers" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      <IconFolder class="w-4 h-4" /> Providers
-    </a>
+  <a href="/providers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconFolder class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Providers
+  </a>
 {{/if}}
+
 {{#if active is "source-control"}}
-    <a href="/source-control" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-      <IconFolder class="w-4 h-4" /> Source control
-    </a>
+  <a href="/source-control" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconFolder class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Source control
+  </a>
 {{/if}}
 {{#if active is not "source-control"}}
-    <a href="/source-control" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      <IconFolder class="w-4 h-4" /> Source control
+  <a href="/source-control" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconFolder class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Source control
+  </a>
+{{/if}}
+
+  <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800">
+{{#if active is "settings"}}
+    <a href="/settings" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true">
+        <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12" />
+        <circle cx="16" cy="6" r="2" />
+        <circle cx="8" cy="12" r="2" />
+        <circle cx="18" cy="18" r="2" />
+      </svg>
+      Settings
     </a>
 {{/if}}
-  </aside>
+{{#if active is not "settings"}}
+    <a href="/settings" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" aria-hidden="true">
+        <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12" />
+        <circle cx="16" cy="6" r="2" />
+        <circle cx="8" cy="12" r="2" />
+        <circle cx="18" cy="18" r="2" />
+      </svg>
+      Settings
+    </a>
+{{/if}}
+  </div>
+</aside>

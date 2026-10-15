@@ -16,24 +16,39 @@ action
     this[field] = value
   }
 
+    async callLogin() {
+    return Auth.login(this.email, this.password)
+  }
+
+  loginFailed(err) {
+    console.error("login failed:", err)
+    return { ok: false, error: "Something went wrong. Please try again." }
+  }
+
   async submit() {
-    if not this.submitting {
-      this.submitting = true
-      this.error = ""
-
-      const result = await Auth.login(this.email, this.password)
-
-      if result.ok {
-        window.location.href = "/dashboard"
-      } else if result.status is 422 and result.data.errors {
-        const firstField = Object.keys(result.data.errors)[0]
-        this.error = result.data.errors[firstField][0]
-        this.submitting = false
-      } else {
-        this.error = result.error or "Invalid email or password."
-        this.submitting = false
-      }
+    if this.submitting {
+      return null
     }
+
+    this.submitting = true
+    this.error = ""
+
+    const result = await this.callLogin().catch((err) => this.loginFailed(err))
+    console.log("login result:", result)
+
+    if result and result.ok {
+      window.location.replace("/dashboard")
+      return null
+    }
+
+    if result and result.status is 422 and result.data?.errors {
+      const firstField = Object.keys(result.data.errors)[0]
+      this.error = result.data.errors[firstField][0]
+    } else {
+      this.error = result?.error or "Invalid email or password."
+    }
+
+    this.submitting = false
   }
 
 template
@@ -125,7 +140,11 @@ template
           />
 
 {{#if submitting}}
-          <button disabled class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold opacity-50 transition">
+          <button disabled class="w-full inline-flex items-center justify-center gap-2 bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold opacity-70 cursor-not-allowed transition">
+            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
             Logging in…
           </button>
 {{/if}}

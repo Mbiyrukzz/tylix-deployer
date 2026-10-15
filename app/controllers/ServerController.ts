@@ -34,6 +34,7 @@ import { ServerSshKey } from "../models/ServerSshKey.js";
 import { ServerWorker } from "../models/ServerWorker.js";
 import { ServerCronJob } from "../models/ServerCronJob.js";
 import { ServerBackup } from "../models/ServerBackup.js";
+import { ServerFirewallRule } from "../models/ServerFirewallRule.js";
 
 interface ServerRow {
     id: number;
@@ -305,6 +306,10 @@ export class ServerController {
             if (b.server_id === server.id) await ServerBackup.delete(b.id);
         }
 
+
+        for (const f of (await ServerFirewallRule.all()) as { id: number; server_id: number }[]) {
+        if (f.server_id === server.id) await ServerFirewallRule.delete(f.id);
+        }
         // The server's log goes with it, like every other child record.
         await ServerLogService.deleteForServer(server.id);
 

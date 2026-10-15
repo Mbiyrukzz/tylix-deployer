@@ -14,6 +14,8 @@ state
   logs: []
   filters: []
   level: ""
+  category: ""
+  categories: []
   openId: null
 
 action
@@ -77,6 +79,21 @@ action
     this.load()
   }
 
+  buildCategories(active) {
+    const all = [
+      { id: "", label: "All events" },
+      { id: "firewall", label: "Firewall" }
+    ]
+    return all.map((c) => Object.assign({}, c, { active: c.id is active }))
+  }
+
+  setCategory(value) {
+    this.category = value
+    this.categories = this.buildCategories(value)
+    this.openId = null
+    this.load()
+  }
+
   toggleMeta(id) {
     if this.openId is id {
       this.openId = null
@@ -89,11 +106,16 @@ action
     this.busy = true
     this.error = ""
 
-    // The level is one of four fixed words from the filter buttons, so it is
-    // safe to append as is. (No URLSearchParams.toString(): the compiler
-    // currently chokes on a property named toString.)
-    const base = "/api/servers/" + this.serverId + "/logs?limit=200"
-    const url = this.level and (base + "&level=" + this.level) or base
+    // Level and category come from fixed filter buttons, so they are safe to
+    // append as is. (No URLSearchParams.toString(): the compiler currently
+    // chokes on a property named toString.)
+    let url = "/api/servers/" + this.serverId + "/logs?limit=200"
+    if this.level {
+      url = url + "&level=" + this.level
+    }
+    if this.category {
+      url = url + "&category=" + this.category
+    }
 
     const result = await useApi(url)
 
@@ -117,6 +139,7 @@ onMount
     const serverId = params.get("id")
     this.serverId = serverId or ""
     this.filters = this.buildFilters("")
+    this.categories = this.buildCategories("")
 
     if not serverId {
       this.notFound = true
@@ -169,15 +192,28 @@ template
 
       <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div class="flex flex-wrap gap-1.5">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div class="flex flex-wrap gap-1.5">
 {{#each f in filters}}
 {{#if f.active}}
-            <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ f.label }}</button>
+              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ f.label }}</button>
 {{/if}}
 {{#if not f.active}}
-            <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">{{ f.label }}</button>
+              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">{{ f.label }}</button>
 {{/if}}
 {{/each}}
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-slate-500 text-xs">Area</span>
+{{#each c in categories}}
+{{#if c.active}}
+              <button onclick="{{ setCategory(c.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-sky-500 bg-sky-500/10 text-slate-800 dark:text-slate-200">{{ c.label }}</button>
+{{/if}}
+{{#if not c.active}}
+              <button onclick="{{ setCategory(c.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-sky-500/50">{{ c.label }}</button>
+{{/if}}
+{{/each}}
+            </div>
           </div>
 {{#if busy}}
           <button disabled class="text-sm text-slate-400 px-2 py-1">Loading…</button>
