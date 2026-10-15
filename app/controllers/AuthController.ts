@@ -31,6 +31,7 @@ import {
     validateForgotPassword,
     validateResetPassword,
 } from "../validators/AuthValidator.js";
+import { TwoFactorService } from "../services/TwoFactorService.js";
 
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 
@@ -140,6 +141,18 @@ export class AuthController {
                 code: "EMAIL_NOT_VERIFIED",
             });
         }
+
+        const tf = await TwoFactorService.challenge(user.id, req.body.code);
+if (tf === "missing") {
+    return res.status(401).json({
+        error: "Enter the code from your authenticator app.",
+        code: "TWO_FACTOR_REQUIRED",
+    });
+}
+if (tf === "invalid") {
+    recordFailedLogin(email);
+    return res.status(401).json({ error: "That code is incorrect.", code: "TWO_FACTOR_INVALID" });
+}
 
         clearLoginAttempts(email);
 

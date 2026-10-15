@@ -1,0 +1,149 @@
+page Settings
+
+title "Settings"
+
+state
+  loading: true
+  name: ""
+  email: ""
+  verified: false
+  joined: ""
+  saving: false
+  saved: false
+  error: ""
+  nameError: ""
+
+action
+  readValue(id) {
+    const el = document.getElementById(id)
+    if not el {
+      return ""
+    }
+    return String(Reflect.get(el, "value"))
+  }
+
+  firstError(data, field) {
+    const errors = (data and data.errors) or {}
+    const list = errors[field]
+    if Array.isArray(list) and list.length > 0 {
+      return list[0]
+    }
+    return ""
+  }
+
+  clearSaved() {
+    this.saved = false
+  }
+
+  async save() {
+    if this.saving {
+      return null
+    }
+
+    const name = this.readValue("account-name")
+
+    this.saving = true
+    this.saved = false
+    this.error = ""
+    this.nameError = ""
+
+    const result = await useApi("/api/account", { method: "PUT", body: { name: name } })
+
+    this.saving = false
+
+    if result.ok {
+      this.name = result.data.user.name
+      this.saved = true
+      window.setTimeout(() => this.clearSaved(), 2500)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 422 {
+      this.nameError = this.firstError(result.data, "name")
+    } else {
+      this.error = result.data?.error or "Couldn't save your changes."
+    }
+  }
+
+onMount
+  async {
+    const result = await useApi("/api/account")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.ok {
+      const user = result.data.user
+      this.name = user.name
+      this.email = user.email
+      this.verified = Boolean(user.email_verified_at)
+      this.joined = user.created_at.slice(0, 10)
+    }
+
+    this.loading = false
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="settings" />
+    <SettingsSidebar active="account" />
+    <div class="min-w-0">
+    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Account</h1>
+      <p class="text-slate-500 text-sm mb-8">Your name and sign-in details.</p>
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if not loading}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Profile</h2>
+        <p class="text-slate-500 text-sm mb-5">This is the name shown in the deployer.</p>
+
+        <label for="account-name" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Name</label>
+        <input id="account-name" type="text" maxlength="100" value="{{ name }}" autocomplete="name" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+{{#if nameError}}
+        <p role="alert" class="text-rose-500 text-sm mt-2">{{ nameError }}</p>
+{{/if}}
+
+        <label class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Email</label>
+        <div class="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3.5 py-2.5">
+          <span class="flex-1 min-w-0 text-sm text-slate-600 dark:text-slate-400 font-mono truncate">{{ email }}</span>
+{{#if verified}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified
+          </span>
+{{/if}}
+{{#if not verified}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Not verified
+          </span>
+{{/if}}
+        </div>
+        <p class="text-slate-500 text-xs mt-2">Member since {{ joined }}.</p>
+
+{{#if error}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ error }}</p>
+{{/if}}
+
+        <div class="flex items-center gap-4 mt-6">
+{{#if saving}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+            Saving…
+          </button>
+{{/if}}
+{{#if not saving}}
+          <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+            Save changes
+          </button>
+{{/if}}
+{{#if saved}}
+          <span role="status" class="text-emerald-700 dark:text-emerald-500 text-sm font-medium">Saved</span>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

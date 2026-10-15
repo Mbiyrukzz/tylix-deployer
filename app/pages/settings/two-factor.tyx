@@ -1,0 +1,404 @@
+page SettingsTwoFactor
+
+title "Two-factor"
+
+state
+  loading: true
+  enabled: false
+  remaining: 0
+  step: "idle"
+  secret: ""
+  secretText: ""
+  uri: ""
+  codes: []
+  mode: ""
+  busy: false
+  error: ""
+  codeError: ""
+  passwordError: ""
+  copiedSecret: false
+  copiedCodes: false
+
+action
+  readValue(id) {
+    const el = document.getElementById(id)
+    if not el {
+      return ""
+    }
+    return String(Reflect.get(el, "value"))
+  }
+
+  firstError(data, field) {
+    const errors = (data and data.errors) or {}
+    const list = errors[field]
+    if Array.isArray(list) and list.length > 0 {
+      return list[0]
+    }
+    return ""
+  }
+
+  clearErrors() {
+    this.error = ""
+    this.codeError = ""
+    this.passwordError = ""
+  }
+
+  async load() {
+    const result = await useApi("/api/account")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.ok {
+      this.enabled = result.data.two_factor.enabled
+      this.remaining = result.data.two_factor.recovery_codes_remaining
+    }
+
+    this.loading = false
+  }
+
+  async startSetup() {
+    if this.busy {
+      return null
+    }
+
+    this.busy = true
+    this.clearErrors()
+
+    const result = await useApi("/api/account/two-factor/setup", { method: "POST" })
+
+    this.busy = false
+
+    if result.ok {
+      this.secret = result.data.secret
+      this.secretText = (result.data.secret.match(/.{1,4}/g) or []).join(" ")
+      this.uri = result.data.uri
+      this.step = "setup"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.error = result.data?.error or "Couldn't start setup."
+    }
+  }
+
+  cancelSetup() {
+    this.clearErrors()
+    this.secret = ""
+    this.secretText = ""
+    this.uri = ""
+    this.step = "idle"
+  }
+
+  async confirmSetup() {
+    if this.busy {
+      return null
+    }
+
+    const code = this.readValue("tf-confirm-code")
+
+    this.busy = true
+    this.clearErrors()
+
+    const result = await useApi("/api/account/two-factor/confirm", { method: "POST", body: { code: code } })
+
+    this.busy = false
+
+    if result.ok {
+      this.codes = result.data.recovery_codes
+      this.remaining = result.data.recovery_codes.length
+      this.enabled = true
+      this.secret = ""
+      this.secretText = ""
+      this.uri = ""
+      this.step = "codes"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 422 {
+      this.codeError = this.firstError(result.data, "code")
+    } else {
+      this.error = result.data?.error or "Couldn't confirm the code."
+    }
+  }
+
+  finishCodes() {
+    this.codes = []
+    this.copiedCodes = false
+    this.step = "idle"
+  }
+
+  async copySecret() {
+    await navigator.clipboard.writeText(this.secret)
+    this.copiedSecret = true
+    window.setTimeout(() => this.resetCopiedSecret(), 1800)
+  }
+
+  resetCopiedSecret() {
+    this.copiedSecret = false
+  }
+
+  async copyCodes() {
+    await navigator.clipboard.writeText(this.codes.join("\n"))
+    this.copiedCodes = true
+    window.setTimeout(() => this.resetCopiedCodes(), 1800)
+  }
+
+  resetCopiedCodes() {
+    this.copiedCodes = false
+  }
+
+  askDisable() {
+    this.clearErrors()
+    this.mode = "disable"
+  }
+
+  askRegen() {
+    this.clearErrors()
+    this.mode = "regen"
+  }
+
+  cancelMode() {
+    this.clearErrors()
+    this.mode = ""
+  }
+
+  async submitMode() {
+    if this.busy {
+      return null
+    }
+
+    const password = this.readValue("tf-password")
+    const code = this.readValue("tf-code")
+
+    let regen = false
+    let path = "/api/account/two-factor/disable"
+    if this.mode is "regen" {
+      regen = true
+      path = "/api/account/two-factor/recovery-codes"
+    }
+
+    this.busy = true
+    this.clearErrors()
+
+    const result = await useApi(path, { method: "POST", body: { password: password, code: code } })
+
+    this.busy = false
+
+    if result.ok {
+      if regen {
+        this.codes = result.data.recovery_codes
+        this.remaining = result.data.recovery_codes.length
+        this.step = "codes"
+      } else {
+        this.enabled = false
+        this.remaining = 0
+      }
+      this.mode = ""
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 422 {
+      this.passwordError = this.firstError(result.data, "password")
+      this.codeError = this.firstError(result.data, "code")
+    } else {
+      this.error = result.data?.error or "Something went wrong."
+    }
+  }
+
+onMount
+  async {
+    await this.load()
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="settings" />
+    <SettingsSidebar active="two-factor" />
+    <div class="min-w-0">
+    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Two-factor authentication</h1>
+      <p class="text-slate-500 text-sm mb-8">Ask for a code from your authenticator app each time you log in.</p>
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if not loading}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if step is "idle"}}
+
+{{#if not enabled}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="flex items-center gap-3 mb-2">
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Not enabled</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Off
+          </span>
+        </div>
+        <p class="text-slate-500 text-sm mb-5">This account can hold SSH keys and cloud tokens, so a second step at login is worth having. You'll need an authenticator app such as Google Authenticator, Authy or 1Password.</p>
+{{#if busy}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+          Starting…
+        </button>
+{{/if}}
+{{#if not busy}}
+        <button onclick="{{ startSetup() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+          Set up two-factor
+        </button>
+{{/if}}
+      </div>
+{{/if}}
+
+{{#if enabled}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <div class="flex items-center gap-3 mb-2">
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Enabled</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> On
+          </span>
+        </div>
+        <p class="text-slate-500 text-sm">Logging in asks for a code from your authenticator app.</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Recovery codes</h2>
+        <p class="text-slate-500 text-sm mb-4">Each code works once, if you lose your phone. <span class="font-semibold text-slate-700 dark:text-slate-300">{{ remaining }}</span> left. Generating new codes cancels the old ones.</p>
+{{#if mode is not "regen"}}
+        <button onclick="{{ askRegen() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
+          Generate new codes
+        </button>
+{{/if}}
+      </div>
+
+      <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white dark:bg-slate-900 p-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1">Turn off two-factor</h2>
+        <p class="text-slate-500 text-sm mb-4">Logging in will only need your password.</p>
+{{#if mode is not "disable"}}
+        <button onclick="{{ askDisable() }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+          Turn off
+        </button>
+{{/if}}
+      </div>
+
+{{#if mode}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mt-6">
+{{#if mode is "disable"}}
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Confirm it's you</h2>
+        <p class="text-slate-500 text-sm mb-5">Enter your password and a code to turn two-factor off.</p>
+{{/if}}
+{{#if mode is "regen"}}
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Confirm it's you</h2>
+        <p class="text-slate-500 text-sm mb-5">Enter your password and a code to get new recovery codes.</p>
+{{/if}}
+
+        <label for="tf-password" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Password</label>
+        <input id="tf-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+{{#if passwordError}}
+        <p role="alert" class="text-rose-500 text-sm mt-2">{{ passwordError }}</p>
+{{/if}}
+
+        <label for="tf-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Authenticator or recovery code</label>
+        <input id="tf-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+{{#if codeError}}
+        <p role="alert" class="text-rose-500 text-sm mt-2">{{ codeError }}</p>
+{{/if}}
+
+        <div class="flex items-center gap-3 mt-6">
+{{#if busy}}
+          <button disabled class="text-sm text-white bg-emerald-600 rounded-lg px-4 py-2 opacity-50">
+            Working…
+          </button>
+{{/if}}
+{{#if not busy}}
+          <button onclick="{{ submitMode() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+            Confirm
+          </button>
+          <button onclick="{{ cancelMode() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
+            Cancel
+          </button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+{{/if}}
+
+{{/if}}
+
+{{#if step is "setup"}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">1. Add this account to your app</h2>
+        <p class="text-slate-500 text-sm mb-4">In your authenticator app choose "enter a setup key" and paste this. On a phone, <a href="{{ uri }}" class="text-emerald-700 dark:text-emerald-500 hover:underline font-medium">tap here</a> to open it directly.</p>
+
+        <div class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3">
+          <code class="flex-1 text-emerald-400 text-sm font-mono break-all">{{ secretText }}</code>
+{{#if copiedSecret}}
+          <button class="text-xs text-emerald-400 font-medium">Copied</button>
+{{/if}}
+{{#if not copiedSecret}}
+          <button onclick="{{ copySecret() }}" class="text-xs text-slate-400 hover:text-white font-medium transition-colors">Copy</button>
+{{/if}}
+        </div>
+
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mt-8 mb-1">2. Enter the 6-digit code</h2>
+        <p class="text-slate-500 text-sm mb-4">This proves the app is set up correctly. Two-factor stays off until you do.</p>
+
+        <input id="tf-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" class="w-48 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono tracking-widest placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+{{#if codeError}}
+        <p role="alert" class="text-rose-500 text-sm mt-2">{{ codeError }}</p>
+{{/if}}
+
+        <div class="flex items-center gap-3 mt-6">
+{{#if busy}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+            Checking…
+          </button>
+{{/if}}
+{{#if not busy}}
+          <button onclick="{{ confirmSetup() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+            Turn on two-factor
+          </button>
+          <button onclick="{{ cancelSetup() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
+            Cancel
+          </button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if step is "codes"}}
+      <div class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm"><span class="font-semibold">Save these now.</span> They're shown only once. Each works one time if you lose access to your app.</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Recovery codes</h2>
+
+        <div class="grid grid-cols-2 gap-2 rounded-xl bg-slate-950 px-4 py-4">
+{{#each c in codes}}
+          <code class="text-emerald-400 text-sm font-mono">{{ c }}</code>
+{{/each}}
+        </div>
+
+        <div class="flex items-center gap-3 mt-6">
+{{#if copiedCodes}}
+          <button class="text-sm text-emerald-700 dark:text-emerald-500 border border-emerald-200 dark:border-emerald-900/50 rounded-lg px-4 py-2 font-medium">
+            Copied
+          </button>
+{{/if}}
+{{#if not copiedCodes}}
+          <button onclick="{{ copyCodes() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
+            Copy all
+          </button>
+{{/if}}
+          <button onclick="{{ finishCodes() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+            I've saved them
+          </button>
+        </div>
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+    </div>
+  </div>

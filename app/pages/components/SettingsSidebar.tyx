@@ -1,0 +1,52 @@
+component SettingsSidebar
+
+import { IconCog, IconKey, IconShieldCheck } from "tylix-icons"
+
+props
+  active: String
+
+template
+<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
+
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Your account</p>
+
+{{#if active is "account"}}
+  <a href="/settings" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconCog class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Account
+  </a>
+{{/if}}
+{{#if active is not "account"}}
+  <a href="/settings" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconCog class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Account
+  </a>
+{{/if}}
+
+  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Security</p>
+
+{{#if active is "password"}}
+  <a href="/settings/password" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconKey class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Password
+  </a>
+{{/if}}
+{{#if active is not "password"}}
+  <a href="/settings/password" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconKey class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Password
+  </a>
+{{/if}}
+
+{{#if active is "two-factor"}}
+  <a href="/settings/two-factor" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconShieldCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Two-factor
+  </a>
+{{/if}}
+{{#if active is not "two-factor"}}
+  <a href="/settings/two-factor" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconShieldCheck class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Two-factor
+  </a>
+{{/if}}
+
+</aside>
