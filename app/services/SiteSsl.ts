@@ -23,6 +23,7 @@ import { Server } from "../models/Server.js";
 import { sshExec } from "./Ssh.js";
 import { getType } from "./SiteTypes.js";
 import { shellScript, serverTarget } from "./Shell.js";
+import { SitePlugin } from "../models/SitePlugin.js";
 
 export interface SslRow {
     id: number;
@@ -77,10 +78,11 @@ const PROXY_HEADERS = (port: number) => `proxy_pass http://127.0.0.1:${port};
 function locations(site: SslRow): string {
     const runtime = getType(site.type)?.runtime ?? "static";
 
-    if (runtime === "php") {
+        if (runtime === "php") {
+        const entry = site.octane === true ? "@octane" : "/index.php?$query_string";
         return `
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files $uri $uri/ ${entry};
     }
 
     location ~ \\.php$ {
@@ -115,10 +117,13 @@ function locations(site: SslRow): string {
 }
 
 function common(site: SslRow, names: string): string {
-    return `    server_name ${names};
+       return `    server_name ${names};
+    include /etc/nginx/tylix-plugins/${site.domain}/*.conf;
     root __DOC_ROOT__;
     index index.php index.html;
     client_max_body_size 64m;
+
+
 
     access_log /var/log/nginx/${site.domain}-access.log;
     error_log /var/log/nginx/${site.domain}-error.log;
@@ -188,6 +193,7 @@ elif [ "$AUTO_ROOT" = "1" ]; then
 fi
 echo "Web root: $DOC_ROOT"
 CONF="/etc/nginx/sites-available/$DOMAIN.conf"
+$SUDO mkdir -p "/etc/nginx/tylix-plugins/$DOMAIN"
 if [ -f "$CONF" ]; then $SUDO cp "$CONF" "$CONF.bak"; fi
 cat <<'NGINX_CONF' | $SUDO tee "$CONF" >/dev/null
 ${vhost(site, ssl)}
@@ -350,6 +356,11 @@ export class SiteSsl {
         try {
             const site = (await Site.find(siteId)) as SslRow | null;
             if (!site) return;
+
+                        const plugins = (await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[];
+            site.octane = plugins.some(
+                (p) => Number(p.site_id) === siteId && p.plugin === "octane" && p.status === "installed",
+            );
 
             const server = (await Server.find(site.server_id)) as
                 | { host: string; port: number; ssh_user: string; ssh_key: string }

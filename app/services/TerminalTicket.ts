@@ -5,13 +5,18 @@
  *
  * A ticket is "<base64url payload>.<base64url hmac-sha256>" and is valid for
  * 30 seconds. Single use is enforced by the channel process via the nonce.
+ *
+ * Two kinds of terminal:
+ *   site terminal    s = site id,   v = 0
+ *   server terminal  s = 0,         v = server id
  */
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export interface TicketPayload {
     u: number; // user id
-    s: number; // site id
+    s: number; // site id (0 for a server terminal)
+    v: number; // server id (0 for a site terminal)
     c: number; // terminal columns
     r: number; // terminal rows
     e: number; // expires at (ms since epoch)
@@ -30,10 +35,17 @@ export function terminalConfigured(): boolean {
     return (process.env.TERMINAL_SECRET ?? "").length >= 16;
 }
 
-export function signTicket(userId: number, siteId: number, cols: number, rows: number): string {
+export function signTicket(
+    userId: number,
+    siteId: number,
+    cols: number,
+    rows: number,
+    serverId = 0,
+): string {
     const payload: TicketPayload = {
         u: userId,
         s: siteId,
+        v: serverId,
         c: cols,
         r: rows,
         e: Date.now() + TTL_MS,
@@ -57,7 +69,11 @@ export function verifyTicket(token: string): TicketPayload | null {
         if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
 
         const p = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as TicketPayload;
-        const ints = [p.u, p.s, p.c, p.r, p.e].every((v) => Number.isInteger(v));
+
+        // Tickets signed before `v` existed are site tickets.
+        if (p.v === undefined) p.v = 0;
+
+        const ints = [p.u, p.s, p.v, p.c, p.r, p.e].every((x) => Number.isInteger(x));
         if (!ints || typeof p.n !== "string" || p.e < Date.now()) return null;
 
         return p;

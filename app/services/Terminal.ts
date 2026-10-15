@@ -9,13 +9,18 @@
  *                      { t: "exit", m: "<message>" }  then the socket closes
  *
  * Until a valid ticket arrives the socket is unauthenticated and everything
- * else is ignored; it is closed after 10 seconds. After auth the site is
- * re-read from the database and must belong to the ticket's user.
+ * else is ignored; it is closed after 10 seconds. After auth the site or
+ * server is re-read from the database and must belong to the ticket's user.
  *
- * The shell is `ssh -tt` to the site's server (a real PTY), logging in as the
- * site's isolated user in the site folder. The SSH key sits in a 0600 temp
- * file only until the first output arrives. Limits: 3 terminals per user,
- * 15 minutes idle. The terminal size is fixed at connect time.
+ * Two kinds of session, chosen by the ticket:
+ *   site terminal    ssh -tt to the site's server, as the site's isolated
+ *                    user, in the site folder
+ *   server terminal  ssh -tt to the server, as the server's own ssh user
+ *                    (a normal login shell)
+ *
+ * The SSH key sits in a 0600 temp file only until the first output arrives.
+ * Limits: 3 terminals per user, 15 minutes idle. The terminal size is fixed
+ * at connect time.
  *
  * Any failure while opening a session ends that session only; it never
  * takes the channel server down.
@@ -57,6 +62,14 @@ interface SiteRow {
     isolated_user: string;
     status: string;
     [key: string]: unknown;
+}
+
+interface ServerRecord {
+    user_id: number;
+    host: string;
+    port: number;
+    ssh_user: string;
+    ssh_key: string;
 }
 
 interface Session {
@@ -113,8 +126,8 @@ function finish(ws: Socket, s: Session, message: string): void {
     ws.close();
 }
 
-/** The command the remote login shell runs: size the PTY, then drop to the site user. */
-function remoteCommand(user: string, domain: string, cols: number, rows: number): string {
+/** Site terminal: size the PTY, then drop to the site user in the site folder. */
+function siteCommand(user: string, domain: string, cols: number, rows: number): string {
     // user and domain are validated against strict patterns before this is called.
     const inner = `cd "$HOME/${domain}" && exec bash -l`;
     return (
@@ -123,6 +136,12 @@ function remoteCommand(user: string, domain: string, cols: number, rows: number)
         `exec runuser -u ${user} -- env HOME=/home/${user} bash -lc '${inner}'; ` +
         `else exec sudo -u ${user} -H bash -lc '${inner}'; fi`
     );
+}
+
+/** Server terminal: size the PTY, then a normal login shell for the ssh user. */
+function serverCommand(cols: number, rows: number): string {
+    // cols and rows are integers (checked when the ticket is verified).
+    return `stty cols ${cols} rows ${rows} 2>/dev/null; exec "\${SHELL:-/bin/bash}" -l`;
 }
 
 async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<void> {
@@ -145,27 +164,46 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
     s.counted = true;
     perUser.set(ticket.u, open + 1);
 
-    const site = (await Site.find(ticket.s)) as SiteRow | null;
-    if (s.finished) return;
-    if (!site || site.user_id !== ticket.u || site.status !== "ready") {
-        finish(ws, s, "Site not found.");
-        return;
-    }
-    if (!USER_RE.test(String(site.isolated_user)) || !DOMAIN_RE.test(String(site.domain))) {
-        finish(ws, s, "This site has an invalid user or domain.");
-        return;
+    let server: ServerRecord | null;
+    let command: string;
+    let label: string;
+
+    if (ticket.v) {
+        // ---- server terminal ----
+        server = (await Server.find(ticket.v)) as ServerRecord | null;
+        if (s.finished) return;
+        if (!server || server.user_id !== ticket.u) {
+            finish(ws, s, "Server not found.");
+            return;
+        }
+
+        command = serverCommand(ticket.c, ticket.r);
+        label = `${server.ssh_user}@${server.host}`;
+    } else {
+        // ---- site terminal ----
+        const site = (await Site.find(ticket.s)) as SiteRow | null;
+        if (s.finished) return;
+        if (!site || site.user_id !== ticket.u || site.status !== "ready") {
+            finish(ws, s, "Site not found.");
+            return;
+        }
+        if (!USER_RE.test(String(site.isolated_user)) || !DOMAIN_RE.test(String(site.domain))) {
+            finish(ws, s, "This site has an invalid user or domain.");
+            return;
+        }
+
+        server = (await Server.find(site.server_id)) as ServerRecord | null;
+        if (s.finished) return;
+        if (!server) {
+            finish(ws, s, "The server no longer exists.");
+            return;
+        }
+
+        command = siteCommand(site.isolated_user, site.domain, ticket.c, ticket.r);
+        label = `${site.isolated_user}@${site.domain}`;
     }
 
-    const server = (await Server.find(site.server_id)) as
-        | { host: string; port: number; ssh_user: string; ssh_key: string }
-        | null;
-    if (s.finished) return;
-    if (!server) {
-        finish(ws, s, "The server no longer exists.");
-        return;
-    }
-
-    const target = serverTarget(server);
+    const target = serverTarget(server as never);
     const dir = await mkdtemp(join(tmpdir(), "tylix-term-"));
     s.dir = dir;
     if (s.finished) {
@@ -190,7 +228,7 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
         "-o", "ServerAliveInterval=30",
         "-o", "LogLevel=ERROR",
         `${target.user}@${target.host}`,
-        remoteCommand(site.isolated_user, site.domain, ticket.c, ticket.r),
+        command,
     ];
 
     const proc = spawn("ssh", args, { env: { ...process.env, TERM: "xterm-256color" } });
@@ -213,7 +251,7 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
 
     s.idle = setTimeout(() => finish(ws, s, "Closed after 15 minutes of inactivity."), IDLE_MS);
 
-    console.log(`[terminal] opened ${site.isolated_user}@${site.domain} for user ${ticket.u}`);
+    console.log(`[terminal] opened ${label} for user ${ticket.u}`);
 }
 
 function bumpIdle(ws: Socket, s: Session): void {

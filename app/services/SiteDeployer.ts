@@ -11,11 +11,13 @@
 
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
+import { SitePlugin } from "../models/SitePlugin.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
 import { getType } from "./SiteTypes.js";
 import { shellScript, serverTarget } from "./Shell.js";
+
 
 export interface DeployRow {
     id: number;
@@ -85,11 +87,33 @@ export function defaultDeployScript(site: DeployRow): string {
     const composer = `COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }
 php$PHP_VERSION -d error_reporting=22527 "$COMPOSER_BIN" install --no-dev --no-interaction --prefer-dist --optimize-autoloader`;
 
-   if (site.type === "laravel") {
-  return `cd "$SITE_ROOT"
-
+     if (site.type === "laravel") {
+        return `cd "$SITE_ROOT"
+SITE_USER="$(id -un)"
+PREV="$(cat "/home/$SITE_USER/.prev-head-$SITE_USER" 2>/dev/null || true)"
+PHP="php$PHP_VERSION"
 COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server. Install it from the Packages page, then deploy again." >&2; exit 1; }
-php$PHP_VERSION -d error_reporting=22527 "$COMPOSER_BIN" install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+DOWN=0
+
+install_deps() {
+  $PHP -d error_reporting=22527 "$COMPOSER_BIN" install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+}
+
+rollback() {
+  set +e
+  trap - ERR
+  echo "Deployment failed, rolling back." >&2
+  if [ -n "$PREV" ]; then
+    git reset --keep "$PREV" >&2
+    install_deps >&2
+  fi
+  if [ "$DOWN" = "1" ]; then $PHP artisan up >&2; fi
+  echo "Command failed (exit $1): $2. Code rolled back; database migrations were NOT undone." >&2
+  exit "$1"
+}
+trap 'rc=$?; cmd=$BASH_COMMAND; rollback "$rc" "$cmd"' ERR
+
+install_deps
 
 if [ -f package.json ]; then
   command -v npm >/dev/null || { echo "Node.js is not installed on this server. Install it from the Packages page, then deploy again." >&2; exit 1; }
@@ -97,13 +121,17 @@ if [ -f package.json ]; then
   npm run build
 fi
 
-php$PHP_VERSION artisan migrate --force
-php$PHP_VERSION artisan storage:link 2>/dev/null || true
-php$PHP_VERSION artisan optimize:clear
-php$PHP_VERSION artisan optimize
+$PHP artisan down --retry=60
+DOWN=1
+$PHP artisan migrate --force
+$PHP artisan storage:link 2>/dev/null || true
+$PHP artisan optimize:clear
+$PHP artisan optimize
+$PHP artisan up
+DOWN=0
 
 echo "Deployment completed."`;
-}
+    }
     if (site.type === "wordpress") {
         return `echo "Nothing to deploy for this site type."`;
     }
@@ -112,17 +140,42 @@ echo "Deployment completed."`;
         return [`cd "$SITE_ROOT"`, `if [ -f composer.json ]; then`, composer, `fi`].join("\n");
     }
 
-    if (runtime === "mern") {
+       if (runtime === "mern") {
         const lines = [cd(s(site.backend_directory)), npmInstall, "", cd(s(site.app_directory)), npmInstall];
         if (build) lines.push(build);
-        return lines.join("\n");
+        return guarded(lines);
     }
 
     // node and static
     const lines = [cd(s(site.app_directory)), npmInstall];
     if (build) lines.push(build);
-    return lines.join("\n");
+    return guarded(lines);
 }
+
+    const guarded = (steps: string[]) => {
+        const body = steps.join("\n");
+        return `cd "$SITE_ROOT"
+SITE_USER="$(id -un)"
+PREV="$(cat "/home/$SITE_USER/.prev-head-$SITE_USER" 2>/dev/null || true)"
+
+redo() {
+${body}
+}
+
+rollback() {
+  set +e
+  trap - ERR
+  echo "Deployment failed, rolling back." >&2
+  if [ -n "$PREV" ]; then
+    git reset --keep "$PREV" >&2 && ( redo ) >&2
+  fi
+  echo "Command failed (exit $1): $2. Code rolled back to the previous version." >&2
+  exit "$1"
+}
+trap 'rc=$?; cmd=$BASH_COMMAND; rollback "$rc" "$cmd"' ERR
+
+redo`;
+    };
 
 // The deploy_log column is TEXT-sized (64 KB in bytes). Keep the tail, because
 // that is where the error is, and stay under the limit even for 4-byte chars.
@@ -154,7 +207,46 @@ pm.process_idle_timeout = 10s
 `;
 }
 
-function buildPhases(site: DeployRow, source: { kind: string; token: string } | null): Phase[] {
+/** Services that plugins installed for this site; restarted after every deploy. */
+const PLUGIN_UNITS: Record<string, { unit: string; reload?: boolean }> = {
+    octane: { unit: "octane-$SITE_USER", reload: true },
+    reverb: { unit: "reverb-$SITE_USER" },
+    "tylix-queue": { unit: "tylix-queue-$SITE_USER" },
+};
+
+function pluginRestartScript(plugins: string[]): string {
+    const units = plugins.map((p) => PLUGIN_UNITS[p]).filter(Boolean);
+    if (units.length === 0) return "";
+
+    const calls = units
+        .map((u) => `bounce "${u.unit}" ${u.reload ? "reload" : "restart"}`)
+        .join("\n");
+
+    return `
+bounce() {
+  U="$1"
+  if [ ! -f "/etc/systemd/system/$U.service" ]; then
+    echo "No service $U, skipping."
+    return 0
+  fi
+  if [ "$2" = "reload" ]; then
+    $SUDO systemctl reload "$U" || $SUDO systemctl restart "$U"
+  else
+    $SUDO systemctl restart "$U"
+  fi
+  sleep 3
+  if $SUDO systemctl is-active --quiet "$U"; then
+    echo "$U is running"
+  else
+    $SUDO journalctl -u "$U" -n 15 --no-pager || true
+    echo "The service $U did not stay up after the deploy." >&2
+    return 1
+  fi
+}
+${calls}`;
+}
+
+function buildPhases(site: DeployRow, source: { kind: string; token: string } | null, plugins: string[]): Phase[] {
     const runtime = getType(site.type)?.runtime ?? "static";
     const root = `/home/${site.isolated_user}/${site.domain}`;
 
@@ -181,6 +273,7 @@ function buildPhases(site: DeployRow, source: { kind: string; token: string } | 
                 `
 cd "$SITE_ROOT"
 [ -d .git ] || { echo "There is no git repository in $SITE_ROOT." >&2; exit 1; }
+as_user git rev-parse HEAD | $SUDO tee "/home/$SITE_USER/.prev-head-$SITE_USER" >/dev/null
 AUTH="$(printf '%s:%s' "$GIT_USER" "$GIT_TOKEN" | base64 -w0)"
 as_user env GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader "GIT_CONFIG_VALUE_0=Authorization: Basic $AUTH" git pull --ff-only origin "$BRANCH"`,
             ),
@@ -316,6 +409,14 @@ echo "PHP-FPM reloaded"`,
         });
     }
 
+        const pluginScript = pluginRestartScript(plugins);
+    if (pluginScript) {
+        phases.push({
+            title: "Restarting plugin services",
+            script: shellScript(base, pluginScript),
+        });
+    }
+
     return phases;
 }
 
@@ -369,7 +470,11 @@ export class SiteDeployer {
 
             await save({ deploy_status: "deploying" });
 
-            for (const phase of buildPhases(site, source)) {
+                        const installed = ((await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[])
+                .filter((r) => Number(r.site_id) === siteId && r.status === "installed")
+                .map((r) => r.plugin);
+
+            for (const phase of buildPhases(site, source, installed)) {
                 log += `==> ${phase.title}\n`;
                 await save({});
 

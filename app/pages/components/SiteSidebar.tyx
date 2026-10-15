@@ -1,68 +1,81 @@
 component SiteSidebar
 
+import { IconCube, IconBolt, IconLockClosed, IconTerminal, IconSwitchHorizontal, IconDocumentText, IconAdjustments } from "tylix-icons"
+
 props
   active: String
   siteId: String
 
 template
-  <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible lg:w-44 shrink-0">
-    <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-2 px-3">This site</p>
+<nav class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible lg:w-48 shrink-0 pb-2 lg:pb-0">
+
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3">This site</p>
+
 {{#if active is "application"}}
-    <a href="{{ '/servers/site-detail?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-      Application
-    </a>
+  <a href="{{ '/servers/site-detail?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconCube class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Application
+  </a>
 {{/if}}
 {{#if active is not "application"}}
-    <a href="{{ '/servers/site-detail?id=' + siteId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      Application
-    </a>
+  <a href="{{ '/servers/site-detail?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconCube class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Application
+  </a>
 {{/if}}
+
 {{#if active is "deployment"}}
-    <a href="{{ '/servers/site-deploy?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-      Deployment
-    </a>
+  <a href="{{ '/servers/site-deploy?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconBolt class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Deployment
+  </a>
 {{/if}}
 {{#if active is not "deployment"}}
-    <a href="{{ '/servers/site-deploy?id=' + siteId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      Deployment
-    </a>
+  <a href="{{ '/servers/site-deploy?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconBolt class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Deployment
+  </a>
 {{/if}}
+
 {{#if active is "ssl"}}
-    <a href="{{ '/servers/site-ssl?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-      SSL
-    </a>
+  <a href="{{ '/servers/site-ssl?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconLockClosed class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> SSL
+  </a>
 {{/if}}
 {{#if active is not "ssl"}}
-    <a href="{{ '/servers/site-ssl?id=' + siteId }}" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      SSL
-    </a>
+  <a href="{{ '/servers/site-ssl?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconLockClosed class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> SSL
+  </a>
 {{/if}}
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Features</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Commands</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Workers</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>CronJobs</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Redirects</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Logs</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-    <span class="shrink-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <span>Settings</span>
-      <span class="text-[10px] font-semibold uppercase tracking-wider">Soon</span>
-    </span>
-  </nav>
+
+  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-2 mx-3"></div>
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3">Tools</p>
+
+  <span class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+    <IconTerminal class="w-4 h-4 text-slate-300 dark:text-slate-700" />
+    <span>Commands</span>
+    <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
+  </span>
+
+  <span class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+    <IconSwitchHorizontal class="w-4 h-4 text-slate-300 dark:text-slate-700" />
+    <span>Redirects</span>
+    <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
+  </span>
+
+  <span class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
+    <IconDocumentText class="w-4 h-4 text-slate-300 dark:text-slate-700" />
+    <span>Logs</span>
+    <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
+  </span>
+
+  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-2 mx-3"></div>
+
+{{#if active is "settings"}}
+  <a href="{{ '/servers/site-settings?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <IconAdjustments class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Settings
+  </a>
+{{/if}}
+{{#if active is not "settings"}}
+  <a href="{{ '/servers/site-settings?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconAdjustments class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Settings
+  </a>
+{{/if}}
+
+</nav>

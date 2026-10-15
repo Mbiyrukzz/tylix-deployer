@@ -29,6 +29,7 @@ import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { sshExec } from "./Ssh.js";
 import { serverTarget } from "./Shell.js";
+import { SitePlugin } from "../models/SitePlugin.js";
 
 interface SiteRow {
     id: number;
@@ -68,6 +69,7 @@ for f in $(grep -lsE -e "^User=$U\$" /etc/systemd/system/*.service 2>/dev/null);
   rm -f "$f"
   echo "removed unit $n"
 done
+rm -rf "/etc/systemd/system/app-$U.service.d"
 systemctl daemon-reload >/dev/null 2>&1 || true
 systemctl reset-failed >/dev/null 2>&1 || true
 exit 0
@@ -78,6 +80,8 @@ const WEBSERVER = String.raw`
 [ -n "$U" ] && [ -n "$D" ] || exit 1
 rm -f "/etc/nginx/sites-enabled/$D.conf" "/etc/nginx/sites-available/$D.conf"
 rm -f "/var/log/nginx/$D-access.log" "/var/log/nginx/$D-error.log"
+rm -rf "/etc/nginx/tylix-plugins/$D"
+rm -f "/etc/nginx/conf.d/tylix-$U-ratelimit.conf"
 for f in $(grep -lsF -e "/home/$U/" /etc/nginx/sites-enabled/* /etc/nginx/sites-available/* 2>/dev/null); do
   rm -f "$f"
   echo "removed nginx file $f"
@@ -268,7 +272,10 @@ export class SiteDestroyer {
             }
         }
 
-        say("Removing the site record.");
+                say("Removing the site record.");
+        for (const row of (await SitePlugin.all()) as { id: number; site_id: number }[]) {
+            if (Number(row.site_id) === site.id) await SitePlugin.delete(row.id);
+        }
         await Site.delete(site.id);
     }
 }
