@@ -85,17 +85,25 @@ export function defaultDeployScript(site: DeployRow): string {
     const composer = `COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }
 php$PHP_VERSION -d error_reporting=22527 "$COMPOSER_BIN" install --no-dev --no-interaction --prefer-dist --optimize-autoloader`;
 
-    if (site.type === "laravel") {
-        return [
-            `cd "$SITE_ROOT"`,
-            composer,
-            `php$PHP_VERSION artisan migrate --force`,
-            `php$PHP_VERSION artisan config:cache`,
-            `php$PHP_VERSION artisan route:cache`,
-            `php$PHP_VERSION artisan view:cache`,
-        ].join("\n");
-    }
+   if (site.type === "laravel") {
+  return `cd "$SITE_ROOT"
 
+COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server. Install it from the Packages page, then deploy again." >&2; exit 1; }
+php$PHP_VERSION -d error_reporting=22527 "$COMPOSER_BIN" install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+if [ -f package.json ]; then
+  command -v npm >/dev/null || { echo "Node.js is not installed on this server. Install it from the Packages page, then deploy again." >&2; exit 1; }
+  if [ -f package-lock.json ]; then npm ci; else npm install; fi
+  npm run build
+fi
+
+php$PHP_VERSION artisan migrate --force
+php$PHP_VERSION artisan storage:link 2>/dev/null || true
+php$PHP_VERSION artisan optimize:clear
+php$PHP_VERSION artisan optimize
+
+echo "Deployment completed."`;
+}
     if (site.type === "wordpress") {
         return `echo "Nothing to deploy for this site type."`;
     }
