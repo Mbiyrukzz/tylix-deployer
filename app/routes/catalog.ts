@@ -6,36 +6,36 @@
  *   GET /api/catalog/linode?region=us-ord            -> plans priced for that region
  *   GET /api/catalog/hetzner?provider=<id>           -> same shape, via that connection
  *   GET /api/catalog/hetzner?provider=<id>&region=nbg1
- *
- * HETZNER: the path is now /api/catalog/:kind, so the existing
- * /api/catalog/linode calls keep working unchanged.
+ *   GET /api/catalog/digitalocean?provider=<id>&region=nyc3
  *
  *   - Linode's catalog is public: no token, no `provider` param needed.
- *   - Hetzner needs a project token for EVERY call, including the catalog.
- *     The caller passes the id of one of their own connections, and the token
- *     is decrypted here, server-side. It never reaches the client.
+ *   - Hetzner and DigitalOcean need a project/account token for EVERY call,
+ *     including the catalog. The caller passes the id of one of their own
+ *     connections, and the token is decrypted here, server-side. It never
+ *     reaches the client.
  *
- * Each answer is cached in memory for 10 minutes. Hetzner answers are cached
- * per connection, so one user's token is never what serves another user.
- * Failed lookups are not cached.
+ * Each answer is cached in memory for 10 minutes. Token-based answers are
+ * cached per connection, so one user's token is never what serves another
+ * user. Failed lookups are not cached.
  *
- * Every plan carries `currency` ("USD" for Linode, "EUR" for Hetzner).
+ * Every plan carries `currency` ("USD" for Linode and DigitalOcean, "EUR" for Hetzner).
  */
 
 import type { Router } from "@tylix/core";
 import { Provider } from "../models/Provider.js";
 import { CryptoService } from "../services/CryptoService.js";
-import { adapterFor } from "../services/ProviderAdapter.js";
+import { adapterFor, PROVIDER_KINDS } from "../services/ProviderAdapter.js";
 
 const TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; value: unknown }>();
 
-// Keep in sync with adapterFor() in ProviderAdapter.ts.
-const KINDS = ["linode", "hetzner"];
+/** Kinds whose catalog is public. Every other kind needs a connection's token. */
+const PUBLIC_CATALOG = ["linode"];
 
 const PROVIDER_NAMES: Record<string, string> = {
     linode: "Linode",
     hetzner: "Hetzner",
+    digitalocean: "DigitalOcean",
 };
 
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
@@ -55,10 +55,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         auth(async (req, res) => {
             const kind = String(req.params.kind ?? "").toLowerCase();
 
-            if (!KINDS.includes(kind)) {
+            if (!(PROVIDER_KINDS as string[]).includes(kind)) {
                 res.status(404);
                 return res.json({ error: "Unknown provider." });
             }
+
+            const name = PROVIDER_NAMES[kind] ?? "the provider";
 
             // ASSUMPTION: the request exposes parsed query params as req.query.
             const query = (req as unknown as { query?: Record<string, string> }).query ?? {};
@@ -68,12 +70,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             let token = "";
             let scope = "public";
 
-            if (kind === "hetzner") {
+            if (!PUBLIC_CATALOG.includes(kind)) {
                 const providerId = Number(query.provider);
 
                 if (!Number.isInteger(providerId) || providerId <= 0) {
                     res.status(422);
-                    return res.json({ error: "Choose a Hetzner connection first." });
+                    return res.json({ error: `Choose a ${name} connection first.` });
                 }
 
                 const row = (await Provider.find(providerId)) as {
@@ -109,12 +111,10 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
                 return res.json({ regions, images, plans });
             } catch (error) {
-                const name = PROVIDER_NAMES[kind] ?? "the provider";
-
                 // Log the real cause server-side. The client only gets a generic message.
                 console.error(`[catalog] ${kind} lookup failed (region="${region}"):`, error);
 
-                // A revoked or expired Hetzner token: tell them how to fix it
+                // A revoked or expired token: tell them how to fix it
                 // instead of showing a generic "try again".
                 if (adapter.isAuthError(error)) {
                     res.status(422);

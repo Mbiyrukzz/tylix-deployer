@@ -3,17 +3,20 @@
  *
  * One interface over the cloud providers, so the ProvisionServer job, the
  * ProviderController and the catalog routes never branch on `kind` themselves.
- * Adding a third provider later means writing one more adapter here and adding
- * it to adapterFor(), nothing else.
+ * Adding another provider means writing one more adapter here and adding
+ * it to adapterFor() and PROVIDER_KINDS, nothing else in the job.
  *
  * The differences this hides:
  *   - Root password: Linode takes one we generate; Hetzner generates its own
- *     and returns it ONCE, in the create response.
+ *     and returns it ONCE, in the create response; DigitalOcean never returns
+ *     one (we log in with our deploy key, injected through cloud-init).
  *   - Idempotent retry: Linode uses a tag + exact label lookup; Hetzner uses a
- *     label selector (tylix-provision=<id>).
- *   - Catalog: Linode's catalog is public (static calls); Hetzner needs the
- *     token for everything, so the adapter is built per token.
- *   - Currency: Linode prices are USD, Hetzner's are EUR (gross).
+ *     label selector (tylix-provision=<id>); DigitalOcean uses a tag.
+ *   - Catalog: Linode's catalog is public (static calls); Hetzner and
+ *     DigitalOcean need the token for everything, so the adapter is built per token.
+ *   - Currency: Linode and DigitalOcean prices are USD, Hetzner's are EUR (gross).
+ *   - Status: DigitalOcean says "active" where the others say "running";
+ *     the adapter normalises it.
  */
 
 import {
@@ -23,8 +26,16 @@ import {
     type LinodeInstance,
 } from "./LinodeClient.js";
 import { HetznerClient, HetznerError, type HetznerInstance } from "./HetznerClient.js";
+import {
+    DigitalOceanClient,
+    DigitalOceanError,
+    type DigitalOceanInstance,
+} from "./DigitalOceanClient.js";
 
-export type ProviderKind = "linode" | "hetzner";
+export type ProviderKind = "linode" | "hetzner" | "digitalocean";
+
+/** Every supported kind. Keep in sync with adapterFor() below. */
+export const PROVIDER_KINDS: ProviderKind[] = ["linode", "hetzner", "digitalocean"];
 
 export interface CatalogRegion {
     id: string;
@@ -63,7 +74,7 @@ export interface ProviderCreateInput {
     region: string;
     plan: string;
     image: string;
-    /** Null when the provider generates the password itself (Hetzner). */
+    /** Null when the provider generates the password itself (Hetzner) or never exposes it (DigitalOcean). */
     rootPassword: string | null;
     publicKey: string;
 }
@@ -71,7 +82,7 @@ export interface ProviderCreateInput {
 export interface ProviderAdapter {
     kind: ProviderKind;
 
-    /** Throws if the token doesn't work. A read-only check on both providers. */
+    /** Throws if the token doesn't work. A read-only check on every provider. */
     verify(): Promise<void>;
 
     /** True when the error means the token is invalid or lacks permission. */
@@ -80,12 +91,12 @@ export interface ProviderAdapter {
     /** True for network failures, 5xx and rate limits: worth retrying a poll. */
     isTransient(error: unknown): boolean;
 
-    /** "Linode: ..." / "Hetzner: ..." for this provider's own errors, otherwise null. */
+    /** "Linode: ..." / "Hetzner: ..." / "DigitalOcean: ..." for this provider's own errors, otherwise null. */
     describeError(error: unknown): string | null;
 
     /**
      * A root password we choose and store BEFORE creating anything, or null
-     * when the provider generates one and hands it back from create().
+     * when the provider generates one (or never exposes one).
      */
     presetRootPassword(): string | null;
 
@@ -104,6 +115,17 @@ export interface ProviderAdapter {
     regions(): Promise<CatalogRegion[]>;
     plans(region?: string): Promise<CatalogPlan[]>;
     images(): Promise<CatalogImage[]>;
+}
+
+/** Hostname-safe names (RFC 1123, max 63 chars) for providers that use the name as a hostname. */
+function hostnameSafe(name: string, fallback: string): string {
+    const cleaned = name
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/^-+/, "")
+        .slice(0, 63)
+        .replace(/-+$/, "");
+    return cleaned || fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,17 +233,6 @@ function fromHetzner(raw: HetznerInstance): ProviderInstance {
     return { id: raw.id, status: raw.status, ip: raw.ipv4[0] ?? "" };
 }
 
-/** Hetzner server names must be valid hostnames (RFC 1123), max 63 chars. */
-function hostnameSafe(name: string, fallback: string): string {
-    const cleaned = name
-        .toLowerCase()
-        .replace(/[^a-z0-9-]+/g, "-")
-        .replace(/^-+/, "")
-        .slice(0, 63)
-        .replace(/-+$/, "");
-    return cleaned || fallback;
-}
-
 class HetznerAdapter implements ProviderAdapter {
     kind = "hetzner" as const;
     private client: HetznerClient;
@@ -300,6 +311,92 @@ class HetznerAdapter implements ProviderAdapter {
 }
 
 // ---------------------------------------------------------------------------
+// DigitalOcean
+// ---------------------------------------------------------------------------
+
+function fromDigitalOcean(raw: DigitalOceanInstance): ProviderInstance {
+    return {
+        id: raw.id,
+        // The job waits for "running" on every provider; DigitalOcean calls it "active".
+        status: raw.status === "active" ? "running" : raw.status,
+        ip: raw.ipv4[0] ?? "",
+    };
+}
+
+class DigitalOceanAdapter implements ProviderAdapter {
+    kind = "digitalocean" as const;
+    private client: DigitalOceanClient;
+
+    constructor(token: string) {
+        this.client = new DigitalOceanClient(token);
+    }
+
+    verify() {
+        return this.client.verify();
+    }
+
+    isAuthError(error: unknown) {
+        return error instanceof DigitalOceanError && (error.status === 401 || error.status === 403);
+    }
+
+    // 429 is DigitalOcean's rate limit: a poll should wait and try again, not fail.
+    isTransient(error: unknown) {
+        return (
+            error instanceof DigitalOceanError &&
+            (error.status === 0 || error.status === 429 || error.status >= 500)
+        );
+    }
+
+    describeError(error: unknown) {
+        return error instanceof DigitalOceanError ? `DigitalOcean: ${error.message}` : null;
+    }
+
+    // The API neither accepts nor returns a root password. Login is by deploy key.
+    presetRootPassword() {
+        return null;
+    }
+
+    // Found by tag, never by name, so a name clash can't make us adopt someone else's droplet.
+    async findOurs(provisionId: number) {
+        const found = await this.client.findByTag(`tylix-provision-${provisionId}`);
+        return found ? fromDigitalOcean(found) : null;
+    }
+
+    async create(input: ProviderCreateInput) {
+        const instance = await this.client.createInstance({
+            region: input.region,
+            type: input.plan,
+            image: input.image,
+            label: hostnameSafe(input.name, `server-${input.provisionId}`),
+            authorizedKeys: [input.publicKey],
+            tags: [`tylix-provision-${input.provisionId}`, "tylix-deploy"],
+        });
+
+        return { instance: fromDigitalOcean(instance), rootPassword: null };
+    }
+
+    async get(id: number) {
+        return fromDigitalOcean(await this.client.getInstance(id));
+    }
+
+    remove(id: number) {
+        return this.client.deleteInstance(id); // already treats 404 as success
+    }
+
+    regions() {
+        return this.client.regions();
+    }
+
+    plans(region?: string) {
+        return this.client.plans(region);
+    }
+
+    images() {
+        return this.client.images();
+    }
+}
+
+// ---------------------------------------------------------------------------
 
 /** Builds the adapter for a stored provider kind. Throws on an unknown kind. */
 export function adapterFor(kind: string, token: string): ProviderAdapter {
@@ -308,6 +405,8 @@ export function adapterFor(kind: string, token: string): ProviderAdapter {
             return new LinodeAdapter(token);
         case "hetzner":
             return new HetznerAdapter(token);
+        case "digitalocean":
+            return new DigitalOceanAdapter(token);
         default:
             throw new Error(`Unsupported provider: ${kind}`);
     }

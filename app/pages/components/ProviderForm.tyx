@@ -9,6 +9,7 @@ props
 state
   showModal: false
   kind: "linode"
+  kinds: []
   label: ""
   apiToken: ""
   saving: false
@@ -40,6 +41,33 @@ action
     return ""
   }
 
+  // The provider choices shown in create mode. Adding a provider = one more entry here.
+  buildKinds() {
+    this.kinds = [
+      {
+        id: "linode",
+        name: "Linode",
+        sub: "Akamai",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center font-bold",
+        letter: "L"
+      },
+      {
+        id: "hetzner",
+        name: "Hetzner",
+        sub: "Cloud",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold",
+        letter: "H"
+      },
+      {
+        id: "digitalocean",
+        name: "DigitalOcean",
+        sub: "Droplets",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold",
+        letter: "D"
+      }
+    ]
+  }
+
   // Create mode only: the provider type is fixed once the connection exists.
   pick(kind) {
     this.kind = kind
@@ -49,6 +77,7 @@ action
 
   open() {
     this.reset()
+    this.buildKinds()
     if this.provider {
       this.label = this.provider.label
       this.kind = this.provider.kind
@@ -140,45 +169,26 @@ template
 {{#if not provider}}
       <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Provider</p>
       <div class="grid grid-cols-2 gap-3 mb-5">
-
-{{#if kind is "linode"}}
-        <button onclick="{{ pick('linode') }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-left transition-colors">
-          <span class="w-9 h-9 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center font-bold">L</span>
+{{#each k in kinds}}
+{{#if kind is k.id}}
+        <button onclick="{{ pick(k.id) }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-left transition-colors">
+          <span class="{{ k.tileClass }}">{{ k.letter }}</span>
           <span class="min-w-0">
-            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">Linode</span>
-            <span class="block text-slate-500 text-xs">Akamai</span>
+            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
+            <span class="block text-slate-500 text-xs">{{ k.sub }}</span>
           </span>
         </button>
 {{/if}}
-{{#if kind is not "linode"}}
-        <button onclick="{{ pick('linode') }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-          <span class="w-9 h-9 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center font-bold">L</span>
+{{#if kind is not k.id}}
+        <button onclick="{{ pick(k.id) }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+          <span class="{{ k.tileClass }}">{{ k.letter }}</span>
           <span class="min-w-0">
-            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">Linode</span>
-            <span class="block text-slate-500 text-xs">Akamai</span>
+            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
+            <span class="block text-slate-500 text-xs">{{ k.sub }}</span>
           </span>
         </button>
 {{/if}}
-
-{{#if kind is "hetzner"}}
-        <button onclick="{{ pick('hetzner') }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-left transition-colors">
-          <span class="w-9 h-9 shrink-0 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">H</span>
-          <span class="min-w-0">
-            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">Hetzner</span>
-            <span class="block text-slate-500 text-xs">Cloud</span>
-          </span>
-        </button>
-{{/if}}
-{{#if kind is not "hetzner"}}
-        <button onclick="{{ pick('hetzner') }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-          <span class="w-9 h-9 shrink-0 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">H</span>
-          <span class="min-w-0">
-            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">Hetzner</span>
-            <span class="block text-slate-500 text-xs">Cloud</span>
-          </span>
-        </button>
-{{/if}}
-
+{{/each}}
       </div>
 {{/if}}
 
@@ -227,6 +237,14 @@ template
           <li>Open your project in the <a href="https://console.hetzner.cloud/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Hetzner Cloud Console</a>.</li>
           <li>Go to Security &rarr; API tokens and generate one.</li>
           <li>Give it <span class="font-mono">Read &amp; Write</span> permission. A Read-only token connects fine but can't create servers.</li>
+        </ol>
+{{/if}}
+{{#if kind is "digitalocean"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a DigitalOcean token</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://cloud.digitalocean.com/account/api/tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">API &rarr; Tokens</a> in the DigitalOcean control panel.</li>
+          <li>Generate a new personal access token.</li>
+          <li>Give it <span class="font-mono">Full Access</span>, or a custom scope that can create, read and delete droplets and read regions, sizes and images. A read-only token connects fine but can't create servers.</li>
         </ol>
 {{/if}}
         <p class="text-slate-400 text-xs mt-3">The token is checked with the provider, encrypted before it is stored, and never shown again.</p>

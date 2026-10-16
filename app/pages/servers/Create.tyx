@@ -12,6 +12,8 @@ uses
 
 state
   checkedAuth: false
+  custom: false
+  providerCards: []
   providerId: 0
   providerKind: "linode"
   region: ""
@@ -23,6 +25,10 @@ state
   image: ""
   tpl: "tylix"
   name: ""
+  host: ""
+  port: "22"
+  sshUser: "root"
+  sshKey: ""
   regions: []
   images: []
   plans: []
@@ -36,6 +42,10 @@ state
   imageError: ""
   nameError: ""
   tplError: ""
+  hostError: ""
+  portError: ""
+  userError: ""
+  keyError: ""
 
 action
   firstError(errors, field) {
@@ -53,6 +63,38 @@ action
     this.imageError = ""
     this.nameError = ""
     this.tplError = ""
+    this.hostError = ""
+    this.portError = ""
+    this.userError = ""
+    this.keyError = ""
+  }
+
+  // Adds the display name for a connection's provider.
+  decorateProvider(p) {
+    let kindName = "Linode (Akamai)"
+    if p.kind is "hetzner" {
+      kindName = "Hetzner Cloud"
+    }
+    if p.kind is "digitalocean" {
+      kindName = "DigitalOcean"
+    }
+    return { id: p.id, label: p.label, kind: p.kind, kindName: kindName }
+  }
+
+  // Forgets everything that came from the previously chosen provider.
+  resetCatalog() {
+    this.region = ""
+    this.regionLabel = ""
+    this.regionOpen = false
+    this.plan = ""
+    this.planLabel = ""
+    this.planOpen = false
+    this.image = ""
+    this.regions = []
+    this.images = []
+    this.plans = []
+    this.shownPlans = []
+    this.catalogError = ""
   }
 
   applyPlanFilter() {
@@ -72,13 +114,16 @@ action
 
     let url = "/api/catalog/" + this.providerKind
 
-    if this.providerKind is "hetzner" {
+    // Linode's catalog is public. Every other provider needs the connection's token.
+    if this.providerKind is "linode" {
+      if this.region is not "" {
+        url = url + "?region=" + this.region
+      }
+    } else {
       url = url + "?provider=" + this.providerId
       if this.region is not "" {
         url = url + "&region=" + this.region
       }
-    } else if this.region is not "" {
-      url = url + "?region=" + this.region
     }
 
     const result = await useApi(url)
@@ -107,23 +152,25 @@ action
       return null
     }
 
+    this.custom = false
     this.providerId = id
     this.providerKind = kind
     this.providerError = ""
-
-    this.region = ""
-    this.regionLabel = ""
-    this.regionOpen = false
-    this.plan = ""
-    this.planLabel = ""
-    this.planOpen = false
-    this.image = ""
-    this.regions = []
-    this.images = []
-    this.plans = []
-    this.shownPlans = []
+    this.resetCatalog()
 
     await this.loadCatalog()
+  }
+
+  pickCustom() {
+    if this.custom {
+      return null
+    }
+
+    this.clearErrors()
+    this.custom = true
+    this.providerId = 0
+    this.providerKind = "linode"
+    this.resetCatalog()
   }
 
   toggleRegion() {
@@ -210,6 +257,44 @@ action
     }
   }
 
+  // A machine that already exists somewhere else: saved through the normal Servers API.
+  async submitCustom() {
+    if this.saving {
+      return null
+    }
+
+    this.clearErrors()
+    this.saving = true
+
+    const payload = {
+      name: this.name,
+      host: this.host,
+      port: this.port,
+      ssh_user: this.sshUser,
+      ssh_key: this.sshKey
+    }
+
+    const result = await useApi("/api/servers", { method: "POST", body: payload })
+
+    if result.ok {
+      window.location.href = "/servers"
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.nameError = this.firstError(errors, "name")
+      this.hostError = this.firstError(errors, "host")
+      this.portError = this.firstError(errors, "port")
+      this.userError = this.firstError(errors, "ssh_user")
+      this.keyError = this.firstError(errors, "ssh_key")
+      this.error = result.data?.error or result.error or ""
+      if this.error is "" and not errors {
+        this.error = "Couldn't add the server. Check the form and try again."
+      }
+      this.saving = false
+    }
+  }
+
 onMount
   async {
     if not Auth.user {
@@ -218,6 +303,8 @@ onMount
     }
 
     await Providers.load()
+    this.providerCards = Providers.data.map((p) => this.decorateProvider(p))
+
     if Providers.data.length is 1 {
       this.providerId = Providers.data[0].id
       this.providerKind = Providers.data[0].kind or "linode"
@@ -239,48 +326,126 @@ template
       </a>
 
       <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Create server</h1>
-      <p class="text-slate-500 text-sm mb-8">Provision a new machine at your cloud provider.</p>
+      <p class="text-slate-500 text-sm mb-8">Provision a new machine at your cloud provider, or add one you already have.</p>
 
 {{#if catalogError}}
       <p role="alert" class="text-rose-500 text-sm mb-6">{{ catalogError }}</p>
 {{/if}}
 
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-3">1. Provider</h2>
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-3">1. Where is the server?</h2>
 {{#if Providers.data.length is 0}}
-      <div class="rounded-xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 mb-2 text-sm text-slate-500">
-        No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect a provider</a> first.
+      <div class="rounded-xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 mb-3 text-sm text-slate-500">
+        No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect a provider</a> to create a machine from here, or add a server you already have below.
       </div>
 {{/if}}
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-{{#each p in Providers.data}}
+{{#each p in providerCards}}
 {{#if providerId is p.id}}
         <button onclick="{{ pickProvider(p.id, p.kind) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
           <span class="block font-medium">{{ p.label }}</span>
-{{#if p.kind is "hetzner"}}
-          <span class="block text-xs text-slate-500">Hetzner Cloud</span>
-{{/if}}
-{{#if p.kind is not "hetzner"}}
-          <span class="block text-xs text-slate-500">Linode (Akamai)</span>
-{{/if}}
+          <span class="block text-xs text-slate-500">{{ p.kindName }}</span>
         </button>
 {{/if}}
 {{#if providerId is not p.id}}
         <button onclick="{{ pickProvider(p.id, p.kind) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
           <span class="block font-medium">{{ p.label }}</span>
-{{#if p.kind is "hetzner"}}
-          <span class="block text-xs text-slate-500">Hetzner Cloud</span>
-{{/if}}
-{{#if p.kind is not "hetzner"}}
-          <span class="block text-xs text-slate-500">Linode (Akamai)</span>
-{{/if}}
+          <span class="block text-xs text-slate-500">{{ p.kindName }}</span>
         </button>
 {{/if}}
 {{/each}}
+{{#if custom}}
+        <button onclick="{{ pickCustom() }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
+          <span class="block font-medium">Custom server</span>
+          <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
+        </button>
+{{/if}}
+{{#if not custom}}
+        <button onclick="{{ pickCustom() }}" class="text-left rounded-xl border border-dashed px-4 py-3 text-sm transition-colors border-slate-400 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+          <span class="block font-medium">Custom server</span>
+          <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
+        </button>
+{{/if}}
       </div>
 {{#if providerError}}
       <p class="text-rose-500 text-xs mb-2">{{ providerError }}</p>
 {{/if}}
 
+{{#if custom}}
+      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">2. Connection details</h2>
+
+      <label for="custom-name" class="block text-slate-500 text-xs mb-1.5">Name</label>
+      <input
+        id="custom-name"
+        type="text"
+        value="{{ name }}"
+        oninput="{{ name = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="e.g. production-web"
+      />
+{{#if nameError}}
+      <p class="text-rose-500 text-xs mb-2">{{ nameError }}</p>
+{{/if}}
+
+      <div class="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-3 mt-4">
+        <div>
+          <label for="custom-host" class="block text-slate-500 text-xs mb-1.5">Host or IP address</label>
+          <input
+            id="custom-host"
+            type="text"
+            value="{{ host }}"
+            oninput="{{ host = $event.target.value }}"
+            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            placeholder="203.0.113.10"
+          />
+{{#if hostError}}
+          <p class="text-rose-500 text-xs mb-2">{{ hostError }}</p>
+{{/if}}
+        </div>
+        <div>
+          <label for="custom-port" class="block text-slate-500 text-xs mb-1.5">SSH port</label>
+          <input
+            id="custom-port"
+            type="text"
+            inputmode="numeric"
+            value="{{ port }}"
+            oninput="{{ port = $event.target.value }}"
+            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          />
+{{#if portError}}
+          <p class="text-rose-500 text-xs mb-2">{{ portError }}</p>
+{{/if}}
+        </div>
+      </div>
+
+      <label for="custom-user" class="block text-slate-500 text-xs mb-1.5 mt-4">SSH user</label>
+      <input
+        id="custom-user"
+        type="text"
+        value="{{ sshUser }}"
+        oninput="{{ sshUser = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="root"
+      />
+{{#if userError}}
+      <p class="text-rose-500 text-xs mb-2">{{ userError }}</p>
+{{/if}}
+
+      <label for="custom-key" class="block text-slate-500 text-xs mb-1.5 mt-4">SSH private key</label>
+      <textarea
+        id="custom-key"
+        rows="8"
+        value="{{ sshKey }}"
+        oninput="{{ sshKey = $event.target.value }}"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+      ></textarea>
+      <p class="text-slate-500 text-xs mb-2">Use a dedicated key without a passphrase. It is stored encrypted and never shown again.</p>
+{{#if keyError}}
+      <p class="text-rose-500 text-xs mb-2">{{ keyError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if not custom}}
       <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">2. Region</h2>
       <div class="relative mb-1">
         <button onclick="{{ toggleRegion() }}" class="w-full flex items-center justify-between text-left rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
@@ -412,6 +577,7 @@ template
 {{#if nameError}}
       <p class="text-rose-500 text-xs mb-2">{{ nameError }}</p>
 {{/if}}
+{{/if}}
 
 {{#if error}}
       <p role="alert" class="text-rose-500 text-sm mt-6">{{ error }}</p>
@@ -419,11 +585,21 @@ template
 
       <div class="flex items-center justify-end gap-3 mt-8">
         <a href="/servers" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</a>
+{{#if custom}}
+{{#if saving}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Adding…</button>
+{{/if}}
+{{#if not saving}}
+        <button onclick="{{ submitCustom() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Add server</button>
+{{/if}}
+{{/if}}
+{{#if not custom}}
 {{#if saving}}
         <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Creating…</button>
 {{/if}}
 {{#if not saving}}
         <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</button>
+{{/if}}
 {{/if}}
       </div>
 

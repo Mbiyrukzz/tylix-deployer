@@ -37,11 +37,13 @@ interface ProviderRow {
 const PROVIDER_NAMES: Record<string, string> = {
     linode: "Linode",
     hetzner: "Hetzner",
+    digitalocean: "DigitalOcean",
 };
 
 const TOKEN_HELP: Record<string, string> = {
     linode: "Create a personal access token with Linodes: Read/Write and try again.",
     hetzner: "Create an API token with Read & Write permission in your Cloud project and try again.",
+    digitalocean: "Create a personal access token with Read & Write scope and try again.",
 };
 
 /** Strips the encrypted token from anything that leaves the API. */

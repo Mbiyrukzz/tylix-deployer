@@ -26,6 +26,7 @@ const TYLIX_MIN_MEMORY_MB = 4096;
 const PROVIDER_NAMES: Record<string, string> = {
     linode: "Linode",
     hetzner: "Hetzner",
+    digitalocean: "DigitalOcean",
 };
 
 function providerName(kind: string): string {
