@@ -16,22 +16,12 @@ import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { validateProvision, normalizeProvision } from "../validators/ProvisionValidator.js";
-import { CryptoService } from "../services/CryptoService.js";
-import { adapterFor } from "../services/ProviderAdapter.js";
+// AWS: providerSecret picks api_token or credentials; providerName replaces the local name table.
+import { adapterFor, instanceRefOf, providerName, providerSecret } from "../services/ProviderAdapter.js";
 import { Server } from "../models/Server.js";
 import { dispatch } from "@tylix/core";
 
 const TYLIX_MIN_MEMORY_MB = 4096;
-
-const PROVIDER_NAMES: Record<string, string> = {
-    linode: "Linode",
-    hetzner: "Hetzner",
-    digitalocean: "DigitalOcean",
-};
-
-function providerName(kind: string): string {
-    return PROVIDER_NAMES[kind] ?? "the provider";
-}
 
 interface ProvisionRow {
     id: number;
@@ -45,6 +35,7 @@ interface ProvisionRow {
     step: string;
     status: string;
     instance_id: number;
+    instance_ref: string; // REF
     ip: string;
     error: string;
     ssh_key: string;
@@ -54,9 +45,15 @@ interface ProvisionRow {
     [key: string]: unknown;
 }
 
+// REF: the UI gets has_instance (any provider id) and has_root_password (so it can hide
+// the button on providers that never issue one). The password itself is never returned.
 function toPublic(row: ProvisionRow) {
     const { ssh_key, root_password, ...rest } = row;
-    return rest;
+    return {
+        ...rest,
+        has_instance: instanceRefOf(row) !== "",
+        has_root_password: Boolean(root_password),
+    };
 }
 
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ProvisionRow | null> {
@@ -98,7 +95,7 @@ export class ProvisionController {
         const input = normalizeProvision(req.body);
 
         const provider = (await Provider.find(input.provider_id)) as
-            | { id: number; user_id: number; kind: string; api_token: string }
+            | { id: number; user_id: number; kind: string; api_token: string; credentials: string }
             | null;
 
         if (!provider || provider.user_id !== req.user?.userId) {
@@ -110,11 +107,11 @@ export class ProvisionController {
 
         let adapter;
         try {
-            adapter = adapterFor(provider.kind, CryptoService.decrypt(provider.api_token));
+            adapter = adapterFor(provider.kind, providerSecret(provider));
         } catch (error) {
             console.error("Provision: couldn't build the provider adapter:", error);
             res.status(422);
-            return res.json({ errors: { provider_id: ["This provider connection can't be used. Edit it and paste the token again."] } });
+            return res.json({ errors: { provider_id: ["This provider connection can't be used. Edit it and paste the credentials again."] } });
         }
 
         let regions, images, plans;
@@ -133,7 +130,7 @@ export class ProvisionController {
                     error instanceof Error ? error.message : error,
                 );
 
-                // A rejected token won't get better on retry.
+                // Rejected credentials won't get better on retry.
                 if (adapter.isAuthError(error)) {
                     authRejected = true;
                     break;
@@ -146,7 +143,7 @@ export class ProvisionController {
         if (authRejected) {
             res.status(422);
             return res.json({
-                error: `${name} rejected this connection's token. Edit the connection and paste a new one.`,
+                error: `${name} rejected this connection's credentials. Edit the connection and paste new ones.`,
             });
         }
 
@@ -196,6 +193,7 @@ export class ProvisionController {
             step: "queued",
             status: "pending",
             instance_id: 0,
+            instance_ref: "", // REF: empty until the provider accepts the create call
             ip: "",
             error: "",
             ssh_key: "",
@@ -234,7 +232,10 @@ export class ProvisionController {
             return res.json({ error: "This server is still being created. Wait for it to finish or fail first." });
         }
 
-        if (Number(row.instance_id) > 0) {
+        // REF: was Number(row.instance_id) > 0
+        const ref = instanceRefOf(row);
+
+        if (ref) {
             const confirm = String(req.query?.confirm ?? "");
             if (confirm !== row.name) {
                 res.status(422);
@@ -242,7 +243,7 @@ export class ProvisionController {
             }
 
             const provider = (await Provider.find(row.provider_id)) as
-                | { user_id: number; kind: string; api_token: string }
+                | { user_id: number; kind: string; api_token: string; credentials: string }
                 | null;
 
             if (!provider || provider.user_id !== req.user?.userId) {
@@ -255,11 +256,11 @@ export class ProvisionController {
             const name = providerName(provider.kind);
 
             try {
-                const adapter = adapterFor(provider.kind, CryptoService.decrypt(provider.api_token));
+                const adapter = adapterFor(provider.kind, providerSecret(provider));
 
                 try {
                     // remove() already treats "already deleted" (404) as success.
-                    await adapter.remove(Number(row.instance_id));
+                    await adapter.remove(ref); // REF: string reference
                 } catch (error) {
                     console.error(
                         `Provision ${row.id}: ${provider.kind} delete failed:`,
@@ -269,12 +270,12 @@ export class ProvisionController {
                     res.status(502);
                     return res.json({
                         error: adapter.isAuthError(error)
-                            ? `${name} rejected the token. Reconnect the provider, or delete the server in the ${name} dashboard.`
+                            ? `${name} rejected the credentials. Reconnect the provider, or delete the server in the ${name} dashboard.`
                             : `${name} didn't delete the server. Nothing was changed. Try again.`,
                     });
                 }
             } catch (error) {
-                // Couldn't even build the adapter (bad stored token, unknown kind).
+                // Couldn't even build the adapter (bad stored credentials, unknown kind).
                 console.error(`Provision ${row.id}: couldn't prepare the ${provider.kind} delete:`, error);
                 res.status(502);
                 return res.json({

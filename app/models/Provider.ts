@@ -17,6 +17,7 @@ export interface ProviderAttributes {
     api_token: string;
     status: string;
     user_id: number;
+    credentials: string;
     created_at: string;
     updated_at: string;
 }
@@ -29,6 +30,7 @@ export class Provider extends Model {
         "api_token",
         "status",
         "user_id",
+        "credentials",
     ];
 
 }

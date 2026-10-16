@@ -7,17 +7,17 @@
  * to be re-runnable:
  *
  *   - the keypair is saved (encrypted) before anything is created
- *   - the instance is tagged (Linode) or labelled (Hetzner) tylix-provision-<id>;
- *     a re-run adopts it instead of creating a second billable machine
- *   - instance_id is saved the moment the provider accepts the create call
+ *   - the instance is tagged or labelled tylix-provision-<id>; a re-run adopts
+ *     it instead of creating a second billable machine
+ *   - instance_ref is saved the moment the provider accepts the create call
  *   - installers leave marker files on the server, so a re-run skips finished
  *     components (see services/Installers.ts)
- *   - every failure is written to the provision row (never including tokens)
+ *   - every failure is written to the provision row (never including credentials)
  *
  * PROVISION_DRY_RUN=1 runs every check except the create call.
  *
- * HETZNER: all provider-specific work now goes through ProviderAdapter, so this
- * file has no Linode- or Hetzner-specific code left in it.
+ * All provider-specific work goes through ProviderAdapter, so this file has no
+ * provider-specific code in it.
  *
  * LOGS: every milestone is written to the server log with provision_id set.
  * Once the server record exists, attachProvision() links the whole creation
@@ -28,7 +28,8 @@ import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
-import { adapterFor, type ProviderAdapter } from "../services/ProviderAdapter.js";
+// REF: instanceRefOf is new in this import. AWS: providerSecret reads api_token or credentials.
+import { adapterFor, instanceRefOf, providerSecret, type ProviderAdapter } from "../services/ProviderAdapter.js";
 import { generateKeyPair, derivePublicKey, sshExec } from "../services/Ssh.js";
 import { installStepsFor, runInstallStep } from "../services/Installers.js";
 import { ServerLogService, type LogLevel } from "../services/ServerLogService.js";
@@ -51,6 +52,7 @@ interface ProvisionRow {
     step: string;
     status: string;
     instance_id: number;
+    instance_ref: string; // REF: new column
     ip: string;
     error: string;
     ssh_key: string;
@@ -90,14 +92,13 @@ function log(
     });
 }
 
-// HETZNER: takes the adapter instead of a LinodeClient. "running" is the status
-// name on both providers, and the adapter hands back the IP already normalised.
-async function waitForRunning(adapter: ProviderAdapter, instanceId: number): Promise<string> {
+// REF: takes the string reference instead of a number.
+async function waitForRunning(adapter: ProviderAdapter, ref: string): Promise<string> {
     const deadline = Date.now() + BOOT_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
         try {
-            const instance = await adapter.get(instanceId);
+            const instance = await adapter.get(ref);
             if (instance.status === "running" && instance.ip) {
                 return instance.ip;
             }
@@ -134,20 +135,19 @@ export const ProvisionServer = {
         let row = await load(id);
         if (row.status === "done") return;
 
-        // HETZNER: declared out here so the catch block can use it to word errors.
+        // Declared out here so the catch block can use it to word errors.
         let adapter: ProviderAdapter | null = null;
 
         try {
-            // HETZNER: also select `kind` so we know which provider to build.
             const provider = (await Provider.find(row.provider_id)) as
-                | { user_id: number; kind: string; api_token: string }
+                | { user_id: number; kind: string; api_token: string; credentials: string }
                 | null;
 
             if (!provider || provider.user_id !== row.user_id) {
                 throw new Error("The provider connection no longer exists.");
             }
 
-            adapter = adapterFor(provider.kind, CryptoService.decrypt(provider.api_token));
+            adapter = adapterFor(provider.kind, providerSecret(provider));
 
             if (dryRun) {
                 await adapter.verify();
@@ -160,7 +160,8 @@ export const ProvisionServer = {
             }
 
             // A saved step or instance means an earlier run got somewhere: this is a resume.
-            const resuming = Boolean(row.step) || Boolean(Number(row.instance_id));
+            // REF: instanceRefOf also understands rows made before instance_ref existed.
+            const resuming = Boolean(row.step) || instanceRefOf(row) !== "";
             await save(id, { status: "running", error: "" });
             await log(
                 row,
@@ -187,10 +188,11 @@ export const ProvisionServer = {
             }
             const privateKey = CryptoService.decrypt(row.ssh_key);
 
-            // HETZNER: the root password has two sources now.
-            //   Linode:  we generate it here and save it before creating (as before).
-            //   Hetzner: the provider generates it, so presetRootPassword() is null
-            //            and the password is saved in step 2, right after create.
+            // The root password has two sources.
+            //   Linode:  we generate it here and save it before creating.
+            //   Others:  the provider generates it (Hetzner) or never exposes it
+            //            (DigitalOcean, Vultr, AWS), so presetRootPassword() is null and
+            //            any password is saved in step 2, right after create.
             if (!row.root_password) {
                 const preset = adapter.presetRootPassword();
                 if (preset) {
@@ -201,13 +203,13 @@ export const ProvisionServer = {
             const rootPassword = row.root_password ? CryptoService.decrypt(row.root_password) : null;
 
             // 2. Create (or adopt) the instance.
-            if (!Number(row.instance_id)) {
+            // REF: "no machine yet" is now "no reference", not "instance_id is 0".
+            if (!instanceRefOf(row)) {
                 await save(id, { step: "creating" });
 
-                // HETZNER: the adapter knows how to recognise our own machine
-                // (Linode: tag + label, Hetzner: label selector) and refuses
-                // to adopt anyone else's.
-                let instance = await adapter.findOurs(id, row.name);
+                // The adapter knows how to recognise our own machine and refuses
+                // to adopt anyone else's. AWS: the region is needed, EC2 searches one region at a time.
+                let instance = await adapter.findOurs(id, row.name, row.region);
                 let providerPassword: string | null = null;
                 let adopted = true;
 
@@ -226,10 +228,17 @@ export const ProvisionServer = {
                     providerPassword = created.rootPassword;
                 }
 
-                // instance_id is saved the moment the provider accepts the create.
+                // The reference is saved the moment the provider accepts the create.
                 // For Hetzner the password rides in the SAME write: it is only ever
                 // returned once, so it must never wait for a later save.
-                const patch: Record<string, unknown> = { instance_id: instance.id, step: "booting" };
+                const patch: Record<string, unknown> = {
+                    // REF: the string reference is the source of truth now.
+                    instance_ref: instance.ref,
+                    // Keep the old numeric column filled when the id is numeric,
+                    // for any code that still reads it. UUIDs and AWS refs leave it at 0.
+                    instance_id: /^\d+$/.test(instance.ref) ? Number(instance.ref) : 0,
+                    step: "booting",
+                };
                 if (providerPassword && !row.root_password) {
                     patch.root_password = CryptoService.encrypt(providerPassword);
                 }
@@ -243,14 +252,16 @@ export const ProvisionServer = {
                         ? "Found the machine from an earlier attempt and reused it."
                         : "The provider accepted the create request.",
                     "success",
-                    { provider: provider.kind, instance_id: instance.id },
+                    // REF: logged as instance_ref
+                    { provider: provider.kind, instance_ref: instance.ref },
                 );
             }
 
             // 3. Wait for it to boot and get its address.
             if (!row.ip) {
                 await save(id, { step: "booting" });
-                const ip = await waitForRunning(adapter, Number(row.instance_id));
+                // REF: pass the string reference
+                const ip = await waitForRunning(adapter, instanceRefOf(row));
                 await save(id, { ip, step: "waiting_ssh" });
                 row = await load(id);
                 await log(row, "provision.booted", `The machine is running at ${ip}.`, "success", { ip });
@@ -302,8 +313,7 @@ export const ProvisionServer = {
                 row = await load(id);
             }
 
-
-                        // 6b. Firewall defaults (SSH, HTTP, HTTPS) and switch ufw on.
+            // 6b. Firewall defaults (SSH, HTTP, HTTPS) and switch ufw on.
             // Skipped for Bare, which has no ufw. A failure here never fails the
             // provision: the machine is usable, and the Firewall page's Sync retries it.
             if (row.template !== "bare") {
@@ -334,6 +344,7 @@ export const ProvisionServer = {
                     console.error(`Provision ${id}: firewall setup failed:`, error instanceof Error ? error.message : error);
                 }
             }
+
             // Link every earlier event of this provision to the server record.
             // Runs on resumes too, so a crash between create and attach heals itself.
             await ServerLogService.attachProvision(id, Number(row.server_id));
@@ -345,7 +356,7 @@ export const ProvisionServer = {
             await save(id, { step: "provisioned", status: "done", error: "" });
             await log(row, "provision.completed", "Provisioning finished.", "success");
         } catch (error) {
-            // HETZNER: "Linode: ..." / "Hetzner: ..." prefix comes from the adapter.
+            // "Linode: ..." / "Hetzner: ..." / "Vultr: ..." / "AWS: ..." prefix comes from the adapter.
             const message =
                 adapter?.describeError(error) ??
                 (error instanceof Error ? error.message : "Unknown error.");

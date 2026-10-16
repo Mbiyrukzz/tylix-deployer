@@ -8,17 +8,25 @@
  *
  * The differences this hides:
  *   - Root password: Linode takes one we generate; Hetzner generates its own
- *     and returns it ONCE, in the create response; DigitalOcean never returns
- *     one (we log in with our deploy key, injected through cloud-init).
+ *     and returns it ONCE, in the create response; DigitalOcean, Vultr and AWS
+ *     never return one (we log in with our deploy key, injected through cloud-init).
  *   - Idempotent retry: Linode uses a tag + exact label lookup; Hetzner uses a
- *     label selector (tylix-provision=<id>); DigitalOcean uses a tag.
- *   - Catalog: Linode's catalog is public (static calls); Hetzner and
- *     DigitalOcean need the token for everything, so the adapter is built per token.
- *   - Currency: Linode and DigitalOcean prices are USD, Hetzner's are EUR (gross).
- *   - Status: DigitalOcean says "active" where the others say "running";
- *     the adapter normalises it.
+ *     label selector (tylix-provision=<id>); DigitalOcean and Vultr use a tag;
+ *     AWS uses the tylix-provision tag plus a ClientToken on create.
+ *   - Catalog: Linode's catalog is public (static calls); every other provider
+ *     needs the credentials for everything, so the adapter is built per secret.
+ *   - Currency: Linode, DigitalOcean, Vultr and AWS prices are USD, Hetzner's are EUR (gross).
+ *     AWS prices are not looked up (monthly is 0).
+ *   - Status: DigitalOcean says "active" and Vultr "active"+power "running"
+ *     where the others say "running"; the adapter normalises it.
+ *   - REF: machine ids are strings everywhere in this file. Linode, Hetzner and
+ *     DigitalOcean ids are numbers converted to and from strings at the edge;
+ *     Vultr ids are UUIDs; AWS refs are "<region>/<instance-id>" because EC2 is regional.
+ *   - AWS: the "secret" is the JSON stored in providers.credentials, not a single token.
+ *     Use providerSecret(row) to get the right secret for any connection.
  */
 
+import { CryptoService } from "./CryptoService.js";
 import {
     LinodeClient,
     LinodeError,
@@ -31,11 +39,39 @@ import {
     DigitalOceanError,
     type DigitalOceanInstance,
 } from "./DigitalOceanClient.js";
+// VULTR: new client
+import { VultrClient, VultrError, type VultrInstance } from "./VultrClient.js";
+// AWS: new client
+import { AwsClient, AwsError, parseAwsCredentials, type AwsInstance } from "./AwsClient.js";
 
-export type ProviderKind = "linode" | "hetzner" | "digitalocean";
+// AWS: added to the union and the list
+export type ProviderKind = "linode" | "hetzner" | "digitalocean" | "vultr" | "aws";
 
 /** Every supported kind. Keep in sync with adapterFor() below. */
-export const PROVIDER_KINDS: ProviderKind[] = ["linode", "hetzner", "digitalocean"];
+export const PROVIDER_KINDS: ProviderKind[] = ["linode", "hetzner", "digitalocean", "vultr", "aws"];
+
+/** Display names, shared by the controllers and the catalog route. */
+export const PROVIDER_NAMES: Record<string, string> = {
+    linode: "Linode",
+    hetzner: "Hetzner",
+    digitalocean: "DigitalOcean",
+    vultr: "Vultr",
+    aws: "AWS",
+};
+
+export function providerName(kind: string): string {
+    return PROVIDER_NAMES[kind] ?? "the provider";
+}
+
+/**
+ * The decrypted secret to build an adapter with. Multi-field providers (AWS)
+ * keep their JSON in `credentials`; the rest keep a single token in `api_token`.
+ */
+export function providerSecret(row: { api_token?: string | null; credentials?: string | null }): string {
+    const stored = row.credentials || row.api_token || "";
+    if (!stored) throw new Error("This connection has no stored credentials.");
+    return CryptoService.decrypt(stored);
+}
 
 export interface CatalogRegion {
     id: string;
@@ -62,10 +98,24 @@ export interface CatalogImage {
 
 /** The only instance fields the job cares about, whichever provider made it. */
 export interface ProviderInstance {
-    id: number;
+    /** REF: the provider's id as a string (was `id: number`). */
+    ref: string;
     status: string;
     /** First public IPv4, or "" while the provider hasn't assigned one yet. */
     ip: string;
+}
+
+/**
+ * REF: the machine reference stored on a provision row, as a string.
+ * Falls back to the old numeric column so rows created before instance_ref
+ * existed still work. Returns "" when no machine exists yet.
+ */
+export function instanceRefOf(row: { instance_ref?: unknown; instance_id?: unknown }): string {
+    const ref = String(row.instance_ref ?? "").trim();
+    if (ref) return ref;
+
+    const id = Number(row.instance_id);
+    return Number.isFinite(id) && id > 0 ? String(id) : "";
 }
 
 export interface ProviderCreateInput {
@@ -74,7 +124,7 @@ export interface ProviderCreateInput {
     region: string;
     plan: string;
     image: string;
-    /** Null when the provider generates the password itself (Hetzner) or never exposes it (DigitalOcean). */
+    /** Null when the provider generates the password itself (Hetzner) or never exposes it (DigitalOcean, Vultr, AWS). */
     rootPassword: string | null;
     publicKey: string;
 }
@@ -82,16 +132,16 @@ export interface ProviderCreateInput {
 export interface ProviderAdapter {
     kind: ProviderKind;
 
-    /** Throws if the token doesn't work. A read-only check on every provider. */
+    /** Throws if the credentials don't work. A read-only check on every provider. */
     verify(): Promise<void>;
 
-    /** True when the error means the token is invalid or lacks permission. */
+    /** True when the error means the credentials are invalid or lack permission. */
     isAuthError(error: unknown): boolean;
 
     /** True for network failures, 5xx and rate limits: worth retrying a poll. */
     isTransient(error: unknown): boolean;
 
-    /** "Linode: ..." / "Hetzner: ..." / "DigitalOcean: ..." for this provider's own errors, otherwise null. */
+    /** "Linode: ..." / "Hetzner: ..." / ... for this provider's own errors, otherwise null. */
     describeError(error: unknown): string | null;
 
     /**
@@ -100,16 +150,21 @@ export interface ProviderAdapter {
      */
     presetRootPassword(): string | null;
 
-    /** Finds the machine a previous run of this provision already created, or null. */
-    findOurs(provisionId: number, name: string): Promise<ProviderInstance | null>;
+    /**
+     * Finds the machine a previous run of this provision already created, or null.
+     * AWS: `region` is required, because EC2 can only be searched one region at a time.
+     * The other providers ignore it.
+     */
+    findOurs(provisionId: number, name: string, region?: string): Promise<ProviderInstance | null>;
 
     /** Creates the machine. rootPassword is whatever must be stored (null if none exists). */
     create(input: ProviderCreateInput): Promise<{ instance: ProviderInstance; rootPassword: string | null }>;
 
-    get(id: number): Promise<ProviderInstance>;
+    /** REF: takes the string reference (was `id: number`). */
+    get(ref: string): Promise<ProviderInstance>;
 
-    /** Deletes the machine. Already deleted counts as success. */
-    remove(id: number): Promise<void>;
+    /** REF: takes the string reference. Deletes the machine. Already deleted counts as success. */
+    remove(ref: string): Promise<void>;
 
     // ---- Catalog for the create-server form ----
     regions(): Promise<CatalogRegion[]>;
@@ -132,8 +187,9 @@ function hostnameSafe(name: string, fallback: string): string {
 // Linode
 // ---------------------------------------------------------------------------
 
+// REF: id becomes ref (String)
 function fromLinode(raw: LinodeInstance): ProviderInstance {
-    return { id: raw.id, status: raw.status, ip: raw.ipv4[0] ?? "" };
+    return { ref: String(raw.id), status: raw.status, ip: raw.ipv4[0] ?? "" };
 }
 
 class LinodeAdapter implements ProviderAdapter {
@@ -198,13 +254,14 @@ class LinodeAdapter implements ProviderAdapter {
         return { instance: fromLinode(instance), rootPassword: input.rootPassword };
     }
 
-    async get(id: number) {
-        return fromLinode(await this.client.getInstance(id));
+    // REF: the client still wants a number, so convert at the edge.
+    async get(ref: string) {
+        return fromLinode(await this.client.getInstance(Number(ref)));
     }
 
-    async remove(id: number) {
+    async remove(ref: string) {
         try {
-            await this.client.deleteInstance(id);
+            await this.client.deleteInstance(Number(ref));
         } catch (error) {
             if (error instanceof LinodeError && error.status === 404) return;
             throw error;
@@ -229,8 +286,9 @@ class LinodeAdapter implements ProviderAdapter {
 // Hetzner
 // ---------------------------------------------------------------------------
 
+// REF: id becomes ref (String)
 function fromHetzner(raw: HetznerInstance): ProviderInstance {
-    return { id: raw.id, status: raw.status, ip: raw.ipv4[0] ?? "" };
+    return { ref: String(raw.id), status: raw.status, ip: raw.ipv4[0] ?? "" };
 }
 
 class HetznerAdapter implements ProviderAdapter {
@@ -289,12 +347,13 @@ class HetznerAdapter implements ProviderAdapter {
         return { instance: fromHetzner(instance), rootPassword };
     }
 
-    async get(id: number) {
-        return fromHetzner(await this.client.getInstance(id));
+    // REF: convert at the edge
+    async get(ref: string) {
+        return fromHetzner(await this.client.getInstance(Number(ref)));
     }
 
-    remove(id: number) {
-        return this.client.deleteInstance(id); // already treats 404 as success
+    remove(ref: string) {
+        return this.client.deleteInstance(Number(ref)); // already treats 404 as success
     }
 
     regions() {
@@ -314,9 +373,10 @@ class HetznerAdapter implements ProviderAdapter {
 // DigitalOcean
 // ---------------------------------------------------------------------------
 
+// REF: id becomes ref (String)
 function fromDigitalOcean(raw: DigitalOceanInstance): ProviderInstance {
     return {
-        id: raw.id,
+        ref: String(raw.id),
         // The job waits for "running" on every provider; DigitalOcean calls it "active".
         status: raw.status === "active" ? "running" : raw.status,
         ip: raw.ipv4[0] ?? "",
@@ -375,12 +435,13 @@ class DigitalOceanAdapter implements ProviderAdapter {
         return { instance: fromDigitalOcean(instance), rootPassword: null };
     }
 
-    async get(id: number) {
-        return fromDigitalOcean(await this.client.getInstance(id));
+    // REF: convert at the edge
+    async get(ref: string) {
+        return fromDigitalOcean(await this.client.getInstance(Number(ref)));
     }
 
-    remove(id: number) {
-        return this.client.deleteInstance(id); // already treats 404 as success
+    remove(ref: string) {
+        return this.client.deleteInstance(Number(ref)); // already treats 404 as success
     }
 
     regions() {
@@ -397,16 +458,197 @@ class DigitalOceanAdapter implements ProviderAdapter {
 }
 
 // ---------------------------------------------------------------------------
+// Vultr (VULTR: new)
+// ---------------------------------------------------------------------------
 
-/** Builds the adapter for a stored provider kind. Throws on an unknown kind. */
-export function adapterFor(kind: string, token: string): ProviderAdapter {
+function fromVultr(raw: VultrInstance): ProviderInstance {
+    // A Vultr instance is only usable when it is both "active" and powered on.
+    const running = raw.status === "active" && raw.power_status === "running";
+
+    return {
+        ref: raw.id, // already a UUID string
+        status: running ? "running" : raw.status,
+        // Vultr reports 0.0.0.0 until the address is assigned.
+        ip: raw.main_ip && raw.main_ip !== "0.0.0.0" ? raw.main_ip : "",
+    };
+}
+
+class VultrAdapter implements ProviderAdapter {
+    kind = "vultr" as const;
+    private client: VultrClient;
+
+    constructor(token: string) {
+        this.client = new VultrClient(token);
+    }
+
+    verify() {
+        return this.client.verify();
+    }
+
+    // 401/403 also covers Vultr's IP access list, which the help text tells users about.
+    isAuthError(error: unknown) {
+        return error instanceof VultrError && (error.status === 401 || error.status === 403);
+    }
+
+    // 429 is Vultr's rate limit: a poll should wait and try again, not fail.
+    isTransient(error: unknown) {
+        return (
+            error instanceof VultrError &&
+            (error.status === 0 || error.status === 429 || error.status >= 500)
+        );
+    }
+
+    describeError(error: unknown) {
+        return error instanceof VultrError ? `Vultr: ${error.message}` : null;
+    }
+
+    // We log in with the deploy key injected through cloud-init. No password is stored.
+    presetRootPassword() {
+        return null;
+    }
+
+    // Found by tag, never by name, so a name clash can't make us adopt someone else's instance.
+    async findOurs(provisionId: number) {
+        const found = await this.client.findByTag(`tylix-provision-${provisionId}`);
+        return found ? fromVultr(found) : null;
+    }
+
+    async create(input: ProviderCreateInput) {
+        const instance = await this.client.createInstance({
+            region: input.region,
+            type: input.plan,
+            image: input.image,
+            label: input.name,
+            hostname: hostnameSafe(input.name, `server-${input.provisionId}`),
+            authorizedKeys: [input.publicKey],
+            tags: [`tylix-provision-${input.provisionId}`, "tylix-deploy"],
+        });
+
+        return { instance: fromVultr(instance), rootPassword: null };
+    }
+
+    async get(ref: string) {
+        return fromVultr(await this.client.getInstance(ref));
+    }
+
+    remove(ref: string) {
+        return this.client.deleteInstance(ref); // 404 already counts as success
+    }
+
+    regions() {
+        return this.client.regions();
+    }
+
+    plans(region?: string) {
+        return this.client.plans(region);
+    }
+
+    images() {
+        return this.client.images();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AWS (AWS: new)
+// ---------------------------------------------------------------------------
+
+// The ref is already "<region>/<instance-id>", and EC2's "running" needs no mapping.
+function fromAws(raw: AwsInstance): ProviderInstance {
+    return { ref: raw.ref, status: raw.state, ip: raw.ip };
+}
+
+class AwsAdapter implements ProviderAdapter {
+    kind = "aws" as const;
+    private client: AwsClient;
+
+    // `secret` is the credentials JSON (see providerSecret). Throws if it is incomplete.
+    constructor(secret: string) {
+        this.client = new AwsClient(parseAwsCredentials(secret));
+    }
+
+    verify() {
+        return this.client.verify();
+    }
+
+    // Covers bad keys and missing IAM permissions (UnauthorizedOperation).
+    isAuthError(error: unknown) {
+        return error instanceof AwsError && error.isAuth;
+    }
+
+    // Also true while a brand-new instance is not yet visible (InvalidInstanceID.NotFound).
+    isTransient(error: unknown) {
+        return error instanceof AwsError && error.isTransient;
+    }
+
+    describeError(error: unknown) {
+        return error instanceof AwsError ? `AWS: ${error.message}` : null;
+    }
+
+    // EC2 has no root password. Login is by the deploy key injected through cloud-init.
+    presetRootPassword() {
+        return null;
+    }
+
+    // Found by the tylix-provision tag in that one region, never by name.
+    async findOurs(provisionId: number, _name: string, region?: string) {
+        if (!region) throw new Error("Internal error: AWS needs the region to look for an existing machine.");
+
+        const found = await this.client.findByTag(region, provisionId);
+        return found ? fromAws(found) : null;
+    }
+
+    async create(input: ProviderCreateInput) {
+        const instance = await this.client.createInstance({
+            provisionId: input.provisionId,
+            region: input.region,
+            type: input.plan,
+            image: input.image,
+            name: input.name,
+            authorizedKeys: [input.publicKey],
+        });
+
+        return { instance: fromAws(instance), rootPassword: null };
+    }
+
+    async get(ref: string) {
+        return fromAws(await this.client.getInstance(ref));
+    }
+
+    remove(ref: string) {
+        return this.client.deleteInstance(ref); // "not found" already counts as success
+    }
+
+    regions() {
+        return this.client.regions();
+    }
+
+    async plans(region?: string) {
+        return this.client.plans(region);
+    }
+
+    async images() {
+        return this.client.images();
+    }
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the adapter for a stored provider kind. Throws on an unknown kind.
+ * `secret` is a single token for most providers, and the credentials JSON for AWS.
+ */
+export function adapterFor(kind: string, secret: string): ProviderAdapter {
     switch (kind) {
         case "linode":
-            return new LinodeAdapter(token);
+            return new LinodeAdapter(secret);
         case "hetzner":
-            return new HetznerAdapter(token);
+            return new HetznerAdapter(secret);
         case "digitalocean":
-            return new DigitalOceanAdapter(token);
+            return new DigitalOceanAdapter(secret);
+        case "vultr": // VULTR
+            return new VultrAdapter(secret);
+        case "aws": // AWS
+            return new AwsAdapter(secret);
         default:
             throw new Error(`Unsupported provider: ${kind}`);
     }

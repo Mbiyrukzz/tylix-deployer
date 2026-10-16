@@ -28,6 +28,12 @@
       "type": "integer",
       "unique": false,
       "system": false
+    },
+    {
+      "name": "credentials",
+      "type": "text",
+      "unique": false,
+      "system": false
     }
   ],
   "relations": [],

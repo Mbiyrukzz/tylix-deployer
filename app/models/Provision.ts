@@ -27,6 +27,7 @@ export interface ProvisionAttributes {
     server_id: number;
     user_id: number;
     root_password: string;
+    instance_ref: string;
     created_at: string;
     updated_at: string;
 }
@@ -49,6 +50,7 @@ export class Provision extends Model {
         "server_id",
         "user_id",
         "root_password",
+        "instance_ref",
     ];
 
 }

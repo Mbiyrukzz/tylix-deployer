@@ -68,6 +68,12 @@
       "type": "text",
       "unique": false,
       "system": false
+    },
+    {
+      "name": "instance_ref",
+      "type": "string",
+      "unique": false,
+      "system": false
     }
   ],
   "relations": [],

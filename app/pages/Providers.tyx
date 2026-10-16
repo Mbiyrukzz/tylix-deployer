@@ -15,6 +15,9 @@ state
   items: []
   linodeCount: 0
   hetznerCount: 0
+  doCount: 0
+  vultrCount: 0
+  awsCount: 0
   serverCount: 0
   removing: 0
   removeError: ""
@@ -23,7 +26,10 @@ action
   // Adds display-only fields to a connection: how many servers still use it,
   // plus the label and tile colours for its provider.
   decorate(p, rows) {
-    const used = rows.filter((r) => r.provider_id is p.id and Number(r.instance_id) > 0 and r.status is not "deleted").length
+    // REF: has_instance comes from /api/provisions and works for numeric ids
+    // (Linode, Hetzner, DigitalOcean), UUIDs (Vultr) and region/id refs (AWS). The old
+    // Number(r.instance_id) > 0 test would miss Vultr and AWS machines.
+    const used = rows.filter((r) => r.provider_id is p.id and r.has_instance and r.status is not "deleted").length
 
     let usageText = used + " servers"
     if used is 0 {
@@ -33,6 +39,7 @@ action
       usageText = "1 server"
     }
 
+    // Linode is the default; each other provider overrides name, letter and colour.
     let kindName = "Linode (Akamai)"
     let tileLetter = "L"
     let tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
@@ -40,6 +47,24 @@ action
       kindName = "Hetzner Cloud"
       tileLetter = "H"
       tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+    // DIGITALOCEAN
+    if p.kind is "digitalocean" {
+      kindName = "DigitalOcean"
+      tileLetter = "D"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400"
+    }
+    // VULTR
+    if p.kind is "vultr" {
+      kindName = "Vultr"
+      tileLetter = "V"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400"
+    }
+    // AWS
+    if p.kind is "aws" {
+      kindName = "Amazon Web Services"
+      tileLetter = "A"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
     }
 
     let since = "-"
@@ -62,6 +87,12 @@ action
     this.items = list
     this.linodeCount = list.filter((p) => p.kind is "linode").length
     this.hetznerCount = list.filter((p) => p.kind is "hetzner").length
+    // DIGITALOCEAN
+    this.doCount = list.filter((p) => p.kind is "digitalocean").length
+    // VULTR
+    this.vultrCount = list.filter((p) => p.kind is "vultr").length
+    // AWS
+    this.awsCount = list.filter((p) => p.kind is "aws").length
     this.serverCount = list.reduce((n, p) => n + p.inUse, 0)
   }
 
@@ -124,7 +155,7 @@ template
         <ProviderForm onSaved="{{ addProvider }}" />
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Connections</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ items.length }}</p>
@@ -136,6 +167,18 @@ template
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Hetzner</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ hetznerCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">DigitalOcean</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ doCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Vultr</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ vultrCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">AWS</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ awsCount }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Servers created</p>
@@ -154,9 +197,12 @@ template
         <div class="flex items-center justify-center gap-3 mb-4">
           <span class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-lg font-bold">L</span>
           <span class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-lg font-bold">H</span>
+          <span class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg font-bold">D</span>
+          <span class="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center text-lg font-bold">V</span>
+          <span class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg font-bold">A</span>
         </div>
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No providers connected</h2>
-        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">Connect a Linode or Hetzner account to create servers from here. You only need an API token.</p>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr or AWS account to create servers from here. You only need an API token, or an access key for AWS.</p>
         <ProviderForm onSaved="{{ addProvider }}" />
       </div>
 {{/if}}

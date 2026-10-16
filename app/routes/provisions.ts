@@ -3,13 +3,16 @@
  *
  * POST /api/provisions/:id/retry          re-queues a failed provision. The job resumes
  *                                         from the saved step and adopts an instance it
- *                                         already created (tag tylix-provision-<id>), so
- *                                         a retry never creates a second billable machine.
+ *                                         already created (tag or label tylix-provision-<id>),
+ *                                         so a retry never creates a second billable machine.
  * GET  /api/provisions/:id/root-password  returns the decrypted root password
  * POST /api/servers/:id/reboot            reboots a server over SSH (owner only)
  *
  * Each of these writes an event to the server log. The root password is
  * never logged, only the fact that someone viewed it.
+ *
+ * REF: nothing here reads instance_id, so the string-reference change needs no
+ * edits to retry or reboot. Only the root-password wording changed.
  */
 
 import type { Router } from "@tylix/core";
@@ -81,9 +84,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             }
 
             if (!row.root_password) {
+                // REF: wording changed. A missing password is normal for DigitalOcean and
+                // Vultr (they never return one) and for servers created before passwords
+                // were saved, so the message no longer blames one cause.
                 res.status(404);
                 return res.json({
-                    error: "No root password is stored for this server. It was created before passwords were saved. Reset it from your provider's dashboard instead.",
+                    error: "No root password is stored for this server. Some providers never issue one, and servers created before passwords were saved don't have one. Log in with the deploy key, or reset the password from your provider's dashboard.",
                 });
             }
 

@@ -12,10 +12,14 @@ state
   kinds: []
   label: ""
   apiToken: ""
+  accessKeyId: ""
+  secretKey: ""
   saving: false
   error: ""
   labelError: ""
   tokenError: ""
+  accessKeyError: ""
+  secretKeyError: ""
   tokenPlaceholder: ""
 
 action
@@ -23,12 +27,16 @@ action
     this.error = ""
     this.labelError = ""
     this.tokenError = ""
+    this.accessKeyError = ""
+    this.secretKeyError = ""
   }
 
   reset() {
     this.kind = "linode"
     this.label = ""
     this.apiToken = ""
+    this.accessKeyId = ""
+    this.secretKey = ""
     this.tokenPlaceholder = ""
     this.saving = false
     this.clearErrors()
@@ -64,6 +72,20 @@ action
         sub: "Droplets",
         tileClass: "w-9 h-9 shrink-0 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold",
         letter: "D"
+      },
+      {
+        id: "vultr",
+        name: "Vultr",
+        sub: "Cloud Compute",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold",
+        letter: "V"
+      },
+      {
+        id: "aws",
+        name: "AWS",
+        sub: "EC2",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold",
+        letter: "A"
       }
     ]
   }
@@ -72,6 +94,8 @@ action
   pick(kind) {
     this.kind = kind
     this.tokenError = ""
+    this.accessKeyError = ""
+    this.secretKeyError = ""
     this.error = ""
   }
 
@@ -82,6 +106,9 @@ action
       this.label = this.provider.label
       this.kind = this.provider.kind
       this.tokenPlaceholder = "Leave blank to keep the current token"
+      if this.provider.kind is "aws" {
+        this.tokenPlaceholder = "Leave blank to keep the current keys"
+      }
     }
     this.showModal = true
   }
@@ -100,11 +127,14 @@ action
     this.saving = true
 
     // When editing, the existing connection's kind is sent. The server ignores
-    // it anyway and verifies against the stored kind.
+    // it anyway and verifies against the stored kind. The credential fields
+    // that don't belong to the kind are sent blank and ignored.
     const payload = {
       kind: this.provider ? this.provider.kind : this.kind,
       label: this.label,
-      api_token: this.apiToken
+      api_token: this.apiToken,
+      access_key_id: this.accessKeyId,
+      secret_access_key: this.secretKey
     }
     const url = this.provider ? "/api/providers/" + this.provider.id : "/api/providers"
     const method = this.provider ? "PUT" : "POST"
@@ -120,8 +150,10 @@ action
       const errors = result.data?.errors
       this.labelError = this.firstError(errors, "label")
       this.tokenError = this.firstError(errors, "api_token")
+      this.accessKeyError = this.firstError(errors, "access_key_id")
+      this.secretKeyError = this.firstError(errors, "secret_access_key")
       this.error = result.data?.error or result.error or ""
-      if not this.labelError and not this.tokenError and not this.error {
+      if not this.labelError and not this.tokenError and not this.accessKeyError and not this.secretKeyError and not this.error {
         this.error = "Couldn't save the connection. Try again."
       }
       this.saving = false
@@ -155,7 +187,7 @@ template
 {{/if}}
           </h3>
 {{#if provider}}
-          <p class="text-slate-500 text-sm mt-0.5">Rename it, or paste a new token to replace the stored one.</p>
+          <p class="text-slate-500 text-sm mt-0.5">Rename it, or paste new credentials to replace the stored ones.</p>
 {{/if}}
 {{#if not provider}}
           <p class="text-slate-500 text-sm mt-0.5">The deployer creates servers in this account for you.</p>
@@ -206,6 +238,7 @@ template
       <p class="text-rose-500 text-xs mt-1.5">{{ labelError }}</p>
 {{/if}}
 
+{{#if kind is not "aws"}}
       <label for="provider-token" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API token</label>
       <input
         id="provider-token"
@@ -219,6 +252,39 @@ template
       />
 {{#if tokenError}}
       <p class="text-rose-500 text-xs mt-1.5">{{ tokenError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if kind is "aws"}}
+      <label for="provider-access-key" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Access key ID</label>
+      <input
+        id="provider-access-key"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ accessKeyId }}"
+        oninput="{{ accessKeyId = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if accessKeyError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ accessKeyError }}</p>
+{{/if}}
+
+      <label for="provider-secret-key" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Secret access key</label>
+      <input
+        id="provider-secret-key"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ secretKey }}"
+        oninput="{{ secretKey = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if secretKeyError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ secretKeyError }}</p>
+{{/if}}
 {{/if}}
 
 {{#if not provider}}
@@ -247,12 +313,32 @@ template
           <li>Give it <span class="font-mono">Full Access</span>, or a custom scope that can create, read and delete droplets and read regions, sizes and images. A read-only token connects fine but can't create servers.</li>
         </ol>
 {{/if}}
-        <p class="text-slate-400 text-xs mt-3">The token is checked with the provider, encrypted before it is stored, and never shown again.</p>
+{{#if kind is "vultr"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Vultr API key</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://my.vultr.com/settings/#settingsapi" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; API</a> and enable the API.</li>
+          <li>Copy the API key.</li>
+          <li>Under Access Control, allow this deployer's server IP, or choose Allow all IPv4. Otherwise Vultr rejects every request.</li>
+        </ol>
+{{/if}}
+{{#if kind is "aws"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create an AWS access key</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://console.aws.amazon.com/iam/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">IAM</a> and create a user. It does not need console access.</li>
+          <li>Attach a policy that allows the EC2 actions listed below.</li>
+          <li>Open the user, go to Security credentials and create an access key for an application running outside AWS.</li>
+          <li>Paste the Access key ID and the Secret access key here. AWS shows the secret only once.</li>
+        </ol>
+        <p class="text-slate-500 text-xs mt-3">EC2 actions needed:</p>
+        <p class="text-slate-500 text-[11px] font-mono leading-relaxed mt-1 break-words">DescribeRegions, DescribeInstances, DescribeInstanceTypes, DescribeInstanceTypeOfferings, DescribeImages, DescribeVpcs, DescribeSecurityGroups, CreateSecurityGroup, AuthorizeSecurityGroupIngress, RunInstances, TerminateInstances, CreateTags</p>
+        <p class="text-slate-500 text-xs mt-3">Use a long-term key (it starts with AKIA). Servers are created in your default VPC, with a security group named tylix-deploy that leaves every port open. Each server's own firewall decides what is reachable.</p>
+{{/if}}
+        <p class="text-slate-400 text-xs mt-3">The credentials are checked with the provider, encrypted before they are stored, and never shown again.</p>
       </div>
 {{/if}}
 
 {{#if provider}}
-      <p class="text-slate-400 text-xs mt-3">The current token is stored encrypted and is never shown.</p>
+      <p class="text-slate-400 text-xs mt-3">The current credentials are stored encrypted and are never shown.</p>
 {{/if}}
 
 {{#if error}}

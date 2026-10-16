@@ -78,6 +78,14 @@ action
     if p.kind is "digitalocean" {
       kindName = "DigitalOcean"
     }
+    // VULTR
+    if p.kind is "vultr" {
+      kindName = "Vultr"
+    }
+    // AWS
+    if p.kind is "aws" {
+      kindName = "Amazon Web Services"
+    }
     return { id: p.id, label: p.label, kind: p.kind, kindName: kindName }
   }
 
@@ -97,12 +105,22 @@ action
     this.catalogError = ""
   }
 
-  applyPlanFilter() {
-    if this.tpl is "tylix" {
-      this.shownPlans = this.plans.filter((p) => p.memory_mb > 4095)
-    } else {
-      this.shownPlans = this.plans
+  // The price line of a plan. A price of 0 means the provider's catalog has no
+  // prices (AWS), so say so instead of showing "USD 0".
+  decoratePlan(p) {
+    let priceText = "pricing in the provider console"
+    if p.monthly > 0 {
+      priceText = p.currency + " " + p.monthly + " per month"
     }
+    return Object.assign({}, p, { priceText: priceText })
+  }
+
+  applyPlanFilter() {
+    let list = this.plans
+    if this.tpl is "tylix" {
+      list = this.plans.filter((p) => p.memory_mb > 4095)
+    }
+    this.shownPlans = list.map((p) => this.decoratePlan(p))
   }
 
   async loadCatalog() {
@@ -114,7 +132,7 @@ action
 
     let url = "/api/catalog/" + this.providerKind
 
-    // Linode's catalog is public. Every other provider needs the connection's token.
+    // Linode's catalog is public. Every other provider needs the connection's credentials.
     if this.providerKind is "linode" {
       if this.region is not "" {
         url = url + "?region=" + this.region
@@ -534,7 +552,7 @@ template
 {{#each p in shownPlans}}
           <button onclick="{{ pickPlan(p.id, p.label) }}" class="block w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
             <span class="block font-medium">{{ p.label }}</span>
-            <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / {{ p.currency }} {{ p.monthly }} per month</span>
+            <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / {{ p.priceText }}</span>
           </button>
 {{/each}}
         </div>

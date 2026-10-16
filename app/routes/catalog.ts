@@ -7,36 +7,32 @@
  *   GET /api/catalog/hetzner?provider=<id>           -> same shape, via that connection
  *   GET /api/catalog/hetzner?provider=<id>&region=nbg1
  *   GET /api/catalog/digitalocean?provider=<id>&region=nyc3
+ *   GET /api/catalog/aws?provider=<id>&region=eu-west-1
  *
  *   - Linode's catalog is public: no token, no `provider` param needed.
- *   - Hetzner and DigitalOcean need a project/account token for EVERY call,
+ *   - Every other provider needs the connection's credentials for EVERY call,
  *     including the catalog. The caller passes the id of one of their own
- *     connections, and the token is decrypted here, server-side. It never
+ *     connections, and the secret is decrypted here, server-side. It never
  *     reaches the client.
  *
- * Each answer is cached in memory for 10 minutes. Token-based answers are
- * cached per connection, so one user's token is never what serves another
+ * Each answer is cached in memory for 10 minutes. Credential-based answers are
+ * cached per connection, so one user's credentials are never what serves another
  * user. Failed lookups are not cached.
  *
- * Every plan carries `currency` ("USD" for Linode and DigitalOcean, "EUR" for Hetzner).
+ * Every plan carries `currency` ("USD" for Linode, DigitalOcean, Vultr and AWS,
+ * "EUR" for Hetzner). AWS plans have monthly = 0: prices are not looked up.
  */
 
 import type { Router } from "@tylix/core";
 import { Provider } from "../models/Provider.js";
-import { CryptoService } from "../services/CryptoService.js";
-import { adapterFor, PROVIDER_KINDS } from "../services/ProviderAdapter.js";
+// AWS: providerSecret picks api_token or credentials; providerName replaces the local name table.
+import { adapterFor, providerName, providerSecret, PROVIDER_KINDS } from "../services/ProviderAdapter.js";
 
 const TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; value: unknown }>();
 
-/** Kinds whose catalog is public. Every other kind needs a connection's token. */
+/** Kinds whose catalog is public. Every other kind needs a connection's credentials. */
 const PUBLIC_CATALOG = ["linode"];
-
-const PROVIDER_NAMES: Record<string, string> = {
-    linode: "Linode",
-    hetzner: "Hetzner",
-    digitalocean: "DigitalOcean",
-};
 
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
     const hit = cache.get(key);
@@ -60,14 +56,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 return res.json({ error: "Unknown provider." });
             }
 
-            const name = PROVIDER_NAMES[kind] ?? "the provider";
+            const name = providerName(kind);
 
             // ASSUMPTION: the request exposes parsed query params as req.query.
             const query = (req as unknown as { query?: Record<string, string> }).query ?? {};
             const region = typeof query.region === "string" ? query.region : "";
 
-            // Which token (if any) the catalog call is made with.
-            let token = "";
+            // Which secret (if any) the catalog call is made with.
+            let secret = "";
             let scope = "public";
 
             if (!PUBLIC_CATALOG.includes(kind)) {
@@ -83,6 +79,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                     user_id: number;
                     kind: string;
                     api_token: string;
+                    credentials: string;
                 } | null;
 
                 // Someone else's connection (or the wrong kind) answers 404, like everywhere else.
@@ -91,16 +88,33 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                     return res.json({ error: "Provider connection not found." });
                 }
 
-                token = CryptoService.decrypt(row.api_token);
+                try {
+                    secret = providerSecret(row);
+                } catch (error) {
+                    console.error(`[catalog] ${kind} connection ${row.id} has unreadable credentials:`, error);
+                    res.status(422);
+                    return res.json({
+                        error: `This ${name} connection can't be used. Edit it and paste the credentials again.`,
+                    });
+                }
                 scope = `provider:${row.id}`;
             }
 
-            const adapter = adapterFor(kind, token);
+            let adapter;
+            try {
+                adapter = adapterFor(kind, secret);
+            } catch (error) {
+                console.error(`[catalog] couldn't build the ${kind} adapter:`, error);
+                res.status(422);
+                return res.json({
+                    error: `This ${name} connection can't be used. Edit it and paste the credentials again.`,
+                });
+            }
 
             try {
                 const [regions, images, plans] = await Promise.all([
                     cached(`${kind}:${scope}:regions`, () => adapter.regions()),
-                    cached(`${kind}:${scope}:images`, () => adapter.images()),
+                    cached(`${kind}:${scope}:images`, async () => adapter.images()),
                     cached(`${kind}:${scope}:plans:${region}`, () => adapter.plans(region || undefined)),
                 ]);
 
@@ -114,12 +128,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 // Log the real cause server-side. The client only gets a generic message.
                 console.error(`[catalog] ${kind} lookup failed (region="${region}"):`, error);
 
-                // A revoked or expired token: tell them how to fix it
+                // Revoked or expired credentials: tell them how to fix it
                 // instead of showing a generic "try again".
                 if (adapter.isAuthError(error)) {
                     res.status(422);
                     return res.json({
-                        error: `${name} rejected this connection's token. Edit the connection and paste a new one.`,
+                        error: `${name} rejected this connection's credentials. Edit the connection and paste new ones.`,
                     });
                 }
 
