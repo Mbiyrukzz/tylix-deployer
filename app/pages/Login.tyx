@@ -12,14 +12,21 @@ state
   needsCode: false
   error: ""
   submitting: false
+  canText: false
+  smsSent: false
+  phoneHint: ""
+  smsNotice: ""
+  codeHelp: ""
+  sending: false
 
 action
   setField(field, value) {
     this[field] = value
   }
 
-  async callLogin() {
-    return Auth.login(this.email, this.password, this.code)
+  async callLogin(sendSms) {
+    const code = sendSms ? "" : this.code
+    return Auth.login(this.email, this.password, code, sendSms)
   }
 
   loginFailed(err) {
@@ -27,10 +34,57 @@ action
     return { ok: false, error: "Something went wrong. Please try again." }
   }
 
+  applyChallenge(data) {
+    const methods = Array.isArray(data?.methods) ? data.methods : []
+    const hasTotp = methods.includes("totp")
+    const hasSms = methods.includes("sms")
+
+    this.canText = hasSms
+    this.phoneHint = data?.phone_hint or ""
+    this.smsNotice = data?.sms_error or ""
+    if data?.sms_sent {
+      this.smsSent = true
+    }
+
+    if hasSms and hasTotp {
+      this.codeHelp = "Enter the code from your authenticator app, or get one by text message."
+    } else if hasSms {
+      this.codeHelp = "Enter the 6-digit code we texted you."
+    } else {
+      this.codeHelp = "Open your authenticator app and enter the 6-digit code, or use one of your recovery codes."
+    }
+
+    this.needsCode = true
+  }
+
   backToCredentials() {
     this.needsCode = false
     this.code = ""
     this.error = ""
+    this.canText = false
+    this.smsSent = false
+    this.smsNotice = ""
+  }
+
+  async textMeCode() {
+    if this.sending or this.submitting {
+      return null
+    }
+
+    this.sending = true
+    this.error = ""
+    this.smsNotice = ""
+
+    const result = await this.callLogin(true).catch((err) => this.loginFailed(err))
+    const failCode = result?.data?.code or result?.code
+
+    if failCode is "TWO_FACTOR_REQUIRED" {
+      this.applyChallenge(result.data)
+    } else {
+      this.error = result?.error or result?.data?.error or "Couldn't send the code."
+    }
+
+    this.sending = false
   }
 
   async submit() {
@@ -38,10 +92,15 @@ action
       return null
     }
 
+    if this.needsCode and not this.code {
+      this.error = "Enter your code."
+      return null
+    }
+
     this.submitting = true
     this.error = ""
 
-    const result = await this.callLogin().catch((err) => this.loginFailed(err))
+    const result = await this.callLogin(false).catch((err) => this.loginFailed(err))
 
     if result and result.ok {
       window.location.replace("/dashboard")
@@ -51,7 +110,7 @@ action
     const failCode = result?.data?.code or result?.code
 
     if failCode is "TWO_FACTOR_REQUIRED" {
-      this.needsCode = true
+      this.applyChallenge(result.data)
       this.submitting = false
       return null
     }
@@ -125,13 +184,20 @@ template
 {{#if needsCode}}
           <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Two-factor</p>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Enter your code</h1>
-          <p class="text-slate-500 text-sm mb-8">Open your authenticator app and enter the 6-digit code, or use one of your recovery codes.</p>
+          <p class="text-slate-500 text-sm mb-8">{{ codeHelp }}</p>
 {{/if}}
 
 {{#if error}}
           <div role="alert" aria-live="polite" class="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-6">
             <p class="text-rose-700 dark:text-rose-400 text-sm">{{ error }}</p>
           </div>
+{{/if}}
+
+{{#if smsSent}}
+          <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">We texted a code to <span class="font-mono">{{ phoneHint }}</span>. It expires in 5 minutes.</p>
+{{/if}}
+{{#if smsNotice}}
+          <p role="alert" class="text-amber-600 dark:text-amber-500 text-sm mb-4">{{ smsNotice }}</p>
 {{/if}}
 
 {{#if not needsCode}}
@@ -165,7 +231,7 @@ template
 {{/if}}
 
 {{#if needsCode}}
-          <label for="code" class="block text-slate-600 dark:text-slate-400 text-xs font-medium mb-2">Authenticator or recovery code</label>
+          <label for="code" class="block text-slate-600 dark:text-slate-400 text-xs font-medium mb-2">Verification code</label>
           <input
             id="code"
             name="code"
@@ -197,7 +263,17 @@ template
 {{/if}}
 
 {{#if needsCode}}
-          <button onclick="{{ backToCredentials() }}" class="w-full text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 mt-3 py-2 transition-colors">
+{{#if canText}}
+{{#if sending}}
+          <button disabled class="w-full text-sm text-slate-400 mt-3 py-2">Sending…</button>
+{{/if}}
+{{#if not sending}}
+          <button onclick="{{ textMeCode() }}" class="w-full text-sm text-emerald-700 dark:text-emerald-400 hover:underline mt-3 py-2 transition-colors">
+            {{#if smsSent}}Resend code{{/if}}{{#if not smsSent}}Text me a code{{/if}}
+          </button>
+{{/if}}
+{{/if}}
+          <button onclick="{{ backToCredentials() }}" class="w-full text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 mt-1 py-2 transition-colors">
             Back
           </button>
 {{/if}}

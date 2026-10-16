@@ -1,7 +1,7 @@
 /**
  * Account routes (the signed-in user only).
  *
- * GET    /api/account                              profile + two-factor status
+ * GET    /api/account                              profile + two-factor status (authenticator and SMS)
  * PUT    /api/account                              change name
  * PUT    /api/account/password                     change password (needs the current one)
  * POST   /api/account/sign-out-everywhere          revoke every refresh token, clear cookies
@@ -9,6 +9,10 @@
  * POST   /api/account/two-factor/confirm           prove the app works, turns 2FA on, returns recovery codes once
  * POST   /api/account/two-factor/disable           needs password + a code
  * POST   /api/account/two-factor/recovery-codes    new set of codes, needs password + a code
+ * POST   /api/account/two-factor/sms/setup         needs phone + password, texts a code
+ * POST   /api/account/two-factor/sms/confirm       proves the phone, turns text-message codes on
+ * POST   /api/account/two-factor/sms/send-code     resend during setup, or a code before turning SMS off
+ * POST   /api/account/two-factor/sms/disable       needs password + a code from any method that is on
  *
  * Password-checking endpoints share one per-user limiter so a stolen
  * session can't be used to guess the current password.
@@ -28,6 +32,8 @@ import { RefreshToken } from "../models/RefreshToken.js";
 import { UserTwoFactor } from "../models/UserTwoFactor.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { TwoFactorService } from "../services/TwoFactorService.js";
+import { SmsTwoFactorService } from "../services/SmsTwoFactorService.js";
+import type { SendResult } from "../services/SmsTwoFactorService.js";
 
 type Handler = Parameters<Router["get"]>[1];
 type FieldErrors = Record<string, string[]>;
@@ -68,6 +74,13 @@ function text(value: unknown): string {
     return typeof value === "string" ? value : "";
 }
 
+/** Answers for a failed text-message send: 429 for cooldown/cap, 503 if SMS isn't configured, 502 if the provider failed. */
+function smsFailure(res: TylixResponse, sent: Extract<SendResult, { ok: false }>) {
+    const status = sent.reason === "cooldown" || sent.reason === "limit" ? 429 : sent.reason === "not_configured" ? 503 : 502;
+    res.status(status);
+    return res.json({ error: sent.message });
+}
+
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
     router.get(
         "/api/account",
@@ -83,6 +96,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 two_factor: {
                     enabled,
                     recovery_codes_remaining: enabled && tf ? TwoFactorService.recoveryRemaining(tf) : 0,
+                    sms: await SmsTwoFactorService.summary(user.id),
                 },
             });
         }),
@@ -158,7 +172,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         }),
     );
 
-    // ---------------------------------------------------------------- two-factor
+    // ---------------------------------------------------------------- two-factor (authenticator app)
 
     router.post(
         "/api/account/two-factor/setup",
@@ -289,6 +303,112 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             await UserTwoFactor.update(row.id, { recovery_codes: JSON.stringify(codes.hashed) });
 
             return res.json({ ok: true, recovery_codes: codes.plain });
+        }),
+    );
+
+    // ---------------------------------------------------------------- two-factor (text message)
+
+    router.post(
+        "/api/account/two-factor/sms/setup",
+        auth(async (req, res) => {
+            const user = await currentUser(req, res);
+            if (!user) return;
+            if (throttled(req, res)) return;
+
+            const phone = SmsTwoFactorService.normalizePhone(req.body?.phone);
+            const password = text(req.body?.password);
+
+            const errors: FieldErrors = {};
+            if (!phone) errors.phone = ["Enter a valid mobile number, like 0712345678 or +254712345678."];
+            if (!password) errors.password = ["Enter your password."];
+            else if (!(await verifyPassword(password, user.password))) errors.password = ["That isn't your password."];
+            if (!phone || Object.keys(errors).length > 0) return fail(res, errors);
+
+            const existing = await SmsTwoFactorService.find(user.id);
+            if (existing?.confirmed_at) {
+                res.status(409);
+                return res.json({ error: "Text-message codes are already on. Turn them off first to use a different number." });
+            }
+
+            const row = await SmsTwoFactorService.prepare(user.id, phone);
+            const sent = await SmsTwoFactorService.sendCode(row);
+            if (!sent.ok) return smsFailure(res, sent);
+
+            return res.json({ ok: true, phone_hint: SmsTwoFactorService.maskPhone(row.phone) });
+        }),
+    );
+
+    router.post(
+        "/api/account/two-factor/sms/confirm",
+        auth(async (req, res) => {
+            const user = await currentUser(req, res);
+            if (!user) return;
+            if (throttled(req, res)) return;
+
+            const row = await SmsTwoFactorService.find(user.id);
+            if (!row || row.confirmed_at || !row.phone) {
+                res.status(409);
+                return res.json({ error: "Start the text-message setup first." });
+            }
+
+            const code = text(req.body?.code);
+            if (!code.trim()) return fail(res, { code: ["Enter the 6-digit code we texted you."] });
+
+            if (!(await SmsTwoFactorService.verifyCode(row, code))) {
+                return fail(res, { code: ["That code is incorrect or has expired."] });
+            }
+
+            await SmsTwoFactorService.markConfirmed(row.id);
+            return res.json({ ok: true, phone_hint: SmsTwoFactorService.maskPhone(row.phone) });
+        }),
+    );
+
+    // Resend during setup, or get a code before turning SMS off.
+    // SmsTwoFactorService.sendCode enforces the 60 s cooldown and the hourly cap.
+    router.post(
+        "/api/account/two-factor/sms/send-code",
+        auth(async (req, res) => {
+            const user = await currentUser(req, res);
+            if (!user) return;
+
+            const row = await SmsTwoFactorService.find(user.id);
+            if (!row || !row.phone) {
+                res.status(409);
+                return res.json({ error: "Text-message codes aren't set up." });
+            }
+
+            const sent = await SmsTwoFactorService.sendCode(row);
+            if (!sent.ok) return smsFailure(res, sent);
+
+            return res.json({ ok: true, phone_hint: SmsTwoFactorService.maskPhone(row.phone) });
+        }),
+    );
+
+    router.post(
+        "/api/account/two-factor/sms/disable",
+        auth(async (req, res) => {
+            const user = await currentUser(req, res);
+            if (!user) return;
+            if (throttled(req, res)) return;
+
+            const row = await SmsTwoFactorService.find(user.id);
+            if (!row?.confirmed_at) {
+                res.status(409);
+                return res.json({ error: "Text-message codes aren't turned on." });
+            }
+
+            const password = text(req.body?.password);
+            if (!password) return fail(res, { password: ["Enter your password."] });
+            if (!(await verifyPassword(password, user.password))) {
+                return fail(res, { password: ["That isn't your password."] });
+            }
+
+            // Any method that is on works: authenticator code, recovery code or a texted code.
+            const check = await TwoFactorService.loginChallenge(user.id, req.body?.code);
+            if (check.result !== "ok") return fail(res, { code: ["That code isn't valid."] });
+
+            await SmsTwoFactorService.reset(row.id);
+            return res.json({ ok: true });
         }),
     );
 }

@@ -8,12 +8,15 @@
  *     after setup
  *   - a code is accepted once: last_step blocks replaying the same window
  *   - recovery codes are stored as SHA-256 hashes and each works once
- *   - challenge() is what the login flow calls
+ *   - challenge() checks the authenticator method only
+ *   - loginChallenge() is what the login flow calls: authenticator, recovery
+ *     code or texted code, whichever the user has turned on
  */
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { UserTwoFactor } from "../models/UserTwoFactor.js";
 import { CryptoService } from "./CryptoService.js";
+import { SmsTwoFactorService } from "./SmsTwoFactorService.js";
 
 export interface TwoFactorRow {
     id: number;
@@ -25,6 +28,16 @@ export interface TwoFactorRow {
 }
 
 export type ChallengeResult = "not_enabled" | "missing" | "invalid" | "ok";
+
+export type TwoFactorMethod = "totp" | "sms";
+
+export interface LoginChallenge {
+    result: ChallengeResult;
+    methods: TwoFactorMethod[];
+    smsSent: boolean;
+    phoneHint: string | null;
+    smsError?: string;
+}
 
 const ISSUER = "tylix-deploy";
 const PERIOD_SECONDS = 30;
@@ -147,8 +160,9 @@ export class TwoFactorService {
     }
 
     /**
-     * Login / sensitive-action check. Accepts an authenticator code or a
-     * recovery code (which is burned on use).
+     * Authenticator-only check. Accepts an authenticator code or a recovery
+     * code (which is burned on use). Used by the disable / regenerate
+     * recovery-codes endpoints.
      */
     static async challenge(userId: number, code: unknown): Promise<ChallengeResult> {
         const row = await this.find(userId);
@@ -173,5 +187,58 @@ export class TwoFactorService {
         }
 
         return "invalid";
+    }
+
+    /**
+     * Login check across every method the user has turned on.
+     *  - no code given: reports which methods exist, and texts a code when SMS
+     *    is the only method, or when the client asked for one (sendSms)
+     *  - code given: accepted if it is a valid authenticator code, recovery
+     *    code or texted code
+     */
+    static async loginChallenge(
+        userId: number,
+        code: unknown,
+        opts: { sendSms?: boolean } = {},
+    ): Promise<LoginChallenge> {
+        const totpRow = await this.find(userId);
+        const smsRow = await SmsTwoFactorService.find(userId);
+        const totpOn = Boolean(totpRow?.confirmed_at);
+        const smsOn = Boolean(smsRow?.confirmed_at);
+
+        const methods: TwoFactorMethod[] = [];
+        if (totpOn) methods.push("totp");
+        if (smsOn) methods.push("sms");
+
+        const base: LoginChallenge = {
+            result: "not_enabled",
+            methods,
+            smsSent: false,
+            phoneHint: smsOn && smsRow ? SmsTwoFactorService.maskPhone(smsRow.phone) : null,
+        };
+        if (methods.length === 0) return base;
+
+        const input = String(code ?? "").trim();
+
+        if (!input) {
+            const out: LoginChallenge = { ...base, result: "missing" };
+            if (smsOn && smsRow && (opts.sendSms || !totpOn)) {
+                const sent = await SmsTwoFactorService.sendCode(smsRow);
+                if (sent.ok || (sent.reason === "cooldown" && sent.pending && !opts.sendSms)) {
+                    out.smsSent = true;
+                } else if (!sent.ok) {
+                    out.smsError = sent.message;
+                }
+            }
+            return out;
+        }
+
+        if (totpOn && (await this.challenge(userId, input)) === "ok") {
+            return { ...base, result: "ok" };
+        }
+        if (smsOn && smsRow && (await SmsTwoFactorService.verifyCode(smsRow, input))) {
+            return { ...base, result: "ok" };
+        }
+        return { ...base, result: "invalid" };
     }
 }

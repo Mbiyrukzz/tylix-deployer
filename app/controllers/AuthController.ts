@@ -142,18 +142,24 @@ export class AuthController {
             });
         }
 
-        const tf = await TwoFactorService.challenge(user.id, req.body.code);
-if (tf === "missing") {
-    return res.status(401).json({
-        error: "Enter the code from your authenticator app.",
-        code: "TWO_FACTOR_REQUIRED",
-    });
-}
-if (tf === "invalid") {
-    recordFailedLogin(email);
-    return res.status(401).json({ error: "That code is incorrect.", code: "TWO_FACTOR_INVALID" });
-}
-
+        const tf = await TwoFactorService.loginChallenge(user.id, req.body.code, {
+            sendSms: req.body.send_sms === true,
+        });
+        if (tf.result === "missing") {
+            return res.status(401).json({
+                error: "Enter your verification code.",
+                code: "TWO_FACTOR_REQUIRED",
+                methods: tf.methods,
+                sms_sent: tf.smsSent,
+                phone_hint: tf.phoneHint,
+                sms_error: tf.smsError ?? "",
+            });
+        }
+        if (tf.result === "invalid") {
+            recordFailedLogin(email);
+            return res.status(401).json({ error: "That code is incorrect.", code: "TWO_FACTOR_INVALID" });
+        }
+        
         clearLoginAttempts(email);
 
         const accessToken = signToken({ userId: user.id }, this.secret, {
