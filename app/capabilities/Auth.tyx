@@ -5,10 +5,10 @@ state
   loading: true
 
 action
-  async login(email, password) {
-    const result = await useApi("/api/login", { method: "POST", body: { email, password } })
+  async login(email, password, code) {
+    const result = await useApi("/api/login", { method: "POST", body: { email: email, password: password, code: code or "" } })
     if result.ok {
-      this.user = result.data
+      this.user = result.data.user or result.data
     }
     return result
   }
