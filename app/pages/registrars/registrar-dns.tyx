@@ -1,0 +1,365 @@
+page RegistrarDns
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "DNS records"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  registrarId: ""
+  domainId: ""
+  domainName: ""
+  records: []
+  nameservers: []
+  nsEditable: false
+  loading: true
+  error: ""
+  locked: false
+  formError: ""
+  saving: false
+  editId: ""
+  rType: "A"
+  rName: ""
+  rValue: ""
+  rTtl: "600"
+  rPriority: ""
+  removing: ""
+  nsOpen: false
+  nsText: ""
+  nsConfirm: ""
+  nsError: ""
+  nsBusy: false
+
+action
+  base() {
+    return "/api/registrars/" + this.registrarId + "/domains/" + encodeURIComponent(this.domainId)
+  }
+
+  async load() {
+    this.loading = true
+    this.error = ""
+    this.locked = false
+
+    const result = await useApi(this.base() + "/records")
+    this.loading = false
+
+    if result.ok {
+      this.records = result.data.records or []
+      this.nameservers = result.data.nameservers or []
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load the DNS records. Try again."
+    }
+  }
+
+  resetForm() {
+    this.editId = ""
+    this.rType = "A"
+    this.rName = ""
+    this.rValue = ""
+    this.rTtl = "600"
+    this.rPriority = ""
+    this.formError = ""
+  }
+
+  edit(r) {
+    this.editId = r.id
+    this.rType = r.type
+    this.rName = r.name
+    this.rValue = r.value
+    this.rTtl = String(r.ttl)
+    this.rPriority = r.priority is null ? "" : String(r.priority)
+    this.formError = ""
+  }
+
+  async save() {
+    if this.saving {
+      return null
+    }
+
+    this.saving = true
+    this.formError = ""
+
+    const body = {
+      type: this.rType,
+      name: this.rName or "@",
+      value: this.rValue,
+      ttl: this.rTtl,
+      priority: this.rPriority
+    }
+    const url = this.editId ? this.base() + "/records/" + encodeURIComponent(this.editId) : this.base() + "/records"
+    const method = this.editId ? "PUT" : "POST"
+
+    const result = await useApi(url, { method: method, body: body })
+    this.saving = false
+
+    if result.ok {
+      this.resetForm()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      let first = ""
+      if errors {
+        const keys = Object.keys(errors)
+        if keys.length > 0 {
+          first = errors[keys[0]][0]
+        }
+      }
+      this.formError = first or result.data?.error or "Couldn't save the record."
+    }
+  }
+
+  askRemove(id) {
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = ""
+  }
+
+  async confirmRemove(id) {
+    const result = await useApi(this.base() + "/records/" + encodeURIComponent(id), { method: "DELETE" })
+    this.removing = ""
+    if not result.ok {
+      this.error = result.data?.error or "Couldn't delete the record."
+      return null
+    }
+    await this.load()
+  }
+
+  openNs() {
+    this.nsText = this.nameservers.join("\n")
+    this.nsConfirm = ""
+    this.nsError = ""
+    this.nsOpen = true
+  }
+
+  closeNs() {
+    this.nsOpen = false
+  }
+
+  async saveNs() {
+    if this.nsBusy {
+      return null
+    }
+
+    // Wrong nameservers take the site AND email down, so the domain name must be typed.
+    if this.nsConfirm.trim().toLowerCase() is not this.domainName.toLowerCase() {
+      this.nsError = "Type the domain name to confirm."
+      return null
+    }
+
+    this.nsBusy = true
+    this.nsError = ""
+
+    const servers = this.nsText.split("\n").map((s) => s.trim()).filter((s) => s is not "")
+    const result = await useApi(this.base() + "/nameservers", { method: "PUT", body: { servers: servers } })
+    this.nsBusy = false
+
+    if result.ok {
+      this.nsOpen = false
+      await this.load()
+    } else {
+      const errors = result.data?.errors
+      this.nsError = (errors and errors.servers and errors.servers[0]) or result.data?.error or "Couldn't change the nameservers."
+    }
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    const domain = params.get("domain")
+
+    if not id or not domain {
+      window.location.href = "/registrars"
+      return null
+    }
+
+    this.registrarId = id
+    this.domainId = domain
+    this.domainName = params.get("name") or domain
+
+    const ns = await useApi("/api/registrars/" + id + "/domains/" + encodeURIComponent(domain) + "/nameservers")
+    if ns.ok {
+      this.nsEditable = ns.data.editable
+    }
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="registrars" />
+  <RegistrarSidebar active="domains" registrarId="{{ registrarId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/registrars/registrar-domains?id=' + registrarId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Domains
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">{{ domainName }}</h1>
+      <p class="text-slate-500 text-sm mb-6">DNS records</p>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+{{/if}}
+
+{{#if nameservers.length is not 0}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
+        <div class="flex items-center justify-between gap-4 mb-2">
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm">Nameservers</h2>
+{{#if nsEditable}}
+          <button onclick="{{ openNs() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Change</button>
+{{/if}}
+        </div>
+{{#each n in nameservers}}
+        <p class="text-slate-600 dark:text-slate-400 text-xs font-mono">{{ n }}</p>
+{{/each}}
+      </div>
+{{/if}}
+
+{{#if nsOpen}}
+      <div role="dialog" aria-modal="true" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-6">
+          <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1">Change nameservers</h3>
+          <p class="text-rose-500 text-xs mb-4">Wrong nameservers take this domain's website and email offline until they're fixed.</p>
+          <label class="block text-slate-500 text-xs font-medium mb-1.5">One per line</label>
+          <textarea
+            rows="4"
+            value="{{ nsText }}"
+            oninput="{{ nsText = $event.target.value }}"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          ></textarea>
+          <label class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Type {{ domainName }} to confirm</label>
+          <input
+            type="text"
+            value="{{ nsConfirm }}"
+            oninput="{{ nsConfirm = $event.target.value }}"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+          />
+{{#if nsError}}
+          <p role="alert" class="text-rose-500 text-xs mt-2">{{ nsError }}</p>
+{{/if}}
+          <div class="flex items-center justify-end gap-3 mt-5">
+            <button onclick="{{ closeNs() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+            <button onclick="{{ saveNs() }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-5 py-2 transition">Change nameservers</button>
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm mb-3">
+{{#if editId}}
+          Edit record
+{{/if}}
+{{#if not editId}}
+          Add a record
+{{/if}}
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <select
+            value="{{ rType }}"
+            onchange="{{ rType = $event.target.value }}"
+            class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          >
+            <option value="A">A</option>
+            <option value="AAAA">AAAA</option>
+            <option value="CNAME">CNAME</option>
+            <option value="MX">MX</option>
+            <option value="TXT">TXT</option>
+            <option value="NS">NS</option>
+          </select>
+          <input type="text" value="{{ rName }}" oninput="{{ rName = $event.target.value }}" placeholder="Name (@ for root)" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <input type="text" value="{{ rValue }}" oninput="{{ rValue = $event.target.value }}" placeholder="Value" class="md:col-span-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <input type="text" value="{{ rTtl }}" oninput="{{ rTtl = $event.target.value }}" placeholder="TTL" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+{{#if rType is "MX"}}
+          <input type="text" value="{{ rPriority }}" oninput="{{ rPriority = $event.target.value }}" placeholder="Priority" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+{{/if}}
+        </div>
+{{#if formError}}
+        <p role="alert" class="text-rose-500 text-xs mt-3">{{ formError }}</p>
+{{/if}}
+        <div class="flex items-center gap-3 mt-4">
+          <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+{{#if editId}}
+            Save changes
+{{/if}}
+{{#if not editId}}
+            Add record
+{{/if}}
+          </button>
+{{#if editId}}
+          <button onclick="{{ resetForm() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+        </div>
+      </div>
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading records…</p>
+{{/if}}
+
+{{#if not loading}}
+{{#if records.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <p class="text-slate-500 text-sm">No DNS records yet.</p>
+      </div>
+{{/if}}
+
+{{#if records.length is not 0}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+{{#each r in records}}
+        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+          <div class="min-w-0 flex items-center gap-3">
+            <span class="shrink-0 w-14 text-center rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-mono py-0.5">{{ r.type }}</span>
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ r.name }}</p>
+              <p class="text-slate-500 text-xs font-mono break-all">{{ r.value }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 text-xs">TTL {{ r.ttl }}</span>
+            <button onclick="{{ edit(r) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Edit</button>
+{{#if removing is r.id}}
+            <button onclick="{{ confirmRemove(r.id) }}" class="text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-full px-3 py-1 transition">Yes, delete</button>
+            <button onclick="{{ cancelRemove() }}" class="text-xs text-slate-500 dark:text-slate-400 px-2 py-1">Cancel</button>
+{{/if}}
+{{#if removing is not r.id}}
+            <button onclick="{{ askRemove(r.id) }}" class="text-xs text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-3 py-1 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

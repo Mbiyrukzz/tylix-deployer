@@ -1,0 +1,230 @@
+page RegistrarDomains
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Domains"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  registrarId: ""
+  kindName: ""
+  canSettings: false
+  domains: []
+  loading: true
+  error: ""
+  locked: false
+  busy: ""
+  query: ""
+  shown: []
+
+action
+  decorate(d) {
+    let days = null
+    let expiresText = "-"
+    let expCls = "text-slate-500 text-sm"
+
+    if d.expires {
+      days = Math.ceil((new Date(d.expires).getTime() - Date.now()) / 86400000)
+      expiresText = d.expires + " (" + days + " days)"
+      if days < 30 {
+        expCls = "text-amber-600 dark:text-amber-500 text-sm font-medium"
+      }
+      if days < 0 {
+        expiresText = d.expires + " (expired)"
+        expCls = "text-rose-600 dark:text-rose-500 text-sm font-medium"
+      }
+    }
+
+    let renewText = "-"
+    if d.autoRenew is true {
+      renewText = "On"
+    }
+    if d.autoRenew is false {
+      renewText = "Off"
+    }
+
+    let lockText = "-"
+    if d.locked is true {
+      lockText = "Locked"
+    }
+    if d.locked is false {
+      lockText = "Unlocked"
+    }
+
+    // Only offer a toggle when the provider reports that value for this domain.
+    let showRenew = false
+    let showLock = false
+    if this.canSettings and d.autoRenew is not null {
+      showRenew = true
+    }
+    if this.canSettings and d.locked is not null {
+      showLock = true
+    }
+
+    const dnsHref = "/registrars/registrar-dns?id=" + this.registrarId + "&domain=" + encodeURIComponent(d.id) + "&name=" + encodeURIComponent(d.name)
+
+    return Object.assign({}, d, { expiresText: expiresText, expCls: expCls, renewText: renewText, lockText: lockText, showRenew: showRenew, showLock: showLock, dnsHref: dnsHref })
+  }
+
+  filter() {
+    const q = this.query.toLowerCase().trim()
+    this.shown = this.domains.filter((d) => q is "" or d.name.toLowerCase().includes(q))
+  }
+
+  setQuery(value) {
+    this.query = value
+    this.filter()
+  }
+
+  async load() {
+    this.loading = true
+    this.error = ""
+    this.locked = false
+
+    const result = await useApi("/api/registrars/" + this.registrarId + "/domains")
+    this.loading = false
+
+    if result.ok and Array.isArray(result.data) {
+      this.domains = result.data.map((d) => this.decorate(d))
+      this.filter()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load the domains. Try again."
+    }
+  }
+
+  async toggleRenew(d) {
+    this.busy = d.id
+    this.error = ""
+    const result = await useApi("/api/registrars/" + this.registrarId + "/domains/" + encodeURIComponent(d.id) + "/settings", { method: "PUT", body: { autoRenew: not d.autoRenew } })
+    this.busy = ""
+    if not result.ok {
+      this.error = result.data?.error or "Couldn't change auto-renew."
+      return null
+    }
+    await this.load()
+  }
+
+  async toggleLock(d) {
+    this.busy = d.id
+    this.error = ""
+    const result = await useApi("/api/registrars/" + this.registrarId + "/domains/" + encodeURIComponent(d.id) + "/settings", { method: "PUT", body: { locked: not d.locked } })
+    this.busy = ""
+    if not result.ok {
+      this.error = result.data?.error or "Couldn't change the transfer lock."
+      return null
+    }
+    await this.load()
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/registrars"
+      return null
+    }
+
+    this.registrarId = id
+
+    const r = await useApi("/api/registrars/" + id)
+    if not r.ok {
+      window.location.href = "/registrars"
+      return null
+    }
+    this.kindName = r.data.label
+    this.canSettings = (r.data.features or []).includes("settings")
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="registrars" />
+  <RegistrarSidebar active="domains" registrarId="{{ registrarId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/registrars" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Domain providers
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Domains</h1>
+      <p class="text-slate-500 text-sm mb-6">{{ kindName }}</p>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+{{/if}}
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading domains…</p>
+{{/if}}
+
+{{#if not loading}}
+{{#if domains.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center">
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domains found</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">This account has no domains the API can see. Some providers only list domains that have API access switched on.</p>
+      </div>
+{{/if}}
+
+{{#if domains.length is not 0}}
+      <div class="relative sm:w-64 mb-4">
+        <input
+          type="text"
+          value="{{ query }}"
+          oninput="{{ setQuery($event.target.value) }}"
+          placeholder="Search domains"
+          class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+        />
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+{{#each d in shown}}
+        <div class="px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+          <div class="min-w-0">
+            <a href="{{ d.dnsHref }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 hover:underline">{{ d.name }}</a>
+            <p class="{{ d.expCls }}">Expires {{ d.expiresText }}</p>
+          </div>
+          <div class="flex items-center gap-3">
+{{#if d.showRenew}}
+            <button onclick="{{ toggleRenew(d) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Auto-renew: {{ d.renewText }}</button>
+{{/if}}
+{{#if d.showLock}}
+            <button onclick="{{ toggleLock(d) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{{ d.lockText }}</button>
+{{/if}}
+            <a href="{{ d.dnsHref }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-emerald-400 transition-all">DNS</a>
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

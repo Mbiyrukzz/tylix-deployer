@@ -1,0 +1,149 @@
+page RegistrarRenewals
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Renewals"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  registrarId: ""
+  kindName: ""
+  rows: []
+  loading: true
+  error: ""
+  locked: false
+  expiring: 0
+
+action
+  async load() {
+    this.loading = true
+    this.error = ""
+    this.locked = false
+
+    const result = await useApi("/api/registrars/" + this.registrarId + "/renewals")
+    this.loading = false
+
+    if result.ok and Array.isArray(result.data) {
+      this.rows = result.data.map((d) => {
+        let cls = "text-slate-900 dark:text-slate-100 text-sm font-medium"
+        let text = d.daysLeft + " days"
+        if d.daysLeft < 30 {
+          cls = "text-amber-600 dark:text-amber-500 text-sm font-medium"
+        }
+        if d.daysLeft < 0 {
+          cls = "text-rose-600 dark:text-rose-500 text-sm font-medium"
+          text = "Expired"
+        }
+        let renew = "Unknown"
+        if d.autoRenew is true {
+          renew = "Auto-renews"
+        }
+        if d.autoRenew is false {
+          renew = "Won't auto-renew"
+        }
+        return Object.assign({}, d, { cls: cls, text: text, renew: renew })
+      })
+      this.expiring = this.rows.filter((d) => d.daysLeft < 30).length
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load renewals. Try again."
+    }
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/registrars"
+      return null
+    }
+
+    this.registrarId = id
+
+    const r = await useApi("/api/registrars/" + id)
+    if not r.ok {
+      window.location.href = "/registrars"
+      return null
+    }
+    this.kindName = r.data.label
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="registrars" />
+  <RegistrarSidebar active="renewals" registrarId="{{ registrarId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/registrars" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Domain providers
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Renewals</h1>
+      <p class="text-slate-500 text-sm mb-2">{{ kindName }}</p>
+      <p class="text-slate-500 text-xs mb-6">Registrars don't expose invoices through their APIs, so this shows what expires when. Renew and pay in the registrar's own dashboard.</p>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+{{/if}}
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if not loading}}
+{{#if rows.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <p class="text-slate-500 text-sm">No expiry dates to show. This provider may not report them (Cloudflare doesn't).</p>
+      </div>
+{{/if}}
+
+{{#if rows.length is not 0}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 mb-4 shadow-sm dark:shadow-none sm:w-64">
+        <p class="text-slate-500 text-xs mb-1">Expiring within 30 days</p>
+        <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ expiring }}</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+{{#each d in rows}}
+        <div class="flex items-center justify-between gap-4 px-5 py-3">
+          <div class="min-w-0">
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ d.name }}</p>
+            <p class="text-slate-500 text-xs">{{ d.expires }} &middot; {{ d.renew }}</p>
+          </div>
+          <p class="{{ d.cls }}">{{ d.text }}</p>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

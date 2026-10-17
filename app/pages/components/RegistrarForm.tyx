@@ -1,0 +1,552 @@
+component RegistrarForm
+
+import { IconPlus, IconX } from "tylix-icons"
+
+props
+  registrar: Object
+  onSaved: Function
+
+state
+  showModal: false
+  kind: "porkbun"
+  kinds: []
+  label: ""
+  apiToken: ""
+  apiKey: ""
+  secretKey: ""
+  apiSecret: ""
+  apiUser: ""
+  clientIp: ""
+  showToken: false
+  showKey: false
+  showSecret: false
+  showApiSecret: false
+  showUser: false
+  showIp: false
+  tokenLabel: "API token"
+  keyLabel: "API key"
+  secretLabel: "Secret key"
+  apiSecretLabel: "API secret"
+  userLabel: "API user"
+  ipLabel: "Whitelisted server IP"
+  keyType: "text"
+  saving: false
+  error: ""
+  labelError: ""
+  tokenError: ""
+  apiKeyError: ""
+  secretKeyError: ""
+  apiSecretError: ""
+  apiUserError: ""
+  clientIpError: ""
+  placeholder: ""
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  // Which credential inputs a provider needs, and what they are called.
+  // Adding a registrar = one more branch here, one more entry in buildKinds(), one more help block below
+  // (and RegistrarValidator / RegistrarAdapter on the server).
+  syncMode() {
+    this.showToken = false
+    this.showKey = false
+    this.showSecret = false
+    this.showApiSecret = false
+    this.showUser = false
+    this.showIp = false
+    this.keyType = "text"
+
+    if this.kind is "cloudflare" {
+      this.showToken = true
+      this.tokenLabel = "API token"
+    }
+    if this.kind is "porkbun" {
+      this.showKey = true
+      this.keyLabel = "API key"
+      this.showSecret = true
+      this.secretLabel = "Secret key"
+    }
+    if this.kind is "godaddy" {
+      this.showKey = true
+      this.keyLabel = "API key"
+      this.showApiSecret = true
+      this.apiSecretLabel = "API secret"
+    }
+    if this.kind is "namecheap" {
+      this.showUser = true
+      this.userLabel = "API user"
+      this.showKey = true
+      this.keyLabel = "API key"
+      this.keyType = "password"
+      this.showIp = true
+      this.ipLabel = "Whitelisted server IP"
+    }
+    if this.kind is "dynadot" {
+      this.showKey = true
+      this.keyLabel = "API key"
+      this.keyType = "password"
+    }
+    if this.kind is "namecom" {
+      this.showUser = true
+      this.userLabel = "Username"
+      this.showToken = true
+      this.tokenLabel = "API token"
+    }
+    if this.kind is "spaceship" {
+      this.showKey = true
+      this.keyLabel = "API key"
+      this.showApiSecret = true
+      this.apiSecretLabel = "API secret"
+    }
+    if this.kind is "route53" {
+      this.showKey = true
+      this.keyLabel = "Access key ID"
+      this.showSecret = true
+      this.secretLabel = "Secret access key"
+    }
+  }
+
+  clearErrors() {
+    this.error = ""
+    this.labelError = ""
+    this.tokenError = ""
+    this.apiKeyError = ""
+    this.secretKeyError = ""
+    this.apiSecretError = ""
+    this.apiUserError = ""
+    this.clientIpError = ""
+  }
+
+  clearCredentials() {
+    this.apiToken = ""
+    this.apiKey = ""
+    this.secretKey = ""
+    this.apiSecret = ""
+    this.apiUser = ""
+    this.clientIp = ""
+  }
+
+  reset() {
+    this.kind = "porkbun"
+    this.label = ""
+    this.clearCredentials()
+    this.placeholder = ""
+    this.saving = false
+    this.syncMode()
+    this.clearErrors()
+  }
+
+  buildKinds() {
+    this.kinds = [
+      {
+        id: "porkbun",
+        name: "Porkbun",
+        sub: "Domains & DNS",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold",
+        letter: "P"
+      },
+      {
+        id: "cloudflare",
+        name: "Cloudflare",
+        sub: "DNS & email routing",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold",
+        letter: "C"
+      },
+      {
+        id: "godaddy",
+        name: "GoDaddy",
+        sub: "Domains & DNS",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold",
+        letter: "G"
+      },
+      {
+        id: "namecheap",
+        name: "Namecheap",
+        sub: "Domains, DNS & balance",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold",
+        letter: "N"
+      },
+      {
+        id: "dynadot",
+        name: "Dynadot",
+        sub: "Domains, DNS & balance",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold",
+        letter: "D"
+      },
+      {
+        id: "namecom",
+        name: "Name.com",
+        sub: "Domains & DNS",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold",
+        letter: "N"
+      },
+      {
+        id: "spaceship",
+        name: "Spaceship",
+        sub: "Domains & DNS",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold",
+        letter: "S"
+      },
+      {
+        id: "route53",
+        name: "Route 53",
+        sub: "Domains, DNS & billing",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold",
+        letter: "R"
+      }
+    ]
+  }
+
+  pick(kind) {
+    this.kind = kind
+    this.syncMode()
+    this.clearCredentials()
+    const label = this.labelError
+    this.clearErrors()
+    this.labelError = label
+  }
+
+  open() {
+    this.reset()
+    this.buildKinds()
+    if this.registrar {
+      this.label = this.registrar.label
+      this.kind = this.registrar.kind
+      this.placeholder = "Leave blank to keep the current credentials"
+    }
+    this.syncMode()
+    this.showModal = true
+  }
+
+  close() {
+    this.showModal = false
+    this.reset()
+  }
+
+  async submit() {
+    if this.saving {
+      return null
+    }
+
+    this.clearErrors()
+    this.saving = true
+
+    // Editing sends the stored kind; the server ignores it and verifies against
+    // the stored one. Credential fields that don't belong to the kind are sent blank.
+    const payload = {
+      kind: this.registrar ? this.registrar.kind : this.kind,
+      label: this.label,
+      api_token: this.apiToken,
+      api_key: this.apiKey,
+      secret_key: this.secretKey,
+      api_secret: this.apiSecret,
+      api_user: this.apiUser,
+      client_ip: this.clientIp
+    }
+    const url = this.registrar ? "/api/registrars/" + this.registrar.id : "/api/registrars"
+    const method = this.registrar ? "PUT" : "POST"
+
+    const result = await useApi(url, { method: method, body: payload })
+
+    if result.ok {
+      this.onSaved(result.data)
+      this.close()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.labelError = this.firstError(errors, "label")
+      this.tokenError = this.firstError(errors, "api_token")
+      this.apiKeyError = this.firstError(errors, "api_key")
+      this.secretKeyError = this.firstError(errors, "secret_key")
+      this.apiSecretError = this.firstError(errors, "api_secret")
+      this.apiUserError = this.firstError(errors, "api_user")
+      this.clientIpError = this.firstError(errors, "client_ip")
+      this.error = result.data?.error or result.error or ""
+      if not this.labelError and not this.tokenError and not this.apiKeyError and not this.secretKeyError and not this.apiSecretError and not this.apiUserError and not this.clientIpError and not this.error {
+        this.error = "Couldn't save the connection. Try again."
+      }
+      this.saving = false
+    }
+  }
+
+template
+{{#if registrar}}
+  <button onclick="{{ open() }}" class="inline-flex items-center text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+    Edit
+  </button>
+{{/if}}
+{{#if not registrar}}
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+    <IconPlus class="w-4 h-4" /> Connect domain provider
+  </button>
+{{/if}}
+
+{{#if showModal}}
+  <div role="dialog" aria-modal="true" aria-labelledby="registrar-form-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h3 id="registrar-form-title" class="text-slate-900 dark:text-slate-100 text-lg font-semibold">
+{{#if registrar}}
+            Edit connection
+{{/if}}
+{{#if not registrar}}
+            Connect a domain provider
+{{/if}}
+          </h3>
+{{#if registrar}}
+          <p class="text-slate-500 text-sm mt-0.5">Rename it, or paste new credentials to replace the stored ones.</p>
+{{/if}}
+{{#if not registrar}}
+          <p class="text-slate-500 text-sm mt-0.5">Manage this account's domains and DNS from here.</p>
+{{/if}}
+        </div>
+        <button onclick="{{ close() }}" aria-label="Close" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <IconX class="w-4 h-4" />
+        </button>
+      </div>
+
+{{#if not registrar}}
+      <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Provider</p>
+      <div class="grid grid-cols-2 gap-3 mb-5">
+{{#each k in kinds}}
+{{#if kind is k.id}}
+        <button onclick="{{ pick(k.id) }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3 py-3 text-left transition-colors">
+          <span class="{{ k.tileClass }}">{{ k.letter }}</span>
+          <span class="min-w-0">
+            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
+            <span class="block text-slate-500 text-xs truncate">{{ k.sub }}</span>
+          </span>
+        </button>
+{{/if}}
+{{#if kind is not k.id}}
+        <button onclick="{{ pick(k.id) }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+          <span class="{{ k.tileClass }}">{{ k.letter }}</span>
+          <span class="min-w-0">
+            <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
+            <span class="block text-slate-500 text-xs truncate">{{ k.sub }}</span>
+          </span>
+        </button>
+{{/if}}
+{{/each}}
+      </div>
+{{/if}}
+
+      <label for="registrar-label" class="block text-slate-500 text-xs font-medium mb-1.5">Connection name</label>
+      <input
+        id="registrar-label"
+        type="text"
+        autofocus
+        value="{{ label }}"
+        oninput="{{ label = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="e.g. Client domains"
+      />
+{{#if labelError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ labelError }}</p>
+{{/if}}
+
+{{#if showUser}}
+      <label for="registrar-api-user" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ userLabel }}</label>
+      <input
+        id="registrar-api-user"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ apiUser }}"
+        oninput="{{ apiUser = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if apiUserError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ apiUserError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if showKey}}
+      <label for="registrar-api-key" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ keyLabel }}</label>
+      <input
+        id="registrar-api-key"
+        type="{{ keyType }}"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ apiKey }}"
+        oninput="{{ apiKey = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if apiKeyError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ apiKeyError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if showSecret}}
+      <label for="registrar-secret-key" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ secretLabel }}</label>
+      <input
+        id="registrar-secret-key"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ secretKey }}"
+        oninput="{{ secretKey = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if secretKeyError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ secretKeyError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if showApiSecret}}
+      <label for="registrar-api-secret" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ apiSecretLabel }}</label>
+      <input
+        id="registrar-api-secret"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ apiSecret }}"
+        oninput="{{ apiSecret = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if apiSecretError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ apiSecretError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if showToken}}
+      <label for="registrar-token" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ tokenLabel }}</label>
+      <input
+        id="registrar-token"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ apiToken }}"
+        oninput="{{ apiToken = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if tokenError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ tokenError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if showIp}}
+      <label for="registrar-client-ip" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ ipLabel }}</label>
+      <input
+        id="registrar-client-ip"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ clientIp }}"
+        oninput="{{ clientIp = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if clientIpError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ clientIpError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if not registrar}}
+      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4 mt-4">
+{{#if kind is "porkbun"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Get your Porkbun API keys</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://porkbun.com/account/api" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; API Access</a> and create an API key. Copy both the API key and the secret key.</li>
+          <li>For each domain you want to manage, open Domain Management &rarr; Details and switch on <span class="font-mono">API Access</span>. Domains without it won't be listed.</li>
+        </ol>
+{{/if}}
+{{#if kind is "cloudflare"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Cloudflare token</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">My Profile &rarr; API Tokens</a> and create a custom token.</li>
+          <li>Permissions: <span class="font-mono">Zone: Read</span>, <span class="font-mono">DNS: Edit</span>, <span class="font-mono">Email Routing Rules: Edit</span> if you want email forwarding, and <span class="font-mono">Billing: Read</span> for the billing page.</li>
+          <li>Scope it to the zones you want, or all zones.</li>
+        </ol>
+        <p class="text-slate-500 text-xs mt-3">Cloudflare doesn't offer expiry dates or renewals through its API, so those aren't shown for this provider.</p>
+{{/if}}
+{{#if kind is "godaddy"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create GoDaddy API keys</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://developer.godaddy.com/keys" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">developer.godaddy.com/keys</a> and create a key with the <span class="font-mono">Production</span> environment.</li>
+          <li>Copy the key and the secret. GoDaddy shows the secret only once.</li>
+        </ol>
+        <p class="text-slate-500 text-xs mt-3">GoDaddy only gives Domains API access to accounts with enough domains. If it answers 403 with correct keys, that's the likely reason.</p>
+{{/if}}
+{{#if kind is "namecheap"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Enable the Namecheap API</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://ap.www.namecheap.com/settings/tools/apiaccess/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Profile &rarr; Tools &rarr; API Access</a>, switch API access on and copy the key. The API user is your Namecheap username.</li>
+          <li>Under <span class="font-mono">Whitelisted IPs</span>, add the public IPv4 address of this server and enter the same address above. Namecheap ignores requests from any other IP.</li>
+        </ol>
+        <p class="text-slate-500 text-xs mt-3">Namecheap can only edit DNS for domains that use Namecheap DNS, and its API can't change auto-renew. The account balance is shown on the billing page.</p>
+{{/if}}
+{{#if kind is "dynadot"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Get your Dynadot API key</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://www.dynadot.com/account/domain/setting/api.html" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Tools &rarr; API</a>, create a key and copy it.</li>
+          <li>If you restrict the key by IP, allow the public IP of this server.</li>
+        </ol>
+        <p class="text-slate-500 text-xs mt-3">Dynadot rewrites a zone as a whole, so DNS edits work only for domains using Dynadot DNS and without forwarding or email records. The account balance is shown on the billing page.</p>
+{{/if}}
+{{#if kind is "namecom"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Name.com API token</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://www.name.com/account/settings/api" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; Settings &rarr; API</a> and create a production token.</li>
+          <li>Enter your Name.com username and the token. The test-environment token won't work.</li>
+        </ol>
+{{/if}}
+{{#if kind is "spaceship"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create Spaceship API keys</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://www.spaceship.com/application/api-manager/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">API Manager</a> and create a key with domains and DNS permissions.</li>
+          <li>Copy the key and the secret. The secret is shown once.</li>
+        </ol>
+{{/if}}
+{{#if kind is "route53"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create an IAM access key for Route 53</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>In <a href="https://console.aws.amazon.com/iam/home#/users" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">IAM &rarr; Users</a>, create a user (or pick one) and create an access key for it.</li>
+          <li>Give it <span class="font-mono">route53:*</span> and <span class="font-mono">route53domains:*</span>, or narrower rights for the zones and domains you want to manage.</li>
+        </ol>
+        <p class="text-slate-500 text-xs mt-3">Only the keys are checked when you save. Missing permissions show up when you open a page, with AWS's own message. Domains whose DNS lives in Route 53 but are registered elsewhere are listed too, without expiry dates.</p>
+{{/if}}
+        <p class="text-slate-400 text-xs mt-3">The credentials are checked with the provider, encrypted before they are stored, and never shown again.</p>
+      </div>
+{{/if}}
+
+{{#if registrar}}
+      <p class="text-slate-400 text-xs mt-3">The current credentials are stored encrypted and are never shown.</p>
+{{/if}}
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mt-4">{{ error }}</p>
+{{/if}}
+
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button onclick="{{ close() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">
+          Cancel
+        </button>
+{{#if saving}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">
+          Verifying…
+        </button>
+{{/if}}
+{{#if not saving}}
+        <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          Save
+        </button>
+{{/if}}
+      </div>
+
+    </div>
+  </div>
+{{/if}}

@@ -1,0 +1,251 @@
+page RegistrarList
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Domain providers"
+
+needs
+  Auth
+
+uses
+  Registrars
+
+state
+  checkedAuth: false
+  items: []
+  providerCount: 0
+  dnsCount: 0
+  billingCount: 0
+  removing: 0
+  removeError: ""
+
+action
+  // Display name for a registrar feature key. An if-chain instead of an object
+  // lookup, because indexing a fixed-key object with an `any` key fails strict TS.
+  labelFor(f) {
+    if f is "domains" { return "Domains" }
+    if f is "dns" { return "DNS" }
+    if f is "nameservers" { return "Nameservers" }
+    if f is "settings" { return "Renew & lock" }
+    if f is "forwarding" { return "Email forwarding" }
+    if f is "billing" { return "Billing" }
+    return f
+  }
+
+  // Adds display-only fields: the registrar's name, tile colours and what it can do.
+  decorate(r) {
+    let kindName = r.kind
+    let tileLetter = "?"
+    let tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-slate-500/10 text-slate-600 dark:text-slate-400"
+
+    if r.kind is "porkbun" {
+      kindName = "Porkbun"
+      tileLetter = "P"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+    if r.kind is "cloudflare" {
+      kindName = "Cloudflare"
+      tileLetter = "C"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
+    }
+    if r.kind is "godaddy" {
+      kindName = "GoDaddy"
+      tileLetter = "G"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+    }
+    if r.kind is "namecheap" {
+      kindName = "Namecheap"
+      tileLetter = "N"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-orange-500/10 text-orange-600 dark:text-orange-400"
+    }
+    if r.kind is "dynadot" {
+      kindName = "Dynadot"
+      tileLetter = "D"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400"
+    }
+    if r.kind is "namecom" {
+      kindName = "Name.com"
+      tileLetter = "N"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400"
+    }
+    if r.kind is "spaceship" {
+      kindName = "Spaceship"
+      tileLetter = "S"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+    }
+    if r.kind is "route53" {
+      kindName = "Route 53"
+      tileLetter = "R"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400"
+    }
+
+    const featureList = (r.features or []).map((f) => this.labelFor(f))
+
+    let since = "-"
+    if r.created_at {
+      since = r.created_at.slice(0, 10)
+    }
+
+    return Object.assign({}, r, { kindName: kindName, tileLetter: tileLetter, tileClass: tileClass, featureList: featureList, since: since })
+  }
+
+  refresh() {
+    const list = Registrars.data.map((r) => this.decorate(r))
+    const kinds = list.map((r) => r.kind)
+
+    this.items = list
+    this.providerCount = Array.from(new Set(kinds)).length
+    this.dnsCount = list.filter((r) => (r.features or []).includes("dns")).length
+    this.billingCount = list.filter((r) => (r.features or []).includes("billing")).length
+  }
+
+  addRegistrar(registrar) {
+    Registrars.add(registrar)
+    this.refresh()
+  }
+
+  async updateRegistrar(registrar) {
+    await Registrars.replace(registrar)
+    this.refresh()
+  }
+
+  askRemove(id) {
+    this.removeError = ""
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = 0
+  }
+
+  async confirmRemove(id) {
+    const result = await Registrars.remove(id)
+    if not result.ok {
+      this.removeError = result.data?.error or "Couldn't remove that connection."
+    }
+    this.removing = 0
+    this.refresh()
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    await Registrars.load()
+    this.refresh()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="registrars" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Dashboard
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div class="min-w-0">
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Domain providers</h1>
+          <p class="text-slate-500 text-sm">Registrars and DNS hosts whose domains you manage here.</p>
+        </div>
+        <RegistrarForm onSaved="{{ addRegistrar }}" />
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Connections</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ items.length }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Providers</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ providerCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">DNS editing</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ dnsCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">With billing</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ billingCount }}</p>
+        </div>
+      </div>
+
+{{#if removeError}}
+      <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
+        <p class="text-rose-800 dark:text-rose-400 text-sm">{{ removeError }}</p>
+      </div>
+{{/if}}
+
+{{#if items.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="flex flex-wrap items-center justify-center gap-2 mb-4">
+          <span class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">P</span>
+          <span class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">C</span>
+          <span class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">G</span>
+          <span class="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold">N</span>
+          <span class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">D</span>
+          <span class="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">N</span>
+          <span class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">S</span>
+          <span class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">R</span>
+        </div>
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domain providers connected</h2>
+        <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect Porkbun, Cloudflare, GoDaddy, Namecheap, Dynadot, Name.com, Spaceship or Route 53 to manage its domains and DNS from here.</p>
+        <RegistrarForm onSaved="{{ addRegistrar }}" />
+      </div>
+{{/if}}
+
+{{#if items.length is not 0}}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+{{#each r in items}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+
+          <div class="flex items-start justify-between gap-3 mb-5">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="{{ r.tileClass }}">{{ r.tileLetter }}</span>
+              <div class="min-w-0">
+                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ r.label }}</h3>
+                <p class="text-slate-500 text-xs">{{ r.kindName }}</p>
+              </div>
+            </div>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ r.status }}
+            </span>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5 mb-5">
+{{#each f in r.featureList}}
+            <span class="text-[11px] rounded-full border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-0.5">{{ f }}</span>
+{{/each}}
+          </div>
+
+          <p class="text-slate-500 text-xs mb-5">Connected {{ r.since }}</p>
+
+          <div class="flex items-center gap-3 pt-5 border-t border-slate-200 dark:border-slate-800">
+            <a href="{{ '/registrars/registrar-domains?id=' + r.id }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Manage</a>
+            <RegistrarForm registrar="{{ r }}" onSaved="{{ updateRegistrar }}" />
+
+{{#if removing is r.id}}
+            <button onclick="{{ confirmRemove(r.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-2 transition">Yes, remove</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+{{#if removing is not r.id}}
+            <button onclick="{{ askRemove(r.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Remove</button>
+{{/if}}
+          </div>
+
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

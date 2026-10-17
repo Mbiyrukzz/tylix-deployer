@@ -1,0 +1,202 @@
+page RegistrarBilling
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Billing"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  registrarId: ""
+  label: ""
+  kindName: ""
+  dashboardUrl: ""
+  supported: true
+  loading: true
+  error: ""
+  errorCode: ""
+  hasBalance: false
+  balanceText: ""
+  emptyText: "No billing history yet."
+  lines: []
+
+action
+  kindNameFor(kind) {
+    if kind is "porkbun" { return "Porkbun" }
+    if kind is "cloudflare" { return "Cloudflare" }
+    if kind is "godaddy" { return "GoDaddy" }
+    if kind is "namecheap" { return "Namecheap" }
+    if kind is "dynadot" { return "Dynadot" }
+    if kind is "namecom" { return "Name.com" }
+    if kind is "spaceship" { return "Spaceship" }
+    if kind is "route53" { return "Route 53" }
+    return kind
+  }
+
+  // Where the registrar's own billing lives, for registrars whose API has none.
+  dashboardFor(kind) {
+    if kind is "porkbun" { return "https://porkbun.com/account" }
+    if kind is "cloudflare" { return "https://dash.cloudflare.com/" }
+    if kind is "godaddy" { return "https://account.godaddy.com/" }
+    if kind is "namecheap" { return "https://ap.www.namecheap.com/" }
+    if kind is "dynadot" { return "https://www.dynadot.com/account/" }
+    if kind is "namecom" { return "https://www.name.com/account" }
+    if kind is "spaceship" { return "https://www.spaceship.com/" }
+    if kind is "route53" { return "https://console.aws.amazon.com/billing/home" }
+    return ""
+  }
+
+  money(amount, currency) {
+    return Number(amount).toFixed(2) + " " + currency
+  }
+
+  async load() {
+    this.loading = true
+    this.error = ""
+    this.errorCode = ""
+
+    const result = await useApi("/api/registrars/" + this.registrarId + "/billing")
+
+    if result.ok {
+      this.lines = (result.data?.lines or []).map((l) => Object.assign({}, l, { amountText: this.money(l.amount, l.currency) }))
+      const balance = result.data?.balance
+      if balance {
+        this.hasBalance = true
+        this.balanceText = this.money(balance.amount, balance.currency)
+        this.emptyText = "This provider reports the account balance only, not a billing history."
+      }
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.data?.code is "unsupported" {
+      this.supported = false
+    } else {
+      this.errorCode = result.data?.code or ""
+      this.error = result.data?.error or result.error or "Couldn't load billing."
+    }
+
+    this.loading = false
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const raw = window.location.search.split("id=")[1] or ""
+    const id = raw.split("&")[0]
+
+    if not id {
+      window.location.href = "/registrars"
+      return null
+    }
+    this.registrarId = id
+
+    const reg = await useApi("/api/registrars/" + id)
+    if not reg.ok {
+      window.location.href = "/registrars"
+      return null
+    }
+
+    this.label = reg.data.label
+    this.kindName = this.kindNameFor(reg.data.kind)
+    this.dashboardUrl = this.dashboardFor(reg.data.kind)
+    this.supported = (reg.data.features or []).includes("billing")
+    this.checkedAuth = true
+
+    if this.supported {
+      await this.load()
+    } else {
+      this.loading = false
+    }
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="registrars" />
+  <div class="min-w-0 grid grid-cols-1 lg:grid-cols-[220px_1fr]">
+    <RegistrarSidebar active="billing" registrarId="{{ registrarId }}" />
+    <div class="min-w-0">
+      <div class="max-w-4xl mx-auto px-6 lg:px-10 py-10">
+
+        <a href="/registrars" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+          <IconArrowLeft class="w-4 h-4" /> Domain providers
+        </a>
+
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Billing</h1>
+        <p class="text-slate-500 text-sm mb-8">{{ label }} · {{ kindName }}</p>
+
+{{#if supported is false}}
+        <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8">
+          <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">{{ kindName }} has no billing API</h2>
+          <p class="text-slate-500 text-sm mb-5">Balance and invoices can't be read from {{ kindName }} through its API, so they aren't shown here. You can still see when your domains expire and which will renew.</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <a href="{{ '/registrars/registrar-renewals?id=' + registrarId }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">View renewals</a>
+{{#if dashboardUrl}}
+            <a href="{{ dashboardUrl }}" target="_blank" rel="noopener noreferrer" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Open {{ kindName }}</a>
+{{/if}}
+          </div>
+        </div>
+{{/if}}
+
+{{#if supported}}
+{{#if loading}}
+        <p class="text-slate-500 text-sm">Loading billing…</p>
+{{/if}}
+
+{{#if error}}
+        <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
+          <p class="text-rose-800 dark:text-rose-400 text-sm">{{ error }}</p>
+{{#if errorCode is "missing_access"}}
+          <p class="text-rose-800/80 dark:text-rose-400/80 text-xs mt-1.5">The stored credentials may not include billing access. Edit the connection and paste credentials that do (for Route 53, an IAM user allowed to call route53domains:ViewBilling).</p>
+{{/if}}
+        </div>
+{{/if}}
+
+{{#if hasBalance}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Account balance</p>
+          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ balanceText }}</p>
+        </div>
+{{/if}}
+
+{{#if loading is false}}
+{{#if error is ""}}
+{{#if lines.length is 0}}
+        <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center">
+          <p class="text-slate-500 text-sm">{{ emptyText }}</p>
+{{#if dashboardUrl}}
+          <a href="{{ dashboardUrl }}" target="_blank" rel="noopener noreferrer" class="inline-block mt-4 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Open {{ kindName }}</a>
+{{/if}}
+        </div>
+{{/if}}
+
+{{#if lines.length is not 0}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+          <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">History</p>
+          </div>
+{{#each l in lines}}
+          <div class="flex items-center justify-between gap-4 px-6 py-3 border-b last:border-b-0 border-slate-100 dark:border-slate-800/60">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm truncate">{{ l.description }}</p>
+              <p class="text-slate-500 text-xs">{{ l.date }}</p>
+            </div>
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-medium shrink-0">{{ l.amountText }}</p>
+          </div>
+{{/each}}
+        </div>
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}

@@ -1,0 +1,224 @@
+page RegistrarEmail
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Email forwarding"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  registrarId: ""
+  kindName: ""
+  supported: false
+  domains: []
+  domainId: ""
+  forwarders: []
+  loading: true
+  error: ""
+  fFrom: ""
+  fTo: ""
+  formError: ""
+  saving: false
+  removing: ""
+
+action
+  base() {
+    return "/api/registrars/" + this.registrarId + "/domains/" + encodeURIComponent(this.domainId) + "/forwarders"
+  }
+
+  async loadForwarders() {
+    if not this.domainId {
+      this.loading = false
+      return null
+    }
+
+    this.loading = true
+    this.error = ""
+    const result = await useApi(this.base())
+    this.loading = false
+
+    if result.ok and Array.isArray(result.data) {
+      this.forwarders = result.data
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.forwarders = []
+      this.error = result.data?.error or "Couldn't load the forwarding rules. Try again."
+    }
+  }
+
+  async pickDomain(id) {
+    this.domainId = id
+    await this.loadForwarders()
+  }
+
+  async add() {
+    if this.saving {
+      return null
+    }
+
+    this.saving = true
+    this.formError = ""
+
+    const result = await useApi(this.base(), { method: "POST", body: { from: this.fFrom, to: this.fTo } })
+    this.saving = false
+
+    if result.ok {
+      this.fFrom = ""
+      this.fTo = ""
+      await this.loadForwarders()
+    } else {
+      const errors = result.data?.errors
+      this.formError = (errors and errors.from and errors.from[0]) or (errors and errors.to and errors.to[0]) or result.data?.error or "Couldn't add the rule."
+    }
+  }
+
+  askRemove(id) {
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = ""
+  }
+
+  async confirmRemove(id) {
+    const result = await useApi(this.base() + "/" + encodeURIComponent(id), { method: "DELETE" })
+    this.removing = ""
+    if not result.ok {
+      this.error = result.data?.error or "Couldn't delete the rule."
+      return null
+    }
+    await this.loadForwarders()
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/registrars"
+      return null
+    }
+
+    this.registrarId = id
+
+    const r = await useApi("/api/registrars/" + id)
+    if not r.ok {
+      window.location.href = "/registrars"
+      return null
+    }
+    this.kindName = r.data.label
+    this.supported = (r.data.features or []).includes("forwarding")
+
+    if this.supported {
+      const d = await useApi("/api/registrars/" + id + "/domains")
+      if d.ok and Array.isArray(d.data) {
+        this.domains = d.data
+        if d.data.length > 0 {
+          this.domainId = d.data[0].id
+        }
+      }
+      await this.loadForwarders()
+    }
+
+    this.loading = false
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="registrars" />
+  <RegistrarSidebar active="email" registrarId="{{ registrarId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/registrars" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Domain providers
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Email forwarding</h1>
+      <p class="text-slate-500 text-sm mb-6">{{ kindName }}</p>
+
+{{#if not supported}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <p class="text-slate-500 text-sm max-w-md mx-auto">This provider has no email API we can use. Cloudflare Email Routing supports forwarding here; for mailboxes, use your email host's own panel.</p>
+      </div>
+{{/if}}
+
+{{#if supported}}
+{{#if domains.length is 0}}
+      <p class="text-slate-500 text-sm">No domains in this account.</p>
+{{/if}}
+
+{{#if domains.length is not 0}}
+      <label class="block text-slate-500 text-xs font-medium mb-1.5">Domain</label>
+      <select
+        value="{{ domainId }}"
+        onchange="{{ pickDomain($event.target.value) }}"
+        class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 mb-6 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+      >
+{{#each d in domains}}
+        <option value="{{ d.id }}">{{ d.name }}</option>
+{{/each}}
+      </select>
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm mb-3">Add a forwarding address</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input type="text" value="{{ fFrom }}" oninput="{{ fFrom = $event.target.value }}" placeholder="info@yourdomain.com" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <input type="text" value="{{ fTo }}" oninput="{{ fTo = $event.target.value }}" placeholder="forward to: you@gmail.com" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+        </div>
+        <p class="text-slate-500 text-xs mt-3">The destination address must already be verified in Cloudflare (Email Routing &rarr; Destination addresses).</p>
+{{#if formError}}
+        <p role="alert" class="text-rose-500 text-xs mt-3">{{ formError }}</p>
+{{/if}}
+        <button onclick="{{ add() }}" class="mt-4 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Add rule</button>
+      </div>
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if not loading}}
+{{#if forwarders.length is 0}}
+      <p class="text-slate-500 text-sm">No forwarding rules for this domain.</p>
+{{/if}}
+{{#if forwarders.length is not 0}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+{{#each f in forwarders}}
+        <div class="flex items-center justify-between gap-4 px-5 py-3">
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ f.from }} &rarr; {{ f.to }}</p>
+{{#if removing is f.id}}
+          <div class="flex items-center gap-2">
+            <button onclick="{{ confirmRemove(f.id) }}" class="text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-full px-3 py-1 transition">Yes, delete</button>
+            <button onclick="{{ cancelRemove() }}" class="text-xs text-slate-500 dark:text-slate-400 px-2 py-1">Cancel</button>
+          </div>
+{{/if}}
+{{#if removing is not f.id}}
+          <button onclick="{{ askRemove(f.id) }}" class="text-xs text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-3 py-1 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}
