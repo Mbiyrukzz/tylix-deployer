@@ -39,16 +39,18 @@ import {
     DigitalOceanError,
     type DigitalOceanInstance,
 } from "./DigitalOceanClient.js";
-// VULTR: new client
+
 import { VultrClient, VultrError, type VultrInstance } from "./VultrClient.js";
-// AWS: new client
 import { AwsClient, AwsError, parseAwsCredentials, type AwsInstance } from "./AwsClient.js";
 
+import { UpCloudClient, UpCloudError, parseUpCloudCredentials, type UpCloudInstance } from "./UpCloudClient.js";
+import { ContaboClient, ContaboError, parseContaboCredentials, type ContaboInstance } from "./ContaboClient.js";
+
 // AWS: added to the union and the list
-export type ProviderKind = "linode" | "hetzner" | "digitalocean" | "vultr" | "aws";
+export type ProviderKind = "linode" | "hetzner" | "digitalocean" | "vultr" | "aws" | "upcloud" | "contabo";
 
 /** Every supported kind. Keep in sync with adapterFor() below. */
-export const PROVIDER_KINDS: ProviderKind[] = ["linode", "hetzner", "digitalocean", "vultr", "aws"];
+export const PROVIDER_KINDS: ProviderKind[] = ["linode", "hetzner", "digitalocean", "vultr", "aws", "upcloud", "contabo"];
 
 /** Display names, shared by the controllers and the catalog route. */
 export const PROVIDER_NAMES: Record<string, string> = {
@@ -57,6 +59,8 @@ export const PROVIDER_NAMES: Record<string, string> = {
     digitalocean: "DigitalOcean",
     vultr: "Vultr",
     aws: "AWS",
+    upcloud: "UpCloud",
+    contabo: "Contabo",
 };
 
 export function providerName(kind: string): string {
@@ -632,6 +636,166 @@ class AwsAdapter implements ProviderAdapter {
 }
 
 // ---------------------------------------------------------------------------
+// UpCloud
+// ---------------------------------------------------------------------------
+
+// UpCloud says "started" where the job waits for "running".
+function fromUpCloud(raw: UpCloudInstance): ProviderInstance {
+    return { ref: raw.uuid, status: raw.state === "started" ? "running" : raw.state, ip: raw.ip };
+}
+
+class UpCloudAdapter implements ProviderAdapter {
+    kind = "upcloud" as const;
+    private client: UpCloudClient;
+
+    // `secret` is the credentials JSON (see providerSecret). Throws if incomplete.
+    constructor(secret: string) {
+        this.client = new UpCloudClient(parseUpCloudCredentials(secret));
+    }
+
+    verify() {
+        return this.client.verify();
+    }
+
+    // 401/403 also covers "API access not enabled" and the sub-account's IP restriction.
+    isAuthError(error: unknown) {
+        return error instanceof UpCloudError && error.isAuth;
+    }
+
+    isTransient(error: unknown) {
+        return error instanceof UpCloudError && error.isTransient;
+    }
+
+    describeError(error: unknown) {
+        return error instanceof UpCloudError ? `UpCloud: ${error.message}` : null;
+    }
+
+    // Login is by the deploy key (login_user.ssh_keys). No password is created.
+    presetRootPassword() {
+        return null;
+    }
+
+    // Found by the tylix-provision label, never by name.
+    async findOurs(provisionId: number) {
+        const found = await this.client.findByLabel(provisionId);
+        return found ? fromUpCloud(found) : null;
+    }
+
+    async create(input: ProviderCreateInput) {
+        const instance = await this.client.createServer({
+            provisionId: input.provisionId,
+            zone: input.region,
+            plan: input.plan,
+            image: input.image,
+            name: input.name,
+            hostname: hostnameSafe(input.name, `server-${input.provisionId}`),
+            authorizedKeys: [input.publicKey],
+        });
+
+        return { instance: fromUpCloud(instance), rootPassword: null };
+    }
+
+    async get(ref: string) {
+        return fromUpCloud(await this.client.getServer(ref));
+    }
+
+    remove(ref: string) {
+        return this.client.deleteServer(ref); // stops first, 404 counts as success
+    }
+
+    regions() {
+        return this.client.regions();
+    }
+
+    plans(region?: string) {
+        return this.client.plans(region);
+    }
+
+    async images() {
+        return this.client.images();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Contabo
+// ---------------------------------------------------------------------------
+
+function fromContabo(raw: ContaboInstance): ProviderInstance {
+    return { ref: raw.id, status: raw.status, ip: raw.ip };
+}
+
+class ContaboAdapter implements ProviderAdapter {
+    kind = "contabo" as const;
+    private client: ContaboClient;
+
+    constructor(secret: string) {
+        this.client = new ContaboClient(parseContaboCredentials(secret));
+    }
+
+    verify() {
+        return this.client.verify();
+    }
+
+    // Token failures are mapped to 401 by the client.
+    isAuthError(error: unknown) {
+        return error instanceof ContaboError && error.isAuth;
+    }
+
+    isTransient(error: unknown) {
+        return error instanceof ContaboError && error.isTransient;
+    }
+
+    describeError(error: unknown) {
+        return error instanceof ContaboError ? `Contabo: ${error.message}` : null;
+    }
+
+    // Login is by the deploy key (sshKeys secret). No root password is stored.
+    presetRootPassword() {
+        return null;
+    }
+
+    // Found by displayName prefix "tylix-provision-<id>-", never by plain name.
+    async findOurs(provisionId: number) {
+        const found = await this.client.findByProvision(provisionId);
+        return found ? fromContabo(found) : null;
+    }
+
+    async create(input: ProviderCreateInput) {
+        const instance = await this.client.createInstance({
+            provisionId: input.provisionId,
+            region: input.region,
+            productId: input.plan,
+            imageId: input.image,
+            name: input.name,
+            publicKey: input.publicKey,
+        });
+
+        return { instance: fromContabo(instance), rootPassword: null };
+    }
+
+    async get(ref: string) {
+        return fromContabo(await this.client.getInstance(ref));
+    }
+
+    // Contabo can only cancel at the end of the billing period, not delete now.
+    remove(ref: string) {
+        return this.client.cancelInstance(ref);
+    }
+
+    async regions() {
+        return this.client.regions();
+    }
+
+    async plans(region?: string) {
+        return this.client.plans(region);
+    }
+
+    images() {
+        return this.client.images();
+    }
+}
+
+// ---------------------------------------------------------------------------
 
 /**
  * Builds the adapter for a stored provider kind. Throws on an unknown kind.
@@ -649,6 +813,10 @@ export function adapterFor(kind: string, secret: string): ProviderAdapter {
             return new VultrAdapter(secret);
         case "aws": // AWS
             return new AwsAdapter(secret);
+                    case "upcloud":
+            return new UpCloudAdapter(secret);
+        case "contabo":
+            return new ContaboAdapter(secret);
         default:
             throw new Error(`Unsupported provider: ${kind}`);
     }

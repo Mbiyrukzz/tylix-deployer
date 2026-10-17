@@ -5,14 +5,14 @@
  * The credential checks are deliberately loose (shape only): whether they
  * actually work is decided by calling the provider's API in the controller.
  *
- * Single-token providers send `api_token`. AWS sends `access_key_id` and
- * `secret_access_key`; credentialSecret() packs those into the JSON string the
- * AWS adapter expects (see services/AwsClient.ts).
+ * Single-token providers send `api_token`. Multi-field providers send several
+ * fields and credentialSecret() packs them into the JSON string their adapter expects:
+ *   AWS:      access_key_id, secret_access_key       (services/AwsClient.ts)
+ *   UpCloud:  username, password                     (services/UpCloudClient.ts)
+ *   Contabo:  client_id, client_secret, api_user, api_password (services/ContaboClient.ts)
  */
 
-// AWS: accepted kind. The TOKEN regex already allows Vultr keys
-// (36 uppercase letters and digits).
-const KINDS = ["linode", "hetzner", "digitalocean", "vultr", "aws"];
+const KINDS = ["linode", "hetzner", "digitalocean", "vultr", "aws", "upcloud", "contabo"];
 const TOKEN = /^[A-Za-z0-9._-]{20,256}$/;
 
 // AWS: long-term access keys. AKIA... is 20 characters, the secret is 40.
@@ -20,7 +20,7 @@ const AWS_KEY_ID = /^[A-Z0-9]{16,128}$/;
 const AWS_SECRET = /^[A-Za-z0-9/+=]{30,100}$/;
 
 /** Kinds whose credentials are several fields stored as JSON in providers.credentials. */
-export const MULTI_FIELD_KINDS = ["aws"];
+export const MULTI_FIELD_KINDS = ["aws", "upcloud", "contabo"];
 
 export interface NormalizedProvider {
     kind: string;
@@ -28,7 +28,27 @@ export interface NormalizedProvider {
     api_token: string;
     access_key_id: string;
     secret_access_key: string;
+    username: string;
+    password: string;
+    client_id: string;
+    client_secret: string;
+    api_user: string;
+    api_password: string;
 }
+
+/** The plain "all fields required" kinds. AWS has its own, stricter checks below. */
+const CRED_FIELDS: Record<string, { key: keyof NormalizedProvider; label: string }[]> = {
+    upcloud: [
+        { key: "username", label: "API username" },
+        { key: "password", label: "API password" },
+    ],
+    contabo: [
+        { key: "client_id", label: "Client ID" },
+        { key: "client_secret", label: "Client secret" },
+        { key: "api_user", label: "API user" },
+        { key: "api_password", label: "API password" },
+    ],
+};
 
 export function normalizeProvider(data: Record<string, unknown>): NormalizedProvider {
     const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -39,13 +59,19 @@ export function normalizeProvider(data: Record<string, unknown>): NormalizedProv
         api_token: str(data.api_token),
         access_key_id: str(data.access_key_id),
         secret_access_key: str(data.secret_access_key),
+        username: str(data.username),
+        password: str(data.password),
+        client_id: str(data.client_id),
+        client_secret: str(data.client_secret),
+        api_user: str(data.api_user),
+        api_password: str(data.api_password),
     };
 }
 
 /**
  * The secret to verify and store for this kind, or "" when the request
  * carries none (an edit that only renames the connection).
- * Single-token providers: the token. AWS: the credentials JSON.
+ * Single-token providers: the token. Multi-field providers: the credentials JSON.
  */
 export function credentialSecret(kind: string, input: NormalizedProvider): string {
     if (kind === "aws") {
@@ -55,6 +81,13 @@ export function credentialSecret(kind: string, input: NormalizedProvider): strin
             secret_access_key: input.secret_access_key,
         });
     }
+
+    const fields = CRED_FIELDS[kind];
+    if (fields) {
+        if (fields.some((f) => !input[f.key])) return "";
+        return JSON.stringify(Object.fromEntries(fields.map((f) => [f.key, input[f.key]])));
+    }
+
     return input.api_token;
 }
 
@@ -101,6 +134,17 @@ export function validateProvider(
             fail("secret_access_key", "Secret access key is required.");
         } else if (hasSecret && !AWS_SECRET.test(input.secret_access_key)) {
             fail("secret_access_key", "That doesn't look like a secret access key. Paste it without spaces or quotes.");
+        }
+    } else if (CRED_FIELDS[kind]) {
+        const fields = CRED_FIELDS[kind];
+        const anyFilled = fields.some((f) => input[f.key]);
+
+        // On update all fields may be blank (keep the stored credentials), but never just some.
+        if (!options.isUpdate || anyFilled) {
+            for (const f of fields) {
+                if (!input[f.key]) fail(f.key, `${f.label} is required.`);
+                else if (input[f.key].length > 256) fail(f.key, `${f.label} is too long.`);
+            }
         }
     } else if (!input.api_token) {
         // On update the token is optional: omitting it keeps the stored one.

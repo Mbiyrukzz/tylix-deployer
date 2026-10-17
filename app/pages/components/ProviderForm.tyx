@@ -21,32 +21,72 @@ state
   accessKeyError: ""
   secretKeyError: ""
   tokenPlaceholder: ""
+  mode: "token"
+  username: ""
+  password: ""
+  clientId: ""
+  clientSecret: ""
+  apiUser: ""
+  apiPassword: ""
+  usernameError: ""
+  passwordError: ""
+  clientIdError: ""
+  clientSecretError: ""
+  apiUserError: ""
+  apiPasswordError: ""
 
 action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  syncMode() {
+    let m = "token"
+    if this.kind is "aws" {
+      m = "aws"
+    }
+    if this.kind is "upcloud" {
+      m = "upcloud"
+    }
+    if this.kind is "contabo" {
+      m = "contabo"
+    }
+    this.mode = m
+  }
+
   clearErrors() {
     this.error = ""
     this.labelError = ""
     this.tokenError = ""
     this.accessKeyError = ""
     this.secretKeyError = ""
+    this.usernameError = ""
+    this.passwordError = ""
+    this.clientIdError = ""
+    this.clientSecretError = ""
+    this.apiUserError = ""
+    this.apiPasswordError = ""
   }
 
   reset() {
     this.kind = "linode"
+    this.mode = "token"
     this.label = ""
     this.apiToken = ""
     this.accessKeyId = ""
     this.secretKey = ""
+    this.username = ""
+    this.password = ""
+    this.clientId = ""
+    this.clientSecret = ""
+    this.apiUser = ""
+    this.apiPassword = ""
     this.tokenPlaceholder = ""
     this.saving = false
     this.clearErrors()
-  }
-
-  firstError(errors, field) {
-    if errors and errors[field] and errors[field].length > 0 {
-      return errors[field][0]
-    }
-    return ""
   }
 
   // The provider choices shown in create mode. Adding a provider = one more entry here.
@@ -86,6 +126,20 @@ action
         sub: "EC2",
         tileClass: "w-9 h-9 shrink-0 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold",
         letter: "A"
+      },
+      {
+        id: "upcloud",
+        name: "UpCloud",
+        sub: "Cloud Servers",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold",
+        letter: "U"
+      },
+      {
+        id: "contabo",
+        name: "Contabo",
+        sub: "Cloud VPS",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold",
+        letter: "C"
       }
     ]
   }
@@ -93,10 +147,10 @@ action
   // Create mode only: the provider type is fixed once the connection exists.
   pick(kind) {
     this.kind = kind
-    this.tokenError = ""
-    this.accessKeyError = ""
-    this.secretKeyError = ""
-    this.error = ""
+    this.syncMode()
+    const label = this.labelError
+    this.clearErrors()
+    this.labelError = label
   }
 
   open() {
@@ -109,7 +163,14 @@ action
       if this.provider.kind is "aws" {
         this.tokenPlaceholder = "Leave blank to keep the current keys"
       }
+      if this.provider.kind is "upcloud" {
+        this.tokenPlaceholder = "Leave blank to keep the current credentials"
+      }
+      if this.provider.kind is "contabo" {
+        this.tokenPlaceholder = "Leave blank to keep the current credentials"
+      }
     }
+    this.syncMode()
     this.showModal = true
   }
 
@@ -134,7 +195,13 @@ action
       label: this.label,
       api_token: this.apiToken,
       access_key_id: this.accessKeyId,
-      secret_access_key: this.secretKey
+      secret_access_key: this.secretKey,
+      username: this.username,
+      password: this.password,
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      api_user: this.apiUser,
+      api_password: this.apiPassword
     }
     const url = this.provider ? "/api/providers/" + this.provider.id : "/api/providers"
     const method = this.provider ? "PUT" : "POST"
@@ -152,8 +219,14 @@ action
       this.tokenError = this.firstError(errors, "api_token")
       this.accessKeyError = this.firstError(errors, "access_key_id")
       this.secretKeyError = this.firstError(errors, "secret_access_key")
+      this.usernameError = this.firstError(errors, "username")
+      this.passwordError = this.firstError(errors, "password")
+      this.clientIdError = this.firstError(errors, "client_id")
+      this.clientSecretError = this.firstError(errors, "client_secret")
+      this.apiUserError = this.firstError(errors, "api_user")
+      this.apiPasswordError = this.firstError(errors, "api_password")
       this.error = result.data?.error or result.error or ""
-      if not this.labelError and not this.tokenError and not this.accessKeyError and not this.secretKeyError and not this.error {
+      if not this.labelError and not this.tokenError and not this.accessKeyError and not this.secretKeyError and not this.usernameError and not this.passwordError and not this.clientIdError and not this.clientSecretError and not this.apiUserError and not this.apiPasswordError and not this.error {
         this.error = "Couldn't save the connection. Try again."
       }
       this.saving = false
@@ -238,7 +311,7 @@ template
       <p class="text-rose-500 text-xs mt-1.5">{{ labelError }}</p>
 {{/if}}
 
-{{#if kind is not "aws"}}
+{{#if mode is "token"}}
       <label for="provider-token" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API token</label>
       <input
         id="provider-token"
@@ -252,6 +325,100 @@ template
       />
 {{#if tokenError}}
       <p class="text-rose-500 text-xs mt-1.5">{{ tokenError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if mode is "upcloud"}}
+      <label for="provider-up-user" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API username</label>
+      <input
+        id="provider-up-user"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ username }}"
+        oninput="{{ username = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if usernameError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ usernameError }}</p>
+{{/if}}
+
+      <label for="provider-up-pass" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API password</label>
+      <input
+        id="provider-up-pass"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ password }}"
+        oninput="{{ password = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if passwordError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ passwordError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if mode is "contabo"}}
+      <label for="provider-cb-client-id" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Client ID</label>
+      <input
+        id="provider-cb-client-id"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ clientId }}"
+        oninput="{{ clientId = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if clientIdError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ clientIdError }}</p>
+{{/if}}
+
+      <label for="provider-cb-client-secret" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Client secret</label>
+      <input
+        id="provider-cb-client-secret"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ clientSecret }}"
+        oninput="{{ clientSecret = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if clientSecretError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ clientSecretError }}</p>
+{{/if}}
+
+      <label for="provider-cb-api-user" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API user</label>
+      <input
+        id="provider-cb-api-user"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ apiUser }}"
+        oninput="{{ apiUser = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if apiUserError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ apiUserError }}</p>
+{{/if}}
+
+      <label for="provider-cb-api-password" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API password</label>
+      <input
+        id="provider-cb-api-password"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ apiPassword }}"
+        oninput="{{ apiPassword = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ tokenPlaceholder }}"
+      />
+{{#if apiPasswordError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ apiPasswordError }}</p>
 {{/if}}
 {{/if}}
 
@@ -332,6 +499,24 @@ template
         <p class="text-slate-500 text-xs mt-3">EC2 actions needed:</p>
         <p class="text-slate-500 text-[11px] font-mono leading-relaxed mt-1 break-words">DescribeRegions, DescribeInstances, DescribeInstanceTypes, DescribeInstanceTypeOfferings, DescribeImages, DescribeVpcs, DescribeSecurityGroups, CreateSecurityGroup, AuthorizeSecurityGroupIngress, RunInstances, TerminateInstances, CreateTags</p>
         <p class="text-slate-500 text-xs mt-3">Use a long-term key (it starts with AKIA). Servers are created in your default VPC, with a security group named tylix-deploy that leaves every port open. Each server's own firewall decides what is reachable.</p>
+{{/if}}
+{{#if kind is "upcloud"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create an UpCloud API account</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://hub.upcloud.com/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">UpCloud Control Panel</a> and go to People. Create a sub-account just for the deployer.</li>
+          <li>Allow API connections for it, and give it access to servers and storage.</li>
+          <li>Under allowed IP addresses, add this deployer's server IP. Otherwise UpCloud rejects every request.</li>
+          <li>Paste the sub-account's username and password here.</li>
+        </ol>
+{{/if}}
+{{#if kind is "contabo"}}
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Get your Contabo API credentials</p>
+        <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
+          <li>Open <a href="https://my.contabo.com/api/details" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; Security &amp; Access &rarr; API</a> in the Contabo Customer Control Panel.</li>
+          <li>Copy the Client ID and Client Secret.</li>
+          <li>The API user is your account email. Set an API password there; it is separate from your login password.</li>
+        </ol>
+        <p class="text-slate-500 text-xs mt-3">Contabo bills monthly. Deleting a server here cancels it at the end of the billing period, and it stays online until then.</p>
 {{/if}}
         <p class="text-slate-400 text-xs mt-3">The credentials are checked with the provider, encrypted before they are stored, and never shown again.</p>
       </div>

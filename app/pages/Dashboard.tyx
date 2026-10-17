@@ -1,6 +1,6 @@
 page Dashboard
 
-import { IconDatabase, IconUser, IconFolder } from "tylix-icons"
+import { IconDatabase, IconUser, IconFolder, IconMail, IconCloud, IconServer, IconCube, IconSignal, IconCurrencyDollar, IconExclamationTriangle } from "tylix-icons"
 
 title "Dashboard"
 
@@ -9,6 +9,7 @@ needs
 
 uses
   Servers
+  Providers
   Mail
 
 background
@@ -19,9 +20,11 @@ meta
 
 state
   checkedAuth: false
+  greeting: ""
   todayText: ""
   fleet: []
   recentSites: []
+  baseAttention: []
   attention: []
   hasAttention: false
   newSiteHref: "/servers"
@@ -35,15 +38,50 @@ state
   failedCount: 0
   healthState: "empty"
   healthText: ""
-  onlineStyle: "width: 0%"
-  offlineStyle: "width: 0%"
-  pendingStyle: "width: 0%"
+  sOnDash: "0 226.2"
+  sOnOff: "0"
+  sOffDash: "0 226.2"
+  sOffOff: "0"
+  sPenDash: "0 226.2"
+  sPenOff: "0"
+  readyStyle: "width: 0%"
+  buildStyle: "width: 0%"
+  failStyle: "width: 0%"
   stepsDone: 0
   setupDone: false
   progressStyle: "width: 0%"
   step1: false
   step2: false
   step3: false
+  providerCount: 0
+  cloudReady: false
+  cloudCards: []
+  cloudManaged: 0
+  cloudMachines: 0
+  cloudRunning: 0
+  cloudOffline: 0
+  cloudOther: 0
+  cMRunDash: "0 226.2"
+  cMRunOff: "0"
+  cMOffDash: "0 226.2"
+  cMOffOff: "0"
+  cMOthDash: "0 226.2"
+  cMOthOff: "0"
+  volumeCount: 0
+  volumeGb: 0
+  volumeAttachedGb: 0
+  volumeFreeGb: 0
+  vAttDash: "0 226.2"
+  vAttOff: "0"
+  vFreeDash: "0 226.2"
+  vFreeOff: "0"
+  idleVolumes: 0
+  idleIps: 0
+  idleTotal: 0
+  idleCls: "text-slate-900 dark:text-slate-100 text-2xl font-semibold"
+  spendLines: []
+  hasSpend: false
+  spendEstimated: false
 
 action
   plural(n, word) {
@@ -51,6 +89,10 @@ action
       return "1 " + word
     }
     return n + " " + word + "s"
+  }
+
+  money(currency, n) {
+    return currency + " " + Number(n).toFixed(2)
   }
 
   typeLabel(t) {
@@ -73,6 +115,33 @@ action
     return "/servers/site-detail?id=" + id
   }
 
+  // Length of one donut segment, out of a ring that is 226.2 long.
+  arcDash(v, total) {
+    if total is 0 {
+      return "0 226.2"
+    }
+    return (Math.round(v / total * 2262) / 10) + " 226.2"
+  }
+
+  // Where a segment starts: minus everything drawn before it.
+  arcOffset(v, total) {
+    if total is 0 {
+      return "0"
+    }
+    return "-" + (Math.round(v / total * 2262) / 10)
+  }
+
+  rowsOf(res) {
+    if res.ok and Array.isArray(res.data) {
+      return res.data
+    }
+    return []
+  }
+
+  sumOf(list, key) {
+    return list.reduce((n, c) => n + c[key], 0)
+  }
+
   decorateServer(s, sites) {
     const n = sites.filter((x) => x.server_id is s.id).length
     return Object.assign({}, s, {
@@ -90,6 +159,215 @@ action
     })
   }
 
+  kindStyle(kind) {
+    let name = "Linode (Akamai)"
+    let letter = "L"
+    let cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+
+    if kind is "hetzner" {
+      name = "Hetzner Cloud"
+      letter = "H"
+      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+    if kind is "digitalocean" {
+      name = "DigitalOcean"
+      letter = "D"
+      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400"
+    }
+    if kind is "vultr" {
+      name = "Vultr"
+      letter = "V"
+      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400"
+    }
+    if kind is "aws" {
+      name = "Amazon Web Services"
+      letter = "A"
+      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
+    }
+
+    return { name: name, letter: letter, cls: cls }
+  }
+
+  // Fetches what one managed provider (Linode or Hetzner) has. Four calls in parallel.
+  async loadProvider(p) {
+    const base = "/api/providers/" + p.id
+    const all = await Promise.all([
+      useApi(base + "/machines"),
+      useApi(base + "/volumes"),
+      useApi(base + "/ips"),
+      useApi(base + "/billing")
+    ])
+    return { provider: p, res: all }
+  }
+
+  // Reads the cost out of a billing answer. A failed call counts as no cost.
+  costInfo(billing) {
+    if billing.ok and billing.data.current is not null {
+      const currency = billing.data.currency
+      const cost = Number(billing.data.current)
+      return { cost: cost, currency: currency, costText: this.money(currency, cost), estimated: billing.data.estimated }
+    }
+    return { cost: 0, currency: "", costText: "-", estimated: false }
+  }
+
+  // Builds one provider card. item is undefined for providers we can't manage yet.
+  decorateCloud(p, provRows, item) {
+    const style = this.kindStyle(p.kind)
+    const created = provRows.filter((r) => r.provider_id is p.id and r.has_instance and r.status is not "deleted").length
+
+    let managed = false
+    let machines = []
+    let volumes = []
+    let ips = []
+    let locked = false
+    let info = { cost: 0, currency: "", costText: "-", estimated: false }
+
+    if item {
+      managed = true
+      machines = this.rowsOf(item.res[0])
+      volumes = this.rowsOf(item.res[1])
+      ips = this.rowsOf(item.res[2])
+      info = this.costInfo(item.res[3])
+      if item.res.find((r) => r.status is 403) {
+        locked = true
+      }
+    }
+
+    const running = machines.filter((m) => m.status is "running").length
+    const offline = machines.filter((m) => m.status is "offline").length
+    const other = machines.length - running - offline
+
+    const volumeGb = this.sumOf(volumes, "sizeGb")
+    const attachedGb = this.sumOf(volumes.filter((v) => v.attachedId), "sizeGb")
+    const looseVolumes = volumes.filter((v) => not v.attachedId).length
+    const looseIps = ips.filter((ip) => not ip.attachedId and (ip.kind is "floating" or ip.kind is "primary")).length
+
+    let runStyle = "width: 0%"
+    let restStyle = "width: 0%"
+    if machines.length > 0 {
+      runStyle = "width: " + Math.round(running / machines.length * 100) + "%"
+      restStyle = "width: " + Math.round((machines.length - running) / machines.length * 100) + "%"
+    }
+
+    return {
+      id: p.id,
+      label: p.label,
+      kind: p.kind,
+      kindName: style.name,
+      tileLetter: style.letter,
+      tileClass: style.cls,
+      href: "/providers/provider-detail?id=" + p.id,
+      managed: managed,
+      locked: locked,
+      createdText: this.plural(created, "server") + " created here",
+      machines: machines.length,
+      running: running,
+      offline: offline,
+      other: other,
+      volumes: volumes.length,
+      volumeGb: volumeGb,
+      attachedGb: attachedGb,
+      looseVolumes: looseVolumes,
+      looseIps: looseIps,
+      ipCount: ips.length,
+      cost: info.cost,
+      currency: info.currency,
+      costText: info.costText,
+      estimated: info.estimated,
+      runStyle: runStyle,
+      restStyle: restStyle
+    }
+  }
+
+  cloudNotices(c) {
+    const items = []
+    const q = "?id=" + c.id
+    const base = "/providers/"
+
+    if c.locked {
+      items.push({ text: c.label + " needs a token with more access", hint: "Open the connection", href: base + "provider-detail" + q })
+    }
+    if c.offline > 0 {
+      items.push({ text: c.label + ": " + this.plural(c.offline, "machine") + " offline", hint: "Open machines", href: base + "provider-machines" + q })
+    }
+    if c.looseVolumes > 0 {
+      items.push({ text: c.label + ": " + this.plural(c.looseVolumes, "volume") + " not attached", hint: "Billed while unused", href: base + "provider-volumes" + q })
+    }
+    if c.looseIps > 0 {
+      let ipWord = "addresses"
+      if c.looseIps is 1 {
+        ipWord = "address"
+      }
+      items.push({ text: c.label + ": " + c.looseIps + " " + ipWord + " unassigned", hint: "Billed while unused", href: base + "provider-ips" + q })
+    }
+
+    return items
+  }
+
+  // Totals, donut arcs, spend and extra attention items from the finished cards.
+  summarizeCloud(cards) {
+    const managed = cards.filter((c) => c.managed)
+
+    const machines = this.sumOf(managed, "machines")
+    const running = this.sumOf(managed, "running")
+    const offline = this.sumOf(managed, "offline")
+    const other = this.sumOf(managed, "other")
+
+    this.cloudManaged = managed.length
+    this.cloudMachines = machines
+    this.cloudRunning = running
+    this.cloudOffline = offline
+    this.cloudOther = other
+    this.cMRunDash = this.arcDash(running, machines)
+    this.cMRunOff = this.arcOffset(0, machines)
+    this.cMOffDash = this.arcDash(offline, machines)
+    this.cMOffOff = this.arcOffset(running, machines)
+    this.cMOthDash = this.arcDash(other, machines)
+    this.cMOthOff = this.arcOffset(running + offline, machines)
+
+    const totalGb = this.sumOf(managed, "volumeGb")
+    const attachedGb = this.sumOf(managed, "attachedGb")
+
+    this.volumeCount = this.sumOf(managed, "volumes")
+    this.volumeGb = totalGb
+    this.volumeAttachedGb = attachedGb
+    this.volumeFreeGb = totalGb - attachedGb
+    this.vAttDash = this.arcDash(attachedGb, totalGb)
+    this.vAttOff = this.arcOffset(0, totalGb)
+    this.vFreeDash = this.arcDash(totalGb - attachedGb, totalGb)
+    this.vFreeOff = this.arcOffset(attachedGb, totalGb)
+
+    const looseVolumes = this.sumOf(managed, "looseVolumes")
+    const looseIps = this.sumOf(managed, "looseIps")
+
+    this.idleVolumes = looseVolumes
+    this.idleIps = looseIps
+    this.idleTotal = looseVolumes + looseIps
+    if looseVolumes + looseIps > 0 {
+      this.idleCls = "text-amber-600 dark:text-amber-500 text-2xl font-semibold"
+    } else {
+      this.idleCls = "text-slate-900 dark:text-slate-100 text-2xl font-semibold"
+    }
+
+    // Currencies are never added together: Linode bills in USD, Hetzner in EUR.
+    const usd = managed.filter((c) => c.currency is "USD").reduce((n, c) => n + c.cost, 0)
+    const eur = managed.filter((c) => c.currency is "EUR").reduce((n, c) => n + c.cost, 0)
+    const lines = []
+    if usd > 0 {
+      lines.push(this.money("USD", usd))
+    }
+    if eur > 0 {
+      lines.push(this.money("EUR", eur))
+    }
+    this.spendLines = lines
+    this.hasSpend = lines.length > 0
+    this.spendEstimated = managed.filter((c) => c.estimated).length > 0
+
+    const extra = managed.reduce((acc, c) => acc.concat(this.cloudNotices(c)), [])
+    this.attention = this.baseAttention.concat(extra).slice(0, 8)
+    this.hasAttention = this.attention.length > 0
+  }
+
 onMount
   async {
     if not Auth.user {
@@ -97,7 +375,17 @@ onMount
       return null
     }
 
-    this.todayText = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+    const now = new Date()
+    this.todayText = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+
+    const hour = now.getHours()
+    let greeting = "Good evening"
+    if hour < 12 {
+      greeting = "Good morning"
+    } else if hour < 18 {
+      greeting = "Good afternoon"
+    }
+    this.greeting = greeting
 
     await Servers.load()
 
@@ -145,7 +433,8 @@ onMount
       .filter((x) => x.status is "failed")
       .map((x) => ({ text: x.domain + " failed to deploy", hint: "View the deployment log", href: this.siteHref(x.id) }))
 
-    this.attention = offlineItems.concat(failedItems).slice(0, 6)
+    this.baseAttention = offlineItems.concat(failedItems)
+    this.attention = this.baseAttention.slice(0, 8)
     this.hasAttention = offline + failed > 0
 
     if total is 0 {
@@ -159,10 +448,17 @@ onMount
       this.healthText = "All systems operational"
     }
 
-    if total > 0 {
-      this.onlineStyle = "width: " + (online / total) * 100 + "%"
-      this.offlineStyle = "width: " + (offline / total) * 100 + "%"
-      this.pendingStyle = "width: " + (pending / total) * 100 + "%"
+    this.sOnDash = this.arcDash(online, total)
+    this.sOnOff = this.arcOffset(0, total)
+    this.sOffDash = this.arcDash(offline, total)
+    this.sOffOff = this.arcOffset(online, total)
+    this.sPenDash = this.arcDash(pending, total)
+    this.sPenOff = this.arcOffset(online + offline, total)
+
+    if sites.length > 0 {
+      this.readyStyle = "width: " + Math.round(ready / sites.length * 100) + "%"
+      this.buildStyle = "width: " + Math.round(building / sites.length * 100) + "%"
+      this.failStyle = "width: " + Math.round(failed / sites.length * 100) + "%"
     }
 
     this.step1 = total > 0
@@ -184,6 +480,29 @@ onMount
     this.progressStyle = "width: " + Math.round((done / 3) * 100) + "%"
 
     this.checkedAuth = true
+
+    // The cloud section fills in after the page is already on screen.
+    await Providers.load()
+    this.providerCount = Providers.data.length
+
+    if this.providerCount is 0 {
+      this.cloudReady = true
+      return null
+    }
+
+    let provRows = []
+    const prov = await useApi("/api/provisions")
+    if prov.ok and Array.isArray(prov.data) {
+      provRows = prov.data
+    }
+
+    const managedList = Providers.data.filter((p) => p.kind is "linode" or p.kind is "hetzner")
+    const loaded = await Promise.all(managedList.map((p) => this.loadProvider(p)))
+
+    const cards = Providers.data.map((p) => this.decorateCloud(p, provRows, loaded.find((l) => l.provider.id is p.id)))
+    this.cloudCards = cards
+    this.summarizeCloud(cards)
+    this.cloudReady = true
   }
 
 template
@@ -198,9 +517,12 @@ template
       <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div class="min-w-0">
           <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">{{ todayText }}</p>
-          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">Welcome back, {{ Auth.user.name }}</h1>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ greeting }}, {{ Auth.user.name }}</h1>
         </div>
         <div class="flex items-center gap-3">
+          <a href="/providers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
+            Cloud providers
+          </a>
           <a href="/servers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
             New server
           </a>
@@ -213,8 +535,10 @@ template
 {{#if hasAttention}}
       <div class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-5 mb-6">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-amber-800 dark:text-amber-400 font-semibold">Needs attention</h2>
-          <span class="text-amber-800/70 dark:text-amber-400/70 text-xs">Things that stopped working</span>
+          <h2 class="inline-flex items-center gap-2 text-amber-800 dark:text-amber-400 font-semibold">
+            <IconExclamationTriangle class="w-4 h-4" /> Needs attention
+          </h2>
+          <span class="text-amber-800/70 dark:text-amber-400/70 text-xs">Things that stopped working or cost money for nothing</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
 {{#each item in attention}}
@@ -227,50 +551,52 @@ template
       </div>
 {{/if}}
 
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
 
         <div class="md:col-span-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <div class="flex items-center gap-3 mb-5">
+          <div class="flex items-center gap-6">
+            <div class="relative w-28 h-28 shrink-0">
+              <svg viewBox="0 0 100 100" class="w-28 h-28">
+                <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
+                <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="{{ sOnDash }}" stroke-dashoffset="{{ sOnOff }}" transform="rotate(-90 50 50)" />
+                <circle cx="50" cy="50" r="36" fill="none" stroke="#f43f5e" stroke-width="10" stroke-dasharray="{{ sOffDash }}" stroke-dashoffset="{{ sOffOff }}" transform="rotate(-90 50 50)" />
+                <circle cx="50" cy="50" r="36" fill="none" stroke="#f59e0b" stroke-width="10" stroke-dasharray="{{ sPenDash }}" stroke-dashoffset="{{ sPenOff }}" transform="rotate(-90 50 50)" />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ totalServers }}</span>
+                <span class="text-[10px] font-medium uppercase tracking-wider text-slate-500">servers</span>
+              </div>
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2.5 mb-3">
 {{#if healthState is "ok"}}
-            <span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_0_5px_rgba(16,185,129,0.15)]"></span>
+                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
 {{/if}}
 {{#if healthState is "warn"}}
-            <span class="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_0_5px_rgba(245,158,11,0.15)]"></span>
+                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"></span>
 {{/if}}
 {{#if healthState is "empty"}}
-            <span class="w-3 h-3 rounded-full bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.15)]"></span>
+                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-slate-400 shadow-[0_0_0_4px_rgba(148,163,184,0.15)]"></span>
 {{/if}}
-            <div class="min-w-0">
-              <p class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">{{ healthText }}</p>
-              <p class="text-slate-500 text-xs mt-0.5">{{ totalServers }} servers · {{ readyCount }} of {{ siteCount }} sites live</p>
+                <p class="text-slate-900 dark:text-slate-100 font-semibold leading-tight truncate">{{ healthText }}</p>
+              </div>
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Online</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ onlineCount }}</span>
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                  <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Offline</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ offlineCount }}</span>
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                  <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Untested</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ pendingCount }}</span>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div class="grid grid-cols-3 gap-4 mb-5">
-            <div>
-              <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ onlineCount }}</p>
-              <p class="text-slate-500 text-xs mt-1 inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Online</p>
-            </div>
-            <div>
-              <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ offlineCount }}</p>
-              <p class="text-slate-500 text-xs mt-1 inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Offline</p>
-            </div>
-            <div>
-              <p class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ pendingCount }}</p>
-              <p class="text-slate-500 text-xs mt-1 inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>Untested</p>
-            </div>
-          </div>
-
-{{#if totalServers is not 0}}
-          <div class="flex h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-            <div class="h-full bg-emerald-500 transition-all" style="{{ onlineStyle }}"></div>
-            <div class="h-full bg-rose-500 transition-all" style="{{ offlineStyle }}"></div>
-            <div class="h-full bg-amber-500 transition-all" style="{{ pendingStyle }}"></div>
-          </div>
-{{/if}}
-{{#if totalServers is 0}}
-          <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800"></div>
-{{/if}}
         </div>
 
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
@@ -279,8 +605,18 @@ template
             <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
           <p class="text-4xl font-bold text-slate-900 dark:text-slate-100">{{ siteCount }}</p>
-          <div class="mt-3 space-y-1 text-xs text-slate-500">
-            <p><span class="text-emerald-700 dark:text-emerald-500 font-medium">{{ readyCount }}</span> live</p>
+          <p class="text-slate-500 text-xs mt-1 mb-4">{{ readyCount }} live</p>
+{{#if siteCount is not 0}}
+          <div class="flex h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mb-3">
+            <div class="h-full bg-emerald-500 transition-all" style="{{ readyStyle }}"></div>
+            <div class="h-full bg-amber-500 transition-all" style="{{ buildStyle }}"></div>
+            <div class="h-full bg-rose-500 transition-all" style="{{ failStyle }}"></div>
+          </div>
+{{/if}}
+{{#if siteCount is 0}}
+          <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800 mb-3"></div>
+{{/if}}
+          <div class="space-y-1 text-xs text-slate-500">
             <p><span class="text-amber-600 dark:text-amber-500 font-medium">{{ buildingCount }}</span> building</p>
             <p><span class="text-rose-600 dark:text-rose-500 font-medium">{{ failedCount }}</span> failed</p>
           </div>
@@ -290,7 +626,7 @@ template
         <a href="/dashboard/mail" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
           <div class="flex items-center justify-between mb-4">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Mail</p>
-            <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+            <IconMail class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
           </div>
           <p class="text-4xl font-bold text-slate-900 dark:text-slate-100">{{ Mail.unread }}</p>
           <p class="text-slate-500 text-xs mt-3">Unread messages</p>
@@ -307,6 +643,211 @@ template
         </div>
 {{/if}}
       </div>
+
+      <div class="flex items-end justify-between mb-4">
+        <div>
+          <h2 class="inline-flex items-center gap-2 text-slate-900 dark:text-slate-100 text-lg font-semibold">
+            <IconCloud class="w-5 h-5 text-emerald-700 dark:text-emerald-500" /> Cloud accounts
+          </h2>
+          <p class="text-slate-500 text-sm mt-0.5">Everything running in the provider accounts you connected, including what the deployer didn't create.</p>
+        </div>
+        <a href="/providers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium shrink-0">Manage all</a>
+      </div>
+
+{{#if not cloudReady}}
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+      </div>
+      <div class="h-56 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse mb-8"></div>
+{{/if}}
+
+{{#if cloudReady}}
+{{#if providerCount is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center mb-8">
+        <div class="flex items-center justify-center gap-3 mb-4">
+          <span class="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center font-bold">L</span>
+          <span class="w-11 h-11 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">H</span>
+          <span class="w-11 h-11 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold">D</span>
+          <span class="w-11 h-11 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">V</span>
+          <span class="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">A</span>
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No cloud providers connected</h3>
+        <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr or AWS account to create servers and manage its firewalls, volumes, images and IP addresses from here.</p>
+        <a href="/providers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect a provider</a>
+      </div>
+{{/if}}
+
+{{#if providerCount is not 0}}
+{{#if cloudManaged is not 0}}
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+        <a href="/providers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-slate-500 text-xs">Cloud machines</p>
+            <IconServer class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+          </div>
+          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ cloudRunning }}<span class="text-base text-slate-500"> / {{ cloudMachines }}</span></p>
+          <p class="text-slate-500 text-xs mt-0.5">running · {{ cloudOffline }} offline</p>
+        </a>
+        <a href="/providers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-slate-500 text-xs">Volume storage</p>
+            <IconCube class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+          </div>
+          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ volumeGb }}<span class="text-base text-slate-500"> GB</span></p>
+          <p class="text-slate-500 text-xs mt-0.5">{{ volumeCount }} volumes · {{ volumeAttachedGb }} GB attached</p>
+        </a>
+        <a href="/providers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-slate-500 text-xs">Idle resources</p>
+            <IconSignal class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+          </div>
+          <p class="{{ idleCls }}">{{ idleTotal }}</p>
+          <p class="text-slate-500 text-xs mt-0.5">{{ idleVolumes }} volumes · {{ idleIps }} IPs unassigned</p>
+        </a>
+        <a href="/providers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-slate-500 text-xs">Monthly spend</p>
+            <IconCurrencyDollar class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+          </div>
+{{#if hasSpend}}
+{{#each l in spendLines}}
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold leading-tight">{{ l }}</p>
+{{/each}}
+{{#if spendEstimated}}
+          <p class="text-slate-500 text-xs mt-0.5">Hetzner is an estimate</p>
+{{/if}}
+{{#if not spendEstimated}}
+          <p class="text-slate-500 text-xs mt-0.5">so far this month</p>
+{{/if}}
+{{/if}}
+{{#if not hasSpend}}
+          <p class="text-slate-400 text-2xl font-semibold">-</p>
+          <p class="text-slate-500 text-xs mt-0.5">No cost data yet</p>
+{{/if}}
+        </a>
+      </div>
+{{/if}}
+
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 mb-8">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
+{{#each c in cloudCards}}
+          <a href="{{ c.href }}" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+            <div class="flex items-center justify-between gap-3 mb-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="{{ c.tileClass }}">{{ c.tileLetter }}</span>
+                <div class="min-w-0">
+                  <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ c.label }}</h3>
+                  <p class="text-slate-500 text-xs">{{ c.kindName }}</p>
+                </div>
+              </div>
+              <span class="text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
+            </div>
+
+{{#if c.managed}}
+            <div class="flex h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mb-4">
+              <div class="h-full bg-emerald-500 transition-all" style="{{ c.runStyle }}"></div>
+              <div class="h-full bg-slate-400 transition-all" style="{{ c.restStyle }}"></div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2">
+              <div>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ c.running }}<span class="text-slate-500 font-normal">/{{ c.machines }}</span></p>
+                <p class="text-slate-500 text-[11px]">Machines</p>
+              </div>
+              <div>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ c.volumeGb }}<span class="text-slate-500 font-normal"> GB</span></p>
+                <p class="text-slate-500 text-[11px]">Volumes</p>
+              </div>
+              <div>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ c.ipCount }}</p>
+                <p class="text-slate-500 text-[11px]">IPs</p>
+              </div>
+              <div>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ c.costText }}</p>
+                <p class="text-slate-500 text-[11px]">Per month</p>
+              </div>
+            </div>
+
+{{#if c.locked}}
+            <p class="text-amber-700 dark:text-amber-500 text-xs mt-3">This token needs more access. Some numbers are missing.</p>
+{{/if}}
+{{/if}}
+
+{{#if not c.managed}}
+            <p class="text-slate-500 text-sm">{{ c.createdText }}</p>
+            <p class="text-slate-400 text-xs mt-1">Machines, volumes and billing for {{ c.kindName }} are coming next.</p>
+{{/if}}
+          </a>
+{{/each}}
+        </div>
+
+{{#if cloudManaged is not 0}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-5">Cloud at a glance</p>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="relative w-24 h-24 mx-auto mb-3">
+                <svg viewBox="0 0 100 100" class="w-24 h-24">
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="{{ cMRunDash }}" stroke-dashoffset="{{ cMRunOff }}" transform="rotate(-90 50 50)" />
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#94a3b8" stroke-width="10" stroke-dasharray="{{ cMOffDash }}" stroke-dashoffset="{{ cMOffOff }}" transform="rotate(-90 50 50)" />
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#f59e0b" stroke-width="10" stroke-dasharray="{{ cMOthDash }}" stroke-dashoffset="{{ cMOthOff }}" transform="rotate(-90 50 50)" />
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ cloudMachines }}</span>
+                  <span class="text-[9px] font-medium uppercase tracking-wider text-slate-500">machines</span>
+                </div>
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Running</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ cloudRunning }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Offline</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ cloudOffline }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Changing</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ cloudOther }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="relative w-24 h-24 mx-auto mb-3">
+                <svg viewBox="0 0 100 100" class="w-24 h-24">
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="{{ vAttDash }}" stroke-dashoffset="{{ vAttOff }}" transform="rotate(-90 50 50)" />
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#f59e0b" stroke-width="10" stroke-dasharray="{{ vFreeDash }}" stroke-dashoffset="{{ vFreeOff }}" transform="rotate(-90 50 50)" />
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ volumeGb }}</span>
+                  <span class="text-[9px] font-medium uppercase tracking-wider text-slate-500">GB</span>
+                </div>
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Attached</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ volumeAttachedGb }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Idle</span>
+                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ volumeFreeGb }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+{{/if}}
+      </div>
+{{/if}}
+{{/if}}
 
       <div class="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
 
@@ -326,7 +867,7 @@ template
               </div>
               <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No servers yet</h3>
               <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
-                Provision a server on Linode or connect your own over SSH, then start deploying to it.
+                Provision a server at one of your cloud providers or connect your own over SSH, then start deploying to it.
               </p>
               <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
                 Add your first server
@@ -495,6 +1036,9 @@ template
               </a>
               <a href="{{ newSiteHref }}" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 New site <span class="text-slate-400">&rarr;</span>
+              </a>
+              <a href="/providers" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                Cloud providers <span class="text-slate-400">&rarr;</span>
               </a>
 {{#if Mail.available}}
               <a href="/dashboard/mail" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">

@@ -44,10 +44,10 @@ const TOKEN_HELP: Record<string, string> = {
     linode: "Create a personal access token with Linodes: Read/Write and try again.",
     hetzner: "Create an API token with Read & Write permission in your Cloud project and try again.",
     digitalocean: "Create a personal access token with Read & Write scope and try again.",
-    // VULTR: the access control list is the usual cause of a rejected key
     vultr: "Create an API key in Account → API, and allow this server's IP address (or all IPv4) in its access control list. Then try again.",
-    // AWS: the IAM user needs the EC2 permissions listed in the form's help text
     aws: "Check the access key pair, and that its IAM user is allowed to use EC2 (describe, run and terminate instances). Then try again.",
+    upcloud: "Check the API username and password, that API access is enabled for that account, and that this server's IP address is allowed. Then try again.",
+    contabo: "Check the client ID, client secret, API user and API password from Account → Security & Access → API in the Contabo panel. Then try again.",
 };
 
 /** Strips the encrypted secrets from anything that leaves the API. */
@@ -120,11 +120,17 @@ async function checkToken(
     }
 }
 
-/** A 422 lands on the credential field of the form, anything else is a general error. */
+/** Which form field a rejected-credentials error (422) is shown under. */
+const AUTH_FIELD: Record<string, string> = {
+    aws: "secret_access_key",
+    upcloud: "password",
+    contabo: "api_password",
+};
+
 function tokenProblemBody(kind: string, problem: { status: number; message: string }) {
     if (problem.status !== 422) return { error: problem.message };
 
-    const field = kind === "aws" ? "secret_access_key" : "api_token";
+    const field = AUTH_FIELD[kind] ?? "api_token";
     return { errors: { [field]: [problem.message] } };
 }
 

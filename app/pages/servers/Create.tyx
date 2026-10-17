@@ -86,6 +86,15 @@ action
     if p.kind is "aws" {
       kindName = "Amazon Web Services"
     }
+
+        // UPCLOUD
+    if p.kind is "upcloud" {
+      kindName = "UpCloud"
+    }
+    // CONTABO
+    if p.kind is "contabo" {
+      kindName = "Contabo"
+    }
     return { id: p.id, label: p.label, kind: p.kind, kindName: kindName }
   }
 

@@ -18,6 +18,8 @@ state
   doCount: 0
   vultrCount: 0
   awsCount: 0
+  upcloudCount: 0
+  contaboCount: 0
   serverCount: 0
   removing: 0
   removeError: ""
@@ -67,6 +69,19 @@ action
       tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
     }
 
+      // UPCLOUD
+    if p.kind is "upcloud" {
+      kindName = "UpCloud"
+      tileLetter = "U"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+    }
+    // CONTABO
+    if p.kind is "contabo" {
+      kindName = "Contabo"
+      tileLetter = "C"
+      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+    }
+
     let since = "-"
     if p.created_at {
       since = p.created_at.slice(0, 10)
@@ -94,6 +109,11 @@ action
     // AWS
     this.awsCount = list.filter((p) => p.kind is "aws").length
     this.serverCount = list.reduce((n, p) => n + p.inUse, 0)
+
+        // UPCLOUD
+    this.upcloudCount = list.filter((p) => p.kind is "upcloud").length
+    // CONTABO
+    this.contaboCount = list.filter((p) => p.kind is "contabo").length
   }
 
   async addProvider(provider) {
@@ -155,7 +175,7 @@ template
         <ProviderForm onSaved="{{ addProvider }}" />
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Connections</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ items.length }}</p>
@@ -180,6 +200,14 @@ template
           <p class="text-slate-500 text-xs mb-1">AWS</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ awsCount }}</p>
         </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">UpCloud</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ upcloudCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Contabo</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ contaboCount }}</p>
+        </div>
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Servers created</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ serverCount }}</p>
@@ -200,9 +228,11 @@ template
           <span class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg font-bold">D</span>
           <span class="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center text-lg font-bold">V</span>
           <span class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg font-bold">A</span>
+          <span class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg font-bold">U</span>
+          <span class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-lg font-bold">C</span>
         </div>
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No providers connected</h2>
-        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr or AWS account to create servers from here. You only need an API token, or an access key for AWS.</p>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr, AWS, UpCloud or Contabo account to create servers from here.</p>
         <ProviderForm onSaved="{{ addProvider }}" />
       </div>
 {{/if}}
