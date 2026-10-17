@@ -138,10 +138,15 @@ action
       return null
     }
 
-    let url = result.data.url
+       let url = result.data.url
     if not url {
-      const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
-      url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.hostname + ":" + port + "/terminal"
+      const host = window.location.hostname
+      if host is "localhost" or host is "127.0.0.1" {
+        const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
+        url = "ws://" + host + ":" + port + "/terminal"
+      } else {
+        url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.host + "/channels/terminal"
+      }
     }
 
     const ticket = result.data.ticket
