@@ -194,9 +194,10 @@ onMount
     this.domainId = domain
     this.domainName = params.get("name") or domain
 
-    const ns = await useApi("/api/registrars/" + id + "/domains/" + encodeURIComponent(domain) + "/nameservers")
+        const ns = await useApi("/api/registrars/" + id + "/domains/" + encodeURIComponent(domain) + "/nameservers")
     if ns.ok {
       this.nsEditable = ns.data.editable
+      this.nameservers = ns.data.servers or []
     }
 
     await this.load()
