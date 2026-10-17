@@ -1,0 +1,251 @@
+page ProviderBilling
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Billing"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  kindName: ""
+  currency: "USD"
+  locked: false
+  error: ""
+  loaded: false
+  note: ""
+  estimated: false
+  hasBalance: false
+  balanceText: ""
+  currentLabel: ""
+  currentText: "-"
+  hasTransfer: false
+  transferText: ""
+  items: []
+  invoices: []
+  payments: []
+  openInvoice: ""
+  invoiceItems: []
+  itemsBusy: false
+  itemsError: ""
+
+action
+  money(currency, n) {
+    return currency + " " + Number(n).toFixed(2)
+  }
+
+  async load() {
+    const result = await useApi("/api/providers/" + this.providerId + "/billing")
+
+    if result.ok {
+      const b = result.data
+      const c = b.currency
+
+      this.currency = c
+      this.note = b.note
+      this.estimated = b.estimated
+      this.currentLabel = b.currentLabel
+      if b.current is not null {
+        this.currentText = this.money(c, b.current)
+      }
+      if b.balance is not null {
+        this.hasBalance = true
+        this.balanceText = this.money(c, b.balance)
+      }
+      if b.transfer is not null {
+        this.hasTransfer = true
+        this.transferText = b.transfer.usedGb + " of " + b.transfer.quotaGb + " GB used"
+      }
+      this.items = b.items.map((i) => ({ label: i.label, amountText: this.money(c, i.amount) }))
+      this.invoices = b.invoices.map((i) => ({ id: i.id, label: i.label, date: i.date, totalText: this.money(c, i.total) }))
+      this.payments = b.payments.map((p) => ({ id: p.id, date: p.date, amountText: this.money(c, p.amount) }))
+      this.locked = false
+      this.error = ""
+      this.loaded = true
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load billing. Try again."
+    }
+  }
+
+  async toggleInvoice(id) {
+    if this.openInvoice is id {
+      this.openInvoice = ""
+      return null
+    }
+
+    this.openInvoice = id
+    this.invoiceItems = []
+    this.itemsError = ""
+    this.itemsBusy = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/billing/invoices/" + id)
+
+    if this.openInvoice is not id {
+      return null
+    }
+
+    this.itemsBusy = false
+
+    if result.ok and Array.isArray(result.data) {
+      this.invoiceItems = result.data.map((r) => ({
+        label: r.label,
+        range: r.from is "" ? "" : r.from + " to " + r.to,
+        totalText: this.money(this.currency, r.total)
+      }))
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.itemsError = result.data?.error or "Couldn't load the invoice items."
+    }
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.providerId = id
+
+    const p = await useApi("/api/providers/" + id)
+    if not p.ok {
+      window.location.href = "/providers"
+      return null
+    }
+    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="billing" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Provider
+      </a>
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Billing</h1>
+      <p class="text-slate-500 text-sm mb-6">{{ kindName }} account</p>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+{{/if}}
+
+{{#if loaded}}
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+{{#if hasBalance}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Balance</p>
+          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ balanceText }}</p>
+        </div>
+{{/if}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">{{ currentLabel }}</p>
+          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ currentText }}</p>
+        </div>
+{{#if hasTransfer}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Network transfer this month</p>
+          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ transferText }}</p>
+        </div>
+{{/if}}
+      </div>
+
+      <p class="text-slate-500 text-xs mb-8">{{ note }}</p>
+
+{{#if items.length is not 0}}
+      <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Servers in this project</h2>
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
+{{#each i in items}}
+        <div class="flex items-center justify-between gap-4 px-5 py-3">
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ i.label }}</p>
+          <p class="text-slate-500 text-sm shrink-0">{{ i.amountText }}</p>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+{{#if invoices.length is not 0}}
+      <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Recent invoices</h2>
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
+{{#each i in invoices}}
+        <div>
+          <button onclick="{{ toggleInvoice(i.id) }}" class="w-full flex items-center justify-between gap-4 px-5 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm truncate">{{ i.label }}</p>
+              <p class="text-slate-500 text-xs">{{ i.date }}</p>
+            </div>
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-medium shrink-0">{{ i.totalText }}</p>
+          </button>
+
+{{#if openInvoice is i.id}}
+          <div class="px-5 pb-4 bg-slate-50 dark:bg-slate-950/40">
+{{#if itemsBusy}}
+            <p class="text-slate-500 text-xs pt-3">Loading items…</p>
+{{/if}}
+{{#if itemsError}}
+            <p role="alert" class="text-rose-500 text-xs pt-3">{{ itemsError }}</p>
+{{/if}}
+{{#each it in invoiceItems}}
+            <div class="flex items-start justify-between gap-4 pt-3">
+              <div class="min-w-0">
+                <p class="text-slate-700 dark:text-slate-300 text-xs font-mono break-words">{{ it.label }}</p>
+                <p class="text-slate-500 text-[11px]">{{ it.range }}</p>
+              </div>
+              <p class="text-slate-500 text-xs shrink-0">{{ it.totalText }}</p>
+            </div>
+{{/each}}
+          </div>
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+{{#if payments.length is not 0}}
+      <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Recent payments</h2>
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+{{#each p in payments}}
+        <div class="flex items-center justify-between gap-4 px-5 py-3">
+          <p class="text-slate-500 text-sm">{{ p.date }}</p>
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-medium shrink-0">{{ p.amountText }}</p>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

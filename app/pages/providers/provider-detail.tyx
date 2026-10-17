@@ -1,0 +1,250 @@
+page ProviderDetail
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Provider"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  provider: null
+  notFound: false
+  kindName: ""
+  tileLetter: ""
+  tileClass: ""
+  manage: false
+  rows: []
+  domainCount: 0
+  domainsLocked: false
+  accessHelp: ""
+  billingLabel: "Balance"
+  billingText: "-"
+  createHref: "/servers/create"
+
+action
+  applyKind(kind) {
+    this.kindName = "Linode (Akamai)"
+    this.tileLetter = "L"
+    this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    this.manage = true
+
+    if kind is "hetzner" {
+      this.kindName = "Hetzner Cloud"
+      this.tileLetter = "H"
+      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+    if kind is "digitalocean" {
+      this.kindName = "DigitalOcean"
+      this.tileLetter = "D"
+      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400"
+      this.manage = false
+    }
+    if kind is "vultr" {
+      this.kindName = "Vultr"
+      this.tileLetter = "V"
+      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400"
+      this.manage = false
+    }
+    if kind is "aws" {
+      this.kindName = "Amazon Web Services"
+      this.tileLetter = "A"
+      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
+      this.manage = false
+    }
+  }
+
+  money(currency, n) {
+    return currency + " " + Number(n).toFixed(2)
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      this.notFound = true
+      this.checkedAuth = true
+      return null
+    }
+
+    const result = await useApi("/api/providers/" + id)
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if not result.ok {
+      this.notFound = true
+      this.checkedAuth = true
+      return null
+    }
+
+    this.providerId = id
+    this.provider = result.data
+    this.createHref = "/servers/create?provider=" + id
+    this.applyKind(result.data.kind)
+
+    const prov = await useApi("/api/provisions")
+    if prov.ok and Array.isArray(prov.data) {
+      this.rows = prov.data.filter((r) => r.provider_id is Number(id))
+    }
+
+    if this.manage {
+      const d = await useApi("/api/providers/" + id + "/domains")
+      if d.ok and Array.isArray(d.data) {
+        this.domainCount = d.data.length
+      } else if d.status is 403 {
+        this.domainsLocked = true
+        this.accessHelp = d.data?.error or ""
+      }
+
+      const b = await useApi("/api/providers/" + id + "/billing")
+      if b.ok {
+        this.billingLabel = b.data.currentLabel
+        if b.data.current is not null {
+          this.billingText = this.money(b.data.currency, b.data.current)
+        }
+      }
+    }
+
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="overview" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Provider not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
+        <a href="/providers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to providers</a>
+      </div>
+{{/if}}
+
+{{#if provider}}
+      <a href="/providers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Cloud providers
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div class="flex items-center gap-4 min-w-0">
+          <span class="{{ tileClass }}">{{ tileLetter }}</span>
+          <div class="min-w-0">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ provider.label }}</h1>
+            <p class="text-slate-500 text-sm">{{ kindName }}</p>
+          </div>
+        </div>
+        <a href="{{ createHref }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</a>
+      </div>
+
+{{#if domainsLocked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ accessHelp }}</p>
+      </div>
+{{/if}}
+
+{{#if not manage}}
+      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 mb-4">
+        <p class="text-slate-500 text-sm">Domains and billing for {{ kindName }} are coming next. You can already create servers from here.</p>
+      </div>
+{{/if}}
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Servers created</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ rows.length }}</p>
+        </div>
+        <a href="{{ '/providers/provider-domains?id=' + providerId }}" class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <p class="text-slate-500 text-xs mb-1">Domains</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ domainCount }}</p>
+        </a>
+        <a href="{{ '/providers/provider-billing?id=' + providerId }}" class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <p class="text-slate-500 text-xs mb-1">{{ billingLabel }}</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ billingText }}</p>
+        </a>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Connected</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ provider.created_at.slice(0, 10) }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-end justify-between mb-4">
+        <div>
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Servers</h2>
+          <p class="text-slate-500 text-sm mt-1">Machines created through this connection.</p>
+        </div>
+      </div>
+
+{{#if rows.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center">
+        <p class="text-slate-500 text-sm mb-4">No servers created here yet.</p>
+        <a href="{{ createHref }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 hover:bg-emerald-400 transition-all">Create the first one</a>
+      </div>
+{{/if}}
+
+      <div class="space-y-3">
+{{#each pr in rows}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+{{#if pr.server_id is not 0}}
+              <a href="{{ '/servers/server-detail?id=' + pr.server_id }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 hover:underline transition-colors">{{ pr.name }}</a>
+{{/if}}
+{{#if pr.server_id is 0}}
+              <h3 class="text-slate-900 dark:text-slate-100 font-semibold">{{ pr.name }}</h3>
+{{/if}}
+              <p class="text-slate-500 text-xs font-mono mt-1">{{ pr.region }} / {{ pr.plan }} / {{ pr.template }}</p>
+{{#if pr.ip}}
+              <p class="text-slate-500 text-xs font-mono">{{ pr.ip }}</p>
+{{/if}}
+            </div>
+            <div class="text-right shrink-0">
+{{#if pr.status is "done"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
+              </span>
+{{/if}}
+{{#if pr.status is "failed"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+              </span>
+{{/if}}
+{{#if pr.status is "running"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
+              </span>
+{{/if}}
+{{#if pr.status is "pending"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
+              </span>
+{{/if}}
+            </div>
+          </div>
+{{#if pr.error}}
+          <p class="text-rose-500 text-xs mt-3">{{ pr.error }}</p>
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

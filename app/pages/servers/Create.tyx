@@ -323,7 +323,14 @@ onMount
     await Providers.load()
     this.providerCards = Providers.data.map((p) => this.decorateProvider(p))
 
-    if Providers.data.length is 1 {
+    const params = new URLSearchParams(window.location.search)
+    const wanted = Number(params.get("provider"))
+    const match = Providers.data.find((p) => p.id is wanted)
+
+    if match {
+      this.providerId = match.id
+      this.providerKind = match.kind or "linode"
+    } else if Providers.data.length is 1 {
       this.providerId = Providers.data[0].id
       this.providerKind = Providers.data[0].kind or "linode"
     }

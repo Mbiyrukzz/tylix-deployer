@@ -237,6 +237,8 @@ template
           </div>
 
           <div class="flex items-center gap-3 pt-5 border-t border-slate-200 dark:border-slate-800">
+            
+                        <a href="{{ '/providers/provider-detail?id=' + p.id }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Manage</a>
             <ProviderForm provider="{{ p }}" onSaved="{{ updateProvider }}" />
 
 {{#if removing is p.id}}

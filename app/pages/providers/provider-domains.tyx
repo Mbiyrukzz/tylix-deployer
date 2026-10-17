@@ -1,0 +1,327 @@
+page ProviderDomains
+
+import { IconArrowLeft, IconGlobe } from "tylix-icons"
+
+title "Domains"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  kind: ""
+  kindName: ""
+  list: []
+  domains: []
+  query: ""
+  locked: false
+  error: ""
+  showForm: false
+  newName: ""
+  newEmail: ""
+  saving: false
+  nameError: ""
+  emailError: ""
+  formError: ""
+  removing: ""
+  removeBusy: false
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  decorate(d) {
+    let countText = "-"
+    if d.recordCount is not null {
+      countText = d.recordCount + " records"
+    }
+
+    let statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
+    if d.status is "active" or d.status is "verified" {
+      statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500"
+    }
+
+    return Object.assign({}, d, {
+      href: "/providers/provider-domain?id=" + this.providerId + "&domain=" + d.id,
+      countText: countText,
+      statusCls: statusCls
+    })
+  }
+
+  applyFilter() {
+    const q = this.query.toLowerCase().trim()
+    this.domains = this.list.filter((d) => q is "" or d.name.toLowerCase().includes(q))
+  }
+
+  setQuery(value) {
+    this.query = value
+    this.applyFilter()
+  }
+
+  async load() {
+    const result = await useApi("/api/providers/" + this.providerId + "/domains")
+
+    if result.ok and Array.isArray(result.data) {
+      this.list = result.data.map((d) => this.decorate(d))
+      this.locked = false
+      this.error = ""
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load domains. Try again."
+    }
+
+    this.applyFilter()
+  }
+
+  openForm() {
+    this.nameError = ""
+    this.emailError = ""
+    this.formError = ""
+    this.showForm = true
+  }
+
+  closeForm() {
+    this.showForm = false
+    this.newName = ""
+    this.newEmail = ""
+  }
+
+  async create() {
+    if this.saving {
+      return null
+    }
+
+    this.nameError = ""
+    this.emailError = ""
+    this.formError = ""
+    this.saving = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/domains", {
+      method: "POST",
+      body: { name: this.newName, email: this.newEmail }
+    })
+
+    this.saving = false
+
+    if result.ok {
+      this.closeForm()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.nameError = this.firstError(errors, "name")
+      this.emailError = this.firstError(errors, "email")
+      this.formError = result.data?.error or ""
+      if this.nameError is "" and this.emailError is "" and this.formError is "" {
+        this.formError = "Couldn't create the domain. Try again."
+      }
+    }
+  }
+
+  askRemove(id) {
+    this.error = ""
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = ""
+  }
+
+  async confirmRemove(id) {
+    if this.removeBusy {
+      return null
+    }
+
+    this.removeBusy = true
+    const result = await useApi("/api/providers/" + this.providerId + "/domains/" + id, { method: "DELETE" })
+    this.removeBusy = false
+    this.removing = ""
+
+    if not result.ok {
+      this.error = result.data?.error or "Couldn't delete that domain."
+    }
+
+    await this.load()
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.providerId = id
+
+    const p = await useApi("/api/providers/" + id)
+    if not p.ok {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.kind = p.data.kind
+    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="domains" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Provider
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Domains</h1>
+          <p class="text-slate-500 text-sm">DNS zones hosted at {{ kindName }}.</p>
+        </div>
+{{#if not locked}}
+        <button onclick="{{ openForm() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Add domain</button>
+{{/if}}
+      </div>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+{{/if}}
+
+{{#if showForm}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Add a domain</h2>
+        <p class="text-slate-500 text-sm mb-4">After it is created, point the domain's nameservers at {{ kindName }} in your registrar.</p>
+
+        <label for="domain-name" class="block text-slate-500 text-xs font-medium mb-1.5">Domain</label>
+        <input
+          id="domain-name"
+          type="text"
+          value="{{ newName }}"
+          oninput="{{ newName = $event.target.value }}"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          placeholder="example.com"
+        />
+{{#if nameError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ nameError }}</p>
+{{/if}}
+
+{{#if kind is "linode"}}
+        <label for="domain-email" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">SOA email</label>
+        <input
+          id="domain-email"
+          type="text"
+          value="{{ newEmail }}"
+          oninput="{{ newEmail = $event.target.value }}"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          placeholder="admin@example.com"
+        />
+{{#if emailError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ emailError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if formError}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ formError }}</p>
+{{/if}}
+
+        <div class="flex items-center justify-end gap-3 mt-5">
+          <button onclick="{{ closeForm() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if saving}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not saving}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create domain</button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if list.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconGlobe class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domains yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">Add a domain to manage its DNS records here.</p>
+      </div>
+{{/if}}
+
+{{#if list.length is not 0}}
+      <div class="relative sm:w-72 mb-5">
+        <input
+          type="text"
+          value="{{ query }}"
+          oninput="{{ setQuery($event.target.value) }}"
+          placeholder="Search domains"
+          class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+        />
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+{{#each d in domains}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+                <IconGlobe class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              </div>
+              <div class="min-w-0">
+                <a href="{{ d.href }}" class="block text-slate-900 dark:text-slate-100 font-semibold truncate hover:text-emerald-700 dark:hover:text-emerald-500 transition-colors">{{ d.name }}</a>
+                <p class="text-slate-500 text-xs">{{ d.countText }}</p>
+              </div>
+            </div>
+            <span class="{{ d.statusCls }}">{{ d.status }}</span>
+          </div>
+
+          <div class="flex items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <a href="{{ d.href }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">DNS records</a>
+{{#if removing is d.id}}
+            <button onclick="{{ confirmRemove(d.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, delete</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+{{#if removing is not d.id}}
+            <button onclick="{{ askRemove(d.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

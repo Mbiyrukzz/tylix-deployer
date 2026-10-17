@@ -294,7 +294,7 @@ template
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
           <li>Open <a href="https://cloud.linode.com/profile/tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Profile &rarr; API Tokens</a> in Linode Cloud Manager.</li>
           <li>Create a personal access token.</li>
-          <li>Give it <span class="font-mono">Linodes: Read/Write</span>. Everything else can stay on No Access.</li>
+          <li>Give it <span class="font-mono">Linodes: Read/Write</span> to create servers, <span class="font-mono">Domains: Read/Write</span> to manage DNS, and <span class="font-mono">Account: Read Only</span> to see billing. Everything else can stay on No Access.</li>
         </ol>
 {{/if}}
 {{#if kind is "hetzner"}}
