@@ -18,6 +18,33 @@ state
   expiring: 0
 
 action
+  daysClass(days) {
+    if days < 0 {
+      return "text-rose-600 dark:text-rose-500 text-sm font-medium"
+    }
+    if days < 30 {
+      return "text-amber-600 dark:text-amber-500 text-sm font-medium"
+    }
+    return "text-slate-900 dark:text-slate-100 text-sm font-medium"
+  }
+
+  daysText(days) {
+    if days < 0 {
+      return "Expired"
+    }
+    return days + " days"
+  }
+
+  renewText(auto) {
+    if auto is true {
+      return "Auto-renews"
+    }
+    if auto is false {
+      return "Won't auto-renew"
+    }
+    return "Unknown"
+  }
+
   async load() {
     this.loading = true
     this.error = ""
@@ -27,25 +54,7 @@ action
     this.loading = false
 
     if result.ok and Array.isArray(result.data) {
-      this.rows = result.data.map((d) => {
-        let cls = "text-slate-900 dark:text-slate-100 text-sm font-medium"
-        let text = d.daysLeft + " days"
-        if d.daysLeft < 30 {
-          cls = "text-amber-600 dark:text-amber-500 text-sm font-medium"
-        }
-        if d.daysLeft < 0 {
-          cls = "text-rose-600 dark:text-rose-500 text-sm font-medium"
-          text = "Expired"
-        }
-        let renew = "Unknown"
-        if d.autoRenew is true {
-          renew = "Auto-renews"
-        }
-        if d.autoRenew is false {
-          renew = "Won't auto-renew"
-        }
-        return Object.assign({}, d, { cls: cls, text: text, renew: renew })
-      })
+      this.rows = result.data.map((d) => Object.assign({}, d, { cls: this.daysClass(d.daysLeft), text: this.daysText(d.daysLeft), renew: this.renewText(d.autoRenew) }))
       this.expiring = this.rows.filter((d) => d.daysLeft < 30).length
     } else if result.status is 401 {
       window.location.href = "/login"
