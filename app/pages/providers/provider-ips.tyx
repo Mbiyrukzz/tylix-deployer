@@ -1,0 +1,694 @@
+page ProviderIps
+
+import { IconArrowLeft, IconSignal } from "tylix-icons"
+
+title "IP addresses"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  kind: ""
+  kindName: ""
+  locked: false
+  error: ""
+  list: []
+  shown: []
+  tabs: []
+  filter: "ALL"
+  machineOptions: []
+  regions: []
+  showCreate: false
+  createMode: "machine"
+  modeButtons: []
+  versionButtons: []
+  fVersion: "v4"
+  fRegion: ""
+  fRegionLabel: ""
+  fMachine: ""
+  fMachineLabel: ""
+  fLabel: ""
+  regionOpen: false
+  machineOpen: false
+  creating: false
+  regionError: ""
+  machineError: ""
+  labelError: ""
+  createError: ""
+  editingId: ""
+  rdnsValue: ""
+  rdnsError: ""
+  rdnsBusy: false
+  removing: ""
+  removeBusy: false
+  actionError: ""
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  decorate(ip) {
+    const base = "inline-flex w-20 shrink-0 justify-center rounded-md px-2 py-1 text-xs font-semibold "
+
+    let kindText = ip.kind
+    let kindCls = base + "bg-slate-500/10 text-slate-600 dark:text-slate-300"
+    if ip.kind is "public" {
+      kindText = "Public"
+      kindCls = base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    }
+    if ip.kind is "private" {
+      kindText = "Private"
+    }
+    if ip.kind is "primary" {
+      kindText = "Primary"
+      kindCls = base + "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+    }
+    if ip.kind is "floating" {
+      kindText = "Floating"
+      kindCls = base + "bg-violet-500/10 text-violet-600 dark:text-violet-400"
+    }
+
+    let attachText = "Not attached"
+    if ip.attachedId {
+      attachText = ip.attachedName
+      if attachText is "" {
+        attachText = "Server " + ip.attachedId
+      }
+    }
+
+    let rdnsText = "Not set"
+    if ip.rdns {
+      rdnsText = ip.rdns
+    }
+
+    let versionText = "IPv4"
+    if ip.version is "v6" {
+      versionText = "IPv6"
+    }
+
+    let canRdns = true
+    if ip.kind is "private" {
+      canRdns = false
+    }
+
+    // Linode refuses to release a server's primary address and says so. Hetzner keeps
+    // an assigned primary IP for as long as its server exists.
+    let canRelease = false
+    if this.kind is "linode" and ip.version is "v4" and ip.kind is "public" {
+      canRelease = true
+    }
+    if this.kind is "hetzner" and ip.kind is "floating" {
+      canRelease = true
+    }
+    if this.kind is "hetzner" and ip.kind is "primary" and not ip.attachedId {
+      canRelease = true
+    }
+
+    let regionText = "-"
+    if ip.region {
+      regionText = ip.region
+    }
+
+    return Object.assign({}, ip, {
+      kindText: kindText,
+      kindCls: kindCls,
+      attachText: attachText,
+      rdnsText: rdnsText,
+      versionText: versionText,
+      canRdns: canRdns,
+      canRelease: canRelease,
+      regionText: regionText
+    })
+  }
+
+  applyFilter() {
+    const keys = ["ALL", "v4", "v6"]
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-emerald-500 text-white dark:text-slate-950 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
+    const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-emerald-500/50 transition-all"
+
+    this.shown = this.filter is "ALL" ? this.list : this.list.filter((ip) => ip.version is this.filter)
+    this.tabs = keys.map((k) => ({
+      key: k,
+      label: k is "ALL" ? "All" : k is "v4" ? "IPv4" : "IPv6",
+      count: k is "ALL" ? this.list.length : this.list.filter((ip) => ip.version is k).length,
+      cls: k is this.filter ? activeCls : idleCls
+    }))
+  }
+
+  setFilter(key) {
+    this.filter = key
+    this.applyFilter()
+  }
+
+  async load() {
+    const result = await useApi("/api/providers/" + this.providerId + "/ips")
+
+    if result.ok and Array.isArray(result.data) {
+      this.list = result.data.map((ip) => this.decorate(ip))
+      this.locked = false
+      this.error = ""
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load IP addresses. Try again."
+    }
+
+    this.applyFilter()
+  }
+
+  async loadMachines() {
+    const result = await useApi("/api/providers/" + this.providerId + "/machines")
+    if result.ok and Array.isArray(result.data) {
+      this.machineOptions = result.data.map((m) => ({ id: m.id, label: m.label, region: m.region }))
+    }
+  }
+
+  async loadRegions() {
+    let url = "/api/catalog/linode"
+    if this.kind is "hetzner" {
+      url = "/api/catalog/hetzner?provider=" + this.providerId
+    }
+
+    const result = await useApi(url)
+    if result.ok and result.data and Array.isArray(result.data.regions) {
+      this.regions = result.data.regions
+    }
+  }
+
+  // ---- Allocate ----
+
+  buildButtons() {
+    const activeCls = "text-left rounded-xl border px-4 py-2 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200"
+    const idleCls = "text-left rounded-xl border px-4 py-2 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40"
+
+    this.modeButtons = [["machine", "For a server"], ["region", "In a location"]].map((m) => ({
+      key: m[0],
+      label: m[1],
+      cls: m[0] is this.createMode ? activeCls : idleCls
+    }))
+
+    this.versionButtons = [["v4", "IPv4"], ["v6", "IPv6"]].map((v) => ({
+      key: v[0],
+      label: v[1],
+      cls: v[0] is this.fVersion ? activeCls : idleCls
+    }))
+  }
+
+  clearCreateErrors() {
+    this.regionError = ""
+    this.machineError = ""
+    this.labelError = ""
+    this.createError = ""
+  }
+
+  async openCreate() {
+    this.clearCreateErrors()
+    this.actionError = ""
+    this.createMode = "machine"
+    this.fVersion = "v4"
+    this.buildButtons()
+    this.showCreate = true
+
+    if this.machineOptions.length is 0 {
+      await this.loadMachines()
+    }
+    if this.kind is "hetzner" and this.regions.length is 0 {
+      await this.loadRegions()
+    }
+  }
+
+  closeCreate() {
+    this.showCreate = false
+    this.regionOpen = false
+    this.machineOpen = false
+    this.fRegion = ""
+    this.fRegionLabel = ""
+    this.fMachine = ""
+    this.fMachineLabel = ""
+    this.fLabel = ""
+  }
+
+  pickMode(mode) {
+    this.createMode = mode
+    this.regionOpen = false
+    this.machineOpen = false
+    this.buildButtons()
+  }
+
+  pickVersion(v) {
+    this.fVersion = v
+    this.buildButtons()
+  }
+
+  toggleRegion() {
+    this.machineOpen = false
+    if this.regionOpen {
+      this.regionOpen = false
+    } else {
+      this.regionOpen = true
+    }
+  }
+
+  toggleMachine() {
+    this.regionOpen = false
+    if this.machineOpen {
+      this.machineOpen = false
+    } else {
+      this.machineOpen = true
+    }
+  }
+
+  pickRegion(id, label) {
+    this.fRegion = id
+    this.fRegionLabel = label
+    this.regionOpen = false
+  }
+
+  pickMachine(id, label) {
+    this.fMachine = id
+    this.fMachineLabel = label
+    this.machineOpen = false
+  }
+
+  async create() {
+    if this.creating {
+      return null
+    }
+
+    this.clearCreateErrors()
+    this.creating = true
+
+    // Linode only allocates IPv4, always for a server.
+    let mode = this.createMode
+    let version = this.fVersion
+    if this.kind is "linode" {
+      mode = "machine"
+      version = "v4"
+    }
+
+    let region = ""
+    let machine = ""
+    if mode is "region" {
+      region = this.fRegion
+    } else {
+      machine = this.fMachine
+    }
+
+    const result = await useApi("/api/providers/" + this.providerId + "/ips", {
+      method: "POST",
+      body: { version: version, region: region, machine_id: machine, label: this.fLabel }
+    })
+
+    this.creating = false
+
+    if result.ok {
+      this.closeCreate()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.regionError = this.firstError(errors, "region")
+      this.machineError = this.firstError(errors, "machine_id")
+      this.labelError = this.firstError(errors, "label")
+      this.createError = result.data?.error or ""
+      if not errors and this.createError is "" {
+        this.createError = "Couldn't allocate the address. Try again."
+      }
+    }
+  }
+
+  // ---- Reverse DNS ----
+
+  openRdns(id) {
+    const ip = this.list.find((x) => x.id is id)
+    if not ip {
+      return null
+    }
+
+    this.rdnsError = ""
+    this.actionError = ""
+    this.removing = ""
+    this.rdnsValue = ip.rdns
+    this.editingId = id
+  }
+
+  cancelRdns() {
+    this.editingId = ""
+    this.rdnsValue = ""
+  }
+
+  async saveRdns() {
+    if this.rdnsBusy {
+      return null
+    }
+
+    this.rdnsError = ""
+    this.rdnsBusy = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/ips/" + this.editingId, {
+      method: "PUT",
+      body: { rdns: this.rdnsValue }
+    })
+
+    this.rdnsBusy = false
+
+    if result.ok {
+      this.cancelRdns()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.rdnsError = this.firstError(result.data?.errors, "rdns")
+      if this.rdnsError is "" {
+        this.rdnsError = result.data?.error or "Couldn't save the reverse DNS. Try again."
+      }
+    }
+  }
+
+  // ---- Release ----
+
+  askRemove(id) {
+    this.actionError = ""
+    this.editingId = ""
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = ""
+  }
+
+  async confirmRemove(id) {
+    if this.removeBusy {
+      return null
+    }
+
+    this.removeBusy = true
+    const result = await useApi("/api/providers/" + this.providerId + "/ips/" + id, { method: "DELETE" })
+    this.removeBusy = false
+    this.removing = ""
+
+    if not result.ok {
+      this.actionError = result.data?.error or "Couldn't release that address."
+    }
+
+    await this.load()
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.providerId = id
+
+    const p = await useApi("/api/providers/" + id)
+    if not p.ok {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.kind = p.data.kind
+    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="ips" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Provider
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">IP addresses</h1>
+          <p class="text-slate-500 text-sm">Addresses in this {{ kindName }} account and their reverse DNS.</p>
+        </div>
+{{#if not locked}}
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Allocate address</button>
+{{/if}}
+      </div>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if actionError}}
+      <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
+        <p class="text-rose-800 dark:text-rose-400 text-sm">{{ actionError }}</p>
+      </div>
+{{/if}}
+
+{{#if showCreate}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Allocate an address</h2>
+{{#if kind is "linode"}}
+        <p class="text-slate-500 text-sm mb-4">Adds a public IPv4 address to a Linode. Extra addresses are billed monthly.</p>
+{{/if}}
+{{#if kind is "hetzner"}}
+        <p class="text-slate-500 text-sm mb-4">Creates a floating IP that you can move between servers. Hetzner bills it monthly, assigned or not.</p>
+{{/if}}
+
+{{#if kind is "hetzner"}}
+        <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Version</p>
+        <div class="flex flex-wrap gap-2 mb-4">
+{{#each b in versionButtons}}
+          <button onclick="{{ pickVersion(b.key) }}" class="{{ b.cls }}">{{ b.label }}</button>
+{{/each}}
+        </div>
+
+        <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Create</p>
+        <div class="flex flex-wrap gap-2 mb-4">
+{{#each b in modeButtons}}
+          <button onclick="{{ pickMode(b.key) }}" class="{{ b.cls }}">{{ b.label }}</button>
+{{/each}}
+        </div>
+{{/if}}
+
+{{#if createMode is "machine"}}
+        <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Server</p>
+        <div class="relative">
+          <button onclick="{{ toggleMachine() }}" class="w-full flex items-center justify-between text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+{{#if fMachineLabel}}
+            <span>{{ fMachineLabel }}</span>
+{{/if}}
+{{#if not fMachineLabel}}
+            <span class="text-slate-500">Select a server</span>
+{{/if}}
+            <span class="text-slate-500 text-xs">&#9662;</span>
+          </button>
+{{#if machineOpen}}
+          <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+{{#each m in machineOptions}}
+            <button onclick="{{ pickMachine(m.id, m.label) }}" class="block w-full text-left px-3.5 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+              {{ m.label }} <span class="text-xs text-slate-500 font-mono">{{ m.region }}</span>
+            </button>
+{{/each}}
+          </div>
+{{/if}}
+        </div>
+{{#if machineError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ machineError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if kind is "hetzner"}}
+{{#if createMode is "region"}}
+        <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Home location</p>
+        <div class="relative">
+          <button onclick="{{ toggleRegion() }}" class="w-full flex items-center justify-between text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+{{#if fRegionLabel}}
+            <span>{{ fRegionLabel }}</span>
+{{/if}}
+{{#if not fRegionLabel}}
+            <span class="text-slate-500">Select a location</span>
+{{/if}}
+            <span class="text-slate-500 text-xs">&#9662;</span>
+          </button>
+{{#if regionOpen}}
+          <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+{{#each r in regions}}
+            <button onclick="{{ pickRegion(r.id, r.label) }}" class="block w-full text-left px-3.5 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+              {{ r.label }} <span class="text-xs text-slate-500 font-mono">{{ r.id }}</span>
+            </button>
+{{/each}}
+          </div>
+{{/if}}
+        </div>
+{{#if regionError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ regionError }}</p>
+{{/if}}
+{{/if}}
+
+        <label for="ip-label" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Name (optional)</label>
+        <input
+          id="ip-label"
+          type="text"
+          value="{{ fLabel }}"
+          oninput="{{ fLabel = $event.target.value }}"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          placeholder="web-failover"
+        />
+{{#if labelError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ labelError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if createError}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ createError }}</p>
+{{/if}}
+
+        <div class="flex items-center justify-end gap-3 mt-6">
+          <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if creating}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Allocating…</button>
+{{/if}}
+{{#if not creating}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Allocate</button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if list.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconSignal class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No addresses yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">Addresses appear here once you have a server in this account.</p>
+      </div>
+{{/if}}
+
+{{#if list.length is not 0}}
+      <div class="flex flex-wrap items-center gap-2 mb-5">
+{{#each t in tabs}}
+        <button onclick="{{ setFilter(t.key) }}" class="{{ t.cls }}">
+          {{ t.label }}
+          <span class="text-xs opacity-70">{{ t.count }}</span>
+        </button>
+{{/each}}
+      </div>
+
+{{#if shown.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center">
+        <p class="text-slate-500 text-sm">No addresses to show.</p>
+      </div>
+{{/if}}
+
+      <div class="space-y-3">
+{{#each ip in shown}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex flex-wrap items-start gap-3">
+            <span class="{{ ip.kindCls }}">{{ ip.kindText }}</span>
+            <div class="min-w-0 flex-1 basis-56">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono font-medium break-all">{{ ip.address }}</p>
+              <p class="text-slate-500 text-xs">{{ ip.versionText }} · {{ ip.regionText }}</p>
+{{#if ip.label}}
+              <p class="text-slate-500 text-xs">{{ ip.label }}</p>
+{{/if}}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Attached to</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ ip.attachText }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Reverse DNS</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ ip.rdnsText }}</p>
+            </div>
+          </div>
+
+{{#if editingId is ip.id}}
+          <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-4 mt-4">
+            <label for="ip-rdns" class="block text-slate-500 text-xs font-medium mb-1.5">Reverse DNS name</label>
+            <input
+              id="ip-rdns"
+              type="text"
+              value="{{ rdnsValue }}"
+              oninput="{{ rdnsValue = $event.target.value }}"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              placeholder="mail.example.com"
+            />
+{{#if kind is "linode"}}
+            <p class="text-slate-500 text-xs mt-1.5">Linode only accepts a name that already has an A or AAAA record pointing at this address. Leave it empty to reset.</p>
+{{/if}}
+{{#if kind is "hetzner"}}
+            <p class="text-slate-500 text-xs mt-1.5">Leave it empty to reset. For IPv6 this sets the first address in the /64.</p>
+{{/if}}
+{{#if rdnsError}}
+            <p role="alert" class="text-rose-500 text-sm mt-2">{{ rdnsError }}</p>
+{{/if}}
+            <div class="flex items-center justify-end gap-3 mt-3">
+              <button onclick="{{ cancelRdns() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if rdnsBusy}}
+              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+{{/if}}
+{{#if not rdnsBusy}}
+              <button onclick="{{ saveRdns() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save</button>
+{{/if}}
+            </div>
+          </div>
+{{/if}}
+
+          <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+{{#if removing is ip.id}}
+            <span class="text-slate-600 dark:text-slate-300 text-sm">Release {{ ip.address }}? Anything pointing at it stops working.</span>
+            <button onclick="{{ confirmRemove(ip.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, release</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+{{#if removing is not ip.id}}
+{{#if ip.canRdns}}
+            <button onclick="{{ openRdns(ip.id) }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Edit reverse DNS</button>
+{{/if}}
+{{#if ip.canRelease}}
+            <button onclick="{{ askRemove(ip.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Release</button>
+{{/if}}
+{{/if}}
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

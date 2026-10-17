@@ -1,0 +1,392 @@
+page ProviderMachines
+
+import { IconArrowLeft, IconServer } from "tylix-icons"
+
+title "Machines"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  kind: ""
+  kindName: ""
+  locked: false
+  error: ""
+  list: []
+  machines: []
+  query: ""
+  runningCount: 0
+  offlineCount: 0
+  busyId: ""
+  confirmId: ""
+  confirmAction: ""
+  actionError: ""
+  refreshing: false
+  createHref: "/servers/create"
+
+action
+  decorate(m) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider "
+
+    let statusText = m.status
+    let statusCls = base + "bg-amber-500/10 text-amber-600 dark:text-amber-500"
+    let dotCls = "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"
+    let canBoot = false
+    let canStop = false
+    let transitional = true
+
+    if m.status is "running" {
+      statusText = "Running"
+      statusCls = base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+      dotCls = "w-1.5 h-1.5 rounded-full bg-emerald-500"
+      canStop = true
+      transitional = false
+    }
+    if m.status is "offline" {
+      statusText = "Offline"
+      statusCls = base + "bg-slate-500/10 text-slate-600 dark:text-slate-300"
+      dotCls = "w-1.5 h-1.5 rounded-full bg-slate-400"
+      canBoot = true
+      transitional = false
+    }
+    if m.status is "booting" or m.status is "starting" or m.status is "initializing" or m.status is "provisioning" {
+      statusText = "Starting"
+    }
+    if m.status is "rebooting" {
+      statusText = "Rebooting"
+    }
+    if m.status is "shutting_down" or m.status is "stopping" {
+      statusText = "Stopping"
+    }
+    if m.status is "migrating" or m.status is "rebuilding" or m.status is "deleting" {
+      statusText = m.status
+    }
+
+    let ipText = "No public IP"
+    if m.ip {
+      ipText = m.ip
+    }
+
+    let since = "-"
+    if m.created {
+      since = m.created
+    }
+
+    return Object.assign({}, m, {
+      statusText: statusText,
+      statusCls: statusCls,
+      dotCls: dotCls,
+      canBoot: canBoot,
+      canStop: canStop,
+      transitional: transitional,
+      ipText: ipText,
+      since: since
+    })
+  }
+
+  applyFilter() {
+    const q = this.query.toLowerCase().trim()
+    this.machines = this.list.filter((m) => q is "" or m.label.toLowerCase().includes(q) or m.ip.includes(q))
+    this.runningCount = this.list.filter((m) => m.status is "running").length
+    this.offlineCount = this.list.filter((m) => m.status is "offline").length
+  }
+
+  setQuery(value) {
+    this.query = value
+    this.applyFilter()
+  }
+
+  async load() {
+    const result = await useApi("/api/providers/" + this.providerId + "/machines")
+
+    if result.ok and Array.isArray(result.data) {
+      this.list = result.data.map((m) => this.decorate(m))
+      this.locked = false
+      this.error = ""
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load machines. Try again."
+    }
+
+    this.applyFilter()
+  }
+
+  async refresh() {
+    if this.refreshing {
+      return null
+    }
+
+    this.refreshing = true
+    await this.load()
+    this.refreshing = false
+  }
+
+  // Re-reads the list every 4 seconds until the machine settles, or the tries run out.
+  // target is the status the action should end in ("" for a reboot: just wait for it to be stable).
+  async settle(id, tries, target) {
+    await new Promise((resolve) => setTimeout(resolve, 4000))
+    await this.load()
+
+    const m = this.list.find((x) => x.id is id)
+    let waiting = true
+
+    if m {
+      waiting = m.transitional
+      if not waiting and target is not "" and m.status is not target {
+        waiting = true
+      }
+    }
+
+    if waiting and tries > 1 {
+      await this.settle(id, tries - 1, target)
+    }
+  }
+
+  askAction(id, action) {
+    this.actionError = ""
+    this.confirmId = id
+    this.confirmAction = action
+  }
+
+  cancelAction() {
+    this.confirmId = ""
+    this.confirmAction = ""
+  }
+
+  async act(id, action) {
+    if this.busyId is not "" {
+      return null
+    }
+
+    this.actionError = ""
+    this.confirmId = ""
+    this.confirmAction = ""
+    this.busyId = id
+
+    const result = await useApi("/api/providers/" + this.providerId + "/machines/" + id + "/" + action, {
+      method: "POST",
+      body: {}
+    })
+
+    if result.ok {
+      let target = ""
+      if action is "boot" {
+        target = "running"
+      }
+      if action is "shutdown" {
+        target = "offline"
+      }
+
+      await this.load()
+      await this.settle(id, 8, target)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't send that to the provider. Try again."
+    }
+
+    this.busyId = ""
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.providerId = id
+    this.createHref = "/servers/create?provider=" + id
+
+    const p = await useApi("/api/providers/" + id)
+    if not p.ok {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.kind = p.data.kind
+    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="machines" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Provider
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Machines</h1>
+          <p class="text-slate-500 text-sm">Every server in this {{ kindName }} account, including ones the deployer didn't create.</p>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+{{#if not locked}}
+{{#if refreshing}}
+          <button disabled class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 opacity-50">Refreshing…</button>
+{{/if}}
+{{#if not refreshing}}
+          <button onclick="{{ refresh() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Refresh</button>
+{{/if}}
+{{/if}}
+          <a href="{{ createHref }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</a>
+        </div>
+      </div>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if actionError}}
+      <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
+        <p class="text-rose-800 dark:text-rose-400 text-sm">{{ actionError }}</p>
+      </div>
+{{/if}}
+
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Machines</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ list.length }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Running</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ runningCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Offline</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ offlineCount }}</p>
+        </div>
+      </div>
+
+{{#if list.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconServer class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No machines in this account</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">Create a server and it will show up here.</p>
+      </div>
+{{/if}}
+
+{{#if list.length is not 0}}
+      <div class="relative sm:w-72 mb-5">
+        <input
+          type="text"
+          value="{{ query }}"
+          oninput="{{ setQuery($event.target.value) }}"
+          placeholder="Search by name or IP"
+          class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+        />
+      </div>
+
+{{#if machines.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center">
+        <p class="text-slate-500 text-sm">No machines match that search.</p>
+      </div>
+{{/if}}
+
+      <div class="space-y-3">
+{{#each m in machines}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+                <IconServer class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ m.label }}</h3>
+                <p class="text-slate-500 text-xs font-mono">{{ m.ipText }}</p>
+              </div>
+            </div>
+            <span class="{{ m.statusCls }}">
+              <span class="{{ m.dotCls }}"></span> {{ m.statusText }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-4 mt-4">
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Region</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ m.region }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Plan</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ m.plan }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Created</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ m.since }}</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+{{#if busyId is m.id}}
+            <span class="text-slate-500 text-sm">Working… this page updates itself.</span>
+{{/if}}
+
+{{#if busyId is not m.id}}
+{{#if confirmId is m.id}}
+            <span class="text-slate-600 dark:text-slate-300 text-sm">
+{{#if confirmAction is "shutdown"}}
+              Shut {{ m.label }} down?
+{{/if}}
+{{#if confirmAction is "reboot"}}
+              Reboot {{ m.label }}?
+{{/if}}
+            </span>
+            <button onclick="{{ act(m.id, confirmAction) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, do it</button>
+            <button onclick="{{ cancelAction() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+
+{{#if confirmId is not m.id}}
+{{#if m.canBoot}}
+            <button onclick="{{ act(m.id, 'boot') }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Boot</button>
+{{/if}}
+{{#if m.canStop}}
+            <button onclick="{{ askAction(m.id, 'reboot') }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reboot</button>
+            <button onclick="{{ askAction(m.id, 'shutdown') }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Shut down</button>
+{{/if}}
+{{#if m.transitional}}
+            <span class="text-slate-400 text-xs">Wait for it to finish before sending another action.</span>
+{{/if}}
+{{/if}}
+{{/if}}
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

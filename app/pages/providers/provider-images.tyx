@@ -1,0 +1,498 @@
+page ProviderImages
+
+import { IconArrowLeft, IconPhotograph } from "tylix-icons"
+
+title "Images"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  kind: ""
+  kindName: ""
+  locked: false
+  error: ""
+  list: []
+  machineOptions: []
+  totalText: ""
+  showCreate: false
+  fMachine: ""
+  fMachineLabel: ""
+  fLabel: ""
+  machineOpen: false
+  creating: false
+  machineError: ""
+  labelError: ""
+  createError: ""
+  renamingId: ""
+  renameValue: ""
+  renameError: ""
+  renameBusy: false
+  removing: ""
+  removeBusy: false
+  actionError: ""
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  sizeText(mb) {
+    if mb >= 1024 {
+      return (mb / 1024).toFixed(1) + " GB"
+    }
+    return mb + " MB"
+  }
+
+  decorate(i) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider "
+
+    let pending = false
+    let statusText = "Ready"
+    let statusCls = base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    if i.status is "creating" or i.status is "pending_upload" {
+      pending = true
+      statusText = "Creating"
+      statusCls = base + "bg-amber-500/10 text-amber-600 dark:text-amber-500"
+    }
+    if i.status is "unavailable" {
+      statusText = "Unavailable"
+      statusCls = base + "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+
+    let sourceText = i.source
+    if i.source is "manual" {
+      sourceText = "Manual"
+    }
+    if i.source is "automatic" {
+      sourceText = "Automatic"
+    }
+    if i.source is "snapshot" {
+      sourceText = "Snapshot"
+    }
+    if i.source is "backup" {
+      sourceText = "Backup"
+    }
+
+    let since = "-"
+    if i.created {
+      since = i.created
+    }
+
+    return Object.assign({}, i, {
+      pending: pending,
+      statusText: statusText,
+      statusCls: statusCls,
+      sourceText: sourceText,
+      sizeLabel: this.sizeText(i.sizeMb),
+      since: since
+    })
+  }
+
+  async load() {
+    const result = await useApi("/api/providers/" + this.providerId + "/images")
+
+    if result.ok and Array.isArray(result.data) {
+      this.list = result.data.map((i) => this.decorate(i))
+      this.totalText = this.sizeText(this.list.reduce((n, i) => n + i.sizeMb, 0))
+      this.locked = false
+      this.error = ""
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load images. Try again."
+    }
+  }
+
+  async loadMachines() {
+    const result = await useApi("/api/providers/" + this.providerId + "/machines")
+    if result.ok and Array.isArray(result.data) {
+      this.machineOptions = result.data.map((m) => ({ id: m.id, label: m.label, region: m.region }))
+    }
+  }
+
+  // Re-reads every 5 seconds until nothing is still being built, or the tries run out.
+  async settle(tries) {
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+    await this.load()
+
+    const waiting = this.list.filter((i) => i.pending).length
+    if waiting > 0 and tries > 1 {
+      await this.settle(tries - 1)
+    }
+  }
+
+  // ---- Create ----
+
+  async openCreate() {
+    this.machineError = ""
+    this.labelError = ""
+    this.createError = ""
+    this.showCreate = true
+
+    if this.machineOptions.length is 0 {
+      await this.loadMachines()
+    }
+  }
+
+  closeCreate() {
+    this.showCreate = false
+    this.machineOpen = false
+    this.fMachine = ""
+    this.fMachineLabel = ""
+    this.fLabel = ""
+  }
+
+  toggleMachine() {
+    if this.machineOpen {
+      this.machineOpen = false
+    } else {
+      this.machineOpen = true
+    }
+  }
+
+  pickMachine(id, label) {
+    this.fMachine = id
+    this.fMachineLabel = label
+    this.machineOpen = false
+  }
+
+  async create() {
+    if this.creating {
+      return null
+    }
+
+    this.machineError = ""
+    this.labelError = ""
+    this.createError = ""
+    this.creating = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/images", {
+      method: "POST",
+      body: { machine_id: this.fMachine, label: this.fLabel }
+    })
+
+    this.creating = false
+
+    if result.ok {
+      this.closeCreate()
+      await this.load()
+      this.settle(12)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.machineError = this.firstError(errors, "machine_id")
+      this.labelError = this.firstError(errors, "label")
+      this.createError = result.data?.error or ""
+      if not errors and this.createError is "" {
+        this.createError = "Couldn't create the image. Try again."
+      }
+    }
+  }
+
+  // ---- Rename ----
+
+  openRename(id) {
+    const i = this.list.find((x) => x.id is id)
+    if not i {
+      return null
+    }
+
+    this.renameError = ""
+    this.actionError = ""
+    this.removing = ""
+    this.renameValue = i.label
+    this.renamingId = id
+  }
+
+  cancelRename() {
+    this.renamingId = ""
+    this.renameValue = ""
+  }
+
+  async saveRename() {
+    if this.renameBusy {
+      return null
+    }
+
+    this.renameError = ""
+    this.renameBusy = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/images/" + this.renamingId, {
+      method: "PUT",
+      body: { label: this.renameValue }
+    })
+
+    this.renameBusy = false
+
+    if result.ok {
+      this.cancelRename()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.renameError = this.firstError(result.data?.errors, "label")
+      if this.renameError is "" {
+        this.renameError = result.data?.error or "Couldn't rename the image. Try again."
+      }
+    }
+  }
+
+  // ---- Delete ----
+
+  askRemove(id) {
+    this.actionError = ""
+    this.renamingId = ""
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = ""
+  }
+
+  async confirmRemove(id) {
+    if this.removeBusy {
+      return null
+    }
+
+    this.removeBusy = true
+    const result = await useApi("/api/providers/" + this.providerId + "/images/" + id, { method: "DELETE" })
+    this.removeBusy = false
+    this.removing = ""
+
+    if not result.ok {
+      this.actionError = result.data?.error or "Couldn't delete that image."
+    }
+
+    await this.load()
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.providerId = id
+
+    const p = await useApi("/api/providers/" + id)
+    if not p.ok {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.kind = p.data.kind
+    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    await this.load()
+    await this.loadMachines()
+    this.checkedAuth = true
+
+    if this.list.filter((i) => i.pending).length > 0 {
+      this.settle(12)
+    }
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="images" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Provider
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Images</h1>
+          <p class="text-slate-500 text-sm">Your own images at {{ kindName }}, to rebuild or clone servers from.</p>
+        </div>
+{{#if not locked}}
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create image</button>
+{{/if}}
+      </div>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if actionError}}
+      <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
+        <p class="text-rose-800 dark:text-rose-400 text-sm">{{ actionError }}</p>
+      </div>
+{{/if}}
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Images</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ list.length }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Total size</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ totalText }}</p>
+        </div>
+      </div>
+
+{{#if showCreate}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Create an image</h2>
+{{#if kind is "linode"}}
+        <p class="text-slate-500 text-sm mb-4">Captures the server's largest disk. Linode limits an image to 6 GB, and a running server is captured as it is, so shut it down first for a clean copy.</p>
+{{/if}}
+{{#if kind is "hetzner"}}
+        <p class="text-slate-500 text-sm mb-4">Takes a snapshot of the server. Hetzner bills snapshots per GB each month while they exist.</p>
+{{/if}}
+
+        <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Server</p>
+        <div class="relative">
+          <button onclick="{{ toggleMachine() }}" class="w-full flex items-center justify-between text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+{{#if fMachineLabel}}
+            <span>{{ fMachineLabel }}</span>
+{{/if}}
+{{#if not fMachineLabel}}
+            <span class="text-slate-500">Select a server</span>
+{{/if}}
+            <span class="text-slate-500 text-xs">&#9662;</span>
+          </button>
+{{#if machineOpen}}
+          <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+{{#each m in machineOptions}}
+            <button onclick="{{ pickMachine(m.id, m.label) }}" class="block w-full text-left px-3.5 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+              {{ m.label }} <span class="text-xs text-slate-500 font-mono">{{ m.region }}</span>
+            </button>
+{{/each}}
+          </div>
+{{/if}}
+        </div>
+{{#if machineError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ machineError }}</p>
+{{/if}}
+
+        <label for="img-label" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Name</label>
+        <input
+          id="img-label"
+          type="text"
+          value="{{ fLabel }}"
+          oninput="{{ fLabel = $event.target.value }}"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          placeholder="web-1-before-upgrade"
+        />
+{{#if labelError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ labelError }}</p>
+{{/if}}
+
+{{#if createError}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ createError }}</p>
+{{/if}}
+
+        <div class="flex items-center justify-end gap-3 mt-6">
+          <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if creating}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not creating}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create image</button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if list.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconPhotograph class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No images yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">Create an image from a server to keep a copy you can restore or clone from.</p>
+      </div>
+{{/if}}
+
+      <div class="space-y-3">
+{{#each i in list}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+                <IconPhotograph class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ i.label }}</h3>
+                <p class="text-slate-500 text-xs">{{ i.sourceText }} · {{ i.sizeLabel }} · {{ i.since }}</p>
+              </div>
+            </div>
+            <span class="{{ i.statusCls }}">{{ i.statusText }}</span>
+          </div>
+
+{{#if renamingId is i.id}}
+          <div class="mt-4">
+            <label for="img-rename" class="block text-slate-500 text-xs font-medium mb-1.5">New name</label>
+            <input
+              id="img-rename"
+              type="text"
+              value="{{ renameValue }}"
+              oninput="{{ renameValue = $event.target.value }}"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            />
+{{#if renameError}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ renameError }}</p>
+{{/if}}
+            <div class="flex items-center justify-end gap-3 mt-3">
+              <button onclick="{{ cancelRename() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if renameBusy}}
+              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+{{/if}}
+{{#if not renameBusy}}
+              <button onclick="{{ saveRename() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save name</button>
+{{/if}}
+            </div>
+          </div>
+{{/if}}
+
+          <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+{{#if removing is i.id}}
+            <span class="text-slate-600 dark:text-slate-300 text-sm">Delete {{ i.label }}? This can't be undone.</span>
+            <button onclick="{{ confirmRemove(i.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, delete</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+{{#if removing is not i.id}}
+            <button onclick="{{ openRename(i.id) }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Rename</button>
+            <button onclick="{{ askRemove(i.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

@@ -1,0 +1,759 @@
+page ProviderFirewalls
+
+import { IconArrowLeft, IconShieldCheck } from "tylix-icons"
+
+title "Firewalls"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  kind: ""
+  kindName: ""
+  locked: false
+  error: ""
+  list: []
+  showCreate: false
+  newLabel: ""
+  labelError: ""
+  createError: ""
+  creating: false
+  removing: ""
+  removeBusy: false
+  editorOpen: false
+  editId: ""
+  editLabel: ""
+  policiesEditable: true
+  inPolicy: "DROP"
+  outPolicy: "ACCEPT"
+  draft: []
+  rows: []
+  editorError: ""
+  editorSaving: false
+  ruleOpen: false
+  editingRule: false
+  ruleIndex: 0
+  fDirection: "in"
+  fProtocol: "TCP"
+  fPorts: ""
+  fAddresses: "0.0.0.0/0, ::/0"
+  fAction: "ACCEPT"
+  fLabel: ""
+  portsApply: true
+  ruleError: ""
+  dirButtons: []
+  protoButtons: []
+  actionButtons: []
+  inPolicyButtons: []
+  outPolicyButtons: []
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  // Adds display-only fields to a firewall.
+  decorate(f) {
+    const inCount = f.rules.filter((r) => r.direction is "in").length
+    const outCount = f.rules.filter((r) => r.direction is "out").length
+
+    let attachedText = f.attached + " servers"
+    if f.attached is 0 {
+      attachedText = "Not attached to any server"
+    }
+    if f.attached is 1 {
+      attachedText = "1 server"
+    }
+
+    let inText = "blocked"
+    if f.inboundPolicy is "ACCEPT" {
+      inText = "allowed"
+    }
+    let outText = "blocked"
+    if f.outboundPolicy is "ACCEPT" {
+      outText = "allowed"
+    }
+
+    let statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
+    if f.status is "enabled" or f.status is "attached" {
+      statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500"
+    }
+
+    return Object.assign({}, f, {
+      inCount: inCount,
+      outCount: outCount,
+      attachedText: attachedText,
+      policyText: "Other inbound " + inText + " · other outbound " + outText,
+      statusCls: statusCls
+    })
+  }
+
+  async load() {
+    const result = await useApi("/api/providers/" + this.providerId + "/firewalls")
+
+    if result.ok and Array.isArray(result.data) {
+      this.list = result.data.map((f) => this.decorate(f))
+      this.locked = false
+      this.error = ""
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load firewalls. Try again."
+    }
+  }
+
+  // ---- Create ----
+
+  openCreate() {
+    this.labelError = ""
+    this.createError = ""
+    this.showCreate = true
+  }
+
+  closeCreate() {
+    this.showCreate = false
+    this.newLabel = ""
+  }
+
+  async create() {
+    if this.creating {
+      return null
+    }
+
+    this.labelError = ""
+    this.createError = ""
+    this.creating = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/firewalls", {
+      method: "POST",
+      body: { label: this.newLabel }
+    })
+
+    this.creating = false
+
+    if result.ok {
+      this.closeCreate()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.labelError = this.firstError(errors, "label")
+      this.createError = result.data?.error or ""
+      if this.labelError is "" and this.createError is "" {
+        this.createError = "Couldn't create the firewall. Try again."
+      }
+    }
+  }
+
+  // ---- Delete ----
+
+  askRemove(id) {
+    this.error = ""
+    this.removing = id
+  }
+
+  cancelRemove() {
+    this.removing = ""
+  }
+
+  async confirmRemove(id) {
+    if this.removeBusy {
+      return null
+    }
+
+    this.removeBusy = true
+    const result = await useApi("/api/providers/" + this.providerId + "/firewalls/" + id, { method: "DELETE" })
+    this.removeBusy = false
+    this.removing = ""
+
+    if not result.ok {
+      this.error = result.data?.error or "Couldn't delete that firewall."
+    }
+
+    await this.load()
+  }
+
+  // ---- Rule editor ----
+
+  buildButtons() {
+    const activeCls = "text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200"
+    const idleCls = "text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40"
+
+    this.dirButtons = [["in", "Inbound"], ["out", "Outbound"]].map((d) => ({
+      key: d[0],
+      label: d[1],
+      cls: d[0] is this.fDirection ? activeCls : idleCls
+    }))
+
+    let protocols = ["TCP", "UDP", "ICMP"]
+    if this.kind is "hetzner" {
+      protocols = ["TCP", "UDP", "ICMP", "ESP", "GRE"]
+    }
+    this.protoButtons = protocols.map((p) => ({ key: p, cls: p is this.fProtocol ? activeCls : idleCls }))
+
+    this.actionButtons = [["ACCEPT", "Allow"], ["DROP", "Block"]].map((a) => ({
+      key: a[0],
+      label: a[1],
+      cls: a[0] is this.fAction ? activeCls : idleCls
+    }))
+
+    this.inPolicyButtons = [["DROP", "Block"], ["ACCEPT", "Allow"]].map((a) => ({
+      key: a[0],
+      label: a[1],
+      cls: a[0] is this.inPolicy ? activeCls : idleCls
+    }))
+
+    this.outPolicyButtons = [["ACCEPT", "Allow"], ["DROP", "Block"]].map((a) => ({
+      key: a[0],
+      label: a[1],
+      cls: a[0] is this.outPolicy ? activeCls : idleCls
+    }))
+
+    this.portsApply = this.fProtocol is "TCP" or this.fProtocol is "UDP"
+  }
+
+  decorateRule(r, i) {
+    let dirLabel = "Outbound"
+    if r.direction is "in" {
+      dirLabel = "Inbound"
+    }
+
+    let portText = "any"
+    if r.ports is not "" {
+      portText = r.ports
+    }
+
+    let actionLabel = "Block"
+    let actionCls = "inline-flex w-16 shrink-0 justify-center rounded-md px-2 py-1 text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    if r.action is "ACCEPT" {
+      actionLabel = "Allow"
+      actionCls = "inline-flex w-16 shrink-0 justify-center rounded-md px-2 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    }
+
+    return Object.assign({}, r, {
+      i: i,
+      dirLabel: dirLabel,
+      portText: portText,
+      addressText: r.addresses.join(", "),
+      actionLabel: actionLabel,
+      actionCls: actionCls
+    })
+  }
+
+  buildRows() {
+    this.rows = this.draft.map((r, i) => this.decorateRule(r, i))
+  }
+
+  openEditor(id) {
+    const f = this.list.find((x) => x.id is id)
+    if not f {
+      return null
+    }
+
+    this.editorError = ""
+    this.ruleOpen = false
+    this.editId = id
+    this.editLabel = f.label
+    this.policiesEditable = f.policiesEditable
+    this.inPolicy = f.inboundPolicy
+    this.outPolicy = f.outboundPolicy
+    this.draft = f.rules.map((r) => Object.assign({}, r))
+    this.buildRows()
+    this.buildButtons()
+    this.editorOpen = true
+  }
+
+  closeEditor() {
+    this.editorOpen = false
+    this.ruleOpen = false
+    this.editId = ""
+    this.draft = []
+    this.rows = []
+  }
+
+  pickInPolicy(v) {
+    this.inPolicy = v
+    this.buildButtons()
+  }
+
+  pickOutPolicy(v) {
+    this.outPolicy = v
+    this.buildButtons()
+  }
+
+  pickDirection(v) {
+    this.fDirection = v
+    this.buildButtons()
+  }
+
+  pickProtocol(v) {
+    this.fProtocol = v
+    this.buildButtons()
+  }
+
+  pickAction(v) {
+    this.fAction = v
+    this.buildButtons()
+  }
+
+  openRule() {
+    this.ruleError = ""
+    this.editingRule = false
+    this.fDirection = "in"
+    this.fProtocol = "TCP"
+    this.fPorts = ""
+    this.fAddresses = "0.0.0.0/0, ::/0"
+    this.fAction = "ACCEPT"
+    this.fLabel = ""
+    this.buildButtons()
+    this.ruleOpen = true
+  }
+
+  editRule(i) {
+    const r = this.draft[i]
+    if not r {
+      return null
+    }
+
+    this.ruleError = ""
+    this.editingRule = true
+    this.ruleIndex = i
+    this.fDirection = r.direction
+    this.fProtocol = r.protocol
+    this.fPorts = r.ports
+    this.fAddresses = r.addresses.join(", ")
+    this.fAction = r.action
+    this.fLabel = r.label
+    this.buildButtons()
+    this.ruleOpen = true
+  }
+
+  closeRule() {
+    this.ruleOpen = false
+    this.editingRule = false
+  }
+
+  // Adds the rule to the draft. Nothing is sent to the provider until "Save rules".
+  commitRule() {
+    this.ruleError = ""
+
+    const addresses = this.fAddresses.split(",").map((a) => a.trim()).filter((a) => a is not "")
+    const ports = this.fPorts.trim()
+
+    if this.portsApply and ports is "" {
+      this.ruleError = "Enter the port or ports this rule covers, like 22 or 8000-8100."
+      return null
+    }
+    if addresses.length is 0 {
+      this.ruleError = "Enter at least one address, like 0.0.0.0/0. Separate several with commas."
+      return null
+    }
+    if this.kind is "hetzner" and ports.includes(",") {
+      this.ruleError = "Hetzner takes one port or one range per rule. Add a rule for each port."
+      return null
+    }
+
+    // ICMP, ESP and GRE have no ports.
+    let savedPorts = ""
+    if this.portsApply {
+      savedPorts = ports
+    }
+
+    const rule = {
+      direction: this.fDirection,
+      protocol: this.fProtocol,
+      ports: savedPorts,
+      addresses: addresses,
+      action: this.fAction,
+      label: this.fLabel.trim()
+    }
+
+    if this.editingRule {
+      const at = this.ruleIndex
+      this.draft = this.draft.map((r, idx) => idx is at ? rule : r)
+    } else {
+      this.draft = this.draft.concat([rule])
+    }
+
+    this.buildRows()
+    this.closeRule()
+  }
+
+  removeRule(i) {
+    this.draft = this.draft.filter((r, idx) => idx is not i)
+    this.buildRows()
+  }
+
+  async saveRules() {
+    if this.editorSaving {
+      return null
+    }
+
+    this.editorError = ""
+    this.editorSaving = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/firewalls/" + this.editId + "/rules", {
+      method: "PUT",
+      body: { rules: this.draft, inbound_policy: this.inPolicy, outbound_policy: this.outPolicy }
+    })
+
+    this.editorSaving = false
+
+    if result.ok {
+      this.closeEditor()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const ruleErrors = result.data?.errors?.rules
+      if ruleErrors and ruleErrors.length > 0 {
+        this.editorError = ruleErrors.join(" ")
+      } else {
+        this.editorError = result.data?.error or "Couldn't save the rules. Try again."
+      }
+    }
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.providerId = id
+
+    const p = await useApi("/api/providers/" + id)
+    if not p.ok {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.kind = p.data.kind
+    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    await this.load()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="firewalls" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Provider
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Firewalls</h1>
+          <p class="text-slate-500 text-sm">Cloud firewalls at {{ kindName }}.</p>
+        </div>
+{{#if not locked}}
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create firewall</button>
+{{/if}}
+      </div>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+{{/if}}
+
+{{#if showCreate}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Create a firewall</h2>
+        <p class="text-slate-500 text-sm mb-4">It starts with no rules. Add them next, then attach it to servers in the {{ kindName }} console.</p>
+
+        <label for="fw-label" class="block text-slate-500 text-xs font-medium mb-1.5">Name</label>
+        <input
+          id="fw-label"
+          type="text"
+          value="{{ newLabel }}"
+          oninput="{{ newLabel = $event.target.value }}"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          placeholder="web-servers"
+        />
+{{#if labelError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ labelError }}</p>
+{{/if}}
+
+{{#if createError}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ createError }}</p>
+{{/if}}
+
+        <div class="flex items-center justify-end gap-3 mt-5">
+          <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if creating}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not creating}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create firewall</button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if editorOpen}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="min-w-0">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Rules for {{ editLabel }}</h2>
+            <p class="text-slate-500 text-xs mt-0.5">Changes stay here until you press Save rules. Saving replaces the firewall's whole rule set.</p>
+          </div>
+          <button onclick="{{ openRule() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Add rule</button>
+        </div>
+
+{{#if policiesEditable}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+          <div>
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Other inbound traffic</p>
+            <div class="flex flex-wrap gap-2">
+{{#each b in inPolicyButtons}}
+              <button onclick="{{ pickInPolicy(b.key) }}" class="{{ b.cls }}">{{ b.label }}</button>
+{{/each}}
+            </div>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Other outbound traffic</p>
+            <div class="flex flex-wrap gap-2">
+{{#each b in outPolicyButtons}}
+              <button onclick="{{ pickOutPolicy(b.key) }}" class="{{ b.cls }}">{{ b.label }}</button>
+{{/each}}
+            </div>
+          </div>
+        </div>
+{{/if}}
+
+{{#if not policiesEditable}}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-4 py-3 mb-5">
+          <p class="text-slate-500 text-xs">{{ kindName }} firewalls only allow traffic. Inbound traffic you don't allow is blocked. Outbound is open until you add an outbound rule, after which only the outbound traffic you allow gets through.</p>
+        </div>
+{{/if}}
+
+{{#if ruleOpen}}
+        <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-5 mb-5">
+          <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-4">
+{{#if editingRule}}
+            Edit rule
+{{/if}}
+{{#if not editingRule}}
+            New rule
+{{/if}}
+          </h3>
+
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Direction</p>
+          <div class="flex flex-wrap gap-2 mb-4">
+{{#each b in dirButtons}}
+            <button onclick="{{ pickDirection(b.key) }}" class="{{ b.cls }}">{{ b.label }}</button>
+{{/each}}
+          </div>
+
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Protocol</p>
+          <div class="flex flex-wrap gap-2 mb-4">
+{{#each b in protoButtons}}
+            <button onclick="{{ pickProtocol(b.key) }}" class="{{ b.cls }}">{{ b.key }}</button>
+{{/each}}
+          </div>
+
+{{#if portsApply}}
+          <label for="rule-ports" class="block text-slate-500 text-xs font-medium mb-1.5">Ports</label>
+          <input
+            id="rule-ports"
+            type="text"
+            value="{{ fPorts }}"
+            oninput="{{ fPorts = $event.target.value }}"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            placeholder="22"
+          />
+{{#if policiesEditable}}
+          <p class="text-slate-500 text-xs mt-1.5">One port, a range like 8000-8100, or a comma list like 80,443.</p>
+{{/if}}
+{{#if not policiesEditable}}
+          <p class="text-slate-500 text-xs mt-1.5">One port or one range like 8000-8100 per rule.</p>
+{{/if}}
+{{/if}}
+
+          <label for="rule-addresses" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">
+{{#if fDirection is "in"}}
+            Allowed from (comma separated)
+{{/if}}
+{{#if fDirection is "out"}}
+            Allowed to (comma separated)
+{{/if}}
+          </label>
+          <input
+            id="rule-addresses"
+            type="text"
+            value="{{ fAddresses }}"
+            oninput="{{ fAddresses = $event.target.value }}"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            placeholder="0.0.0.0/0, ::/0"
+          />
+          <p class="text-slate-500 text-xs mt-1.5">0.0.0.0/0 and ::/0 mean anywhere. Use a /32 to match a single IPv4 address.</p>
+
+{{#if policiesEditable}}
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mt-4 mb-2">Action</p>
+          <div class="flex flex-wrap gap-2">
+{{#each b in actionButtons}}
+            <button onclick="{{ pickAction(b.key) }}" class="{{ b.cls }}">{{ b.label }}</button>
+{{/each}}
+          </div>
+{{/if}}
+
+          <label for="rule-label" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Label (optional)</label>
+          <input
+            id="rule-label"
+            type="text"
+            value="{{ fLabel }}"
+            oninput="{{ fLabel = $event.target.value }}"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            placeholder="Allow SSH from the office"
+          />
+
+{{#if ruleError}}
+          <p role="alert" class="text-rose-500 text-sm mt-4">{{ ruleError }}</p>
+{{/if}}
+
+          <div class="flex items-center justify-end gap-3 mt-5">
+            <button onclick="{{ closeRule() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+            <button onclick="{{ commitRule() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+{{#if editingRule}}
+              Update rule
+{{/if}}
+{{#if not editingRule}}
+              Add rule
+{{/if}}
+            </button>
+          </div>
+        </div>
+{{/if}}
+
+{{#if rows.length is 0}}
+        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+          <p class="text-slate-500 text-sm">No rules yet. Add one, then save.</p>
+        </div>
+{{/if}}
+
+        <div class="space-y-2">
+{{#each r in rows}}
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="{{ r.actionCls }}">{{ r.actionLabel }}</span>
+              <div class="min-w-0 flex-1 basis-48">
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono font-medium">{{ r.dirLabel }} {{ r.protocol }} · {{ r.portText }}</p>
+                <p class="text-slate-500 text-xs font-mono break-all">{{ r.addressText }}</p>
+{{#if r.label}}
+                <p class="text-slate-500 text-xs">{{ r.label }}</p>
+{{/if}}
+              </div>
+              <button onclick="{{ editRule(r.i) }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Edit</button>
+              <button onclick="{{ removeRule(r.i) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Remove</button>
+            </div>
+          </div>
+{{/each}}
+        </div>
+
+{{#if editorError}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ editorError }}</p>
+{{/if}}
+
+        <div class="flex items-center justify-end gap-3 mt-6">
+          <button onclick="{{ closeEditor() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if editorSaving}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+{{/if}}
+{{#if not editorSaving}}
+          <button onclick="{{ saveRules() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save rules</button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if list.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconShieldCheck class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No firewalls yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">Create a firewall to control which traffic can reach your servers.</p>
+      </div>
+{{/if}}
+
+{{#if list.length is not 0}}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+{{#each f in list}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+                <IconShieldCheck class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ f.label }}</h3>
+                <p class="text-slate-500 text-xs">{{ f.attachedText }}</p>
+              </div>
+            </div>
+            <span class="{{ f.statusCls }}">{{ f.status }}</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Inbound rules</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ f.inCount }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Outbound rules</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ f.outCount }}</p>
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs mb-4">{{ f.policyText }}</p>
+
+          <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button onclick="{{ openEditor(f.id) }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Edit rules</button>
+{{#if removing is f.id}}
+            <button onclick="{{ confirmRemove(f.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, delete</button>
+            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+{{#if removing is not f.id}}
+            <button onclick="{{ askRemove(f.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

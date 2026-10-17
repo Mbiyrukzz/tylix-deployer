@@ -1,0 +1,648 @@
+page ProviderVolumes
+
+import { IconArrowLeft, IconCube } from "tylix-icons"
+
+title "Volumes"
+
+needs
+  Auth
+
+state
+  checkedAuth: false
+  providerId: ""
+  kind: ""
+  kindName: ""
+  locked: false
+  error: ""
+  list: []
+  machineOptions: []
+  regions: []
+  totalGb: 0
+  attachedCount: 0
+  showCreate: false
+  createMode: "region"
+  modeButtons: []
+  fLabel: ""
+  fSize: "10"
+  fRegion: ""
+  fRegionLabel: ""
+  fMachine: ""
+  fMachineLabel: ""
+  regionOpen: false
+  machineOpen: false
+  creating: false
+  labelError: ""
+  sizeError: ""
+  regionError: ""
+  machineError: ""
+  createError: ""
+  attachingId: ""
+  attachOptions: []
+  attachBusy: false
+  attachError: ""
+  confirmId: ""
+  confirmKind: ""
+  busyId: ""
+  actionError: ""
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  decorate(v) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider "
+
+    let statusCls = base + "bg-amber-500/10 text-amber-600 dark:text-amber-500"
+    if v.status is "active" or v.status is "available" {
+      statusCls = base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    }
+
+    let attached = false
+    let attachText = "Not attached"
+    if v.attachedId {
+      attached = true
+      attachText = v.attachedName
+      if attachText is "" {
+        attachText = "Server " + v.attachedId
+      }
+    }
+
+    let deviceText = "-"
+    if v.device {
+      deviceText = v.device
+    }
+
+    return Object.assign({}, v, {
+      statusCls: statusCls,
+      attached: attached,
+      attachText: attachText,
+      deviceText: deviceText
+    })
+  }
+
+  async load() {
+    const result = await useApi("/api/providers/" + this.providerId + "/volumes")
+
+    if result.ok and Array.isArray(result.data) {
+      this.list = result.data.map((v) => this.decorate(v))
+      this.totalGb = this.list.reduce((n, v) => n + v.sizeGb, 0)
+      this.attachedCount = this.list.filter((v) => v.attached).length
+      this.locked = false
+      this.error = ""
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 {
+      this.locked = true
+      this.error = result.data?.error or ""
+    } else {
+      this.error = result.data?.error or "Couldn't load volumes. Try again."
+    }
+  }
+
+  async loadMachines() {
+    const result = await useApi("/api/providers/" + this.providerId + "/machines")
+    if result.ok and Array.isArray(result.data) {
+      this.machineOptions = result.data.map((m) => ({ id: m.id, label: m.label, region: m.region }))
+    }
+  }
+
+  async loadRegions() {
+    let url = "/api/catalog/linode"
+    if this.kind is "hetzner" {
+      url = "/api/catalog/hetzner?provider=" + this.providerId
+    }
+
+    const result = await useApi(url)
+    if result.ok and result.data and Array.isArray(result.data.regions) {
+      this.regions = result.data.regions
+    }
+  }
+
+  // ---- Create ----
+
+  buildModes() {
+    const activeCls = "text-left rounded-xl border px-4 py-2 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200"
+    const idleCls = "text-left rounded-xl border px-4 py-2 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40"
+
+    this.modeButtons = [["region", "In a region"], ["machine", "For a server"]].map((m) => ({
+      key: m[0],
+      label: m[1],
+      cls: m[0] is this.createMode ? activeCls : idleCls
+    }))
+  }
+
+  clearCreateErrors() {
+    this.labelError = ""
+    this.sizeError = ""
+    this.regionError = ""
+    this.machineError = ""
+    this.createError = ""
+  }
+
+  async openCreate() {
+    this.clearCreateErrors()
+    this.createMode = "region"
+    this.buildModes()
+    this.showCreate = true
+
+    if this.regions.length is 0 {
+      await this.loadRegions()
+    }
+    if this.machineOptions.length is 0 {
+      await this.loadMachines()
+    }
+  }
+
+  closeCreate() {
+    this.showCreate = false
+    this.regionOpen = false
+    this.machineOpen = false
+    this.fLabel = ""
+    this.fSize = "10"
+    this.fRegion = ""
+    this.fRegionLabel = ""
+    this.fMachine = ""
+    this.fMachineLabel = ""
+  }
+
+  pickMode(mode) {
+    this.createMode = mode
+    this.regionOpen = false
+    this.machineOpen = false
+    this.buildModes()
+  }
+
+  toggleRegion() {
+    this.machineOpen = false
+    if this.regionOpen {
+      this.regionOpen = false
+    } else {
+      this.regionOpen = true
+    }
+  }
+
+  toggleMachine() {
+    this.regionOpen = false
+    if this.machineOpen {
+      this.machineOpen = false
+    } else {
+      this.machineOpen = true
+    }
+  }
+
+  pickRegion(id, label) {
+    this.fRegion = id
+    this.fRegionLabel = label
+    this.regionOpen = false
+  }
+
+  pickMachine(id, label) {
+    this.fMachine = id
+    this.fMachineLabel = label
+    this.machineOpen = false
+  }
+
+  async create() {
+    if this.creating {
+      return null
+    }
+
+    this.clearCreateErrors()
+    this.creating = true
+
+    let region = ""
+    let machine = ""
+    if this.createMode is "region" {
+      region = this.fRegion
+    } else {
+      machine = this.fMachine
+    }
+
+    const result = await useApi("/api/providers/" + this.providerId + "/volumes", {
+      method: "POST",
+      body: { label: this.fLabel, size: this.fSize, region: region, machine_id: machine }
+    })
+
+    this.creating = false
+
+    if result.ok {
+      this.closeCreate()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.labelError = this.firstError(errors, "label")
+      this.sizeError = this.firstError(errors, "size")
+      this.regionError = this.firstError(errors, "region")
+      this.machineError = this.firstError(errors, "machine_id")
+      this.createError = result.data?.error or ""
+      if not errors and this.createError is "" {
+        this.createError = "Couldn't create the volume. Try again."
+      }
+    }
+  }
+
+  // ---- Attach ----
+
+  openAttach(id) {
+    const v = this.list.find((x) => x.id is id)
+    if not v {
+      return null
+    }
+
+    this.attachError = ""
+    this.actionError = ""
+    this.confirmId = ""
+    this.confirmKind = ""
+    this.attachOptions = this.machineOptions.filter((m) => m.region is v.region)
+    this.attachingId = id
+  }
+
+  cancelAttach() {
+    this.attachingId = ""
+    this.attachOptions = []
+  }
+
+  async attach(volumeId, machineId) {
+    if this.attachBusy {
+      return null
+    }
+
+    this.attachError = ""
+    this.attachBusy = true
+
+    const result = await useApi("/api/providers/" + this.providerId + "/volumes/" + volumeId + "/attach", {
+      method: "POST",
+      body: { machine_id: machineId }
+    })
+
+    this.attachBusy = false
+
+    if result.ok {
+      this.cancelAttach()
+      await this.load()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.attachError = result.data?.errors?.machine_id?.[0] or result.data?.error or "Couldn't attach the volume. Try again."
+    }
+  }
+
+  // ---- Detach and delete ----
+
+  askDetach(id) {
+    this.actionError = ""
+    this.attachingId = ""
+    this.confirmId = id
+    this.confirmKind = "detach"
+  }
+
+  askDelete(id) {
+    this.actionError = ""
+    this.attachingId = ""
+    this.confirmId = id
+    this.confirmKind = "delete"
+  }
+
+  cancelConfirm() {
+    this.confirmId = ""
+    this.confirmKind = ""
+  }
+
+  async confirmDetach(id) {
+    if this.busyId is not "" {
+      return null
+    }
+
+    this.confirmId = ""
+    this.confirmKind = ""
+    this.busyId = id
+
+    const result = await useApi("/api/providers/" + this.providerId + "/volumes/" + id + "/detach", {
+      method: "POST",
+      body: {}
+    })
+
+    if not result.ok {
+      this.actionError = result.data?.error or "Couldn't detach the volume."
+    }
+
+    this.busyId = ""
+    await this.load()
+  }
+
+  async confirmDelete(id) {
+    if this.busyId is not "" {
+      return null
+    }
+
+    this.confirmId = ""
+    this.confirmKind = ""
+    this.busyId = id
+
+    const result = await useApi("/api/providers/" + this.providerId + "/volumes/" + id, { method: "DELETE" })
+
+    if not result.ok {
+      this.actionError = result.data?.error or "Couldn't delete the volume."
+    }
+
+    this.busyId = ""
+    await this.load()
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+
+    if not id {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.providerId = id
+
+    const p = await useApi("/api/providers/" + id)
+    if not p.ok {
+      window.location.href = "/providers"
+      return null
+    }
+
+    this.kind = p.data.kind
+    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    await this.load()
+    await this.loadMachines()
+    this.checkedAuth = true
+  }
+
+template
+{{#if checkedAuth}}
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <Sidebar active="providers" />
+  <ProviderSidebar active="volumes" providerId="{{ providerId }}" />
+  <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Provider
+      </a>
+
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Volumes</h1>
+          <p class="text-slate-500 text-sm">Block storage at {{ kindName }}.</p>
+        </div>
+{{#if not locked}}
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create volume</button>
+{{/if}}
+      </div>
+
+{{#if locked}}
+      <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">{{ error }}</p>
+      </div>
+{{/if}}
+
+{{#if not locked}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if actionError}}
+      <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
+        <p class="text-rose-800 dark:text-rose-400 text-sm">{{ actionError }}</p>
+      </div>
+{{/if}}
+
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Volumes</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ list.length }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Total size</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ totalGb }} GB</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Attached</p>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ attachedCount }}</p>
+        </div>
+      </div>
+
+{{#if showCreate}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Create a volume</h2>
+        <p class="text-slate-500 text-sm mb-4">Volumes are billed per GB while they exist, attached or not.</p>
+
+        <label for="vol-label" class="block text-slate-500 text-xs font-medium mb-1.5">Name</label>
+        <input
+          id="vol-label"
+          type="text"
+          value="{{ fLabel }}"
+          oninput="{{ fLabel = $event.target.value }}"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          placeholder="data-1"
+        />
+{{#if labelError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ labelError }}</p>
+{{/if}}
+
+        <label for="vol-size" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Size (GB, 10 to 10240)</label>
+        <input
+          id="vol-size"
+          type="text"
+          inputmode="numeric"
+          value="{{ fSize }}"
+          oninput="{{ fSize = $event.target.value }}"
+          class="w-32 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        />
+{{#if sizeError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ sizeError }}</p>
+{{/if}}
+
+        <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mt-4 mb-2">Create</p>
+        <div class="flex flex-wrap gap-2 mb-4">
+{{#each b in modeButtons}}
+          <button onclick="{{ pickMode(b.key) }}" class="{{ b.cls }}">{{ b.label }}</button>
+{{/each}}
+        </div>
+
+{{#if createMode is "region"}}
+        <div class="relative">
+          <button onclick="{{ toggleRegion() }}" class="w-full flex items-center justify-between text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+{{#if fRegionLabel}}
+            <span>{{ fRegionLabel }}</span>
+{{/if}}
+{{#if not fRegionLabel}}
+            <span class="text-slate-500">Select a region</span>
+{{/if}}
+            <span class="text-slate-500 text-xs">&#9662;</span>
+          </button>
+{{#if regionOpen}}
+          <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+{{#each r in regions}}
+            <button onclick="{{ pickRegion(r.id, r.label) }}" class="block w-full text-left px-3.5 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+              {{ r.label }} <span class="text-xs text-slate-500 font-mono">{{ r.id }}</span>
+            </button>
+{{/each}}
+          </div>
+{{/if}}
+        </div>
+{{#if regionError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ regionError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if createMode is "machine"}}
+        <div class="relative">
+          <button onclick="{{ toggleMachine() }}" class="w-full flex items-center justify-between text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+{{#if fMachineLabel}}
+            <span>{{ fMachineLabel }}</span>
+{{/if}}
+{{#if not fMachineLabel}}
+            <span class="text-slate-500">Select a server</span>
+{{/if}}
+            <span class="text-slate-500 text-xs">&#9662;</span>
+          </button>
+{{#if machineOpen}}
+          <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+{{#each m in machineOptions}}
+            <button onclick="{{ pickMachine(m.id, m.label) }}" class="block w-full text-left px-3.5 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+              {{ m.label }} <span class="text-xs text-slate-500 font-mono">{{ m.region }}</span>
+            </button>
+{{/each}}
+          </div>
+{{/if}}
+        </div>
+        <p class="text-slate-500 text-xs mt-1.5">The volume is created in that server's region and attached right away.</p>
+{{#if machineError}}
+        <p class="text-rose-500 text-xs mt-1.5">{{ machineError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if createError}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ createError }}</p>
+{{/if}}
+
+        <div class="flex items-center justify-end gap-3 mt-6">
+          <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if creating}}
+          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+{{/if}}
+{{#if not creating}}
+          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create volume</button>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+{{#if list.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
+          <IconCube class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+        </div>
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No volumes yet</h3>
+        <p class="text-slate-500 text-sm max-w-sm mx-auto">Create a volume for extra disk space that can move between servers.</p>
+      </div>
+{{/if}}
+
+      <div class="space-y-3">
+{{#each v in list}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+                <IconCube class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ v.label }}</h3>
+                <p class="text-slate-500 text-xs font-mono">{{ v.sizeGb }} GB · {{ v.region }}</p>
+              </div>
+            </div>
+            <span class="{{ v.statusCls }}">{{ v.status }}</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Attached to</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ v.attachText }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 text-xs mb-1">Device</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ v.deviceText }}</p>
+            </div>
+          </div>
+
+{{#if attachingId is v.id}}
+          <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-4 mt-4">
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-2">Attach to a server in {{ v.region }}</p>
+{{#if attachOptions.length is 0}}
+            <p class="text-slate-500 text-sm">There are no servers in that region. A volume can only be attached to a server in its own region.</p>
+{{/if}}
+            <div class="flex flex-wrap gap-2">
+{{#each m in attachOptions}}
+              <button onclick="{{ attach(v.id, m.id) }}" class="text-sm font-mono text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{{ m.label }}</button>
+{{/each}}
+            </div>
+{{#if attachBusy}}
+            <p class="text-slate-500 text-xs mt-3">Attaching…</p>
+{{/if}}
+{{#if attachError}}
+            <p role="alert" class="text-rose-500 text-sm mt-3">{{ attachError }}</p>
+{{/if}}
+            <div class="flex justify-end mt-3">
+              <button onclick="{{ cancelAttach() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-1.5 transition-colors">Cancel</button>
+            </div>
+          </div>
+{{/if}}
+
+          <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+{{#if busyId is v.id}}
+            <span class="text-slate-500 text-sm">Working…</span>
+{{/if}}
+
+{{#if busyId is not v.id}}
+{{#if confirmId is v.id}}
+{{#if confirmKind is "detach"}}
+            <span class="text-slate-600 dark:text-slate-300 text-sm">Detach {{ v.label }}? Unmount it on the server first.</span>
+            <button onclick="{{ confirmDetach(v.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, detach</button>
+{{/if}}
+{{#if confirmKind is "delete"}}
+            <span class="text-slate-600 dark:text-slate-300 text-sm">Delete {{ v.label }} and everything on it? This can't be undone.</span>
+            <button onclick="{{ confirmDelete(v.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, delete</button>
+{{/if}}
+            <button onclick="{{ cancelConfirm() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+
+{{#if confirmId is not v.id}}
+{{#if v.attached}}
+            <button onclick="{{ askDetach(v.id) }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Detach</button>
+            <span class="text-slate-400 text-xs">Detach it before deleting.</span>
+{{/if}}
+{{#if not v.attached}}
+            <button onclick="{{ openAttach(v.id) }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Attach</button>
+            <button onclick="{{ askDelete(v.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
+{{/if}}
+{{/if}}
+          </div>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+    </div>
+  </div>
+</div>
+{{/if}}

@@ -1,6 +1,6 @@
 component ProviderSidebar
 
-import { IconGauge, IconGlobe, IconDocumentText, IconCog, IconArrowLeft } from "tylix-icons"
+import { IconGauge, IconServer, IconShieldCheck, IconCube, IconPhotograph, IconSignal, IconGlobe, IconDocumentText, IconCog, IconArrowLeft } from "tylix-icons"
 
 props
   active: String
@@ -20,6 +20,66 @@ template
 {{#if active is not "overview"}}
   <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconGauge class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Overview
+  </a>
+{{/if}}
+
+{{#if active is "machines"}}
+  <a href="{{ '/providers/provider-machines?id=' + providerId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconServer class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Machines
+  </a>
+{{/if}}
+{{#if active is not "machines"}}
+  <a href="{{ '/providers/provider-machines?id=' + providerId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconServer class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Machines
+  </a>
+{{/if}}
+
+{{#if active is "firewalls"}}
+  <a href="{{ '/providers/provider-firewalls?id=' + providerId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconShieldCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Firewalls
+  </a>
+{{/if}}
+{{#if active is not "firewalls"}}
+  <a href="{{ '/providers/provider-firewalls?id=' + providerId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconShieldCheck class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Firewalls
+  </a>
+{{/if}}
+
+{{#if active is "volumes"}}
+  <a href="{{ '/providers/provider-volumes?id=' + providerId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconCube class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Volumes
+  </a>
+{{/if}}
+{{#if active is not "volumes"}}
+  <a href="{{ '/providers/provider-volumes?id=' + providerId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconCube class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Volumes
+  </a>
+{{/if}}
+
+{{#if active is "images"}}
+  <a href="{{ '/providers/provider-images?id=' + providerId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconPhotograph class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Images
+  </a>
+{{/if}}
+{{#if active is not "images"}}
+  <a href="{{ '/providers/provider-images?id=' + providerId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconPhotograph class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Images
+  </a>
+{{/if}}
+
+{{#if active is "ips"}}
+  <a href="{{ '/providers/provider-ips?id=' + providerId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+    <IconSignal class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> IP addresses
+  </a>
+{{/if}}
+{{#if active is not "ips"}}
+  <a href="{{ '/providers/provider-ips?id=' + providerId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconSignal class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> IP addresses
   </a>
 {{/if}}
 
@@ -51,7 +111,7 @@ template
     <a href="/providers" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
       <IconArrowLeft class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> All providers
     </a>
-    <span class="shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Firewalls, volumes, images and more">
+    <span class="shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="VPCs, load balancers, Kubernetes and more">
       <IconCog class="w-4 h-4 text-slate-300 dark:text-slate-700" />
       <span>More</span>
       <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
