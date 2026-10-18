@@ -83,6 +83,18 @@ async function deploymentsFor(siteId: number): Promise<DeploymentRow[]> {
  * The newest running row takes the site's result; any older running row was
  * interrupted (restart, stale deploy) and is marked failed.
  */
+const MAX_LOG_CHARS = 200_000;
+
+function clipLog(text: string): string {
+    if (text.length <= MAX_LOG_CHARS) return text;
+    return "[... earlier output trimmed ...]\n" + text.slice(-MAX_LOG_CHARS);
+}
+
+/**
+ * SiteDeployer only writes to the site row, so history rows are closed here.
+ * The newest running row takes the site's result; any older running row was
+ * interrupted (restart, stale deploy) and is marked failed.
+ */
 async function syncDeployments(site: SiteRow): Promise<DeploymentRow[]> {
     const rows = await deploymentsFor(site.id);
     const running = rows.filter((d) => d.status === "deploying");
@@ -91,23 +103,27 @@ async function syncDeployments(site: SiteRow): Promise<DeploymentRow[]> {
     for (let i = 0; i < running.length; i++) {
         const d = running[i];
 
-        if (i === 0) {
-            if (site.deploy_status === "deploying") continue;
+        try {
+            if (i === 0) {
+                if (site.deploy_status === "deploying") continue;
 
-            await Deployment.update(d.id, {
-                status: site.deploy_status === "success" ? "success" : "failed",
-                log: String(site.deploy_log ?? ""),
-                finished_at: String(site.deployed_at || new Date().toISOString()),
-            });
-        } else {
-            await Deployment.update(d.id, {
-                status: "failed",
-                log: String(d.log || "") || "Interrupted before it finished.",
-                finished_at: new Date().toISOString(),
-            });
+                await Deployment.update(d.id, {
+                    status: site.deploy_status === "success" ? "success" : "failed",
+                    log: clipLog(String(site.deploy_log ?? "")),
+                    finished_at: String(site.deployed_at || new Date().toISOString()),
+                });
+            } else {
+                await Deployment.update(d.id, {
+                    status: "failed",
+                    log: clipLog(String(d.log || "") || "Interrupted before it finished."),
+                    finished_at: new Date().toISOString(),
+                });
+            }
+
+            changed = true;
+        } catch (err) {
+            console.error(`Couldn't close deployment ${d.id}:`, err);
         }
-
-        changed = true;
     }
 
     return changed ? await deploymentsFor(site.id) : rows;

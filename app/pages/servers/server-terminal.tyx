@@ -25,6 +25,12 @@ state
   idleWarn: false
   sessionText: "0:00"
   copied: false
+  expanded: false
+  wrapCls: ""
+  backdropCls: "hidden"
+  cardCls: "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
+  bodyCls: "relative h-[60vh] min-h-[420px]"
+  hostCls: "h-full w-full overflow-hidden bg-slate-950 p-3"
   commands: [
     { label: "Disk", cmd: "df -h" },
     { label: "Memory", cmd: "free -h" },
@@ -154,9 +160,79 @@ action
       term.dispose()
       this.setGlobal("tylixTerm", null)
     }
+    this.setGlobal("tylixFit", null)
     const el = document.getElementById("terminal-host")
     if el {
       el.innerHTML = ""
+    }
+  }
+
+  applyLayout() {
+    if this.expanded {
+      this.wrapCls = "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-8"
+      this.backdropCls = "absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+      this.cardCls = "relative flex flex-col w-full max-w-[1100px] h-full max-h-[92vh] rounded-2xl border border-slate-700/60 bg-slate-950/85 backdrop-blur-xl overflow-hidden shadow-2xl"
+      this.bodyCls = "relative flex-1 min-h-0"
+      this.hostCls = "h-full w-full overflow-hidden bg-transparent p-4"
+    } else {
+      this.wrapCls = ""
+      this.backdropCls = "hidden"
+      this.cardCls = "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
+      this.bodyCls = "relative h-[60vh] min-h-[420px]"
+      this.hostCls = "h-full w-full overflow-hidden bg-slate-950 p-3"
+    }
+  }
+
+  refit() {
+    const fit = this.global("tylixFit")
+    const term = this.global("tylixTerm")
+    if not fit or not term {
+      return null
+    }
+
+    fit.fit()
+
+    const ws = this.global("tylixSocket")
+    if ws and ws.readyState is 1 {
+      ws.send(JSON.stringify({ t: "r", cols: term.cols, rows: term.rows }))
+    }
+  }
+
+  focusTerm() {
+    const term = this.global("tylixTerm")
+    if term {
+      term.focus()
+    }
+  }
+
+  setExpanded(value) {
+    this.expanded = value
+    this.applyLayout()
+    document.body.style.overflow = value ? "hidden" : ""
+
+    const term = this.global("tylixTerm")
+    if term {
+      term.options.fontSize = value ? 14 : 13
+    }
+
+    window.setTimeout(() => this.refit(), 120)
+    window.setTimeout(() => this.focusTerm(), 180)
+  }
+
+  toggleExpand() {
+    const next = not this.expanded
+    this.setExpanded(next)
+  }
+
+  collapse() {
+    if this.expanded {
+      this.setExpanded(false)
+    }
+  }
+
+  onKey(e) {
+    if e.key is "Escape" {
+      this.collapse()
     }
   }
 
@@ -184,11 +260,9 @@ action
   }
 
   runCommand(cmd) {
-    this.sendInput(cmd + "\r")
-    const term = this.global("tylixTerm")
-    if term {
-      term.focus()
-    }
+    const enter = String.fromCharCode(13)
+    this.sendInput(cmd + enter)
+    this.focusTerm()
   }
 
   clearScreen() {
@@ -220,7 +294,7 @@ action
     this.copied = false
   }
 
-   async pasteClipboard() {
+  async pasteClipboard() {
     const term = this.global("tylixTerm")
     if not term {
       return null
@@ -254,9 +328,13 @@ action
       this.live = true
       this.phase = "connected"
       this.startTicker()
+      this.refit()
       term.focus()
     } else if msg.t is "exit" {
-      term.write("\r\n\x1b[90m[" + msg.m + "]\x1b[0m\r\n")
+      const cr = String.fromCharCode(13)
+      const nl = String.fromCharCode(10)
+      const esc = String.fromCharCode(27)
+      term.write(cr + nl + esc + "[90m[" + msg.m + "]" + esc + "[0m" + cr + nl)
     }
   }
 
@@ -298,14 +376,15 @@ action
     const fitModule = this.global("FitAddon")
 
     const term = new TerminalClass({
+      allowTransparency: true,
       cursorBlink: true,
       cursorStyle: "bar",
-      fontSize: 13,
+      fontSize: this.expanded ? 14 : 13,
       lineHeight: 1.25,
       scrollback: 5000,
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
       theme: {
-        background: "#020617",
+        background: "rgba(2, 6, 23, 0)",
         foreground: "#e2e8f0",
         cursor: "#10b981",
         cursorAccent: "#020617",
@@ -333,6 +412,7 @@ action
     term.open(el)
     fit.fit()
     this.setGlobal("tylixTerm", term)
+    this.setGlobal("tylixFit", fit)
 
     const result = await useApi("/api/servers/" + this.serverId + "/terminal", {
       method: "POST",
@@ -385,6 +465,18 @@ onMount
       window.location.href = "/login"
       return null
     }
+
+    const old = this.global("tylixTermHandlers")
+    if old {
+      document.removeEventListener("keydown", old.key)
+      window.removeEventListener("resize", old.resize)
+    }
+
+    const keyHandler = (e) => this.onKey(e)
+    const resizeHandler = () => this.refit()
+    document.addEventListener("keydown", keyHandler)
+    window.addEventListener("resize", resizeHandler)
+    this.setGlobal("tylixTermHandlers", { key: keyHandler, resize: resizeHandler })
 
     await Servers.load()
 
@@ -441,100 +533,126 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none">
+      <div class="{{ wrapCls }}">
+        <div onclick="{{ collapse() }}" class="{{ backdropCls }}"></div>
 
-        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900">
-          <div class="flex items-center gap-3 min-w-0">
+        <div class="{{ cardCls }}">
+
+          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/80">
+            <div class="flex items-center gap-3 min-w-0">
 {{#if phase is "connected"}}
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
 {{/if}}
 {{#if phase is "connecting"}}
-            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
 {{/if}}
 {{#if phase is "idle"}}
-            <span class="w-2.5 h-2.5 rounded-full bg-slate-600 shrink-0"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-600 shrink-0"></span>
 {{/if}}
 {{#if phase is "closed"}}
-            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
 {{/if}}
 {{#if server}}
-            <p class="text-slate-200 text-sm font-mono truncate">{{ server.ssh_user }}@{{ server.host }}</p>
-            <p class="text-slate-500 text-xs truncate hidden sm:block">{{ server.name }}</p>
+              <p class="text-slate-200 text-sm font-mono truncate">{{ server.ssh_user }}@{{ server.host }}</p>
+              <p class="text-slate-500 text-xs truncate hidden sm:block">{{ server.name }}</p>
 {{/if}}
 {{#if not server}}
-            <p class="text-slate-500 text-sm">No server selected</p>
+              <p class="text-slate-500 text-sm">No server selected</p>
 {{/if}}
-          </div>
+            </div>
 
-          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2">
 {{#if live}}
 {{#if copied}}
-            <button class="text-xs text-emerald-400 font-medium px-3 py-1.5">Copied</button>
+              <button class="text-xs text-emerald-400 font-medium px-3 py-1.5">Copied</button>
 {{/if}}
 {{#if not copied}}
-            <button onclick="{{ copySelection() }}" title="Copy the selected text" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Copy</button>
+              <button onclick="{{ copySelection() }}" title="Copy the selected text" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Copy</button>
 {{/if}}
-            <button onclick="{{ pasteClipboard() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Paste</button>
-            <button onclick="{{ clearScreen() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Clear</button>
-            <button onclick="{{ disconnect() }}" class="text-xs text-rose-500 border border-rose-500/30 rounded-full px-3 py-1.5 hover:bg-rose-500/5 transition-colors">Disconnect</button>
+              <button onclick="{{ pasteClipboard() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Paste</button>
+              <button onclick="{{ clearScreen() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Clear</button>
+              <button onclick="{{ disconnect() }}" class="text-xs text-rose-500 border border-rose-500/30 rounded-full px-3 py-1.5 hover:bg-rose-500/5 transition-colors">Disconnect</button>
 {{/if}}
 {{#if phase is "closed"}}
-            <button onclick="{{ connect() }}" class="text-xs bg-emerald-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-emerald-400 transition-all">Reconnect</button>
+              <button onclick="{{ connect() }}" class="text-xs bg-emerald-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-emerald-400 transition-all">Reconnect</button>
 {{/if}}
+              <button onclick="{{ toggleExpand() }}" title="Expand or collapse (Esc to exit)" aria-label="Toggle expanded terminal" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-1.5 transition-colors">
+{{#if expanded}}
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
+                  <path d="M8 3v5H3M12 17v-5h5M8 8L3 3M12 12l5 5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Collapse
+{{/if}}
+{{#if not expanded}}
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
+                  <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Expand
+{{/if}}
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div class="relative" style="height: 60vh; min-height: 420px;">
-          <div id="terminal-host" class="h-full w-full overflow-hidden bg-slate-950 p-3"></div>
+          <div class="{{ bodyCls }}">
+            <div id="terminal-host" class="{{ hostCls }}"></div>
 
 {{#if phase is "idle"}}
-          <div class="absolute inset-0 flex items-center justify-center bg-slate-950 p-6">
-            <div class="text-center max-w-sm">
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 p-6">
+              <div class="text-center max-w-sm">
 {{#if server}}
-              <p class="text-slate-200 font-medium mb-1">Ready to connect to {{ server.name }}</p>
-              <p class="text-slate-500 text-sm mb-6">You'll get a shell as <span class="font-mono text-slate-400">{{ server.ssh_user }}</span>. Sessions close after 15 minutes without typing.</p>
-              <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Connect</button>
+                <p class="text-slate-200 font-medium mb-1">Ready to connect to {{ server.name }}</p>
+                <p class="text-slate-500 text-sm mb-6">You'll get a shell as <span class="font-mono text-slate-400">{{ server.ssh_user }}</span>. Sessions close after 15 minutes without typing.</p>
+                <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Connect</button>
 {{/if}}
 {{#if not server}}
-              <p class="text-slate-200 font-medium mb-1">Choose a server</p>
-              <p class="text-slate-500 text-sm">Pick one from the list above to open a shell on it.</p>
+                <p class="text-slate-200 font-medium mb-1">Choose a server</p>
+                <p class="text-slate-500 text-sm">Pick one from the list above to open a shell on it.</p>
 {{/if}}
+              </div>
             </div>
-          </div>
 {{/if}}
 
 {{#if phase is "connecting"}}
-          <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 p-6">
-            <div class="flex items-center gap-3">
-              <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              <p class="text-slate-300 text-sm">Opening a shell…</p>
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 p-6">
+              <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <p class="text-slate-300 text-sm">Opening a shell…</p>
+              </div>
             </div>
-          </div>
 {{/if}}
-        </div>
+          </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-800 bg-slate-900">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-800 bg-slate-900/80">
 {{#if live}}
-          <p class="text-slate-500 text-xs">Connected for <span class="font-mono text-slate-300">{{ sessionText }}</span></p>
+            <p class="text-slate-500 text-xs">Connected for <span class="font-mono text-slate-300">{{ sessionText }}</span></p>
+{{#if expanded}}
+            <div class="flex flex-wrap items-center gap-1.5">
+{{#each c in commands}}
+              <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-xs rounded-full border border-slate-700 bg-slate-950/60 text-slate-300 px-3 py-1 hover:border-emerald-500/50 transition-all">{{ c.label }}</button>
+{{/each}}
+            </div>
+{{/if}}
 {{#if idleWarn}}
-          <p class="text-amber-500 text-xs font-medium">Closing in <span class="font-mono">{{ idleText }}</span> without typing</p>
+            <p class="text-amber-500 text-xs font-medium">Closing in <span class="font-mono">{{ idleText }}</span> without typing</p>
 {{/if}}
 {{#if not idleWarn}}
-          <p class="text-slate-500 text-xs">Idle limit <span class="font-mono text-slate-300">{{ idleText }}</span></p>
+            <p class="text-slate-500 text-xs">Idle limit <span class="font-mono text-slate-300">{{ idleText }}</span></p>
 {{/if}}
 {{/if}}
 {{#if phase is "connecting"}}
-          <p class="text-slate-500 text-xs">Connecting…</p>
+            <p class="text-slate-500 text-xs">Connecting…</p>
 {{/if}}
 {{#if phase is "idle"}}
-          <p class="text-slate-500 text-xs">Not connected</p>
+            <p class="text-slate-500 text-xs">Not connected</p>
 {{/if}}
 {{#if phase is "closed"}}
-          <p class="text-slate-500 text-xs">Session ended. Reconnect to start a new one.</p>
+            <p class="text-slate-500 text-xs">Session ended. Reconnect to start a new one.</p>
 {{/if}}
+          </div>
         </div>
       </div>
 
+{{#if not expanded}}
       <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mt-6 shadow-sm dark:shadow-none">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-slate-800 dark:text-slate-200 font-medium text-sm">Quick checks</h2>
@@ -553,6 +671,7 @@ template
         <p class="text-slate-500 text-sm">Connect to a server to run common checks like disk, memory, and nginx logs in one click.</p>
 {{/if}}
       </div>
+{{/if}}
 
     </div>
     </div>
