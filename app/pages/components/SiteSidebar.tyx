@@ -6,75 +6,145 @@ props
   active: String
   siteId: String
 
-template
-<nav class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible lg:w-48 shrink-0 pb-2 lg:pb-0">
+state
+  collapsed: false
+  navCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 pb-2 lg:pb-0 lg:transition-[width] lg:duration-200 lg:w-48"
+  topCls: "hidden lg:flex items-center mb-1 justify-between px-3"
+  titleCls: "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
+  toolsCls: "hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3"
+  onCls: "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+  offCls: "group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+  disCls: "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
+  badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+  labelCls: ""
+  chevCls: "w-4 h-4 transition-transform"
 
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3">This site</p>
+action
+  applyLayout() {
+    const navBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 pb-2 lg:pb-0 lg:transition-[width] lg:duration-200"
+    const on = "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+    const off = "group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+    const dis = "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
+    const title = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
+    const tools = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3"
+    const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+
+    if this.collapsed {
+      this.navCls = navBase + " lg:w-12"
+      this.topCls = "hidden lg:flex items-center mb-1 justify-center"
+      this.titleCls = "hidden"
+      this.toolsCls = "hidden"
+      this.onCls = on + " lg:justify-center lg:px-0"
+      this.offCls = off + " lg:justify-center lg:px-0"
+      this.disCls = dis + " lg:justify-center lg:px-0"
+      this.badgeCls = "hidden"
+      this.labelCls = "lg:hidden"
+      this.chevCls = "w-4 h-4 transition-transform rotate-180"
+    } else {
+      this.navCls = navBase + " lg:w-48"
+      this.topCls = "hidden lg:flex items-center mb-1 justify-between px-3"
+      this.titleCls = title
+      this.toolsCls = "hidden lg:block " + tools
+      this.onCls = on
+      this.offCls = off
+      this.disCls = dis
+      this.badgeCls = badge
+      this.labelCls = ""
+      this.chevCls = "w-4 h-4 transition-transform"
+    }
+  }
+
+  toggle() {
+    this.collapsed = not this.collapsed
+    this.applyLayout()
+    window.localStorage.setItem("tylix-site-sidebar", this.collapsed ? "1" : "0")
+  }
+
+onMount
+  async {
+    const saved = window.localStorage.getItem("tylix-site-sidebar")
+    if saved is "1" {
+      this.collapsed = true
+      this.applyLayout()
+    }
+  }
+
+template
+<nav class="{{ navCls }}">
+
+  <div class="{{ topCls }}">
+    <p class="{{ titleCls }}">This site</p>
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-300/50 dark:hover:bg-slate-900/70 transition-colors">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
+        <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  </div>
 
 {{#if active is "application"}}
-  <a href="{{ '/servers/site-detail?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <IconCube class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Application
+  <a href="{{ '/servers/site-detail?id=' + siteId }}" title="Application" aria-current="page" class="{{ onCls }}">
+    <IconCube class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Application</span>
   </a>
 {{/if}}
 {{#if active is not "application"}}
-  <a href="{{ '/servers/site-detail?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconCube class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Application
+  <a href="{{ '/servers/site-detail?id=' + siteId }}" title="Application" class="{{ offCls }}">
+    <IconCube class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Application</span>
   </a>
 {{/if}}
 
 {{#if active is "deployment"}}
-  <a href="{{ '/servers/site-deploy?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <IconBolt class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Deployment
+  <a href="{{ '/servers/site-deploy?id=' + siteId }}" title="Deployment" aria-current="page" class="{{ onCls }}">
+    <IconBolt class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Deployment</span>
   </a>
 {{/if}}
 {{#if active is not "deployment"}}
-  <a href="{{ '/servers/site-deploy?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconBolt class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Deployment
+  <a href="{{ '/servers/site-deploy?id=' + siteId }}" title="Deployment" class="{{ offCls }}">
+    <IconBolt class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Deployment</span>
   </a>
 {{/if}}
 
 {{#if active is "ssl"}}
-  <a href="{{ '/servers/site-ssl?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <IconLockClosed class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> SSL
+  <a href="{{ '/servers/site-ssl?id=' + siteId }}" title="SSL" aria-current="page" class="{{ onCls }}">
+    <IconLockClosed class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">SSL</span>
   </a>
 {{/if}}
 {{#if active is not "ssl"}}
-  <a href="{{ '/servers/site-ssl?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconLockClosed class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> SSL
+  <a href="{{ '/servers/site-ssl?id=' + siteId }}" title="SSL" class="{{ offCls }}">
+    <IconLockClosed class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">SSL</span>
   </a>
 {{/if}}
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-2 mx-3"></div>
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3">Tools</p>
+  <p class="{{ toolsCls }}">Tools</p>
 
-  <span class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-    <IconTerminal class="w-4 h-4 text-slate-300 dark:text-slate-700" />
-    <span>Commands</span>
-    <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
+  <span class="{{ disCls }}" aria-disabled="true" title="Commands (coming soon)">
+    <IconTerminal class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
+    <span class="{{ labelCls }}">Commands</span>
+    <span class="{{ badgeCls }}">Soon</span>
   </span>
 
-  <span class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-    <IconSwitchHorizontal class="w-4 h-4 text-slate-300 dark:text-slate-700" />
-    <span>Redirects</span>
-    <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
+  <span class="{{ disCls }}" aria-disabled="true" title="Redirects (coming soon)">
+    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
+    <span class="{{ labelCls }}">Redirects</span>
+    <span class="{{ badgeCls }}">Soon</span>
   </span>
 
-  <span class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-    <IconDocumentText class="w-4 h-4 text-slate-300 dark:text-slate-700" />
-    <span>Logs</span>
-    <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
+  <span class="{{ disCls }}" aria-disabled="true" title="Logs (coming soon)">
+    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
+    <span class="{{ labelCls }}">Logs</span>
+    <span class="{{ badgeCls }}">Soon</span>
   </span>
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-2 mx-3"></div>
 
 {{#if active is "settings"}}
-  <a href="{{ '/servers/site-settings?id=' + siteId }}" aria-current="page" class="shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <IconAdjustments class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Settings
+  <a href="{{ '/servers/site-settings?id=' + siteId }}" title="Settings" aria-current="page" class="{{ onCls }}">
+    <IconAdjustments class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Settings</span>
   </a>
 {{/if}}
 {{#if active is not "settings"}}
-  <a href="{{ '/servers/site-settings?id=' + siteId }}" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconAdjustments class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Settings
+  <a href="{{ '/servers/site-settings?id=' + siteId }}" title="Settings" class="{{ offCls }}">
+    <IconAdjustments class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Settings</span>
   </a>
 {{/if}}
 

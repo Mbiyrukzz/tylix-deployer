@@ -135,7 +135,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
   <Sidebar active="registrars" />
   <RegistrarSidebar active="email" registrarId="{{ registrarId }}" />
   <div class="min-w-0">

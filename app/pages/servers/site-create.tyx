@@ -272,7 +272,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />

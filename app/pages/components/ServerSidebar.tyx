@@ -6,11 +6,81 @@ props
   active: String
   serverId: String
 
-template
-<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
+state
+  collapsed: false
+  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[230px] lg:p-5"
+  topCls: "hidden lg:flex items-center mb-1 lg:justify-end"
+  headCls: "hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors"
+  onCls: "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+  offCls: "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+  disCls: "shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
+  badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+  labelCls: ""
+  chevCls: "w-4 h-4 transition-transform"
 
-  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
-    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+action
+  applyLayout() {
+    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
+    const on = "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+    const off = "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+    const dis = "shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
+    const head = "hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors"
+    const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+
+    if this.collapsed {
+      this.asideCls = asideBase + " lg:w-16 lg:p-2.5"
+      this.topCls = "hidden lg:flex items-center mb-1 lg:justify-center"
+      this.headCls = "hidden"
+      this.onCls = on + " lg:justify-center"
+      this.offCls = off + " lg:justify-center"
+      this.disCls = dis + " lg:justify-center"
+      this.badgeCls = "hidden"
+      this.labelCls = "lg:hidden"
+      this.chevCls = "w-4 h-4 transition-transform rotate-180"
+
+      const sections = document.querySelectorAll("details.tylix-sec")
+      sections.forEach((el) => Reflect.set(el, "open", true))
+    } else {
+      this.asideCls = asideBase + " lg:w-[230px] lg:p-5"
+      this.topCls = "hidden lg:flex items-center mb-1 lg:justify-end"
+      this.headCls = head
+      this.onCls = on
+      this.offCls = off
+      this.disCls = dis
+      this.badgeCls = badge
+      this.labelCls = ""
+      this.chevCls = "w-4 h-4 transition-transform"
+    }
+  }
+
+  toggle() {
+    this.collapsed = not this.collapsed
+    this.applyLayout()
+    window.localStorage.setItem("tylix-server-sidebar", this.collapsed ? "1" : "0")
+  }
+
+onMount
+  async {
+    const saved = window.localStorage.getItem("tylix-server-sidebar")
+    if saved is "1" {
+      this.collapsed = true
+      this.applyLayout()
+    }
+  }
+
+template
+<aside class="{{ asideCls }}">
+
+  <div class="{{ topCls }}">
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-300/50 dark:hover:bg-slate-900/70 transition-colors">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
+        <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  </div>
+
+  <details open class="tylix-sec group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="{{ headCls }}">
       This server
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
         <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
@@ -18,58 +88,58 @@ template
     </summary>
 
 {{#if active is "server"}}
-  <a href="{{ '/servers/server-detail?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-detail?id=' + serverId }}" title="Overview" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconGauge class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Overview
+    <IconGauge class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 {{#if active is not "server"}}
-  <a href="{{ '/servers/server-detail?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconGauge class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Overview
+  <a href="{{ '/servers/server-detail?id=' + serverId }}" title="Overview" class="{{ offCls }}">
+    <IconGauge class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 
 {{#if active is "sites"}}
-  <a href="{{ '/servers/server-sites?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-sites?id=' + serverId }}" title="Sites" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconGlobe class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Sites
+    <IconGlobe class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Sites</span>
   </a>
 {{/if}}
 {{#if active is not "sites"}}
-  <a href="{{ '/servers/server-sites?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconGlobe class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Sites
+  <a href="{{ '/servers/server-sites?id=' + serverId }}" title="Sites" class="{{ offCls }}">
+    <IconGlobe class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Sites</span>
   </a>
 {{/if}}
 
 {{#if active is "databases"}}
-  <a href="{{ '/servers/server-databases?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Database" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconDatabase class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Database
+    <IconDatabase class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Database</span>
   </a>
 {{/if}}
 {{#if active is not "databases"}}
-  <a href="{{ '/servers/server-databases?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconDatabase class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Database
+  <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Database" class="{{ offCls }}">
+    <IconDatabase class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Database</span>
   </a>
 {{/if}}
 
 {{#if active is "backups"}}
-  <a href="{{ '/servers/server-backups?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-backups?id=' + serverId }}" title="Backups" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconArchive class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Backups
+    <IconArchive class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Backups</span>
   </a>
 {{/if}}
 {{#if active is not "backups"}}
-  <a href="{{ '/servers/server-backups?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconArchive class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Backups
+  <a href="{{ '/servers/server-backups?id=' + serverId }}" title="Backups" class="{{ offCls }}">
+    <IconArchive class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Backups</span>
   </a>
 {{/if}}
   </details>
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-1"></div>
 
-  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
-    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+  <details open class="tylix-sec group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="{{ headCls }}">
       Automation
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
         <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
@@ -77,46 +147,46 @@ template
     </summary>
 
 {{#if active is "cron"}}
-  <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="CronJobs" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconClock class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> CronJobs
+    <IconClock class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">CronJobs</span>
   </a>
 {{/if}}
 {{#if active is not "cron"}}
-  <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconClock class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> CronJobs
+  <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="CronJobs" class="{{ offCls }}">
+    <IconClock class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">CronJobs</span>
   </a>
 {{/if}}
 
 {{#if active is "workers"}}
-  <a href="{{ '/servers/server-workers?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-workers?id=' + serverId }}" title="Workers" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconCpuChip class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Workers
+    <IconCpuChip class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Workers</span>
   </a>
 {{/if}}
 {{#if active is not "workers"}}
-  <a href="{{ '/servers/server-workers?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconCpuChip class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Workers
+  <a href="{{ '/servers/server-workers?id=' + serverId }}" title="Workers" class="{{ offCls }}">
+    <IconCpuChip class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Workers</span>
   </a>
 {{/if}}
 
 {{#if active is "packages"}}
-  <a href="{{ '/servers/server-packages?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-packages?id=' + serverId }}" title="Packages" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconPackage class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Packages
+    <IconPackage class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Packages</span>
   </a>
 {{/if}}
 {{#if active is not "packages"}}
-  <a href="{{ '/servers/server-packages?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconPackage class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Packages
+  <a href="{{ '/servers/server-packages?id=' + serverId }}" title="Packages" class="{{ offCls }}">
+    <IconPackage class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Packages</span>
   </a>
 {{/if}}
   </details>
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-1"></div>
 
-  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
-    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+  <details open class="tylix-sec group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="{{ headCls }}">
       Security
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
         <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
@@ -124,34 +194,34 @@ template
     </summary>
 
 {{#if active is "firewall"}}
-  <a href="{{ '/servers/server-firewall?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-firewall?id=' + serverId }}" title="Firewall" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconShieldCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Firewall
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Firewall</span>
   </a>
 {{/if}}
 {{#if active is not "firewall"}}
-  <a href="{{ '/servers/server-firewall?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconShieldCheck class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Firewall
+  <a href="{{ '/servers/server-firewall?id=' + serverId }}" title="Firewall" class="{{ offCls }}">
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Firewall</span>
   </a>
 {{/if}}
 
 {{#if active is "ssh-keys"}}
-  <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" title="SSH Keys" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconKey class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> SSH Keys
+    <IconKey class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">SSH Keys</span>
   </a>
 {{/if}}
 {{#if active is not "ssh-keys"}}
-  <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconKey class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> SSH Keys
+  <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" title="SSH Keys" class="{{ offCls }}">
+    <IconKey class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">SSH Keys</span>
   </a>
 {{/if}}
   </details>
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-1"></div>
 
-  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
-    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+  <details open class="tylix-sec group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="{{ headCls }}">
       Monitor
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
         <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
@@ -159,35 +229,35 @@ template
     </summary>
 
 {{#if active is "logs"}}
-  <a href="{{ '/servers/server-logs?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-logs?id=' + serverId }}" title="Logs" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconDocumentText class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Logs
+    <IconDocumentText class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Logs</span>
   </a>
 {{/if}}
 {{#if active is not "logs"}}
-  <a href="{{ '/servers/server-logs?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconDocumentText class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Logs
+  <a href="{{ '/servers/server-logs?id=' + serverId }}" title="Logs" class="{{ offCls }}">
+    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Logs</span>
   </a>
 {{/if}}
 
 {{#if active is "terminal"}}
-  <a href="{{ '/servers/server-terminal?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-terminal?id=' + serverId }}" title="Terminal" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconTerminal class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Terminal
+    <IconTerminal class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Terminal</span>
   </a>
 {{/if}}
 {{#if active is not "terminal"}}
-  <a href="{{ '/servers/server-terminal?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconTerminal class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Terminal
+  <a href="{{ '/servers/server-terminal?id=' + serverId }}" title="Terminal" class="{{ offCls }}">
+    <IconTerminal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Terminal</span>
   </a>
 {{/if}}
   </details>
 
   <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800">
-    <span class="shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
-      <IconCog class="w-4 h-4 text-slate-300 dark:text-slate-700" />
-      <span>Settings</span>
-      <span class="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600">Soon</span>
+    <span class="{{ disCls }}" aria-disabled="true" title="Settings (coming soon)">
+      <IconCog class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
+      <span class="{{ labelCls }}">Settings</span>
+      <span class="{{ badgeCls }}">Soon</span>
     </span>
   </div>
 </aside>

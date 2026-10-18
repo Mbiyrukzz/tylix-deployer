@@ -231,13 +231,13 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="workers" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
