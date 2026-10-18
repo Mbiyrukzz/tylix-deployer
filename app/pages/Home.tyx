@@ -11,6 +11,3 @@ template
     <CTASection loggedIn="{{ Auth.user }}" />
     <SiteFooter />
   </div>
-  {{#if not checkedAuth}}
-<PageLoader label="Loading..." />
-{{/if}}
