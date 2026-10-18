@@ -24,11 +24,23 @@ state
   saved: false
   error: ""
   timer: 0
+  history: []
+  shownHistory: []
+  histFilter: "all"
+  histTabs: []
+  viewId: ""
+  logText: ""
+  logStatus: "idle"
+  logLoading: false
 
 action
   applyStatus(data) {
     this.deployStatus = data.deploy_status
     this.deployLog = data.deploy_log
+    if this.viewId is "" {
+      this.logText = data.deploy_log
+      this.logStatus = data.deploy_status
+    }
     this.deployedText = data.deployed_at ? data.deployed_at.slice(0, 16).replace("T", " ") : ""
     this.busy = false
     if data.deploy_status is "deploying" {
@@ -47,6 +59,112 @@ action
     this.error = ""
   }
 
+  openLive() {
+    this.viewId = ""
+    this.logLoading = false
+    this.logText = this.deployLog
+    this.logStatus = this.deployStatus
+    this.openModal("log")
+  }
+
+  async openDeployLog(id) {
+    const d = this.history.find((x) => x.id is id)
+    if not d {
+      return null
+    }
+
+    if d.status is "deploying" {
+      this.openLive()
+      return null
+    }
+
+    this.viewId = id
+    this.logText = ""
+    this.logStatus = d.status
+    this.logLoading = true
+    this.openModal("log")
+
+    const result = await useApi("/api/sites/" + this.siteId + "/deployments/" + id)
+
+    if this.viewId is id {
+      this.logLoading = false
+      if result.ok {
+        this.logText = result.data.log or ""
+        this.logStatus = result.data.status
+      } else if result.status is 401 {
+        window.location.href = "/login"
+      } else {
+        this.logText = "Couldn't load this log."
+      }
+    }
+  }
+
+  decorateDeploy(d, activeId) {
+    let label = "Previous"
+    let tone = "bg-slate-500/10 border-slate-500/20 text-slate-500"
+
+    if d.status is "success" and d.id is activeId {
+      label = "Active"
+      tone = "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-500"
+    }
+    if d.status is "failed" {
+      label = "Failed"
+      tone = "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-500"
+    }
+    if d.status is "deploying" {
+      label = "Deploying"
+      tone = "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500"
+    }
+
+    let duration = ""
+    if d.finished_at and d.started_at {
+      const secs = Math.round((new Date(d.finished_at).getTime() - new Date(d.started_at).getTime()) / 1000)
+      if secs >= 60 {
+        duration = Math.floor(secs / 60) + "m " + (secs % 60) + "s"
+      } else {
+        duration = Math.max(0, secs) + "s"
+      }
+    }
+
+    return Object.assign({}, d, {
+      label: label,
+      badgeCls: "inline-flex w-24 shrink-0 justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider " + tone,
+      whenText: d.started_at ? d.started_at.slice(0, 16).replace("T", " ") : "",
+      duration: duration
+    })
+  }
+
+  applyHistFilter() {
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-emerald-500 text-white dark:text-slate-950 text-xs font-semibold px-3.5 py-1.5 transition-all"
+    const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-xs font-medium px-3.5 py-1.5 hover:border-emerald-500/50 transition-all"
+    const keys = [["all", "All"], ["success", "Successful"], ["failed", "Failed"]]
+
+    this.shownHistory = this.histFilter is "all" ? this.history : this.history.filter((d) => d.status is this.histFilter)
+    this.histTabs = keys.map((k) => ({
+      key: k[0],
+      label: k[1],
+      count: k[0] is "all" ? this.history.length : this.history.filter((d) => d.status is k[0]).length,
+      cls: k[0] is this.histFilter ? activeCls : idleCls
+    }))
+  }
+
+  setHistFilter(key) {
+    this.histFilter = key
+    this.applyHistFilter()
+  }
+
+  async loadHistory() {
+    const result = await useApi("/api/sites/" + this.siteId + "/deployments")
+
+    if result.ok and Array.isArray(result.data) {
+      const firstOk = result.data.find((d) => d.status is "success")
+      const activeId = firstOk ? firstOk.id : null
+      this.history = result.data.map((d) => this.decorateDeploy(d, activeId))
+    }
+
+    this.applyHistFilter()
+  }
+
   async poll() {
     const result = await useApi("/api/sites/" + this.siteId + "/deployment")
 
@@ -54,6 +172,7 @@ action
       this.applyStatus(result.data)
       if result.data.deploy_status is not "deploying" {
         window.clearInterval(this.timer)
+        await this.loadHistory()
       }
     }
   }
@@ -132,8 +251,13 @@ action
     if result.ok {
       this.deployStatus = "deploying"
       this.deployLog = ""
+      this.viewId = ""
+      this.logLoading = false
+      this.logText = ""
+      this.logStatus = "deploying"
       this.modal = "log"
       this.startPolling()
+      await this.loadHistory()
       return null
     }
 
@@ -178,6 +302,7 @@ onMount
           }
         }
 
+        await this.loadHistory()
         this.loading = false
       } else {
         this.notFound = true
@@ -187,7 +312,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
@@ -196,14 +321,17 @@ template
     <div class="max-w-5xl mx-auto px-6 lg:px-10 py-10">
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <div class="space-y-4">
+        <div class="h-8 w-64 rounded-lg bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
+        <div class="h-40 rounded-2xl bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
+      </div>
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
-        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">&larr; Back to servers</a>
       </div>
 {{/if}}
 
@@ -212,75 +340,157 @@ template
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
-      <div class="flex items-start justify-between gap-4 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
         <div class="min-w-0">
-          <div class="flex items-center gap-3 mb-2">
-            <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
+          <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-center gap-2.5 max-w-full">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ site.domain }}</h1>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">
+              <path d="M11 3h6v6M17 3l-8 8M15 11v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" />
+            </svg>
+          </a>
+          <p class="text-slate-500 text-sm mt-1">Deployment</p>
+        </div>
+
+        <div class="shrink-0">
 {{#if deployStatus is "success"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed
-            </span>
+          <span class="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed
+          </span>
 {{/if}}
 {{#if deployStatus is "failed"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-            </span>
+          <span class="inline-flex items-center gap-2 rounded-full bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+          </span>
 {{/if}}
 {{#if deployStatus is "deploying"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Deploying
-            </span>
+          <span class="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Deploying
+          </span>
 {{/if}}
-          </div>
-          <p class="text-slate-500 text-sm">
-            Deployment
-{{#if deployedText}}
-            &middot; last deployed {{ deployedText }} UTC
+{{#if deployStatus is "idle"}}
+          <span class="inline-flex items-center gap-2 rounded-full bg-slate-500/10 border border-slate-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Not deployed
+          </span>
 {{/if}}
-          </p>
         </div>
       </div>
 
       <div class="flex flex-col lg:flex-row gap-8">
         <SiteSidebar active="deployment" siteId="{{ siteId }}" />
 
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 flex-1 space-y-6">
 
 {{#if error}}
 {{#if modal is ""}}
-          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5">
             <p class="text-rose-500 text-sm break-words">{{ error }}</p>
           </div>
 {{/if}}
 {{/if}}
 
 {{#if not canDeploy}}
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5">
-            <p class="text-slate-800 dark:text-slate-200 text-sm">This site has no repository, so there is nothing to deploy.</p>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <p class="text-slate-900 dark:text-slate-100 text-sm">This site has no repository, so there is nothing to deploy.</p>
           </div>
 {{/if}}
 
 {{#if canDeploy}}
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Deploy</h2>
-            <p class="text-slate-500 text-sm mb-5">Pulls the latest code, writes the environment, runs the deployment script and restarts the app.</p>
-
-            <div class="flex flex-wrap items-center gap-3">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+              <div class="min-w-0">
+                <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Deploy</h2>
+                <p class="text-slate-500 text-sm">Pulls the latest code, writes the environment, runs the deployment script and restarts the app.</p>
+{{#if deployedText}}
+                <p class="text-slate-400 text-xs mt-2">Last deployed <span class="font-mono text-slate-500">{{ deployedText }} UTC</span></p>
+{{/if}}
+              </div>
+              <div class="shrink-0">
 {{#if busy}}
-              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Deploying…</button>
+                <button disabled class="inline-flex items-center gap-2 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">
+                  <span class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Deploying…
+                </button>
 {{/if}}
 {{#if not busy}}
-              <button onclick="{{ deploy() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Deploy now</button>
+                <button onclick="{{ deploy() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Deploy now</button>
 {{/if}}
-              <button onclick="{{ openModal('script') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Deployment script</button>
-{{#if envPath}}
-              <button onclick="{{ openModal('env') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Environment (.env)</button>
-{{/if}}
-              <button onclick="{{ openModal('log') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Deployment log</button>
+              </div>
             </div>
 
 {{#if saved}}
             <p class="text-emerald-700 dark:text-emerald-500 text-sm mt-4">Saved.</p>
+{{/if}}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="{{ openModal('script') }}" class="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1">Deployment script</p>
+              <p class="text-slate-500 text-xs">Commands run after the latest code is pulled.</p>
+            </button>
+{{#if envPath}}
+            <button onclick="{{ openModal('env') }}" class="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1">Environment</p>
+              <p class="text-slate-500 text-xs font-mono truncate">{{ envPath }}</p>
+            </button>
+{{/if}}
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Deployment history</h2>
+              <div class="flex flex-wrap items-center gap-2">
+{{#each t in histTabs}}
+                <button onclick="{{ setHistFilter(t.key) }}" class="{{ t.cls }}">
+                  {{ t.label }}
+                  <span class="opacity-70">{{ t.count }}</span>
+                </button>
+{{/each}}
+              </div>
+            </div>
+
+{{#if shownHistory.length is 0}}
+            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+              <p class="text-slate-500 text-sm">No deployments to show.</p>
+            </div>
+{{/if}}
+
+            <div class="space-y-2">
+{{#each d in shownHistory}}
+              <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+                <span class="{{ d.badgeCls }}">{{ d.label }}</span>
+                <div class="min-w-0 flex-1 basis-40">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ d.whenText }} UTC</p>
+{{#if d.branch}}
+                  <p class="text-slate-500 text-xs font-mono truncate">{{ d.branch }}</p>
+{{/if}}
+                </div>
+{{#if d.duration}}
+                <span class="text-slate-500 text-xs shrink-0">{{ d.duration }}</span>
+{{/if}}
+                <button onclick="{{ openDeployLog(d.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View log</button>
+              </div>
+{{/each}}
+            </div>
+          </div>
+
+          <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 shadow-sm dark:shadow-none">
+            <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800">
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                </div>
+                <p class="text-slate-400 text-xs font-medium">Latest deployment log</p>
+              </div>
+              <button onclick="{{ openLive() }}" class="text-xs text-slate-400 hover:text-white border border-slate-700 rounded-full px-3 py-1 transition-colors">Expand</button>
+            </div>
+{{#if deployLog}}
+            <div class="max-h-64 overflow-y-auto px-4 py-4 text-xs leading-relaxed font-mono text-slate-300 whitespace-pre-wrap break-words">{{ deployLog }}</div>
+{{/if}}
+{{#if not deployLog}}
+            <div class="px-4 py-8 text-center">
+              <p class="text-slate-500 text-xs font-mono">$ no deployment yet</p>
+            </div>
 {{/if}}
           </div>
 {{/if}}
@@ -291,10 +501,10 @@ template
 
 {{#if modal is "script"}}
       <div role="dialog" aria-modal="true" aria-labelledby="script-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
           <div class="flex items-center justify-between mb-2">
-            <h3 id="script-title" class="text-slate-900 dark:text-slate-200 font-medium">Deployment script</h3>
-            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+            <h3 id="script-title" class="text-slate-900 dark:text-slate-100 font-semibold">Deployment script</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <IconX class="w-4 h-4" />
             </button>
           </div>
@@ -305,20 +515,20 @@ template
             autocomplete="off"
             value="{{ scriptText }}"
             oninput="{{ scriptText = $event.target.value }}"
-            class="w-full mb-4 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 resize-y"
+            class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors resize-y"
           ></textarea>
 {{#if error}}
           <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
 {{/if}}
           <div class="flex items-center justify-between gap-3">
-            <button onclick="{{ resetScript() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Reset to default</button>
+            <button onclick="{{ resetScript() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reset to default</button>
             <div class="flex items-center gap-3">
-              <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+              <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Saving…</button>
+              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not saving}}
-              <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Save</button>
+              <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save</button>
 {{/if}}
             </div>
           </div>
@@ -328,10 +538,10 @@ template
 
 {{#if modal is "env"}}
       <div role="dialog" aria-modal="true" aria-labelledby="env-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
           <div class="flex items-center justify-between mb-2">
-            <h3 id="env-title" class="text-slate-900 dark:text-slate-200 font-medium">Environment</h3>
-            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+            <h3 id="env-title" class="text-slate-900 dark:text-slate-100 font-semibold">Environment</h3>
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <IconX class="w-4 h-4" />
             </button>
           </div>
@@ -342,19 +552,19 @@ template
             autocomplete="off"
             value="{{ envText }}"
             oninput="{{ envText = $event.target.value }}"
-            class="w-full mb-4 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 resize-y"
+            class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors resize-y"
             placeholder="APP_ENV=production"
           ></textarea>
 {{#if error}}
           <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
 {{/if}}
           <div class="flex items-center justify-end gap-3">
-            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Saving…</button>
+            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not saving}}
-            <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Save</button>
+            <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save</button>
 {{/if}}
           </div>
         </div>
@@ -362,33 +572,70 @@ template
 {{/if}}
 
 {{#if modal is "log"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <h3 id="log-title" class="text-slate-900 dark:text-slate-200 font-medium">Deployment log</h3>
-{{#if deployStatus is "deploying"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+      <div role="dialog" aria-modal="true" aria-labelledby="log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-6">
+        <div class="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
+
+          <div class="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-slate-800">
+            <div class="flex items-center gap-4 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+              </div>
+              <h3 id="log-title" class="text-slate-200 text-sm font-medium">Deployment log</h3>
+{{#if logStatus is "deploying"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-500">
                 <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Deploying
               </span>
 {{/if}}
-{{#if deployStatus is "success"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Deployed</span>
+{{#if logStatus is "success"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed
+              </span>
 {{/if}}
-{{#if deployStatus is "failed"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Failed</span>
+{{#if logStatus is "failed"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+              </span>
 {{/if}}
             </div>
-            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+            <button onclick="{{ closeModal() }}" aria-label="Close" class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-white hover:bg-slate-800 transition-colors">
               <IconX class="w-4 h-4" />
             </button>
           </div>
-{{#if deployLog}}
-          <div class="max-h-[60vh] overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ deployLog }}</div>
+
+{{#if logStatus is "deploying"}}
+          <div class="h-0.5 w-full bg-slate-800 overflow-hidden">
+            <div class="h-full w-1/3 bg-emerald-500 animate-pulse"></div>
+          </div>
 {{/if}}
-{{#if not deployLog}}
-          <p class="text-slate-500 text-sm">No deployment yet.</p>
+
+{{#if logLoading}}
+          <div class="px-5 py-14 text-center">
+            <p class="text-slate-500 text-sm font-mono">$ loading log…</p>
+          </div>
 {{/if}}
+
+{{#if not logLoading}}
+{{#if logText}}
+          <div class="flex-1 min-h-0 overflow-y-auto px-5 py-5 text-[13px] leading-relaxed font-mono text-slate-300 whitespace-pre-wrap break-words">{{ logText }}</div>
+{{/if}}
+{{#if not logText}}
+          <div class="px-5 py-14 text-center">
+            <p class="text-slate-500 text-sm font-mono">$ no output</p>
+          </div>
+{{/if}}
+{{/if}}
+
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-800">
+            <p class="text-slate-500 text-xs">
+{{#if deployedText}}
+              Last deployed <span class="font-mono text-slate-400">{{ deployedText }} UTC</span>
+{{/if}}
+            </p>
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-800 transition-colors">Close</button>
+          </div>
+
         </div>
       </div>
 {{/if}}

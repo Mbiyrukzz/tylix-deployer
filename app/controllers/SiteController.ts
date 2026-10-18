@@ -16,6 +16,7 @@
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Site } from "../models/Site.js";
+import { Deployment } from "../models/Deployment.js";
 import { Server } from "../models/Server.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { validateSite, normalizeSite } from "../validators/SiteValidator.js";
@@ -57,6 +58,64 @@ interface SiteRow {
     created_at: string;
     updated_at: string;
     [key: string]: unknown;
+}
+
+interface DeploymentRow {
+    id: number;
+    site_id: number;
+    user_id: number;
+    status: string;
+    log: string;
+    branch: string;
+    started_at: string;
+    finished_at: string;
+    created_at: string;
+    [key: string]: unknown;
+}
+
+async function deploymentsFor(siteId: number): Promise<DeploymentRow[]> {
+    const all = (await Deployment.all()) as DeploymentRow[];
+    return all.filter((d) => Number(d.site_id) === Number(siteId)).sort((a, b) => Number(b.id) - Number(a.id));
+}
+
+/**
+ * SiteDeployer only writes to the site row, so history rows are closed here.
+ * The newest running row takes the site's result; any older running row was
+ * interrupted (restart, stale deploy) and is marked failed.
+ */
+async function syncDeployments(site: SiteRow): Promise<DeploymentRow[]> {
+    const rows = await deploymentsFor(site.id);
+    const running = rows.filter((d) => d.status === "deploying");
+    let changed = false;
+
+    for (let i = 0; i < running.length; i++) {
+        const d = running[i];
+
+        if (i === 0) {
+            if (site.deploy_status === "deploying") continue;
+
+            await Deployment.update(d.id, {
+                status: site.deploy_status === "success" ? "success" : "failed",
+                log: String(site.deploy_log ?? ""),
+                finished_at: String(site.deployed_at || new Date().toISOString()),
+            });
+        } else {
+            await Deployment.update(d.id, {
+                status: "failed",
+                log: String(d.log || "") || "Interrupted before it finished.",
+                finished_at: new Date().toISOString(),
+            });
+        }
+
+        changed = true;
+    }
+
+    return changed ? await deploymentsFor(site.id) : rows;
+}
+
+function toPublicDeployment(row: DeploymentRow) {
+    const { log, user_id, ...rest } = row;
+    return rest;
 }
 
 const MAX_TEXT = 20_000;
@@ -299,6 +358,34 @@ export class SiteController {
         });
     }
 
+        /** GET /api/sites/:id/deployments: newest first, without logs. */
+    async deployments(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+
+        const rows = await syncDeployments(site);
+        return res.json(rows.slice(0, 50).map(toPublicDeployment));
+    }
+
+    /** GET /api/sites/:id/deployments/:deploymentId: one deployment's log. */
+    async deploymentLog(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+
+        await syncDeployments(site);
+
+        const row = (await Deployment.find(req.params.deploymentId)) as DeploymentRow | null;
+        if (!row || Number(row.site_id) !== Number(site.id)) {
+            res.status(404);
+            return res.json({ error: "Deployment not found." });
+        }
+
+        // A running deployment's log lives on the site row until it finishes.
+        const log = row.status === "deploying" ? String(site.deploy_log ?? "") : String(row.log ?? "");
+
+        return res.json({ id: row.id, status: row.status, log });
+    }
+
     /** PUT /api/sites/:id/deployment: body { deploy_script?, env? }. Omitted fields are left alone. */
     async saveDeployment(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
@@ -373,6 +460,15 @@ export class SiteController {
         }
 
         await Site.update(site.id, { deploy_status: "deploying", deploy_log: "" });
+        await Deployment.create({
+            site_id: site.id,
+            user_id: site.user_id,
+            status: "deploying",
+            log: "",
+            branch: String(site.branch ?? ""),
+            started_at: new Date().toISOString(),
+            finished_at: "",
+        });
         SiteDeployer.start(site.id);
 
         res.status(202);

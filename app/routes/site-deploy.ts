@@ -4,6 +4,8 @@
  * GET  /api/sites/:id/deployment   script, env, status and log
  * PUT  /api/sites/:id/deployment   save script and/or env
  * POST /api/sites/:id/deploy       start a deployment
+ * GET  /api/sites/:id/deployments                  deployment history (no logs)
+ * GET  /api/sites/:id/deployments/:deploymentId    one deployment's log
  */
 
 import type { Router } from "@tylix/core";
@@ -32,6 +34,20 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         "/api/sites/:id/deploy",
         auth(async (req, res) => {
             await controller.deploy(req, res);
+        }),
+    );
+
+        router.get(
+        "/api/sites/:id/deployments",
+        auth(async (req, res) => {
+            await controller.deployments(req, res);
+        }),
+    );
+
+    router.get(
+        "/api/sites/:id/deployments/:deploymentId",
+        auth(async (req, res) => {
+            await controller.deploymentLog(req, res);
         }),
     );
 }
