@@ -119,3 +119,6 @@ template
     </div>
   </div>
 {{/if}}
+{{#if not checkedAuth}}
+<PageLoader label="Loading source providers..." />
+{{/if}}
