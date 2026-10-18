@@ -1,0 +1,443 @@
+component RecordForm
+
+props
+  providerId: String
+  domainId: String
+  kind: String
+  record: Object
+  chips: Array
+  onClose: Function
+  onSaved: Function
+
+state
+  isEdit: false
+  fType: "A"
+  fName: ""
+  fValue: ""
+  fPriority: "10"
+  fWeight: "0"
+  fPort: "0"
+  fService: ""
+  fProtocol: "tcp"
+  fTag: "issue"
+  fTtl: 0
+  types: ["A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV", "CAA"]
+  ttlOptions: [{ key: 0, label: "Default" }, { key: 300, label: "5 min" }, { key: 3600, label: "1 hour" }, { key: 14400, label: "4 hours" }, { key: 86400, label: "1 day" }]
+  protocols: ["tcp", "udp", "tls"]
+  tags: ["issue", "issuewild", "iodef"]
+  valueLabel: "IPv4 address"
+  valuePlaceholder: "203.0.113.10"
+  saving: false
+  nameError: ""
+  valueError: ""
+  priorityError: ""
+  weightError: ""
+  portError: ""
+  serviceError: ""
+  tagError: ""
+  ttlError: ""
+  formError: ""
+  keyHandler: null
+
+action
+  firstError(errors, field) {
+    if errors and errors[field] and errors[field].length > 0 {
+      return errors[field][0]
+    }
+    return ""
+  }
+
+  clearErrors() {
+    this.nameError = ""
+    this.valueError = ""
+    this.priorityError = ""
+    this.weightError = ""
+    this.portError = ""
+    this.serviceError = ""
+    this.tagError = ""
+    this.ttlError = ""
+    this.formError = ""
+  }
+
+  updateLabels() {
+    let label = "IPv4 address"
+    let ph = "203.0.113.10"
+    if this.fType is "AAAA" {
+      label = "IPv6 address"
+      ph = "2001:db8::1"
+    }
+    if this.fType is "CNAME" {
+      label = "Points to"
+      ph = "target.example.com"
+    }
+    if this.fType is "MX" {
+      label = "Mail server"
+      ph = "mail.example.com"
+    }
+    if this.fType is "TXT" {
+      label = "Text"
+      ph = "v=spf1 include:_spf.example.com ~all"
+    }
+    if this.fType is "NS" {
+      label = "Name server"
+      ph = "ns1.example.com"
+    }
+    if this.fType is "SRV" {
+      label = "Target host"
+      ph = "sip.example.com"
+    }
+    if this.fType is "CAA" {
+      label = "CA domain"
+      ph = "letsencrypt.org"
+    }
+    this.valueLabel = label
+    this.valuePlaceholder = ph
+  }
+
+  pickType(t) {
+    this.fType = t
+    this.updateLabels()
+  }
+
+  pickTtl(v) {
+    this.fTtl = v
+  }
+
+  pickProtocol(p) {
+    this.fProtocol = p
+  }
+
+  pickTag(t) {
+    this.fTag = t
+  }
+
+  pickChip(ip) {
+    this.fValue = ip
+  }
+
+  onKey(e) {
+    if e.key is "Escape" {
+      this.close()
+    }
+  }
+
+  focusFirst() {
+    const el = document.getElementById("rec-service") or document.getElementById("rec-name") or document.getElementById("rec-value")
+    if el {
+      el.focus()
+    }
+  }
+
+  cleanup() {
+    document.body.style.overflow = ""
+    if this.keyHandler {
+      document.removeEventListener("keydown", this.keyHandler)
+      this.keyHandler = null
+    }
+  }
+
+  close() {
+    this.cleanup()
+    this.onClose()
+  }
+
+  async submit() {
+    if this.saving {
+      return null
+    }
+
+    this.clearErrors()
+    this.saving = true
+
+    const payload = {
+      type: this.fType,
+      name: this.fName,
+      value: this.fValue,
+      ttl: this.fTtl,
+      priority: this.fPriority,
+      weight: this.fWeight,
+      port: this.fPort,
+      service: this.fService,
+      protocol: this.fProtocol,
+      tag: this.fTag
+    }
+
+    let url = "/api/providers/" + this.providerId + "/domains/" + this.domainId + "/records"
+    let method = "POST"
+    if this.isEdit {
+      url = url + "/" + this.record.id
+      method = "PUT"
+    }
+
+    const result = await useApi(url, { method: method, body: payload })
+    this.saving = false
+
+    if result.ok {
+      this.cleanup()
+      this.onSaved()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      const errors = result.data?.errors
+      this.nameError = this.firstError(errors, "name")
+      this.valueError = this.firstError(errors, "value")
+      this.priorityError = this.firstError(errors, "priority")
+      this.weightError = this.firstError(errors, "weight")
+      this.portError = this.firstError(errors, "port")
+      this.serviceError = this.firstError(errors, "service")
+      this.tagError = this.firstError(errors, "tag")
+      this.ttlError = this.firstError(errors, "ttl")
+      this.formError = this.firstError(errors, "type") or this.firstError(errors, "protocol") or result.data?.error or ""
+      if not errors and this.formError is "" {
+        this.formError = "Couldn't save the record. Try again."
+      }
+    }
+  }
+
+onMount
+  async {
+    const r = this.record
+
+    if r {
+      this.isEdit = true
+      this.fType = r.type
+      this.fName = r.name
+      this.fValue = r.value
+      this.fPriority = r.priority is null ? "10" : String(r.priority)
+      this.fWeight = r.weight is null ? "0" : String(r.weight)
+      this.fPort = r.port is null ? "0" : String(r.port)
+      this.fService = r.service or ""
+      this.fProtocol = r.protocol or "tcp"
+      this.fTag = r.tag or "issue"
+      this.fTtl = r.ttl
+    }
+
+    this.updateLabels()
+
+    document.body.style.overflow = "hidden"
+    const handler = (e) => this.onKey(e)
+    document.addEventListener("keydown", handler)
+    this.keyHandler = handler
+
+    window.setTimeout(() => this.focusFirst(), 60)
+  }
+
+template
+<div role="dialog" aria-modal="true" aria-labelledby="rec-title" style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+
+  <div onclick="{{ close() }}" style="position: absolute; inset: 0; background: rgba(2, 6, 23, 0.6); backdrop-filter: blur(4px);"></div>
+
+  <div class="relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl" style="width: 100%; max-width: 36rem; max-height: 90vh; overflow-y: auto;">
+
+    <div class="flex items-center justify-between gap-4 px-6 pt-6 pb-4">
+      <h2 id="rec-title" class="text-slate-900 dark:text-slate-100 font-semibold">
+{{#if isEdit}}
+        Edit {{ fType }} record
+{{/if}}
+{{#if not isEdit}}
+        Add a record
+{{/if}}
+      </h2>
+      <button onclick="{{ close() }}" aria-label="Close" class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+          <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="px-6 pb-2">
+
+{{#if not isEdit}}
+      <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Type</p>
+      <div class="flex flex-wrap gap-2 mb-5">
+{{#each t in types}}
+{{#if fType is t}}
+        <button onclick="{{ pickType(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ t }}</button>
+{{/if}}
+{{#if fType is not t}}
+        <button onclick="{{ pickType(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ t }}</button>
+{{/if}}
+{{/each}}
+      </div>
+{{/if}}
+
+{{#if fType is "SRV"}}
+      <label for="rec-service" class="block text-slate-500 text-xs font-medium mb-1.5">Service</label>
+      <input
+        id="rec-service"
+        type="text"
+        value="{{ fService }}"
+        oninput="{{ fService = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="sip"
+      />
+{{#if serviceError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ serviceError }}</p>
+{{/if}}
+
+      <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mt-4 mb-2">Protocol</p>
+      <div class="flex flex-wrap gap-2">
+{{#each p in protocols}}
+{{#if fProtocol is p}}
+        <button onclick="{{ pickProtocol(p) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ p }}</button>
+{{/if}}
+{{#if fProtocol is not p}}
+        <button onclick="{{ pickProtocol(p) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ p }}</button>
+{{/if}}
+{{/each}}
+      </div>
+{{/if}}
+
+{{#if fType is not "SRV"}}
+      <label for="rec-name" class="block text-slate-500 text-xs font-medium mb-1.5">Name</label>
+      <input
+        id="rec-name"
+        type="text"
+        value="{{ fName }}"
+        oninput="{{ fName = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="@ for the root, or www"
+      />
+{{#if nameError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ nameError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if fType is "CAA"}}
+      <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mt-4 mb-2">Tag</p>
+      <div class="flex flex-wrap gap-2">
+{{#each t in tags}}
+{{#if fTag is t}}
+        <button onclick="{{ pickTag(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ t }}</button>
+{{/if}}
+{{#if fTag is not t}}
+        <button onclick="{{ pickTag(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ t }}</button>
+{{/if}}
+{{/each}}
+      </div>
+{{#if tagError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ tagError }}</p>
+{{/if}}
+{{/if}}
+
+      <label for="rec-value" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ valueLabel }}</label>
+      <input
+        id="rec-value"
+        type="text"
+        value="{{ fValue }}"
+        oninput="{{ fValue = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ valuePlaceholder }}"
+      />
+{{#if valueError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ valueError }}</p>
+{{/if}}
+
+{{#if fType is "A"}}
+{{#if chips.length is not 0}}
+      <div class="flex flex-wrap items-center gap-2 mt-2">
+        <span class="text-slate-500 text-xs">Use a server:</span>
+{{#each c in chips}}
+        <button onclick="{{ pickChip(c.ip) }}" class="text-xs font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{{ c.label }}</button>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+{{#if fType is "MX"}}
+      <label for="rec-priority" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Priority</label>
+      <input
+        id="rec-priority"
+        type="text"
+        inputmode="numeric"
+        value="{{ fPriority }}"
+        oninput="{{ fPriority = $event.target.value }}"
+        class="w-32 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+      />
+{{#if priorityError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ priorityError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if fType is "SRV"}}
+      <div class="flex flex-wrap gap-4 mt-4">
+        <div>
+          <label for="rec-srv-priority" class="block text-slate-500 text-xs font-medium mb-1.5">Priority</label>
+          <input
+            id="rec-srv-priority"
+            type="text"
+            inputmode="numeric"
+            value="{{ fPriority }}"
+            oninput="{{ fPriority = $event.target.value }}"
+            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          />
+{{#if priorityError}}
+          <p class="text-rose-500 text-xs mt-1.5">{{ priorityError }}</p>
+{{/if}}
+        </div>
+        <div>
+          <label for="rec-weight" class="block text-slate-500 text-xs font-medium mb-1.5">Weight</label>
+          <input
+            id="rec-weight"
+            type="text"
+            inputmode="numeric"
+            value="{{ fWeight }}"
+            oninput="{{ fWeight = $event.target.value }}"
+            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          />
+{{#if weightError}}
+          <p class="text-rose-500 text-xs mt-1.5">{{ weightError }}</p>
+{{/if}}
+        </div>
+        <div>
+          <label for="rec-port" class="block text-slate-500 text-xs font-medium mb-1.5">Port</label>
+          <input
+            id="rec-port"
+            type="text"
+            inputmode="numeric"
+            value="{{ fPort }}"
+            oninput="{{ fPort = $event.target.value }}"
+            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          />
+{{#if portError}}
+          <p class="text-rose-500 text-xs mt-1.5">{{ portError }}</p>
+{{/if}}
+        </div>
+      </div>
+{{/if}}
+
+      <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mt-5 mb-2">TTL</p>
+      <div class="flex flex-wrap gap-2">
+{{#each t in ttlOptions}}
+{{#if fTtl is t.key}}
+        <button onclick="{{ pickTtl(t.key) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ t.label }}</button>
+{{/if}}
+{{#if fTtl is not t.key}}
+        <button onclick="{{ pickTtl(t.key) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ t.label }}</button>
+{{/if}}
+{{/each}}
+      </div>
+{{#if ttlError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ ttlError }}</p>
+{{/if}}
+{{#if kind is "hetzner"}}
+      <p class="text-slate-500 text-xs mt-2">At Hetzner the TTL applies to every record with the same name and type.</p>
+{{/if}}
+
+{{#if formError}}
+      <p role="alert" class="text-rose-500 text-sm mt-4">{{ formError }}</p>
+{{/if}}
+    </div>
+
+    <div class="flex items-center justify-end gap-3 px-6 py-5">
+      <button onclick="{{ close() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if saving}}
+      <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+{{/if}}
+{{#if not saving}}
+      <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save record</button>
+{{/if}}
+    </div>
+
+  </div>
+</div>
