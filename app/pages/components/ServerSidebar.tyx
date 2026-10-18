@@ -6,218 +6,151 @@ props
   active: String
   serverId: String
 
-state
-  id: ""
-  mainOpen: true
-  autoOpen: true
-  secOpen: true
-  monOpen: true
-  mainCls: "contents lg:flex lg:flex-col lg:gap-1"
-  autoCls: "contents lg:flex lg:flex-col lg:gap-1"
-  secCls: "contents lg:flex lg:flex-col lg:gap-1"
-  monCls: "contents lg:flex lg:flex-col lg:gap-1"
-
-action
-  groupCls(open) {
-    if open {
-      return "contents lg:flex lg:flex-col lg:gap-1"
-    }
-    return "contents lg:hidden"
-  }
-
-  toggle(name) {
-    if name is "main" {
-      this.mainOpen = not this.mainOpen
-      this.mainCls = this.groupCls(this.mainOpen)
-    }
-    if name is "auto" {
-      this.autoOpen = not this.autoOpen
-      this.autoCls = this.groupCls(this.autoOpen)
-    }
-    if name is "sec" {
-      this.secOpen = not this.secOpen
-      this.secCls = this.groupCls(this.secOpen)
-    }
-    if name is "mon" {
-      this.monOpen = not this.monOpen
-      this.monCls = this.groupCls(this.monOpen)
-    }
-  }
-
-onMount
-  {
-    const fromUrl = new URLSearchParams(window.location.search).get("id")
-    this.id = this.serverId or fromUrl or ""
-  }
-
 template
 <aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
 
-  <button onclick="{{ toggle('main') }}" aria-expanded="{{ mainOpen }}" class="hidden lg:flex w-full items-center justify-between text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <span>This server</span>
-    <span aria-hidden="true">{{#if mainOpen}}&#9662;{{/if}}{{#if not mainOpen}}&#9656;{{/if}}</span>
-  </button>
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">This server</p>
 
-  <div class="{{ mainCls }}">
 {{#if active is "server"}}
-  <a href="{{ '/servers/server-detail?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-detail?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconGauge class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Overview
   </a>
 {{/if}}
 {{#if active is not "server"}}
-  <a href="{{ '/servers/server-detail?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-detail?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconGauge class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Overview
   </a>
 {{/if}}
 
 {{#if active is "sites"}}
-  <a href="{{ '/servers/server-sites?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-sites?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconGlobe class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Sites
   </a>
 {{/if}}
 {{#if active is not "sites"}}
-  <a href="{{ '/servers/server-sites?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-sites?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconGlobe class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Sites
   </a>
 {{/if}}
 
 {{#if active is "databases"}}
-  <a href="{{ '/servers/server-databases?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-databases?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconDatabase class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Database
   </a>
 {{/if}}
 {{#if active is not "databases"}}
-  <a href="{{ '/servers/server-databases?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-databases?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconDatabase class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Database
   </a>
 {{/if}}
 
 {{#if active is "backups"}}
-  <a href="{{ '/servers/server-backups?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-backups?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconArchive class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Backups
   </a>
 {{/if}}
 {{#if active is not "backups"}}
-  <a href="{{ '/servers/server-backups?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-backups?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconArchive class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Backups
   </a>
 {{/if}}
-  </div>
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Automation</p>
 
-  <button onclick="{{ toggle('auto') }}" aria-expanded="{{ autoOpen }}" class="hidden lg:flex w-full items-center justify-between text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <span>Automation</span>
-    <span aria-hidden="true">{{#if autoOpen}}&#9662;{{/if}}{{#if not autoOpen}}&#9656;{{/if}}</span>
-  </button>
-
-  <div class="{{ autoCls }}">
 {{#if active is "cron"}}
-  <a href="{{ '/servers/server-cron-jobs?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconClock class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> CronJobs
   </a>
 {{/if}}
 {{#if active is not "cron"}}
-  <a href="{{ '/servers/server-cron-jobs?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconClock class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> CronJobs
   </a>
 {{/if}}
 
 {{#if active is "workers"}}
-  <a href="{{ '/servers/server-workers?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-workers?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconCpuChip class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Workers
   </a>
 {{/if}}
 {{#if active is not "workers"}}
-  <a href="{{ '/servers/server-workers?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-workers?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconCpuChip class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Workers
   </a>
 {{/if}}
 
 {{#if active is "packages"}}
-  <a href="{{ '/servers/server-packages?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-packages?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconPackage class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Packages
   </a>
 {{/if}}
 {{#if active is not "packages"}}
-  <a href="{{ '/servers/server-packages?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-packages?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconPackage class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Packages
   </a>
 {{/if}}
-  </div>
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Security</p>
 
-  <button onclick="{{ toggle('sec') }}" aria-expanded="{{ secOpen }}" class="hidden lg:flex w-full items-center justify-between text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <span>Security</span>
-    <span aria-hidden="true">{{#if secOpen}}&#9662;{{/if}}{{#if not secOpen}}&#9656;{{/if}}</span>
-  </button>
-
-  <div class="{{ secCls }}">
 {{#if active is "firewall"}}
-  <a href="{{ '/servers/server-firewall?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-firewall?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconShieldCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Firewall
   </a>
 {{/if}}
 {{#if active is not "firewall"}}
-  <a href="{{ '/servers/server-firewall?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-firewall?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconShieldCheck class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Firewall
   </a>
 {{/if}}
 
 {{#if active is "ssh-keys"}}
-  <a href="{{ '/servers/server-ssh-keys?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconKey class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> SSH Keys
   </a>
 {{/if}}
 {{#if active is not "ssh-keys"}}
-  <a href="{{ '/servers/server-ssh-keys?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconKey class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> SSH Keys
   </a>
 {{/if}}
-  </div>
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Monitor</p>
 
-  <button onclick="{{ toggle('mon') }}" aria-expanded="{{ monOpen }}" class="hidden lg:flex w-full items-center justify-between text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <span>Monitor</span>
-    <span aria-hidden="true">{{#if monOpen}}&#9662;{{/if}}{{#if not monOpen}}&#9656;{{/if}}</span>
-  </button>
-
-  <div class="{{ monCls }}">
 {{#if active is "logs"}}
-  <a href="{{ '/servers/server-logs?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-logs?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconDocumentText class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Logs
   </a>
 {{/if}}
 {{#if active is not "logs"}}
-  <a href="{{ '/servers/server-logs?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-logs?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconDocumentText class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Logs
   </a>
 {{/if}}
 
 {{#if active is "terminal"}}
-  <a href="{{ '/servers/server-terminal?id=' + id }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="{{ '/servers/server-terminal?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
     <IconTerminal class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Terminal
   </a>
 {{/if}}
 {{#if active is not "terminal"}}
-  <a href="{{ '/servers/server-terminal?id=' + id }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+  <a href="{{ '/servers/server-terminal?id=' + serverId }}" class="group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
     <IconTerminal class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Terminal
   </a>
 {{/if}}
-  </div>
 
   <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800">
     <span class="shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">
