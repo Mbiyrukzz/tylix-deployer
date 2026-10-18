@@ -23,6 +23,8 @@ state
   ticker: null
   idleText: "15:00"
   idleWarn: false
+  idlePct: 100
+  idleBar: "bg-emerald-500"
   sessionText: "0:00"
   copied: false
   expanded: false
@@ -30,7 +32,7 @@ state
   backdropCls: "hidden"
   cardCls: "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
   bodyCls: "relative h-[60vh] min-h-[420px]"
-  hostCls: "h-full w-full overflow-hidden bg-slate-950 p-3"
+  hostCls: "absolute inset-0 p-3"
   commands: [
     { label: "Disk", cmd: "df -h" },
     { label: "Memory", cmd: "free -h" },
@@ -61,7 +63,28 @@ action
     return new Promise((resolve) => this.loadScript(src, resolve))
   }
 
+  ensureStyle() {
+    if document.getElementById("tylix-term-style") {
+      return null
+    }
+
+    const rules = [
+      ".xterm .xterm-viewport { scrollbar-width: thin; scrollbar-color: #334155 transparent; background-color: transparent !important; }",
+      ".xterm .xterm-viewport::-webkit-scrollbar { width: 8px; }",
+      ".xterm .xterm-viewport::-webkit-scrollbar-track { background: transparent; }",
+      ".xterm .xterm-viewport::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }",
+      ".xterm .xterm-viewport::-webkit-scrollbar-thumb:hover { background: #475569; }"
+    ]
+
+    const el = document.createElement("style")
+    el.id = "tylix-term-style"
+    el.textContent = rules.join(" ")
+    document.head.appendChild(el)
+  }
+
   async ensureXterm() {
+    this.ensureStyle()
+
     if this.global("Terminal") and this.global("FitAddon") {
       return true
     }
@@ -125,6 +148,8 @@ action
 
       this.idleText = this.clock(left)
       this.idleWarn = left <= 120
+      this.idlePct = Math.round(left / 9)
+      this.idleBar = left <= 120 ? "bg-amber-500" : "bg-emerald-500"
       this.sessionText = this.clock(Math.floor((now - this.connectedAt) / 1000))
     } else {
       this.stopTicker()
@@ -173,13 +198,13 @@ action
       this.backdropCls = "absolute inset-0 bg-slate-950/60 backdrop-blur-md"
       this.cardCls = "relative flex flex-col w-full max-w-[1100px] h-full max-h-[92vh] rounded-2xl border border-slate-700/60 bg-slate-950/85 backdrop-blur-xl overflow-hidden shadow-2xl"
       this.bodyCls = "relative flex-1 min-h-0"
-      this.hostCls = "h-full w-full overflow-hidden bg-transparent p-4"
+      this.hostCls = "absolute inset-0 p-4"
     } else {
       this.wrapCls = ""
       this.backdropCls = "hidden"
       this.cardCls = "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
       this.bodyCls = "relative h-[60vh] min-h-[420px]"
-      this.hostCls = "h-full w-full overflow-hidden bg-slate-950 p-3"
+      this.hostCls = "absolute inset-0 p-3"
     }
   }
 
@@ -216,6 +241,7 @@ action
     }
 
     window.setTimeout(() => this.refit(), 120)
+    window.setTimeout(() => this.refit(), 400)
     window.setTimeout(() => this.focusTerm(), 180)
   }
 
@@ -324,6 +350,8 @@ action
       this.lastInputAt = now
       this.idleText = "15:00"
       this.idleWarn = false
+      this.idlePct = 100
+      this.idleBar = "bg-emerald-500"
       this.sessionText = "0:00"
       this.live = true
       this.phase = "connected"
@@ -466,6 +494,8 @@ onMount
       return null
     }
 
+    document.body.style.overflow = ""
+
     const old = this.global("tylixTermHandlers")
     if old {
       document.removeEventListener("keydown", old.key)
@@ -554,10 +584,19 @@ template
 {{/if}}
 {{#if server}}
               <p class="text-slate-200 text-sm font-mono truncate">{{ server.ssh_user }}@{{ server.host }}</p>
-              <p class="text-slate-500 text-xs truncate hidden sm:block">{{ server.name }}</p>
+              <p class="text-slate-500 text-xs truncate hidden md:block">{{ server.name }}</p>
 {{/if}}
 {{#if not server}}
               <p class="text-slate-500 text-sm">No server selected</p>
+{{/if}}
+{{#if phase is "connected"}}
+              <span class="hidden sm:inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">Connected</span>
+{{/if}}
+{{#if phase is "connecting"}}
+              <span class="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">Connecting</span>
+{{/if}}
+{{#if phase is "closed"}}
+              <span class="hidden sm:inline-flex items-center rounded-full bg-rose-500/10 text-rose-400 text-xs font-medium px-2.5 py-0.5">Disconnected</span>
 {{/if}}
             </div>
 
@@ -593,12 +632,25 @@ template
             </div>
           </div>
 
+{{#if live}}
+          <div class="h-0.5 bg-slate-800">
+            <div class="h-full transition-all duration-1000 ease-linear {{ idleBar }}" style="width: {{ idlePct }}%"></div>
+          </div>
+{{/if}}
+
           <div class="{{ bodyCls }}">
-            <div id="terminal-host" class="{{ hostCls }}"></div>
+            <div class="{{ hostCls }}">
+              <div id="terminal-host" class="h-full w-full overflow-hidden"></div>
+            </div>
 
 {{#if phase is "idle"}}
-            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 p-6">
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
               <div class="text-center max-w-sm">
+                <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-emerald-400">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-6 h-6">
+                    <path d="M4 6l4 4-4 4M10 14h6" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </div>
 {{#if server}}
                 <p class="text-slate-200 font-medium mb-1">Ready to connect to {{ server.name }}</p>
                 <p class="text-slate-500 text-sm mb-6">You'll get a shell as <span class="font-mono text-slate-400">{{ server.ssh_user }}</span>. Sessions close after 15 minutes without typing.</p>
@@ -613,7 +665,7 @@ template
 {{/if}}
 
 {{#if phase is "connecting"}}
-            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 p-6">
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
               <div class="flex items-center gap-3">
                 <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                 <p class="text-slate-300 text-sm">Opening a shell…</p>
