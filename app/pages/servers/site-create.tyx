@@ -274,7 +274,9 @@ onMount
 template
   <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_230px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
+{{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
     <div class="min-w-0">
     <div class="max-w-2xl mx-auto px-6 lg:px-12 py-10">
 
