@@ -200,6 +200,31 @@ action
     return { provider: p, res: all }
   }
 
+
+    async loadCloud() {
+    await Providers.load()
+    this.providerCount = Providers.data.length
+
+    if this.providerCount is 0 {
+      this.cloudReady = true
+      return null
+    }
+
+    let provRows = []
+    const prov = await useApi("/api/provisions")
+    if prov.ok and Array.isArray(prov.data) {
+      provRows = prov.data
+    }
+
+    const managedList = Providers.data.filter((p) => p.kind is "linode" or p.kind is "hetzner")
+    const loaded = await Promise.all(managedList.map((p) => this.loadProvider(p)))
+
+    const cards = Providers.data.map((p) => this.decorateCloud(p, provRows, loaded.find((l) => l.provider.id is p.id)))
+    this.cloudCards = cards
+    this.summarizeCloud(cards)
+    this.cloudReady = true
+  }
+
   // Reads the cost out of a billing answer. A failed call counts as no cost.
   costInfo(billing) {
     if billing.ok and billing.data.current is not null {
@@ -387,12 +412,12 @@ onMount
     }
     this.greeting = greeting
 
-    await Servers.load()
+       const serversLoad = Servers.load()
+    const sitesRes = await useApi("/api/sites")
+    await serversLoad
 
     const list = Servers.data
     let sites = []
-
-    const sitesRes = await useApi("/api/sites")
     if sitesRes.ok and Array.isArray(sitesRes.data) {
       sites = sitesRes.data
     }
@@ -481,6 +506,7 @@ onMount
 
     this.checkedAuth = true
 
+    
     // The cloud section fills in after the page is already on screen.
     await Providers.load()
     this.providerCount = Providers.data.length
@@ -503,6 +529,10 @@ onMount
     this.cloudCards = cards
     this.summarizeCloud(cards)
     this.cloudReady = true
+
+    this.checkedAuth = true
+
+    this.loadCloud()
   }
 
 template
@@ -1052,4 +1082,8 @@ template
     </div>
     </div>
   </div>
+{{/if}}
+
+{{#if not checkedAuth}}
+<PageLoader label="Loading dashboard" />
 {{/if}}

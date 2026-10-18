@@ -1,0 +1,50 @@
+component PageLoader
+
+props
+  label: String
+  bare: String
+
+template
+{{#if bare}}
+<div role="status" aria-live="polite" style="min-height: calc(100vh - 4rem)" class="flex items-center justify-center bg-slate-200 dark:bg-slate-950">
+  <div class="flex flex-col items-center justify-center py-14">
+    <div class="relative w-14 h-14 flex items-center justify-center">
+      <span class="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping"></span>
+      <img src="/logo-mark.png" alt="" class="relative w-12 h-12" />
+    </div>
+    <p class="text-slate-600 dark:text-slate-300 text-sm font-medium mt-5">{{ label }}</p>
+    <div class="w-40 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden mt-3">
+      <div class="w-2/3 h-full rounded-full bg-emerald-500 animate-pulse"></div>
+    </div>
+  </div>
+</div>
+{{/if}}
+{{#if not bare}}
+<div role="status" aria-live="polite" style="min-height: calc(100vh - 4rem)" class="grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950">
+  <div class="hidden lg:block border-r border-slate-300 dark:border-slate-800 p-5 space-y-3">
+    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+  </div>
+  <div class="min-w-0 px-6 lg:px-10 py-10">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex flex-col items-center justify-center py-14">
+        <div class="relative w-14 h-14 flex items-center justify-center">
+          <span class="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping"></span>
+          <img src="/logo-mark.png" alt="" class="relative w-12 h-12" />
+        </div>
+        <p class="text-slate-600 dark:text-slate-300 text-sm font-medium mt-5">{{ label }}</p>
+        <div class="w-40 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden mt-3">
+          <div class="w-2/3 h-full rounded-full bg-emerald-500 animate-pulse"></div>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="h-24 rounded-2xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+        <div class="h-16 rounded-2xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+        <div class="h-16 rounded-2xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}
