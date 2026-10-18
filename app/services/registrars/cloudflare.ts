@@ -1,14 +1,23 @@
 /**
  * Cloudflare (https://developers.cloudflare.com/api/)
  *
- *   - Credentials: a single API token (Bearer) in registrars.api_token.
- *     Needed permissions: Zone:Read, DNS:Edit, Email Routing Rules:Edit
+ *   - Credentials: JSON in registrars.credentials:
+ *         { api_token, account_id, r2_access_key_id?, r2_secret_access_key?, r2_endpoint? }
+ *     Older connections stored just the bare token in registrars.api_token; the
+ *     constructor still accepts that (no account id, no R2).
+ *   - Needed token permissions: Zone:Read, DNS:Edit, Email Routing Rules:Edit
  *     (only for the forwarding feature) and Billing:Read (only for billing).
+ *   - The token can be user-owned (My Profile -> API Tokens) or account-owned
+ *     (Manage Account -> Account API Tokens). They are verified at different URLs,
+ *     which is why verify() tries both (see below).
  *   - Domain id = the ZONE id (not the name), so every call after the list is by zone.
  *   - Cloudflare Registrar has no public API for listing expiry, renewing or
  *     transferring, so this adapter manages zones: DNS, nameservers (read-only),
  *     email forwarding and billing history. `expires` is always "".
  *   - TTL 1 means "automatic".
+ *   - R2: the S3 credentials are parsed and kept in `this.r2`, but no feature uses
+ *     them yet. They are here so an object-storage feature can build an S3 client
+ *     from `this.r2` without changing how credentials are stored.
  *
  * VERIFY BEFORE USE: the Email Routing paths, the rule id field and the billing
  * history path/fields are from memory.
@@ -30,14 +39,57 @@ const BASE = "https://api.cloudflare.com/client/v4";
 export class CloudflareAdapter implements RegistrarAdapter {
     kind = "cloudflare" as const;
     features = REGISTRAR_FEATURES.cloudflare;
+
     private token: string;
+    /** "" for old connections that were saved before the Account ID existed. */
+    private accountId = "";
+    /** Only set when the user filled in the optional R2 fields. */
+    private r2?: { accessKeyId: string; secretAccessKey: string; endpoint: string };
     private zoneNames = new Map<string, string>();
 
+    /**
+     * `secret` is whatever registrarSecret() decrypted: either the new JSON blob
+     * or an old bare token. Telling them apart by the leading "{" is safe because
+     * Cloudflare tokens never start with one.
+     */
     constructor(secret: string) {
-        if (!secret.trim()) throw new Error("The stored Cloudflare token is empty.");
-        this.token = secret.trim();
+        const raw = secret.trim();
+        if (!raw) throw new Error("The stored Cloudflare credentials are empty.");
+
+        // Old format: the whole secret IS the token.
+        if (!raw.startsWith("{")) {
+            this.token = raw;
+            return;
+        }
+
+        let c: Record<string, string>;
+        try {
+            c = JSON.parse(raw);
+        } catch {
+            throw new Error("The stored Cloudflare credentials are unreadable.");
+        }
+        if (!c.api_token) throw new Error("The stored Cloudflare token is empty.");
+
+        this.token = c.api_token.trim();
+        this.accountId = (c.account_id ?? "").trim();
+
+        // R2 credentials come as a pair. The endpoint can be left blank because it
+        // is always derived from the account id.
+        if (c.r2_access_key_id && c.r2_secret_access_key) {
+            this.r2 = {
+                accessKeyId: c.r2_access_key_id,
+                secretAccessKey: c.r2_secret_access_key,
+                endpoint: c.r2_endpoint || `https://${this.accountId}.r2.cloudflarestorage.com`,
+            };
+        }
     }
 
+    /**
+     * One request to the Cloudflare API. Returns the parsed body on success.
+     * Cloudflare answers { success, errors: [{ code, message }], result }.
+     * Failures are turned into a RegistrarError; anything that means "this token
+     * can't do that" is mapped to status 403 so isAuthError() recognises it.
+     */
     private async call(method: string, path: string, body?: unknown): Promise<Json> {
         const { status, data } = await http(BASE + path, {
             method,
@@ -71,8 +123,34 @@ export class CloudflareAdapter implements RegistrarAdapter {
         return out;
     }
 
+    /**
+     * Throws if the token doesn't work.
+     *
+     * Cloudflare has two token kinds and each is verified at its own URL:
+     *   user-owned     GET /user/tokens/verify
+     *   account-owned  GET /accounts/{account_id}/tokens/verify
+     * The wrong URL answers with an auth error even for a perfectly good token,
+     * which is what made valid account-owned tokens look "rejected". So we try
+     * the user URL first, then (when we have an Account ID) the account URL.
+     * Only an AUTH failure moves on to the next URL; a network or 5xx error is
+     * rethrown at once so the user sees "couldn't reach Cloudflare" rather than
+     * a misleading "credentials rejected".
+     */
     async verify() {
-        await this.call("GET", "/user/tokens/verify");
+        const paths = ["/user/tokens/verify"];
+        if (this.accountId) paths.push(`/accounts/${encodeURIComponent(this.accountId)}/tokens/verify`);
+
+        let last: unknown;
+        for (const path of paths) {
+            try {
+                await this.call("GET", path);
+                return; // one URL accepted the token: done
+            } catch (error) {
+                if (!(error instanceof RegistrarError && error.isAuth)) throw error;
+                last = error;
+            }
+        }
+        throw last; // every URL rejected it: report the rejection
     }
 
     isAuthError(e: unknown) {
@@ -85,9 +163,12 @@ export class CloudflareAdapter implements RegistrarAdapter {
         return e instanceof RegistrarError ? `Cloudflare: ${e.message}` : null;
     }
 
+    // ---- Domains (zones) ----
+
     async domains(): Promise<DomainSummary[]> {
         const zones = await this.all("/zones");
 
+        // Remember id -> name so later DNS calls don't need an extra lookup.
         for (const z of zones) this.zoneNames.set(String(z.id), String(z.name));
 
         return zones
@@ -112,11 +193,13 @@ export class CloudflareAdapter implements RegistrarAdapter {
         return name;
     }
 
+    // ---- DNS records ----
+
     private toRecord(zone: string, r: Json): DnsRecord {
         return {
             id: String(r.id),
             type: String(r.type),
-            name: relName(String(r.name), zone),
+            name: relName(String(r.name), zone), // "www.example.com" -> "www", apex -> "@"
             value: String(r.content ?? ""),
             ttl: Number(r.ttl ?? 1),
             priority: r.priority === undefined || r.priority === null ? null : Number(r.priority),
@@ -161,10 +244,12 @@ export class CloudflareAdapter implements RegistrarAdapter {
         try {
             await this.call("DELETE", `/zones/${encodeURIComponent(zoneId)}/dns_records/${encodeURIComponent(id)}`);
         } catch (error) {
-            if (error instanceof RegistrarError && error.status === 404) return;
+            if (error instanceof RegistrarError && error.status === 404) return; // already gone
             throw error;
         }
     }
+
+    // ---- Nameservers ----
 
     // Read-only: a zone's nameservers are assigned by Cloudflare. Changing them
     // happens at the registrar the domain is registered with.
@@ -186,6 +271,8 @@ export class CloudflareAdapter implements RegistrarAdapter {
 
     async forwarders(zoneId: string) {
         const rows = await this.all(`/zones/${encodeURIComponent(zoneId)}/email/routing/rules`);
+        // Only simple "this address forwards to that address" rules; catch-all and
+        // worker rules are ignored.
         return rows
             .filter((r) => r.matchers?.[0]?.type === "literal" && r.actions?.[0]?.type === "forward")
             .map((r) => this.toForwarder(r));
@@ -214,7 +301,9 @@ export class CloudflareAdapter implements RegistrarAdapter {
     // ---- Billing: history of the user the token belongs to ----
 
     // Needs the token permission "Billing: Read". There is no balance in this API,
-    // so `balance` stays null. Only the latest 50 entries are read.
+    // so `balance` stays null. Only the latest 50 entries are read. This is a
+    // user-level endpoint, so an account-owned token may get a 403 here even
+    // though everything else works; the route maps that to "missing_access".
     async billing(): Promise<BillingSummary> {
         const data = await this.call("GET", "/user/billing/history?per_page=50&page=1");
 

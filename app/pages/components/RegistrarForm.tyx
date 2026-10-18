@@ -17,12 +17,18 @@ state
   apiSecret: ""
   apiUser: ""
   clientIp: ""
+  accountId: ""
+  r2AccessKey: ""
+  r2SecretKey: ""
+  r2Endpoint: ""
   showToken: false
   showKey: false
   showSecret: false
   showApiSecret: false
   showUser: false
   showIp: false
+  showAccount: false
+  showR2: false
   tokenLabel: "API token"
   keyLabel: "API key"
   secretLabel: "Secret key"
@@ -39,9 +45,15 @@ state
   apiSecretError: ""
   apiUserError: ""
   clientIpError: ""
+  accountIdError: ""
+  r2AccessKeyError: ""
+  r2SecretKeyError: ""
+  r2EndpointError: ""
   placeholder: ""
 
 action
+  // Returns the first server message for a field, or "" when there is none.
+  // The server answers { errors: { field: ["message", ...] } }.
   firstError(errors, field) {
     if errors and errors[field] and errors[field].length > 0 {
       return errors[field][0]
@@ -49,7 +61,9 @@ action
     return ""
   }
 
-  // Which credential inputs a provider needs, and what they are called.
+  // Decides which credential inputs the chosen provider needs and what they are called.
+  // Every show* flag is switched off first, then only the ones this provider uses are
+  // switched on, so changing provider never leaves a stale input on screen.
   // Adding a registrar = one more branch here, one more entry in buildKinds(), one more help block below
   // (and RegistrarValidator / RegistrarAdapter on the server).
   syncMode() {
@@ -59,11 +73,17 @@ action
     this.showApiSecret = false
     this.showUser = false
     this.showIp = false
+    this.showAccount = false
+    this.showR2 = false
     this.keyType = "text"
 
+    // Cloudflare: API token + Account ID, plus an optional R2 section
+    // (Access Key ID, Secret Access Key, S3 endpoint).
     if this.kind is "cloudflare" {
       this.showToken = true
-      this.tokenLabel = "API token"
+      this.tokenLabel = "Your API token"
+      this.showAccount = true
+      this.showR2 = true
     }
     if this.kind is "porkbun" {
       this.showKey = true
@@ -111,6 +131,7 @@ action
     }
   }
 
+  // Empties every error message (field errors and the banner).
   clearErrors() {
     this.error = ""
     this.labelError = ""
@@ -120,8 +141,14 @@ action
     this.apiSecretError = ""
     this.apiUserError = ""
     this.clientIpError = ""
+    this.accountIdError = ""
+    this.r2AccessKeyError = ""
+    this.r2SecretKeyError = ""
+    this.r2EndpointError = ""
   }
 
+  // Empties every credential input. Called when the provider changes, so a key
+  // typed for one provider is never sent to another.
   clearCredentials() {
     this.apiToken = ""
     this.apiKey = ""
@@ -129,8 +156,13 @@ action
     this.apiSecret = ""
     this.apiUser = ""
     this.clientIp = ""
+    this.accountId = ""
+    this.r2AccessKey = ""
+    this.r2SecretKey = ""
+    this.r2Endpoint = ""
   }
 
+  // Back to a blank "new connection" form.
   reset() {
     this.kind = "porkbun"
     this.label = ""
@@ -141,6 +173,7 @@ action
     this.clearErrors()
   }
 
+  // The provider tiles shown in the picker (new connections only).
   buildKinds() {
     this.kinds = [
       {
@@ -153,7 +186,7 @@ action
       {
         id: "cloudflare",
         name: "Cloudflare",
-        sub: "DNS & email routing",
+        sub: "DNS, email routing & R2",
         tileClass: "w-9 h-9 shrink-0 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold",
         letter: "C"
       },
@@ -202,6 +235,8 @@ action
     ]
   }
 
+  // A provider tile was clicked: switch the inputs, wipe the typed credentials,
+  // but keep the connection name error (the name field didn't change).
   pick(kind) {
     this.kind = kind
     this.syncMode()
@@ -211,6 +246,9 @@ action
     this.labelError = label
   }
 
+  // Opens the modal. With a `registrar` prop this is the edit form: the name and
+  // kind are filled in, the credential inputs stay empty (the server never sends
+  // secrets back), and the placeholder tells the user that blank = keep.
   open() {
     this.reset()
     this.buildKinds()
@@ -228,6 +266,9 @@ action
     this.reset()
   }
 
+  // Sends the form. The payload always carries EVERY credential field; the
+  // server picks the ones the kind needs (RegistrarValidator CRED_FIELDS) and
+  // ignores the rest. On success the parent gets the saved row via onSaved.
   async submit() {
     if this.saving {
       return null
@@ -246,7 +287,11 @@ action
       secret_key: this.secretKey,
       api_secret: this.apiSecret,
       api_user: this.apiUser,
-      client_ip: this.clientIp
+      client_ip: this.clientIp,
+      account_id: this.accountId,
+      r2_access_key_id: this.r2AccessKey,
+      r2_secret_access_key: this.r2SecretKey,
+      r2_endpoint: this.r2Endpoint
     }
     const url = this.registrar ? "/api/registrars/" + this.registrar.id : "/api/registrars"
     const method = this.registrar ? "PUT" : "POST"
@@ -259,6 +304,7 @@ action
     } else if result.status is 401 {
       window.location.href = "/login"
     } else {
+      // Put each server message under its own input.
       const errors = result.data?.errors
       this.labelError = this.firstError(errors, "label")
       this.tokenError = this.firstError(errors, "api_token")
@@ -267,8 +313,14 @@ action
       this.apiSecretError = this.firstError(errors, "api_secret")
       this.apiUserError = this.firstError(errors, "api_user")
       this.clientIpError = this.firstError(errors, "client_ip")
+      this.accountIdError = this.firstError(errors, "account_id")
+      this.r2AccessKeyError = this.firstError(errors, "r2_access_key_id")
+      this.r2SecretKeyError = this.firstError(errors, "r2_secret_access_key")
+      this.r2EndpointError = this.firstError(errors, "r2_endpoint")
       this.error = result.data?.error or result.error or ""
-      if not this.labelError and not this.tokenError and not this.apiKeyError and not this.secretKeyError and not this.apiSecretError and not this.apiUserError and not this.clientIpError and not this.error {
+
+      // Nothing matched a field and there is no message: show a generic one.
+      if not this.labelError and not this.tokenError and not this.apiKeyError and not this.secretKeyError and not this.apiSecretError and not this.apiUserError and not this.clientIpError and not this.accountIdError and not this.r2AccessKeyError and not this.r2SecretKeyError and not this.r2EndpointError and not this.error {
         this.error = "Couldn't save the connection. Try again."
       }
       this.saving = false
@@ -438,6 +490,23 @@ template
 {{/if}}
 {{/if}}
 
+{{#if showAccount}}
+      <label for="registrar-account-id" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Account ID</label>
+      <input
+        id="registrar-account-id"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ accountId }}"
+        oninput="{{ accountId = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if accountIdError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ accountIdError }}</p>
+{{/if}}
+{{/if}}
+
 {{#if showIp}}
       <label for="registrar-client-ip" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">{{ ipLabel }}</label>
       <input
@@ -455,6 +524,58 @@ template
 {{/if}}
 {{/if}}
 
+{{#if showR2}}
+      <div class="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">R2 storage <span class="text-slate-400 font-normal">(optional)</span></p>
+        <p class="text-slate-500 text-xs mt-0.5">S3-compatible credentials for the R2 API or any S3 client.</p>
+      </div>
+
+      <label for="registrar-r2-key" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Access Key ID</label>
+      <input
+        id="registrar-r2-key"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ r2AccessKey }}"
+        oninput="{{ r2AccessKey = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if r2AccessKeyError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ r2AccessKeyError }}</p>
+{{/if}}
+
+      <label for="registrar-r2-secret" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Secret Access Key</label>
+      <input
+        id="registrar-r2-secret"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ r2SecretKey }}"
+        oninput="{{ r2SecretKey = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="{{ placeholder }}"
+      />
+{{#if r2SecretKeyError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ r2SecretKeyError }}</p>
+{{/if}}
+
+      <label for="registrar-r2-endpoint" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">S3 API endpoint</label>
+      <input
+        id="registrar-r2-endpoint"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        value="{{ r2Endpoint }}"
+        oninput="{{ r2Endpoint = $event.target.value }}"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        placeholder="https://<account id>.r2.cloudflarestorage.com"
+      />
+{{#if r2EndpointError}}
+      <p class="text-rose-500 text-xs mt-1.5">{{ r2EndpointError }}</p>
+{{/if}}
+{{/if}}
+
 {{#if not registrar}}
       <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4 mt-4">
 {{#if kind is "porkbun"}}
@@ -465,11 +586,12 @@ template
         </ol>
 {{/if}}
 {{#if kind is "cloudflare"}}
-        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Cloudflare token</p>
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Connect Cloudflare</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">My Profile &rarr; API Tokens</a> and create a custom token.</li>
-          <li>Permissions: <span class="font-mono">Zone: Read</span>, <span class="font-mono">DNS: Edit</span>, <span class="font-mono">Email Routing Rules: Edit</span> if you want email forwarding, and <span class="font-mono">Billing: Read</span> for the billing page.</li>
-          <li>Scope it to the zones you want, or all zones.</li>
+          <li>Create a custom token under <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">My Profile &rarr; API Tokens</a> or Manage Account &rarr; Account API Tokens. See <a href="https://developers.cloudflare.com/fundamentals/api/how-to/make-api-calls/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">how to make API calls</a>.</li>
+          <li>Permissions: <span class="font-mono">Zone: Read</span>, <span class="font-mono">DNS: Edit</span>, <span class="font-mono">Email Routing Rules: Edit</span> for forwarding, and <span class="font-mono">Billing: Read</span> for the billing page.</li>
+          <li>Copy your <span class="font-mono">Account ID</span> from the account's overview page in the dashboard.</li>
+          <li>Optional: for R2, create an R2 API token and paste its Access Key ID, Secret Access Key and S3 endpoint. The secret is shown once.</li>
         </ol>
         <p class="text-slate-500 text-xs mt-3">Cloudflare doesn't offer expiry dates or renewals through its API, so those aren't shown for this provider.</p>
 {{/if}}

@@ -9,6 +9,13 @@
  *   - responses carry `features`, so the UI knows which sections to show
  *
  * All routes sit behind requireAuth ("auth": true in feature.json).
+ *
+ * Save flow (store / update):
+ *   validateRegistrar()   shape checks, answers 422 with { errors: { field: [msg] } }
+ *   credentialSecret()    packs the credential fields into one JSON string
+ *   checkSecret()         builds the adapter and calls verify() against the real API
+ *   sealed()              encrypts it and picks the column (credentials or api_token)
+ *   Registrar.create/update
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -35,9 +42,13 @@ interface RegistrarRow {
     [key: string]: unknown;
 }
 
+/**
+ * Shown under the credential fields when the registrar rejects them (422).
+ * One short, actionable message per registrar.
+ */
 const HELP: Record<string, string> = {
     porkbun: "Check the API key and secret key, and that API access is switched on for the domains you want to manage (Domain Management, Details, API Access). Then try again.",
-    cloudflare: "Create an API token with Zone: Read and DNS: Edit (add Email Routing Rules: Edit for forwarding) and try again.",
+    cloudflare: "Create an API token (My Profile → API Tokens, or Manage Account → Account API Tokens) with Zone: Read and DNS: Edit (add Email Routing Rules: Edit for forwarding), and paste your Account ID from the account's overview page. Then try again.",
     godaddy: "Use production API keys from developer.godaddy.com. GoDaddy limits Domains API access to accounts with enough domains. Then try again.",
     namecheap: "Check the API user and key, switch on API access (Profile, Tools, Namecheap API Access) and whitelist this server's IP there. The IP you enter here must be that same address.",
     dynadot: "Check the API key (Tools, API in Dynadot). If you restricted the key by IP, allow this server's IP.",
@@ -46,6 +57,11 @@ const HELP: Record<string, string> = {
     route53: "Check the access key ID and secret. The IAM user also needs Route 53 and Route 53 Domains permissions; the keys alone are checked here, the permissions on first use.",
 };
 
+/**
+ * Which form field a "credentials rejected" message is shown under.
+ * Cloudflare isn't listed: it falls back to "api_token", which is the right
+ * field (the token is what gets rejected).
+ */
 const AUTH_FIELD: Record<string, string> = {
     porkbun: "secret_key",
     godaddy: "api_secret",
@@ -56,11 +72,18 @@ const AUTH_FIELD: Record<string, string> = {
     route53: "secret_key",
 };
 
+/** Strips every secret from a row before it leaves the server. */
 function toPublic(row: RegistrarRow) {
     const { api_token, credentials, ...rest } = row;
     return { ...rest, has_token: Boolean(api_token || credentials), features: featuresOf(row.kind) };
 }
 
+/**
+ * Encrypts the secret and says which column it goes in.
+ * Every kind in MULTI_FIELD_KINDS (now including Cloudflare) uses `credentials`;
+ * the other column is cleared, so an old Cloudflare row that used api_token is
+ * moved over the first time its credentials are replaced.
+ */
 function sealed(kind: string, secret: string): { api_token: string; credentials: string } {
     const encrypted = CryptoService.encrypt(secret);
     return MULTI_FIELD_KINDS.includes(kind)
@@ -68,6 +91,7 @@ function sealed(kind: string, secret: string): { api_token: string; credentials:
         : { api_token: encrypted, credentials: "" };
 }
 
+/** Loads the row for :id, or answers 404 (also when it belongs to someone else). */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<RegistrarRow | null> {
     const row = (await Registrar.find(req.params.id)) as RegistrarRow | null;
 
@@ -79,6 +103,7 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Registr
     return row;
 }
 
+/** Labels are unique per user, case-insensitive. `exceptId` lets a rename keep its own name. */
 async function isDuplicateLabel(userId: unknown, label: string, exceptId?: number): Promise<boolean> {
     const rows = (await Registrar.all()) as RegistrarRow[];
     return rows.some(
@@ -90,6 +115,7 @@ async function isDuplicateLabel(userId: unknown, label: string, exceptId?: numbe
 async function checkSecret(kind: string, secret: string): Promise<{ status: number; message: string } | null> {
     const name = registrarName(kind);
 
+    // Building the adapter parses the secret; incomplete credentials throw here.
     let adapter;
     try {
         adapter = registrarFor(kind, secret);
@@ -101,20 +127,24 @@ async function checkSecret(kind: string, secret: string): Promise<{ status: numb
         await adapter.verify();
         return null;
     } catch (error) {
+        // The registrar said no: the user can fix this, so 422 with the HELP text.
         if (adapter.isAuthError(error)) {
             return { status: 422, message: `${name} rejected these credentials. ${HELP[kind] ?? ""}`.trim() };
         }
+        // Anything else (network, 5xx, rate limit) is not the user's fault: 502.
         console.error(`[registrar] ${kind} verify failed:`, error instanceof Error ? error.message : error);
         return { status: 502, message: `Couldn't reach ${name} to verify the credentials. Try again in a moment.` };
     }
 }
 
+/** 422 becomes a field error (shown under the input), anything else a plain banner message. */
 function problemBody(kind: string, problem: { status: number; message: string }) {
     if (problem.status !== 422) return { error: problem.message };
     return { errors: { [AUTH_FIELD[kind] ?? "api_token"]: [problem.message] } };
 }
 
 export class RegistrarController {
+    /** GET /api/registrars: the caller's connections, newest first. */
     async index(req: TylixRequest, res: TylixResponse) {
         const rows = (await Registrar.all()) as RegistrarRow[];
         const own = rows
@@ -124,12 +154,14 @@ export class RegistrarController {
         return res.json(own.map(toPublic));
     }
 
+    /** GET /api/registrars/:id */
     async show(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
         return res.json(toPublic(row));
     }
 
+    /** POST /api/registrars: validate, verify with the registrar, then save. */
     async store(req: TylixRequest, res: TylixResponse) {
         const result = validateRegistrar(req.body);
         if (!result.valid) {
@@ -145,6 +177,7 @@ export class RegistrarController {
             return res.json({ error: "You already have a connection with that name." });
         }
 
+        // Nothing is saved unless the registrar accepts the credentials.
         const problem = await checkSecret(input.kind, secret);
         if (problem) {
             res.status(problem.status);
@@ -168,6 +201,11 @@ export class RegistrarController {
         return res.json(toPublic(row));
     }
 
+    /**
+     * PUT /api/registrars/:id
+     * Always allows a rename. Credentials are replaced only when the request
+     * carries a full set (credentialSecret() returns "" otherwise).
+     */
     async update(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
@@ -210,6 +248,7 @@ export class RegistrarController {
         return res.json(toPublic(fresh));
     }
 
+    /** DELETE /api/registrars/:id */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
