@@ -9,7 +9,13 @@ props
 template
 <aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
 
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">This server</p>
+  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+      This server
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
+        <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </summary>
 
 {{#if active is "server"}}
   <a href="{{ '/servers/server-detail?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
@@ -58,9 +64,17 @@ template
     <IconArchive class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Backups
   </a>
 {{/if}}
+  </details>
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Automation</p>
+
+  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+      Automation
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
+        <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </summary>
 
 {{#if active is "cron"}}
   <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
@@ -97,9 +111,17 @@ template
     <IconPackage class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Packages
   </a>
 {{/if}}
+  </details>
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Security</p>
+
+  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+      Security
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
+        <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </summary>
 
 {{#if active is "firewall"}}
   <a href="{{ '/servers/server-firewall?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
@@ -124,9 +146,17 @@ template
     <IconKey class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> SSH Keys
   </a>
 {{/if}}
+  </details>
 
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Monitor</p>
+
+  <details open class="group/sec contents lg:flex lg:flex-col lg:gap-1">
+    <summary class="hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors">
+      Monitor
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform group-open/sec:rotate-90">
+        <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </summary>
 
 {{#if active is "logs"}}
   <a href="{{ '/servers/server-logs?id=' + serverId }}" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
@@ -151,6 +181,7 @@ template
     <IconTerminal class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Terminal
   </a>
 {{/if}}
+  </details>
 
   <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800">
     <span class="shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none" aria-disabled="true" title="Coming soon">

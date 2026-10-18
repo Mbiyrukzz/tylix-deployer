@@ -127,8 +127,8 @@ action
     return fallback
   }
 
-  decorateSite(site) {
-    return Object.assign({}, site, { href: "/sites?id=" + site.id })
+    decorateSite(site) {
+    return Object.assign({}, site, { href: "/servers/site-detail?id=" + site.id })
   }
 
   chartPoints(values) {
@@ -531,14 +531,14 @@ template
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-1">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Sites</h2>
-            <a href="/sites" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">New site</a>
+                        <a href="{{ '/servers/site-create?id=' + serverId }}" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">New site</a>
           </div>
           <p class="text-slate-500 text-sm mb-4">Apps deployed on this server.</p>
 
 {{#if sites.length is 0}}
           <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
             <p class="text-slate-500 text-sm mb-3">Nothing deployed here yet.</p>
-            <a href="/sites" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+                        <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
               Create a site
             </a>
           </div>

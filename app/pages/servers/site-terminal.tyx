@@ -8,10 +8,28 @@ state
   siteId: ""
   serverId: ""
   site: null
+  siteUrl: ""
   loading: true
   notFound: false
   phase: "idle"
+  live: false
   error: ""
+  connectedAt: 0
+  lastInputAt: 0
+  ticker: null
+  idleText: "15:00"
+  idleWarn: false
+  sessionText: "0:00"
+  copied: false
+  commands: [
+    { label: "List files", cmd: "ls -la" },
+    { label: "Git status", cmd: "git status" },
+    { label: "Recent commits", cmd: "git log --oneline -n 10" },
+    { label: "Folder sizes", cmd: "du -sh * 2>/dev/null | sort -h" },
+    { label: "Disk space", cmd: "df -h ." },
+    { label: "Node version", cmd: "node -v && npm -v" },
+    { label: "PHP version", cmd: "php -v" }
+  ]
 
 action
   global(name) {
@@ -51,32 +69,160 @@ action
       return true
     }
 
-    this.error = "Couldn't load the terminal library. Check your internet connection."
+    this.error = "Couldn't load the terminal library. Check your internet connection and try again."
     return false
+  }
+
+  clock(total) {
+    const h = Math.floor(total / 3600)
+    const m = Math.floor((total % 3600) / 60)
+    const s = total % 60
+    const ss = s < 10 ? "0" + s : "" + s
+
+    if h > 0 {
+      const mm = m < 10 ? "0" + m : "" + m
+      return h + ":" + mm + ":" + ss
+    }
+
+    return m + ":" + ss
+  }
+
+  tick() {
+    if this.live {
+      const now = Date.now()
+      const left = Math.max(0, 900 - Math.floor((now - this.lastInputAt) / 1000))
+
+      this.idleText = this.clock(left)
+      this.idleWarn = left <= 120
+      this.sessionText = this.clock(Math.floor((now - this.connectedAt) / 1000))
+    } else {
+      this.stopTicker()
+    }
+  }
+
+  startTicker() {
+    this.stopTicker()
+    this.ticker = window.setInterval(() => this.tick(), 1000)
+  }
+
+  stopTicker() {
+    if this.ticker {
+      window.clearInterval(this.ticker)
+      this.ticker = null
+    }
+  }
+
+  dropSocket() {
+    const ws = this.global("tylixSocket")
+    if ws {
+      ws.onopen = null
+      ws.onmessage = null
+      ws.onclose = null
+      ws.close()
+      this.setGlobal("tylixSocket", null)
+    }
+  }
+
+  clearTerminal() {
+    const term = this.global("tylixTerm")
+    if term {
+      term.dispose()
+      this.setGlobal("tylixTerm", null)
+    }
+    const el = document.getElementById("terminal-host")
+    if el {
+      el.innerHTML = ""
+    }
   }
 
   sendInput(d) {
     const ws = this.global("tylixSocket")
     if ws and ws.readyState is 1 {
+      this.lastInputAt = Date.now()
       ws.send(JSON.stringify({ t: "i", d: d }))
     }
+  }
+
+  runCommand(cmd) {
+    this.sendInput(cmd + "\r")
+    const term = this.global("tylixTerm")
+    if term {
+      term.focus()
+    }
+  }
+
+  clearScreen() {
+    const term = this.global("tylixTerm")
+    if term {
+      term.clear()
+      term.focus()
+    }
+  }
+
+  async copySelection() {
+    const term = this.global("tylixTerm")
+    if not term {
+      return null
+    }
+
+    const text = term.getSelection()
+    if not text {
+      return null
+    }
+
+    await navigator.clipboard.writeText(text)
+    this.copied = true
+    window.setTimeout(() => this.resetCopied(), 1500)
+    term.focus()
+  }
+
+  resetCopied() {
+    this.copied = false
+  }
+
+  async pasteClipboard() {
+    const term = this.global("tylixTerm")
+    if not term {
+      return null
+    }
+
+    const text = await navigator.clipboard.readText().catch(() => "")
+    if not text.trim() {
+      return null
+    }
+
+    term.paste(text)
+    term.focus()
   }
 
   onMessage(raw) {
     const msg = JSON.parse(raw)
     const term = this.global("tylixTerm")
+    if not term {
+      return null
+    }
 
     if msg.t is "out" {
       term.write(Uint8Array.from(atob(msg.d), (c) => c.charCodeAt(0)))
     } else if msg.t is "ready" {
+      const now = Date.now()
+      this.connectedAt = now
+      this.lastInputAt = now
+      this.idleText = "15:00"
+      this.idleWarn = false
+      this.sessionText = "0:00"
+      this.live = true
       this.phase = "connected"
+      this.startTicker()
       term.focus()
     } else if msg.t is "exit" {
-      term.write("\r\n[" + msg.m + "]\r\n")
+      term.write("\r\n\x1b[90m[" + msg.m + "]\x1b[0m\r\n")
     }
   }
 
   onClosed() {
+    this.stopTicker()
+    this.live = false
     this.phase = "closed"
   }
 
@@ -94,31 +240,53 @@ action
       return null
     }
 
-    const oldTerm = this.global("tylixTerm")
-    if oldTerm {
-      oldTerm.dispose()
-    }
+    this.dropSocket()
+    this.clearTerminal()
 
-    const host = document.getElementById("terminal-host")
-    if not host {
+    const el = document.getElementById("terminal-host")
+    if not el {
       this.error = "The terminal area isn't on the page yet. Reload and try again."
       this.phase = "idle"
       return null
     }
-    host.innerHTML = ""
 
     const TerminalClass = this.global("Terminal")
     const fitModule = this.global("FitAddon")
 
     const term = new TerminalClass({
       cursorBlink: true,
+      cursorStyle: "bar",
       fontSize: 13,
+      lineHeight: 1.25,
+      scrollback: 5000,
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-      theme: { background: "#020617" }
+      theme: {
+        background: "#020617",
+        foreground: "#e2e8f0",
+        cursor: "#10b981",
+        cursorAccent: "#020617",
+        selectionBackground: "#10b98140",
+        black: "#0f172a",
+        red: "#f43f5e",
+        green: "#10b981",
+        yellow: "#f59e0b",
+        blue: "#38bdf8",
+        magenta: "#a78bfa",
+        cyan: "#22d3ee",
+        white: "#cbd5e1",
+        brightBlack: "#64748b",
+        brightRed: "#fb7185",
+        brightGreen: "#34d399",
+        brightYellow: "#fbbf24",
+        brightBlue: "#7dd3fc",
+        brightMagenta: "#c4b5fd",
+        brightCyan: "#67e8f9",
+        brightWhite: "#f8fafc"
+      }
     })
     const fit = new fitModule.FitAddon()
     term.loadAddon(fit)
-    term.open(host)
+    term.open(el)
     fit.fit()
     this.setGlobal("tylixTerm", term)
 
@@ -134,16 +302,17 @@ action
 
     if not result.ok {
       this.error = result.data?.error or "Couldn't open a terminal."
+      this.clearTerminal()
       this.phase = "idle"
       return null
     }
 
-       let url = result.data.url
+    let url = result.data.url
     if not url {
-      const host = window.location.hostname
-      if host is "localhost" or host is "127.0.0.1" {
+      const hostname = window.location.hostname
+      if hostname is "localhost" or hostname is "127.0.0.1" {
         const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
-        url = "ws://" + host + ":" + port + "/terminal"
+        url = "ws://" + hostname + ":" + port + "/terminal"
       } else {
         url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.host + "/channels/terminal"
       }
@@ -181,8 +350,10 @@ onMount
       if result.status is 401 {
         window.location.href = "/login"
       } else if result.ok {
+        const secure = result.data.ssl_mode is "letsencrypt" or result.data.ssl_mode is "custom"
         this.site = result.data
         this.serverId = "" + result.data.server_id
+        this.siteUrl = (secure ? "https://" : "http://") + result.data.domain
         this.loading = false
       } else {
         this.notFound = true
@@ -198,7 +369,7 @@ template
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-5xl mx-auto px-6 lg:px-10 py-10">
+    <div class="max-w-6xl mx-auto px-6 lg:px-10 py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
@@ -217,24 +388,12 @@ template
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
-      <div class="mb-8">
-        <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
-{{#if phase is "connecting"}}
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Connecting
-          </span>
-{{/if}}
-{{#if phase is "connected"}}
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Connected
-          </span>
-{{/if}}
-{{#if phase is "closed"}}
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Closed</span>
-{{/if}}
+      <div class="flex flex-wrap items-start justify-between gap-4 mb-8">
+        <div class="min-w-0">
+          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-1">{{ site.domain }}</h1>
+          <p class="text-slate-500 text-sm">Terminal</p>
         </div>
-        <p class="text-slate-500 text-sm">Terminal</p>
+        <a href="{{ siteUrl }}" target="_blank" rel="noopener" class="inline-flex items-center text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-800 rounded-full px-4 py-2 hover:border-emerald-500/50 transition-all">Visit site</a>
       </div>
 
       <div class="flex flex-col lg:flex-row gap-8">
@@ -243,32 +402,111 @@ template
         <div class="min-w-0 flex-1">
 
 {{#if error}}
-          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
+          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6 flex items-start justify-between gap-4">
             <p class="text-rose-500 text-sm break-words">{{ error }}</p>
+            <button onclick="{{ connect() }}" class="shrink-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-1.5 hover:bg-rose-500/5 transition-colors">Try again</button>
           </div>
 {{/if}}
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-              <h2 class="text-slate-800 dark:text-slate-200 font-medium">Web terminal</h2>
-              <div class="flex items-center gap-3">
-{{#if phase is "connecting"}}
-                <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Connecting…</button>
-{{/if}}
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none">
+
+            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900">
+              <div class="flex items-center gap-3 min-w-0">
 {{#if phase is "connected"}}
-                <button onclick="{{ disconnect() }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-2 hover:bg-rose-500/5 transition-colors">Disconnect</button>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+{{/if}}
+{{#if phase is "connecting"}}
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
 {{/if}}
 {{#if phase is "idle"}}
-                <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect</button>
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-600 shrink-0"></span>
 {{/if}}
 {{#if phase is "closed"}}
-                <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Reconnect</button>
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+{{/if}}
+                <p class="text-slate-200 text-sm font-mono truncate">{{ site.isolated_user }}@{{ site.domain }}</p>
+              </div>
+
+              <div class="flex items-center gap-2">
+{{#if live}}
+{{#if copied}}
+                <button class="text-xs text-emerald-400 font-medium px-3 py-1.5">Copied</button>
+{{/if}}
+{{#if not copied}}
+                <button onclick="{{ copySelection() }}" title="Copy the selected text" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Copy</button>
+{{/if}}
+                <button onclick="{{ pasteClipboard() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Paste</button>
+                <button onclick="{{ clearScreen() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Clear</button>
+                <button onclick="{{ disconnect() }}" class="text-xs text-rose-500 border border-rose-500/30 rounded-full px-3 py-1.5 hover:bg-rose-500/5 transition-colors">Disconnect</button>
+{{/if}}
+{{#if phase is "closed"}}
+                <button onclick="{{ connect() }}" class="text-xs bg-emerald-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-emerald-400 transition-all">Reconnect</button>
 {{/if}}
               </div>
             </div>
-            <p class="text-slate-500 text-xs mb-4">A shell as <span class="font-mono">{{ site.isolated_user }}</span> in <span class="font-mono">/home/{{ site.isolated_user }}/{{ site.domain }}</span>. Sessions close after 15 minutes without typing. The terminal size is set when you connect.</p>
 
-            <div id="terminal-host" class="h-[480px] w-full overflow-hidden rounded-xl bg-slate-950 p-2"></div>
+            <div class="relative">
+              <div id="terminal-host" class="h-[60vh] min-h-[420px] w-full overflow-hidden bg-slate-950 p-3"></div>
+
+{{#if phase is "idle"}}
+              <div class="absolute inset-0 flex items-center justify-center bg-slate-950 p-6">
+                <div class="text-center max-w-md">
+                  <p class="text-slate-200 font-medium mb-1">Open a shell for {{ site.domain }}</p>
+                  <p class="text-slate-500 text-sm mb-6">You'll start in <span class="font-mono text-slate-400">/home/{{ site.isolated_user }}/{{ site.domain }}</span> as <span class="font-mono text-slate-400">{{ site.isolated_user }}</span>. Sessions close after 15 minutes without typing.</p>
+                  <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Connect</button>
+                </div>
+              </div>
+{{/if}}
+
+{{#if phase is "connecting"}}
+              <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 p-6">
+                <div class="flex items-center gap-3">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  <p class="text-slate-300 text-sm">Opening a shell…</p>
+                </div>
+              </div>
+{{/if}}
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-800 bg-slate-900">
+{{#if live}}
+              <p class="text-slate-500 text-xs">Connected for <span class="font-mono text-slate-300">{{ sessionText }}</span></p>
+{{#if idleWarn}}
+              <p class="text-amber-500 text-xs font-medium">Closing in <span class="font-mono">{{ idleText }}</span> without typing</p>
+{{/if}}
+{{#if not idleWarn}}
+              <p class="text-slate-500 text-xs">Idle limit <span class="font-mono text-slate-300">{{ idleText }}</span></p>
+{{/if}}
+{{/if}}
+{{#if phase is "connecting"}}
+              <p class="text-slate-500 text-xs">Connecting…</p>
+{{/if}}
+{{#if phase is "idle"}}
+              <p class="text-slate-500 text-xs">Not connected</p>
+{{/if}}
+{{#if phase is "closed"}}
+              <p class="text-slate-500 text-xs">Session ended. Reconnect to start a new one.</p>
+{{/if}}
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mt-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-slate-800 dark:text-slate-200 font-medium text-sm">Quick checks</h2>
+{{#if live}}
+              <p class="text-slate-500 text-xs">Runs in the open session</p>
+{{/if}}
+            </div>
+{{#if live}}
+            <div class="flex flex-wrap gap-2">
+{{#each c in commands}}
+              <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-sm rounded-full border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 px-4 py-1.5 hover:border-emerald-500/50 transition-all">{{ c.label }}</button>
+{{/each}}
+            </div>
+{{/if}}
+{{#if not live}}
+            <p class="text-slate-500 text-sm">Connect to run common checks like file listings, git status and disk space in one click.</p>
+{{/if}}
           </div>
 
         </div>
