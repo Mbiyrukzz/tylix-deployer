@@ -32,14 +32,317 @@ state
   logText: ""
   logStatus: "idle"
   logLoading: false
+  logLines: []
+  shownLogLines: []
+  logFilter: "all"
+  logTabs: []
+  logErrors: 0
+  logWarns: 0
+  logStages: 0
+  latestLines: []
+  highlights: []
+  stageChips: []
+  currentStage: ""
+  lastErrorText: ""
+  hiddenCount: 0
+  latestErrors: 0
+  latestWarns: 0
+  latestStages: 0
+  modalAtBottom: true
+  copied: false
+  successCount: 0
+  failedCount: 0
+  successRate: 0
+  rateStyle: "width: 0%"
+  heroCls: "from-slate-300 via-slate-400 to-slate-500"
+  lastDuration: ""
 
 action
+  classify(line, n) {
+    const t = line.trim()
+
+    let body = t
+    let ts = ""
+    if t.startsWith("[") {
+      const close = t.indexOf("]")
+      if close > 1 and close < 32 {
+        const inner = t.slice(1, close)
+        const looksLikeTime = "0123456789".includes(inner.charAt(0)) and (inner.includes(":") or inner.includes("-"))
+        if looksLikeTime {
+          ts = t.slice(0, close + 1)
+          body = t.slice(close + 1).trim()
+        }
+      }
+    }
+
+    const lower = body.toLowerCase()
+    const quiet = lower.includes("0 error") or lower.includes("no error") or lower.includes("without error")
+    const isErr = (body.startsWith("FAILED") or lower.startsWith("failed") or lower.includes("error") or lower.includes("fatal") or lower.includes("exception")) and not quiet
+    const isWarn = lower.includes("warning") or lower.includes("deprecat") or body.startsWith("NOTE")
+    const isOk = lower.startsWith("done") or lower.includes("success") or lower.includes("is running") or lower.includes("reloaded") or lower.startsWith("ok")
+    const isGit = lower.startsWith("from ") or lower.startsWith("remote:") or lower.startsWith("already up to date") or lower.startsWith("head is now") or lower.startsWith("updating ") or lower.startsWith("fast-forward") or lower.startsWith("cloning") or lower.startsWith("git ")
+    const isTool = lower.includes("composer") or lower.includes("npm ") or lower.includes("yarn") or lower.includes("pnpm") or lower.includes("artisan") or lower.includes("pm2") or lower.includes("systemctl") or lower.includes("nginx") or lower.includes("migrat")
+
+    let kind = "text"
+    let text = ts is "" ? line : body
+    let cls = "text-slate-300"
+    let rowCls = "border-transparent hover:bg-white/5"
+    let icon = " "
+
+    if body.startsWith("==>") {
+      kind = "stage"
+      text = body.slice(3).trim()
+    } else if body.startsWith("---") {
+      kind = "step"
+      text = body.slice(3).trim()
+      cls = "text-sky-300 font-medium"
+      rowCls = "border-sky-500/50 bg-sky-500/5"
+      icon = "›"
+    } else if isErr {
+      kind = "error"
+      cls = "text-rose-300"
+      rowCls = "border-rose-500 bg-rose-500/10"
+      icon = "✕"
+    } else if isWarn {
+      kind = "warn"
+      cls = "text-amber-300"
+      rowCls = "border-amber-500/70 bg-amber-500/5"
+      icon = "!"
+    } else if isOk {
+      kind = "ok"
+      cls = "text-emerald-400"
+      rowCls = "border-emerald-500/40 hover:bg-white/5"
+      icon = "✓"
+    } else if body.startsWith("$ ") or body.startsWith("+ ") {
+      kind = "cmd"
+      cls = "text-violet-300"
+      rowCls = "border-violet-500/40 hover:bg-white/5"
+      icon = "$"
+    } else if isGit {
+      kind = "git"
+      cls = "text-fuchsia-300"
+      rowCls = "border-transparent hover:bg-white/5"
+      icon = "⎇"
+    } else if isTool {
+      kind = "tool"
+      cls = "text-cyan-300"
+      rowCls = "border-transparent hover:bg-white/5"
+      icon = "•"
+    } else if body is "" {
+      text = " "
+    }
+
+    return {
+      n: n,
+      kind: kind,
+      text: text,
+      ts: ts,
+      cls: cls,
+      rowCls: rowCls,
+      icon: icon,
+      isStage: kind is "stage"
+    }
+  }
+
+  parseLog(raw) {
+    const nl = String.fromCharCode(10)
+    const cr = String.fromCharCode(13)
+    const all = (raw or "").split(cr + nl).join(nl).split(cr).join(nl).split(nl)
+    const cut = all.length > 3000 ? all.length - 3000 : 0
+    return all.slice(cut).map((line, i) => this.classify(line, cut + i + 1))
+  }
+
+  matches(l, f) {
+    if f is "all" {
+      return true
+    }
+    if f is "stage" {
+      return l.kind is "stage" or l.kind is "step"
+    }
+    return l.kind is f
+  }
+
+  applyLogFilter() {
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-slate-700 text-white text-xs font-medium px-3 py-1.5 transition-colors"
+    const idleCls = "inline-flex items-center gap-2 rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 text-xs font-medium px-3 py-1.5 transition-colors"
+    const keys = [["all", "All", "bg-slate-400"], ["error", "Errors", "bg-rose-500"], ["warn", "Warnings", "bg-amber-500"], ["stage", "Stages", "bg-emerald-500"]]
+    const f = this.logFilter
+
+    this.shownLogLines = this.logLines.filter((l) => this.matches(l, f))
+    this.logTabs = keys.map((k) => ({
+      key: k[0],
+      label: k[1],
+      dot: k[2],
+      count: this.logLines.filter((l) => this.matches(l, k[0])).length,
+      cls: k[0] is f ? activeCls : idleCls
+    }))
+  }
+
+  setLogFilter(key) {
+    this.logFilter = key
+    this.applyLogFilter()
+    window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 40)
+  }
+
+  scrollToLine(n) {
+    const el = document.getElementById("log-line-" + n)
+    if el {
+      el.scrollIntoView({ block: "center" })
+    }
+  }
+
+  jumpToError() {
+    const first = this.logLines.find((l) => l.kind is "error")
+    if not first {
+      return null
+    }
+
+    this.logFilter = "all"
+    this.applyLogFilter()
+    this.modalAtBottom = false
+    window.setTimeout(() => this.scrollToLine(first.n), 60)
+  }
+
+  heroFor(status) {
+    if status is "success" {
+      return "from-emerald-400 via-emerald-500 to-teal-500"
+    }
+    if status is "failed" {
+      return "from-rose-400 via-rose-500 to-orange-500"
+    }
+    if status is "deploying" {
+      return "from-amber-300 via-amber-400 to-orange-400 animate-pulse"
+    }
+    return "from-slate-300 via-slate-400 to-slate-500"
+  }
+
+  decorateStage(text, isLast) {
+    let tone = "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+    let icon = "✓"
+
+    if isLast and this.deployStatus is "deploying" {
+      tone = "bg-amber-500/10 border-amber-500/30 text-amber-300 animate-pulse"
+      icon = "●"
+    }
+    if isLast and this.deployStatus is "failed" {
+      tone = "bg-rose-500/10 border-rose-500/30 text-rose-300"
+      icon = "✕"
+    }
+
+    return {
+      text: text.length > 60 ? text.slice(0, 60) + "…" : text,
+      icon: icon,
+      cls: "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] " + tone
+    }
+  }
+
+  scrollEnd(id) {
+    const el = document.getElementById(id)
+    if el {
+      el.scrollTop = el.scrollHeight
+    }
+  }
+
+  onModalScroll() {
+    const el = document.getElementById("deploy-log-modal")
+    if el {
+      this.modalAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    }
+  }
+
+  setScript() {
+    const el = document.getElementById("script-input")
+    if el {
+      this.scriptText = Reflect.get(el, "value")
+    }
+  }
+
+  setEnv() {
+    const el = document.getElementById("env-input")
+    if el {
+      this.envText = Reflect.get(el, "value")
+    }
+  }
+
+  onKey(e) {
+    if e.key is "Escape" and this.modal is not "" {
+      this.closeModal()
+    }
+  }
+
+  jumpModal() {
+    this.scrollEnd("deploy-log-modal")
+    this.modalAtBottom = true
+  }
+
+  showLog(raw) {
+    this.logText = raw
+    this.logLines = this.parseLog(raw)
+    this.logErrors = this.logLines.filter((l) => l.kind is "error").length
+    this.logWarns = this.logLines.filter((l) => l.kind is "warn").length
+    this.logStages = this.logLines.filter((l) => l.kind is "stage").length
+    this.applyLogFilter()
+
+    if this.modalAtBottom {
+      window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 40)
+    }
+  }
+
+  setLatest(raw) {
+    this.deployLog = raw
+    this.latestLines = this.parseLog(raw)
+    this.latestErrors = this.latestLines.filter((l) => l.kind is "error").length
+    this.latestWarns = this.latestLines.filter((l) => l.kind is "warn").length
+    this.latestStages = this.latestLines.filter((l) => l.kind is "stage").length
+
+    const stages = this.latestLines.filter((l) => l.isStage)
+    const recent = stages.slice(-12)
+    const last = recent.length - 1
+    this.stageChips = recent.map((s, i) => this.decorateStage(s.text, i is last))
+    const rawStage = recent.length > 0 ? recent[last].text : ""
+    const shortStage = rawStage.length > 80 ? rawStage.slice(0, 80) + "…" : rawStage
+    this.currentStage = ""
+    if this.deployStatus is "deploying" {
+      this.currentStage = shortStage
+    }
+
+    const errs = this.latestLines.filter((l) => l.kind is "error")
+    let lastErr = ""
+    if errs.length > 0 {
+      lastErr = errs[errs.length - 1].text.trim()
+    }
+    this.lastErrorText = lastErr
+
+    let keep = []
+    if this.latestErrors > 0 {
+      keep = this.latestLines.filter((l) => l.kind is "error" or l.kind is "warn")
+    } else {
+      keep = this.latestLines.filter((l) => l.kind is "warn" or l.kind is "ok" or l.kind is "step")
+    }
+    if keep.length is 0 {
+      keep = this.latestLines.filter((l) => l.text.trim() is not "" and not l.isStage)
+    }
+    this.highlights = keep.slice(-8)
+    this.hiddenCount = Math.max(0, this.latestLines.length - this.highlights.length)
+  }
+
+  clearCopied() {
+    this.copied = false
+  }
+
+  async copyLog() {
+    await navigator.clipboard.writeText(this.logText)
+    this.copied = true
+    window.setTimeout(() => this.clearCopied(), 1800)
+  }
+
   applyStatus(data) {
     this.deployStatus = data.deploy_status
-    this.deployLog = data.deploy_log
+    this.heroCls = this.heroFor(data.deploy_status)
+    this.setLatest(data.deploy_log)
     if this.viewId is "" {
-      this.logText = data.deploy_log
       this.logStatus = data.deploy_status
+      this.showLog(data.deploy_log)
     }
     this.deployedText = data.deployed_at ? data.deployed_at.slice(0, 16).replace("T", " ") : ""
     this.busy = false
@@ -62,9 +365,11 @@ action
   openLive() {
     this.viewId = ""
     this.logLoading = false
-    this.logText = this.deployLog
     this.logStatus = this.deployStatus
+    this.modalAtBottom = true
+    this.showLog(this.deployLog)
     this.openModal("log")
+    window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 80)
   }
 
   async openDeployLog(id) {
@@ -79,9 +384,10 @@ action
     }
 
     this.viewId = id
-    this.logText = ""
     this.logStatus = d.status
     this.logLoading = true
+    this.modalAtBottom = true
+    this.showLog("")
     this.openModal("log")
 
     const result = await useApi("/api/sites/" + this.siteId + "/deployments/" + id)
@@ -89,12 +395,13 @@ action
     if this.viewId is id {
       this.logLoading = false
       if result.ok {
-        this.logText = result.data.log or ""
         this.logStatus = result.data.status
+        this.showLog(result.data.log or "")
+        window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 80)
       } else if result.status is 401 {
         window.location.href = "/login"
       } else {
-        this.logText = "Couldn't load this log."
+        this.showLog("Couldn't load this log.")
       }
     }
   }
@@ -102,18 +409,22 @@ action
   decorateDeploy(d, activeId) {
     let label = "Previous"
     let tone = "bg-slate-500/10 border-slate-500/20 text-slate-500"
+    let dot = "bg-slate-400"
 
     if d.status is "success" and d.id is activeId {
       label = "Active"
       tone = "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-500"
+      dot = "bg-emerald-500"
     }
     if d.status is "failed" {
       label = "Failed"
       tone = "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-500"
+      dot = "bg-rose-500"
     }
     if d.status is "deploying" {
       label = "Deploying"
       tone = "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500"
+      dot = "bg-amber-500 animate-pulse"
     }
 
     let duration = ""
@@ -128,6 +439,7 @@ action
 
     return Object.assign({}, d, {
       label: label,
+      dotCls: "w-2.5 h-2.5 rounded-full shrink-0 " + dot,
       badgeCls: "inline-flex w-24 shrink-0 justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider " + tone,
       whenText: d.started_at ? d.started_at.slice(0, 16).replace("T", " ") : "",
       duration: duration
@@ -160,6 +472,15 @@ action
       const firstOk = result.data.find((d) => d.status is "success")
       const activeId = firstOk ? firstOk.id : null
       this.history = result.data.map((d) => this.decorateDeploy(d, activeId))
+      this.successCount = this.history.filter((d) => d.status is "success").length
+      this.failedCount = this.history.filter((d) => d.status is "failed").length
+
+      const total = this.successCount + this.failedCount
+      this.successRate = total > 0 ? Math.round(this.successCount / total * 100) : 0
+      this.rateStyle = "width: " + this.successRate + "%"
+
+      const finished = this.history.find((d) => d.duration is not "")
+      this.lastDuration = finished ? finished.duration : ""
     }
 
     this.applyHistFilter()
@@ -250,12 +571,13 @@ action
 
     if result.ok {
       this.deployStatus = "deploying"
-      this.deployLog = ""
+      this.heroCls = this.heroFor("deploying")
       this.viewId = ""
       this.logLoading = false
-      this.logText = ""
       this.logStatus = "deploying"
-      this.modal = "log"
+      this.modalAtBottom = true
+      this.setLatest("")
+      this.showLog("")
       this.startPolling()
       await this.loadHistory()
       return null
@@ -272,6 +594,8 @@ action
 
 onMount
   async {
+    window.addEventListener("keydown", (e) => this.onKey(e))
+
     const params = new URLSearchParams(window.location.search)
     const id = params.get("id")
     this.siteId = id or ""
@@ -312,18 +636,19 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_minmax(0,1fr)] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
-    <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+    <div class="min-w-0 overflow-x-hidden">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 lg:py-10">
 
 {{#if loading}}
       <div class="space-y-4">
         <div class="h-8 w-64 rounded-lg bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
         <div class="h-40 rounded-2xl bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
+        <div class="h-56 rounded-2xl bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
       </div>
 {{/if}}
 
@@ -336,14 +661,14 @@ template
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-5">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
         <div class="min-w-0">
           <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-center gap-2.5 max-w-full">
-            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ site.domain }}</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ site.domain }}</h1>
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">
               <path d="M11 3h6v6M17 3l-8 8M15 11v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" />
             </svg>
@@ -395,13 +720,17 @@ template
 {{/if}}
 
 {{#if canDeploy}}
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r {{ heroCls }}"></div>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
               <div class="min-w-0">
-                <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Deploy</h2>
+                <h2 class="text-slate-900 dark:text-slate-100 text-lg font-semibold mb-1">Deploy</h2>
                 <p class="text-slate-500 text-sm">Pulls the latest code, writes the environment, runs the deployment script and restarts the app.</p>
-{{#if deployedText}}
-                <p class="text-slate-400 text-xs mt-2">Last deployed <span class="font-mono text-slate-500">{{ deployedText }} UTC</span></p>
+{{#if currentStage}}
+                <p class="mt-3 flex max-w-full items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse"></span>
+                  <span class="truncate">{{ currentStage }}</span>
+                </p>
 {{/if}}
               </div>
               <div class="shrink-0">
@@ -411,8 +740,43 @@ template
                 </button>
 {{/if}}
 {{#if not busy}}
-                <button onclick="{{ deploy() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Deploy now</button>
+                <button onclick="{{ deploy() }}" class="inline-flex items-center gap-2 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+                  Deploy now
+                </button>
 {{/if}}
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Last deployed</p>
+{{#if deployedText}}
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ deployedText }} UTC</p>
+{{/if}}
+{{#if not deployedText}}
+                <p class="text-slate-400 text-sm">Never</p>
+{{/if}}
+              </div>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3 min-w-0">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Branch</p>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ site.branch }}</p>
+              </div>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Last duration</p>
+{{#if lastDuration}}
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ lastDuration }}</p>
+{{/if}}
+{{#if not lastDuration}}
+                <p class="text-slate-400 text-sm">None yet</p>
+{{/if}}
+              </div>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Success rate</p>
+                <p class="text-sm mb-2"><span class="text-emerald-600 dark:text-emerald-500 font-semibold">{{ successCount }}</span> <span class="text-slate-400">passed</span> <span class="text-slate-300 dark:text-slate-700">/</span> <span class="text-rose-600 dark:text-rose-500 font-semibold">{{ failedCount }}</span> <span class="text-slate-400">failed</span></p>
+                <div class="h-1.5 w-full rounded-full bg-rose-500/20 overflow-hidden">
+                  <div class="h-full rounded-full bg-emerald-500 transition-all" style="{{ rateStyle }}"></div>
+                </div>
               </div>
             </div>
 
@@ -421,15 +785,123 @@ template
 {{/if}}
           </div>
 
+          <div class="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-sm dark:shadow-none max-w-full">
+            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/60">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500/70"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-500/70"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/70"></span>
+                </div>
+                <p class="text-slate-300 text-xs font-medium">Latest deployment</p>
+{{#if deployStatus is "deploying"}}
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-400">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Live
+                </span>
+{{/if}}
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+{{#if latestStages is not 0}}
+                <span class="text-[11px] text-emerald-400 bg-emerald-500/10 rounded-full px-2.5 py-1">{{ latestStages }} stages</span>
+{{/if}}
+{{#if latestWarns is not 0}}
+                <span class="text-[11px] text-amber-300 bg-amber-500/10 rounded-full px-2.5 py-1">{{ latestWarns }} warnings</span>
+{{/if}}
+{{#if latestErrors is not 0}}
+                <span class="text-[11px] text-rose-300 bg-rose-500/10 rounded-full px-2.5 py-1">{{ latestErrors }} errors</span>
+{{/if}}
+                <button onclick="{{ openLive() }}" class="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-800 rounded-full px-3 py-1 transition-colors">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 3h5v5M8 17H3v-5M17 3l-6 6M3 17l6-6" /></svg>
+                  Full log
+                </button>
+              </div>
+            </div>
+
+{{#if latestStages is not 0}}
+            <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-800/70">
+{{#each s in stageChips}}
+              <span class="{{ s.cls }}">
+                <span class="text-[10px]">{{ s.icon }}</span>
+                <span class="truncate">{{ s.text }}</span>
+              </span>
+{{/each}}
+            </div>
+{{/if}}
+
+{{#if deployStatus is "failed"}}
+{{#if lastErrorText}}
+            <div class="flex items-start gap-3 px-4 py-3 bg-rose-500/10 border-b border-rose-500/20">
+              <span class="text-rose-400 text-sm mt-px">&#10005;</span>
+              <div class="min-w-0">
+                <p class="text-rose-300 text-xs font-semibold mb-0.5">Deployment failed</p>
+                <p class="text-rose-200/80 text-xs font-mono [overflow-wrap:anywhere]">{{ lastErrorText }}</p>
+              </div>
+            </div>
+{{/if}}
+{{/if}}
+
+{{#if deployStatus is "deploying"}}
+{{#if latestStages is 0}}
+            <div class="flex items-center gap-3 px-4 py-6">
+              <span class="w-3.5 h-3.5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></span>
+              <p class="text-slate-400 text-xs">Starting deployment…</p>
+            </div>
+{{/if}}
+{{/if}}
+
+{{#if deployLog}}
+{{#if deployStatus is not "deploying"}}
+            <div class="py-3 text-xs leading-relaxed font-mono">
+              <p class="px-4 pb-2 text-[10px] uppercase tracking-wider text-slate-500 font-sans">Highlights</p>
+{{#each l in highlights}}
+              <div class="flex items-start border-l-2 {{ l.rowCls }}">
+                <span class="w-10 shrink-0 pr-2 text-right text-slate-600 select-none">{{ l.n }}</span>
+                <span class="w-4 shrink-0 text-center select-none opacity-80 {{ l.cls }}">{{ l.icon }}</span>
+                <span class="min-w-0 flex-1 pl-2 pr-4 whitespace-pre-wrap line-clamp-2 [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-slate-500 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
+              </div>
+{{/each}}
+            </div>
+            <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-800/70 bg-slate-900/40">
+              <p class="text-slate-500 text-[11px]">{{ hiddenCount }} more lines in the full log</p>
+              <button onclick="{{ openLive() }}" class="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">View full log &rarr;</button>
+            </div>
+{{/if}}
+{{/if}}
+{{#if not deployLog}}
+{{#if deployStatus is not "deploying"}}
+            <div class="px-4 py-12 text-center">
+              <p class="text-slate-500 text-xs font-mono">$ no deployment yet</p>
+              <p class="text-slate-600 text-xs mt-2">Press Deploy now to see live progress here.</p>
+            </div>
+{{/if}}
+{{/if}}
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button onclick="{{ openModal('script') }}" class="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1">Deployment script</p>
-              <p class="text-slate-500 text-xs">Commands run after the latest code is pulled.</p>
+            <button onclick="{{ openModal('script') }}" class="group text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+              <div class="flex items-center gap-3">
+                <span class="w-9 h-9 shrink-0 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M4 17l6-6-6-6M12 19h8" /></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Deployment script</p>
+                  <p class="text-slate-500 text-xs">Commands run after the latest code is pulled.</p>
+                </div>
+                <span class="text-xs text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Edit &rarr;</span>
+              </div>
             </button>
 {{#if envPath}}
-            <button onclick="{{ openModal('env') }}" class="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1">Environment</p>
-              <p class="text-slate-500 text-xs font-mono truncate">{{ envPath }}</p>
+            <button onclick="{{ openModal('env') }}" class="group text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+              <div class="flex items-center gap-3">
+                <span class="w-9 h-9 shrink-0 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Environment</p>
+                  <p class="text-slate-500 text-xs font-mono truncate">{{ envPath }}</p>
+                </div>
+                <span class="text-xs text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Edit &rarr;</span>
+              </div>
             </button>
 {{/if}}
           </div>
@@ -455,7 +927,8 @@ template
 
             <div class="space-y-2">
 {{#each d in shownHistory}}
-              <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors">
+                <span class="{{ d.dotCls }}"></span>
                 <span class="{{ d.badgeCls }}">{{ d.label }}</span>
                 <div class="min-w-0 flex-1 basis-40">
                   <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ d.whenText }} UTC</p>
@@ -464,34 +937,12 @@ template
 {{/if}}
                 </div>
 {{#if d.duration}}
-                <span class="text-slate-500 text-xs shrink-0">{{ d.duration }}</span>
+                <span class="text-slate-500 text-xs font-mono shrink-0">{{ d.duration }}</span>
 {{/if}}
                 <button onclick="{{ openDeployLog(d.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View log</button>
               </div>
 {{/each}}
             </div>
-          </div>
-
-          <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 shadow-sm dark:shadow-none">
-            <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800">
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1.5">
-                  <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
-                  <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
-                  <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
-                </div>
-                <p class="text-slate-400 text-xs font-medium">Latest deployment log</p>
-              </div>
-              <button onclick="{{ openLive() }}" class="text-xs text-slate-400 hover:text-white border border-slate-700 rounded-full px-3 py-1 transition-colors">Expand</button>
-            </div>
-{{#if deployLog}}
-            <div class="max-h-64 overflow-y-auto px-4 py-4 text-xs leading-relaxed font-mono text-slate-300 whitespace-pre-wrap break-words">{{ deployLog }}</div>
-{{/if}}
-{{#if not deployLog}}
-            <div class="px-4 py-8 text-center">
-              <p class="text-slate-500 text-xs font-mono">$ no deployment yet</p>
-            </div>
-{{/if}}
           </div>
 {{/if}}
 
@@ -500,7 +951,7 @@ template
 {{/if}}
 
 {{#if modal is "script"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="script-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+      <div role="dialog" aria-modal="true" aria-labelledby="script-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
         <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
           <div class="flex items-center justify-between mb-2">
             <h3 id="script-title" class="text-slate-900 dark:text-slate-100 font-semibold">Deployment script</h3>
@@ -510,11 +961,12 @@ template
           </div>
           <p class="text-slate-500 text-xs mb-4">Runs as the isolated user after the latest code is pulled, starting in the site folder. A failing command stops the deployment. Available variables: <span class="font-mono">$SITE_ROOT $DOMAIN $BRANCH $PHP_VERSION $APP_DIR $BACKEND_DIR $PORT</span>.</p>
           <textarea
+            id="script-input"
             rows="16"
             spellcheck="false"
             autocomplete="off"
             value="{{ scriptText }}"
-            oninput="{{ scriptText = $event.target.value }}"
+            oninput="{{ setScript() }}"
             class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors resize-y"
           ></textarea>
 {{#if error}}
@@ -537,7 +989,7 @@ template
 {{/if}}
 
 {{#if modal is "env"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="env-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
+      <div role="dialog" aria-modal="true" aria-labelledby="env-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
         <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
           <div class="flex items-center justify-between mb-2">
             <h3 id="env-title" class="text-slate-900 dark:text-slate-100 font-semibold">Environment</h3>
@@ -547,11 +999,12 @@ template
           </div>
           <p class="text-slate-500 text-xs mb-4">Written to <span class="font-mono break-all">{{ envPath }}</span> on every deploy (permissions 600). Stored encrypted. Leave empty to keep the file on the server as it is.</p>
           <textarea
+            id="env-input"
             rows="14"
             spellcheck="false"
             autocomplete="off"
             value="{{ envText }}"
-            oninput="{{ envText = $event.target.value }}"
+            oninput="{{ setEnv() }}"
             class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors resize-y"
             placeholder="APP_ENV=production"
           ></textarea>
@@ -572,15 +1025,15 @@ template
 {{/if}}
 
 {{#if modal is "log"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-6">
-        <div class="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-3 sm:px-6">
+        <div class="w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
 
-          <div class="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-slate-800">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-800 bg-slate-900/60">
             <div class="flex items-center gap-4 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
-                <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
-                <span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500/70"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500/70"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/70"></span>
               </div>
               <h3 id="log-title" class="text-slate-200 text-sm font-medium">Deployment log</h3>
 {{#if logStatus is "deploying"}}
@@ -599,9 +1052,36 @@ template
               </span>
 {{/if}}
             </div>
-            <button onclick="{{ closeModal() }}" aria-label="Close" class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-white hover:bg-slate-800 transition-colors">
-              <IconX class="w-4 h-4" />
+
+            <div class="flex items-center gap-2">
+{{#if logErrors is not 0}}
+              <button onclick="{{ jumpToError() }}" class="text-xs text-rose-300 border border-rose-500/40 bg-rose-500/10 rounded-full px-3 py-1 hover:bg-rose-500/20 transition-colors">Jump to first error</button>
+{{/if}}
+              <button onclick="{{ copyLog() }}" class="text-xs text-slate-300 border border-slate-700 rounded-full px-3 py-1 hover:bg-slate-800 transition-colors">
+                {{#if copied}}Copied{{/if}}{{#if not copied}}Copy log{{/if}}
+              </button>
+              <button onclick="{{ closeModal() }}" aria-label="Close" class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-white hover:bg-slate-800 transition-colors">
+                <IconX class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 px-4 py-2 border-b border-slate-800/70 bg-slate-950">
+{{#each t in logTabs}}
+            <button onclick="{{ setLogFilter(t.key) }}" class="{{ t.cls }}">
+              <span class="w-1.5 h-1.5 rounded-full {{ t.dot }}"></span>
+              {{ t.label }}
+              <span class="opacity-60">{{ t.count }}</span>
             </button>
+{{/each}}
+            <span class="ml-auto hidden md:flex items-center gap-3 text-[11px] text-slate-500">
+              <span class="inline-flex items-center gap-1"><span class="text-rose-300">&#10005;</span> error</span>
+              <span class="inline-flex items-center gap-1"><span class="text-amber-300">!</span> warning</span>
+              <span class="inline-flex items-center gap-1"><span class="text-emerald-400">&#10003;</span> ok</span>
+              <span class="inline-flex items-center gap-1"><span class="text-violet-300">$</span> command</span>
+              <span class="inline-flex items-center gap-1"><span class="text-fuchsia-300">&#9095;</span> git</span>
+              <span class="inline-flex items-center gap-1"><span class="text-cyan-300">&bull;</span> tooling</span>
+            </span>
           </div>
 
 {{#if logStatus is "deploying"}}
@@ -611,29 +1091,59 @@ template
 {{/if}}
 
 {{#if logLoading}}
-          <div class="px-5 py-14 text-center">
+          <div class="flex-1 flex items-center justify-center">
             <p class="text-slate-500 text-sm font-mono">$ loading log…</p>
           </div>
 {{/if}}
 
 {{#if not logLoading}}
 {{#if logText}}
-          <div class="flex-1 min-h-0 overflow-y-auto px-5 py-5 text-[13px] leading-relaxed font-mono text-slate-300 whitespace-pre-wrap break-words">{{ logText }}</div>
+          <div class="relative flex-1 min-h-0">
+            <div id="deploy-log-modal" onscroll="{{ onModalScroll() }}" class="h-full overflow-y-auto overflow-x-hidden py-4 text-[13px] leading-relaxed font-mono">
+{{#if shownLogLines.length is 0}}
+              <p class="px-5 py-6 text-slate-500 text-xs">No lines match this filter.</p>
+{{/if}}
+{{#each l in shownLogLines}}
+{{#if l.isStage}}
+              <div id="log-line-{{ l.n }}" class="flex items-center gap-2.5 mt-5 mb-1.5 px-5 py-2 bg-emerald-500/10 border-l-2 border-emerald-500">
+                <span class="text-emerald-400 text-[11px]">&#9656;</span>
+                <span class="min-w-0 text-emerald-300 font-semibold [overflow-wrap:anywhere]">{{ l.text }}</span>
+              </div>
+{{/if}}
+{{#if not l.isStage}}
+              <div id="log-line-{{ l.n }}" class="flex items-start border-l-2 {{ l.rowCls }}">
+                <span class="w-12 shrink-0 pr-3 text-right text-slate-600 select-none">{{ l.n }}</span>
+                <span class="w-4 shrink-0 text-center select-none opacity-80 {{ l.cls }}">{{ l.icon }}</span>
+                <span class="min-w-0 flex-1 pl-2 pr-5 whitespace-pre-wrap [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-slate-500 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
+              </div>
+{{/if}}
+{{/each}}
+            </div>
+{{#if not modalAtBottom}}
+            <button onclick="{{ jumpModal() }}" class="absolute bottom-4 right-6 inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-500 text-slate-950 rounded-full px-3.5 py-2 shadow-lg hover:bg-emerald-400 transition-colors">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M10 4v12M5 11l5 5 5-5" /></svg>
+              Jump to bottom
+            </button>
+{{/if}}
+          </div>
 {{/if}}
 {{#if not logText}}
-          <div class="px-5 py-14 text-center">
+          <div class="flex-1 flex items-center justify-center">
             <p class="text-slate-500 text-sm font-mono">$ no output</p>
           </div>
 {{/if}}
 {{/if}}
 
-          <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-800">
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-800 bg-slate-900/60">
             <p class="text-slate-500 text-xs">
 {{#if deployedText}}
               Last deployed <span class="font-mono text-slate-400">{{ deployedText }} UTC</span>
 {{/if}}
             </p>
-            <button onclick="{{ closeModal() }}" class="text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-800 transition-colors">Close</button>
+            <div class="flex items-center gap-3">
+              <span class="hidden sm:inline text-[11px] text-slate-600">Esc to close</span>
+              <button onclick="{{ closeModal() }}" class="text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-800 transition-colors">Close</button>
+            </div>
           </div>
 
         </div>
