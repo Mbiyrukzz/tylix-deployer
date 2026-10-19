@@ -37,8 +37,14 @@ const MAX_LOG = 50_000;
 const clip = (text: string) => (text.length > MAX_LOG ? "[... earlier output trimmed ...]\n" + text.slice(-MAX_LOG) : text);
 
 function lastLine(stderr: string, stdout: string): string {
-    const text = stderr.trim() || stdout.trim();
-    const lines = text.split("\n").filter((l) => l.trim() !== "");
+    const clean = (text: string) =>
+        text
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l !== "" && !l.startsWith("Warning: Permanently added"));
+
+    const err = clean(stderr);
+    const lines = err.length > 0 ? err : clean(stdout);
     return (lines[lines.length - 1] ?? "Command failed.").slice(0, 300);
 }
 

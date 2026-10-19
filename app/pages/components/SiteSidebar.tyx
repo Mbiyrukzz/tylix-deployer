@@ -117,11 +117,16 @@ template
   <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-2 mx-3"></div>
   <p class="{{ toolsCls }}">Tools</p>
 
-  <span class="{{ disCls }}" aria-disabled="true" title="Commands (coming soon)">
-    <IconTerminal class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
-    <span class="{{ labelCls }}">Commands</span>
-    <span class="{{ badgeCls }}">Soon</span>
-  </span>
+{{#if active is "commands"}}
+  <a href="{{ '/servers/site-commands?id=' + siteId }}" title="Commands" aria-current="page" class="{{ onCls }}">
+    <IconTerminal class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Commands</span>
+  </a>
+{{/if}}
+{{#if active is not "commands"}}
+  <a href="{{ '/servers/site-commands?id=' + siteId }}" title="Commands" class="{{ offCls }}">
+    <IconTerminal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Commands</span>
+  </a>
+{{/if}}
 
   <span class="{{ disCls }}" aria-disabled="true" title="Redirects (coming soon)">
     <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />

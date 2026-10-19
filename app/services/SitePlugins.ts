@@ -64,7 +64,7 @@ PHP_BIN="$(command -v "php$PHP_VERSION")" || { echo "PHP $PHP_VERSION is not ins
 COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server." >&2; exit 1; }
 composer_run() {
   CLOG="$(mktemp)"
-  if as_user "$PHP_BIN" -d error_reporting=22527 "$COMPOSER_BIN" "$@" --no-scripts --no-dev >"$CLOG" 2>&1; then
+  if as_user "$PHP_BIN" -d error_reporting=22527 "$COMPOSER_BIN" "$@" --no-scripts >"$CLOG" 2>&1; then
     grep -v '^Deprecation Notice:' "$CLOG" || true
     rm -f "$CLOG"
   else
@@ -73,7 +73,12 @@ composer_run() {
     return 1
   fi
 }
-artisan() { as_user "$PHP_BIN" artisan "$@"; }`;
+artisan() {
+  if [ "$1" = "package:discover" ]; then
+    as_user rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+  fi
+  as_user "$PHP_BIN" artisan "$@"
+}`;
 
 const SET_ENV = `
 set_env() {

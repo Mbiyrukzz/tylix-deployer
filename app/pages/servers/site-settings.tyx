@@ -19,6 +19,15 @@ state
   selected: ""
   choices: []
   activeCount: 0
+  nginxReady: false
+  nginxLoading: false
+  nginxSaving: false
+  nginxLoaded: false
+  nginxPath: ""
+  nginxText: ""
+  nginxOriginal: ""
+  nginxError: ""
+  nginxMessage: ""
 
 action
   describe(site) {
@@ -48,6 +57,7 @@ action
     this.site = site
     this.serverId = "" + site.server_id
     this.typeLabel = typeLabel
+    this.nginxReady = site.status is "ready"
 
     this.groups = [
       {
@@ -101,7 +111,7 @@ action
     ].filter((g) => g.rows.length > 0)
   }
 
-   decorate(list) {
+  decorate(list) {
     return list.map((p) => Object.assign({}, p, {
       busy: p.status is "installing" or p.status is "removing",
       isInstalled: p.status is "installed",
@@ -146,7 +156,7 @@ action
     }
   }
 
-    async install(id) {
+  async install(id) {
     this.error = ""
 
     if not id {
@@ -191,6 +201,60 @@ action
     }
   }
 
+  async loadNginx() {
+    this.nginxLoading = true
+    this.nginxError = ""
+    this.nginxMessage = ""
+
+    const result = await useApi("/api/sites/" + this.siteId + "/nginx")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      this.nginxPath = result.data.path
+      this.nginxText = result.data.content
+      this.nginxOriginal = result.data.content
+      this.nginxLoaded = true
+    } else {
+      this.nginxError = result.data?.error or "Couldn't load the nginx config."
+    }
+
+    this.nginxLoading = false
+  }
+
+  async saveNginx() {
+    if this.nginxSaving {
+      return null
+    }
+
+    this.nginxSaving = true
+    this.nginxError = ""
+    this.nginxMessage = ""
+
+    const result = await useApi("/api/sites/" + this.siteId + "/nginx", { method: "PUT", body: { content: this.nginxText } })
+
+    if result.ok {
+      this.nginxText = result.data.content
+      this.nginxOriginal = result.data.content
+      this.nginxMessage = "Saved. nginx accepted the config and was reloaded."
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.nginxError = result.data?.error or "Couldn't save the nginx config."
+    }
+
+    this.nginxSaving = false
+  }
+
+  discardNginx() {
+    this.nginxText = this.nginxOriginal
+    this.nginxError = ""
+    this.nginxMessage = ""
+  }
+
 onMount
   async {
     const params = new URLSearchParams(window.location.search)
@@ -209,6 +273,10 @@ onMount
         this.describe(result.data)
         this.loading = false
         await this.loadPlugins()
+
+        if this.nginxReady {
+          await this.loadNginx()
+        }
       } else {
         this.notFound = true
         this.loading = false
@@ -271,7 +339,59 @@ template
           </div>
 {{/each}}
 
-                    <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">nginx configuration</h2>
+            <p class="text-slate-500 text-sm mb-5">Edit this site's nginx config directly. Every save is tested with <span class="font-mono">nginx -t</span> before nginx reloads, and your previous version is restored automatically if the test fails.</p>
+
+{{#if not nginxReady}}
+            <p class="text-slate-500 text-sm">The config can be edited once the site has finished creating.</p>
+{{/if}}
+
+{{#if nginxReady}}
+{{#if nginxLoading}}
+            <p class="text-slate-500 text-sm">Loading the config…</p>
+{{/if}}
+
+{{#if nginxError}}
+            <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 mb-4">
+              <p class="text-rose-500 text-xs font-medium uppercase tracking-wider mb-1">Not saved</p>
+              <p class="text-rose-500 text-xs font-mono whitespace-pre-wrap break-words">{{ nginxError }}</p>
+            </div>
+{{/if}}
+
+{{#if nginxMessage}}
+            <p role="status" class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ nginxMessage }}</p>
+{{/if}}
+
+{{#if nginxLoaded}}
+            <p class="text-slate-500 text-xs font-mono mb-2 break-all">{{ nginxPath }}</p>
+
+            <textarea
+              value="{{ nginxText }}"
+              oninput="{{ nginxText = $event.target.value }}"
+              rows="26"
+              spellcheck="false"
+              wrap="off"
+              class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono leading-5 px-4 py-3 overflow-x-auto focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            ></textarea>
+
+            <div class="flex flex-wrap items-center gap-3 mt-4">
+              <button onclick="{{ saveNginx() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                {{#if nginxSaving}}Testing and saving…{{/if}}{{#if not nginxSaving}}Test and save{{/if}}
+              </button>
+{{#if nginxText is not nginxOriginal}}
+              <button onclick="{{ discardNginx() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Discard changes</button>
+              <span class="text-amber-600 dark:text-amber-500 text-xs">Unsaved changes</span>
+{{/if}}
+              <button onclick="{{ loadNginx() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Reload from server</button>
+            </div>
+
+            <p class="text-slate-500 text-xs mt-4">Plugins such as Reverb, Octane and compression keep their settings in separate files that this config pulls in with an <span class="font-mono">include</span> line. Leave that line in place or those plugins stop working. Certificates added by HTTPS also live in this file, and recreating the site or changing its HTTPS settings can rewrite it.</p>
+{{/if}}
+{{/if}}
+          </div>
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Plugins</h2>
             <p class="text-slate-500 text-sm mb-5">Extras you can add to this {{ typeLabel }} site. Each one installs over SSH, and you can remove it again.</p>
 
