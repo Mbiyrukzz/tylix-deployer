@@ -52,13 +52,27 @@ const NGINX_SERVED = ["angular", "react", "static", "mern"];
 
 // ---------------------------------------------------------------- helpers
 
+// composer_run: runs Composer as the site user with --no-scripts (Laravel's
+// post-update scripts like vendor:publish are not needed here and hide the real
+// error), hides the PHP deprecation spam from the distro Composer, and on
+// failure prints the last 40 meaningful lines to stderr.
 const LARAVEL_PREP = `
 cd "$SITE_ROOT"
 [ -f artisan ] || { echo "There is no artisan file in $SITE_ROOT. Is this a Laravel app?" >&2; exit 1; }
 [ -f .env ] || { echo "There is no .env file yet. Deploy the site once (Deployment tab) so .env exists, then install the plugin." >&2; exit 1; }
 PHP_BIN="$(command -v "php$PHP_VERSION")" || { echo "PHP $PHP_VERSION is not installed on this server." >&2; exit 1; }
 COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server." >&2; exit 1; }
-composer_run() { as_user "$PHP_BIN" -d error_reporting=22527 "$COMPOSER_BIN" "$@"; }
+composer_run() {
+  CLOG="$(mktemp)"
+  if as_user "$PHP_BIN" -d error_reporting=22527 "$COMPOSER_BIN" "$@" --no-scripts --no-dev >"$CLOG" 2>&1; then
+    grep -v '^Deprecation Notice:' "$CLOG" || true
+    rm -f "$CLOG"
+  else
+    grep -v '^Deprecation Notice:' "$CLOG" | tail -n 40 >&2 || true
+    rm -f "$CLOG"
+    return 1
+  fi
+}
 artisan() { as_user "$PHP_BIN" artisan "$@"; }`;
 
 const SET_ENV = `
@@ -187,12 +201,14 @@ const octane: PluginDef = {
         "Adds laravel/octane and RoadRunner to composer.json and composer.lock on the server. Commit those to your repository, or the next git pull may conflict.",
         "The deployer reloads the Octane service after every deploy.",
     ],
-        install: ({ port }) => `${LARAVEL_PREP}
+    install: ({ port }) => `${LARAVEL_PREP}
 if ! grep -q '"laravel/octane"' composer.json || ! grep -q '"spiral/roadrunner-cli"' composer.json; then
-  echo "--- composer require laravel/octane spiral/roadrunner-http spiral/roadrunner-cli"
-  composer_run require laravel/octane spiral/roadrunner-http spiral/roadrunner-cli --no-interaction --with-all-dependencies
+  echo "--- composer require laravel/octane (roadrunner-http ^3, roadrunner-cli ^2)"
+  composer_run require laravel/octane "spiral/roadrunner-http:^3.3" "spiral/roadrunner-cli:^2.6" --no-interaction --with-all-dependencies
   echo "NOTE: composer.json and composer.lock changed on the server. Commit them to your repository."
 fi
+echo "--- package:discover"
+artisan package:discover
 echo "--- octane:install"
 artisan octane:install --server=roadrunner --no-interaction
 if [ ! -x ./rr ]; then
@@ -252,13 +268,15 @@ const reverb: PluginDef = {
         "The REVERB_* values are written to the server .env and copied into the saved Deployment env, so a redeploy does not wipe them.",
         "Your front end still needs laravel-echo and pusher-js, and a rebuild after the keys exist.",
     ],
-        install: ({ site, port }) => `${LARAVEL_PREP}
+    install: ({ site, port }) => `${LARAVEL_PREP}
 ${SET_ENV}
 if ! grep -q '"laravel/reverb"' composer.json; then
   echo "--- composer require laravel/reverb"
   composer_run require laravel/reverb --no-interaction --with-all-dependencies
   echo "NOTE: composer.json and composer.lock changed on the server. Commit them to your repository."
 fi
+echo "--- package:discover"
+artisan package:discover
 echo "--- reverb:install"
 artisan reverb:install --no-interaction
 set_env BROADCAST_CONNECTION reverb
