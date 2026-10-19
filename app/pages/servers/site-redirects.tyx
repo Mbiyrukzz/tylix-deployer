@@ -1,0 +1,297 @@
+page SiteRedirects
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Site redirects"
+
+state
+  siteId: ""
+  serverId: ""
+  site: null
+  loading: true
+  notFound: false
+  canEdit: false
+  redirects: []
+  limit: 100
+  listLoading: false
+  listError: ""
+  matchType: "exact"
+  fromPath: ""
+  toTarget: ""
+  codeText: "301"
+  error: ""
+  message: ""
+  saving: false
+
+action
+  decorate(list) {
+    return list.map((r) => Object.assign({}, r, {
+      kind: r.match is "prefix" ? "Path and everything under it" : "Exact path",
+      fromText: r.match is "prefix" ? r.from + "/…" : r.from
+    }))
+  }
+
+  async loadRedirects() {
+    this.listLoading = true
+    this.listError = ""
+
+    const result = await useApi("/api/sites/" + this.siteId + "/redirects")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      this.redirects = this.decorate(result.data.redirects)
+      this.limit = result.data.limit
+    } else {
+      this.listError = result.data?.error or "Couldn't load the redirects."
+    }
+
+    this.listLoading = false
+  }
+
+  async add() {
+    if this.saving {
+      return null
+    }
+
+    this.error = ""
+    this.message = ""
+
+    if this.fromPath.trim() is "" or this.toTarget.trim() is "" {
+      this.error = "Fill in both the old address and where it should go."
+      return null
+    }
+
+    this.saving = true
+
+    const result = await useApi("/api/sites/" + this.siteId + "/redirects", {
+      method: "POST",
+      body: {
+        from: this.fromPath,
+        to: this.toTarget,
+        code: Number(this.codeText),
+        match: this.matchType
+      }
+    })
+
+    if result.ok {
+      this.redirects = this.decorate(result.data.redirects)
+      this.fromPath = ""
+      this.toTarget = ""
+      this.message = "Added. nginx accepted the change and was reloaded."
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.error = result.data?.error or "Couldn't save the redirect."
+    }
+
+    this.saving = false
+  }
+
+  async remove(id, label) {
+    if not window.confirm("Remove the redirect for " + label + "?") {
+      return null
+    }
+
+    this.error = ""
+    this.message = ""
+
+    const result = await useApi("/api/sites/" + this.siteId + "/redirects/" + id, { method: "DELETE" })
+
+    if result.ok {
+      this.redirects = this.decorate(result.data.redirects)
+      this.message = "Removed. nginx was reloaded."
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.error = result.data?.error or "Couldn't remove the redirect."
+    }
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    this.siteId = id or ""
+
+    if not id {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/sites/" + id)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.site = result.data
+        this.serverId = "" + result.data.server_id
+        this.canEdit = result.data.status is "ready"
+        this.loading = false
+
+        if this.canEdit {
+          await this.loadRedirects()
+        }
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+{{#if serverId}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+    <div class="min-w-0">
+    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if site}}
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Sites
+      </a>
+
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
+        <p class="text-slate-500 text-sm">Redirects</p>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-8">
+        <SiteSidebar active="redirects" siteId="{{ siteId }}" />
+
+        <div class="min-w-0 flex-1">
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Add a redirect</h2>
+            <p class="text-slate-500 text-sm mb-5">Send visitors from an old address on this site to a new one. The query string is kept. Every change is tested with <span class="font-mono">nginx -t</span> before nginx reloads, and rolled back if the test fails.</p>
+
+{{#if not canEdit}}
+            <p class="text-slate-500 text-sm">Redirects can be added once the site has finished creating.</p>
+{{/if}}
+
+{{#if canEdit}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="min-w-0">
+                <p class="text-slate-500 text-xs mb-1">Old address (on this site)</p>
+                <input
+                  type="text"
+                  value="{{ fromPath }}"
+                  oninput="{{ fromPath = $event.target.value }}"
+                  spellcheck="false"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  placeholder="/old-page"
+                />
+              </div>
+              <div class="min-w-0">
+                <p class="text-slate-500 text-xs mb-1">Send to</p>
+                <input
+                  type="text"
+                  value="{{ toTarget }}"
+                  oninput="{{ toTarget = $event.target.value }}"
+                  spellcheck="false"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  placeholder="/new-page or https://example.com/page"
+                />
+              </div>
+              <div class="min-w-0">
+                <p class="text-slate-500 text-xs mb-1">Matches</p>
+                <select
+                  value="{{ matchType }}"
+                  onchange="{{ matchType = $event.target.value }}"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  <option value="exact">Exact path only</option>
+                  <option value="prefix">This path and everything under it</option>
+                </select>
+              </div>
+              <div class="min-w-0">
+                <p class="text-slate-500 text-xs mb-1">Type</p>
+                <select
+                  value="{{ codeText }}"
+                  onchange="{{ codeText = $event.target.value }}"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  <option value="301">301 Permanent</option>
+                  <option value="302">302 Temporary</option>
+                  <option value="308">308 Permanent (keeps the request method)</option>
+                  <option value="307">307 Temporary (keeps the request method)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 mt-5">
+              <button onclick="{{ add() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                {{#if saving}}Testing and saving…{{/if}}{{#if not saving}}Add redirect{{/if}}
+              </button>
+            </div>
+
+{{#if error}}
+            <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 mt-4">
+              <p class="text-rose-500 text-xs font-mono whitespace-pre-wrap break-words">{{ error }}</p>
+            </div>
+{{/if}}
+
+{{#if message}}
+            <p role="status" class="text-emerald-700 dark:text-emerald-500 text-sm mt-4">{{ message }}</p>
+{{/if}}
+{{/if}}
+          </div>
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Active redirects</h2>
+            <p class="text-slate-500 text-sm mb-5">{{ redirects.length }} of {{ limit }} used.</p>
+
+{{#if listLoading}}
+            <p class="text-slate-500 text-sm">Loading the redirects…</p>
+{{/if}}
+
+{{#if listError}}
+            <p role="alert" class="text-rose-500 text-sm mb-4">{{ listError }}</p>
+{{/if}}
+
+{{#if canEdit}}
+{{#if redirects.length is 0}}
+            <p class="text-slate-500 text-sm">No redirects yet.</p>
+{{/if}}
+{{/if}}
+
+{{#each r in redirects}}
+            <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 p-4 mb-3">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2 mb-2">
+                    <span class="text-[11px] font-semibold font-mono text-emerald-700 dark:text-emerald-500">{{ r.code }}</span>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{{ r.kind }}</span>
+                  </div>
+                  <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ r.fromText }}</p>
+                  <p class="text-slate-500 text-sm font-mono break-all mt-1">&rarr; {{ r.to }}</p>
+                </div>
+                <button onclick="{{ remove(r.id, r.from) }}" class="shrink-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-1.5 hover:bg-rose-500/5 transition-colors">Remove</button>
+              </div>
+            </div>
+{{/each}}
+          </div>
+
+        </div>
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

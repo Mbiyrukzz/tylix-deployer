@@ -8,7 +8,7 @@ props
 
 state
   collapsed: false
-  navCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 pb-2 lg:pb-0 lg:transition-[width] lg:duration-200 lg:w-48"
+  navCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 pb-2 lg:pb-0 lg:transition-[width] lg:duration-200 lg:sticky lg:top-6 lg:self-start lg:w-48"
   topCls: "hidden lg:flex items-center mb-1 justify-between px-3"
   titleCls: "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
   toolsCls: "hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3"
@@ -21,7 +21,7 @@ state
 
 action
   applyLayout() {
-    const navBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 pb-2 lg:pb-0 lg:transition-[width] lg:duration-200"
+    const navBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 pb-2 lg:pb-0 lg:transition-[width] lg:duration-200 lg:sticky lg:top-6 lg:self-start"
     const on = "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
     const off = "group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
     const dis = "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
@@ -128,11 +128,16 @@ template
   </a>
 {{/if}}
 
-  <span class="{{ disCls }}" aria-disabled="true" title="Redirects (coming soon)">
-    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
-    <span class="{{ labelCls }}">Redirects</span>
-    <span class="{{ badgeCls }}">Soon</span>
-  </span>
+{{#if active is "redirects"}}
+  <a href="{{ '/servers/site-redirects?id=' + siteId }}" title="Redirects" aria-current="page" class="{{ onCls }}">
+    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Redirects</span>
+  </a>
+{{/if}}
+{{#if active is not "redirects"}}
+  <a href="{{ '/servers/site-redirects?id=' + siteId }}" title="Redirects" class="{{ offCls }}">
+    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Redirects</span>
+  </a>
+{{/if}}
 
   <span class="{{ disCls }}" aria-disabled="true" title="Logs (coming soon)">
     <IconDocumentText class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
