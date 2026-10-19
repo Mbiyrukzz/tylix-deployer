@@ -26,6 +26,7 @@ import {
 import { CryptoService } from "../services/CryptoService.js";
 // REF: instanceRefOf is new in this import. AWS: providerName replaces the local name table.
 import { adapterFor, instanceRefOf, providerName } from "../services/ProviderAdapter.js";
+import { requireTeam } from "../services/TeamScope.js";
 
 interface ProviderRow {
     id: number;
@@ -37,6 +38,7 @@ interface ProviderRow {
     status: string;
     created_at: string;
     updated_at: string;
+    team_id: number | null;
     [key: string]: unknown;
 }
 
@@ -65,10 +67,14 @@ function sealed(kind: string, secret: string): { api_token: string; credentials:
 }
 
 /** Loads a connection and answers 404 itself if it is missing or not the caller's. */
+/** Loads a connection and answers 404 itself if it is missing or not on the caller's team. */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ProviderRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const provider = (await Provider.find(req.params.id)) as ProviderRow | null;
 
-    if (!provider || provider.user_id !== req.user?.userId) {
+    if (!provider || Number(provider.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Provider connection not found." });
         return null;
@@ -78,19 +84,18 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Provide
 }
 
 async function isDuplicateLabel(
-    userId: unknown,
+    teamId: number,
     label: string,
     exceptId?: number,
 ): Promise<boolean> {
     const providers = (await Provider.all()) as ProviderRow[];
     return providers.some(
         (p) =>
-            p.user_id === userId &&
+            Number(p.team_id) === teamId &&
             p.label.toLowerCase() === label.toLowerCase() &&
             p.id !== exceptId,
     );
 }
-
 /**
  * Returns null if the credentials work, otherwise the HTTP status and message to answer with.
  *
@@ -135,10 +140,13 @@ function tokenProblemBody(kind: string, problem: { status: number; message: stri
 }
 
 export class ProviderController {
-    async index(req: TylixRequest, res: TylixResponse) {
+       async index(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const providers = (await Provider.all()) as ProviderRow[];
         const own = providers
-            .filter((p) => p.user_id === req.user?.userId)
+            .filter((p) => Number(p.team_id) === teamId)
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         return res.json(own.map(toPublic));
@@ -152,6 +160,8 @@ export class ProviderController {
     }
 
     async store(req: TylixRequest, res: TylixResponse) {
+    const teamId = requireTeam(req, res);
+        if (!teamId) return;
         const result = validateProvider(req.body);
         if (!result.valid) {
             res.status(422);
@@ -161,9 +171,9 @@ export class ProviderController {
         const input = normalizeProvider(req.body);
         const secret = credentialSecret(input.kind, input);
 
-        if (await isDuplicateLabel(req.user?.userId, input.label)) {
+                if (await isDuplicateLabel(teamId, input.label)) {
             res.status(409);
-            return res.json({ error: "You already have a connection with that name." });
+            return res.json({ error: "Your team already has a connection with that name." });
         }
 
         const problem = await checkToken(input.kind, secret);
@@ -172,12 +182,13 @@ export class ProviderController {
             return res.json(tokenProblemBody(input.kind, problem));
         }
 
-        const provider = (await Provider.create({
+                const provider = (await Provider.create({
             kind: input.kind,
             label: input.label,
             ...sealed(input.kind, secret),
             status: "connected",
             user_id: req.user?.userId,
+            team_id: teamId,
         })) as ProviderRow | null;
 
         if (!provider) {
@@ -202,7 +213,7 @@ export class ProviderController {
 
         const input = normalizeProvider(req.body);
 
-        if (await isDuplicateLabel(req.user?.userId, input.label, provider.id)) {
+                if (await isDuplicateLabel(Number(provider.team_id), input.label, provider.id)) {
             res.status(409);
             return res.json({ error: "You already have a connection with that name." });
         }

@@ -3,6 +3,7 @@ import { Model } from "@tylix/orm";
 export interface ServerFirewallRuleAttributes {
     id: number;
     user_id: number;
+    team_id: number;
     server_id: number;
     name: string;
     type: string;
@@ -18,7 +19,7 @@ export interface ServerFirewallRuleAttributes {
 export class ServerFirewallRule extends Model {
     static table = "server_firewall_rules";
     static fillable: (keyof ServerFirewallRuleAttributes)[] = [
-        "user_id", "server_id", "name", "type", "source",
+        "user_id", "team_id", "server_id", "name", "type", "source",
         "protocol", "port", "status", "error",
     ];
 }

@@ -14,6 +14,7 @@ export interface ServerTaskAttributes {
     id: number;
     server_id: number;
     user_id: number;
+    team_id: number;
     packages: string;
     step: string;
     status: string;
@@ -27,6 +28,7 @@ export class ServerTask extends Model {
     static fillable: (keyof ServerTaskAttributes)[] = [
         "server_id",
         "user_id",
+        "team_id",
         "packages",
         "step",
         "status",

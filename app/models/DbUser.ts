@@ -5,6 +5,7 @@ import { Model } from "@tylix/orm";
 export interface DbUserAttributes {
     id: number;
     user_id: number;
+    team_id: number;
     server_id: number;
     name: string;
     host: string;
@@ -17,6 +18,7 @@ export class DbUser extends Model {
     static table = "db_users";
     static fillable: (keyof DbUserAttributes)[] = [
         "user_id",
+        "team_id",
         "server_id",
         "name",
         "host",

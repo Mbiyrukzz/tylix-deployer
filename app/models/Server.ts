@@ -13,6 +13,7 @@ import { Model } from "@tylix/orm";
 export interface ServerAttributes {
     id: number;
     user_id: number;
+    team_id: number;
     name: string;
     host: string;
     port: number;
@@ -27,6 +28,7 @@ export class Server extends Model {
     static table = "servers";
     static fillable: (keyof ServerAttributes)[] = [
         "user_id",
+        "team_id",
         "name",
         "host",
         "port",

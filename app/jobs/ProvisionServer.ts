@@ -19,6 +19,11 @@
  * All provider-specific work goes through ProviderAdapter, so this file has no
  * provider-specific code in it.
  *
+ * TEAMS: the provision, its provider connection and the server it creates
+ * must all belong to the same team. If the provision has no team_id yet, the
+ * job works it out (teamIdOfRow) and saves it. The server it creates gets the
+ * provision's team_id, so every teammate sees it.
+ *
  * LOGS: every milestone is written to the server log with provision_id set.
  * Once the server record exists, attachProvision() links the whole creation
  * history to it. Passwords, keys and tokens are never logged.
@@ -34,6 +39,7 @@ import { generateKeyPair, derivePublicKey, sshExec } from "../services/Ssh.js";
 import { installStepsFor, runInstallStep } from "../services/Installers.js";
 import { ServerLogService, type LogLevel } from "../services/ServerLogService.js";
 import { syncFirewall } from "../services/FirewallSync.js";
+import { teamIdOfRow } from "../services/TeamScope.js";
 
 const BOOT_TIMEOUT_MS = 6 * 60 * 1000;
 const BOOT_POLL_MS = 5_000;
@@ -43,6 +49,7 @@ const SSH_POLL_MS = 10_000;
 interface ProvisionRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     provider_id: number;
     name: string;
     region: string;
@@ -83,6 +90,7 @@ function log(
 ) {
     return ServerLogService.record({
         userId: row.user_id,
+        teamId: Number(row.team_id) || null,
         provisionId: row.id,
         serverId: Number(row.server_id) || null,
         event,
@@ -140,11 +148,26 @@ export const ProvisionServer = {
 
         try {
             const provider = (await Provider.find(row.provider_id)) as
-                | { user_id: number; kind: string; api_token: string; credentials: string }
+                | { user_id: number; team_id?: number | null; kind: string; api_token: string; credentials: string }
                 | null;
 
-            if (!provider || provider.user_id !== row.user_id) {
+            if (!provider) {
                 throw new Error("The provider connection no longer exists.");
+            }
+
+            // The provision and its provider connection must belong to the same team.
+            // Rows saved before every create path stamped team_id fall back to the
+            // creator's team (teamIdOfRow).
+            const teamId = await teamIdOfRow(row);
+            const providerTeamId = await teamIdOfRow(provider);
+
+            if (!teamId || teamId !== providerTeamId) {
+                throw new Error("The provider connection no longer exists.");
+            }
+
+            if (Number(row.team_id) !== teamId) {
+                await save(id, { team_id: teamId });
+                row = await load(id);
             }
 
             adapter = adapterFor(provider.kind, providerSecret(provider));
@@ -296,7 +319,7 @@ export const ProvisionServer = {
                 });
             }
 
-            // 6. Add it to the Servers list.
+            // 6. Add it to the Servers list, on the same team as the provision.
             if (!Number(row.server_id)) {
                 const server = (await Server.create({
                     name: row.name,
@@ -306,6 +329,7 @@ export const ProvisionServer = {
                     ssh_key: row.ssh_key,
                     status: "online",
                     user_id: row.user_id,
+                    team_id: teamId,
                 })) as { id: number } | null;
 
                 if (!server) throw new Error("The machine is up, but the server record couldn't be saved.");

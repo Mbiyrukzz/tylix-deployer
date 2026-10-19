@@ -1,24 +1,29 @@
 /**
- * Feature: Server (owner-scoped, encrypted SSH keys)
+ * Feature: Server (team-scoped, encrypted SSH keys)
  *
- * Follows the owner-scoped shape of the generated PostController, with
- * three additions because servers hold credentials:
+ * Follows the shape of the generated PostController, with three additions
+ * because servers hold credentials:
  *
  *   - ssh_key is encrypted with CryptoService before it is stored and is
  *     NEVER returned to the client (responses carry has_ssh_key instead)
- *   - a server owned by someone else answers 404, not 403, so the API never
- *     confirms that another user's server id exists
+ *   - a server that belongs to another team answers 404, not 403, so the API
+ *     never confirms that someone else's server id exists
  *   - changing host / port / user / key resets status to "pending", because
  *     the connection has not been tested with the new details
+ *
+ * Teams: servers belong to a team (team_id), not to one user. user_id is
+ * the person who added the server. Everyone on the team sees it.
  *
  * Deleting a server is refused while it still has sites, so no site record
  * is ever left pointing at a server that is gone.
  *
  * Every state change is written to the server log (ServerLogService). Log
  * entries never contain the key itself, only the fact that it changed.
+ * Log entries record who acted (the caller), not who added the server.
  *
  * All routes sit behind requireAuth ("auth": true in feature.json), so
- * req.user.userId is always present here.
+ * req.user.userId is always present here. req.user.teamId comes from the
+ * auth hook; requireTeam() answers 503 if it couldn't be loaded.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -30,6 +35,7 @@ import { ServerDatabase } from "../models/ServerDatabase.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
+import { requireTeam } from "../services/TeamScope.js";
 import { ServerSshKey } from "../models/ServerSshKey.js";
 import { ServerWorker } from "../models/ServerWorker.js";
 import { ServerCronJob } from "../models/ServerCronJob.js";
@@ -39,6 +45,7 @@ import { ServerFirewallRule } from "../models/ServerFirewallRule.js";
 interface ServerRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     name: string;
     host: string;
     port: number;
@@ -56,11 +63,14 @@ function toPublic(row: ServerRow) {
     return { ...rest, has_ssh_key: Boolean(ssh_key) };
 }
 
-/** Loads a server and answers 404 itself if it is missing or not the caller's. */
+/** Loads a server and answers 404 itself if it is missing or not on the caller's team. */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ServerRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const server = (await Server.find(req.params.id)) as ServerRow | null;
 
-    if (!server || server.user_id !== req.user?.userId) {
+    if (!server || Number(server.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Server not found." });
         return null;
@@ -70,7 +80,7 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ServerR
 }
 
 async function isDuplicate(
-    userId: unknown,
+    teamId: number,
     host: string,
     port: number,
     exceptId?: number,
@@ -80,7 +90,7 @@ async function isDuplicate(
     const servers = (await Server.all()) as ServerRow[];
     return servers.some(
         (s) =>
-            s.user_id === userId &&
+            Number(s.team_id) === teamId &&
             s.host === host &&
             Number(s.port) === port &&
             s.id !== exceptId,
@@ -89,9 +99,12 @@ async function isDuplicate(
 
 export class ServerController {
     async index(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const servers = (await Server.all()) as ServerRow[];
         const own = servers
-            .filter((s) => s.user_id === req.user?.userId)
+            .filter((s) => Number(s.team_id) === teamId)
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         return res.json(own.map(toPublic));
@@ -105,6 +118,9 @@ export class ServerController {
     }
 
     async store(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const result = validateServer(req.body);
         if (!result.valid) {
             res.status(422);
@@ -113,9 +129,9 @@ export class ServerController {
 
         const input = normalizeServer(req.body);
 
-        if (await isDuplicate(req.user?.userId, input.host, input.port)) {
+        if (await isDuplicate(teamId, input.host, input.port)) {
             res.status(409);
-            return res.json({ error: "You've already added a server with that host and port." });
+            return res.json({ error: "Your team has already added a server with that host and port." });
         }
 
         const server = (await Server.create({
@@ -126,6 +142,7 @@ export class ServerController {
             ssh_key: CryptoService.encrypt(input.ssh_key),
             status: "pending",
             user_id: req.user?.userId,
+            team_id: teamId,
         })) as ServerRow | null;
 
         if (!server) {
@@ -134,7 +151,8 @@ export class ServerController {
         }
 
         await ServerLogService.record({
-            userId: server.user_id,
+            userId: Number(req.user?.userId),
+            teamId,
             serverId: server.id,
             event: "server.created",
             level: "success",
@@ -150,6 +168,9 @@ export class ServerController {
         const server = await findOwned(req, res);
         if (!server) return;
 
+        const teamId = Number(server.team_id);
+        const actor = Number(req.user?.userId);
+
         const result = validateServer(req.body, { isUpdate: true });
         if (!result.valid) {
             res.status(422);
@@ -158,9 +179,9 @@ export class ServerController {
 
         const input = normalizeServer(req.body);
 
-        if (await isDuplicate(req.user?.userId, input.host, input.port, server.id)) {
+        if (await isDuplicate(teamId, input.host, input.port, server.id)) {
             res.status(409);
-            return res.json({ error: "You've already added a server with that host and port." });
+            return res.json({ error: "Your team has already added a server with that host and port." });
         }
 
         const patch: Record<string, unknown> = {
@@ -197,7 +218,7 @@ export class ServerController {
         const keyRotated = Boolean(input.ssh_key);
         const previousStatus = server.status;
 
-        // PostController. Re-read the row so we never depend on its return value.
+        // Re-read the row after the write so we never depend on update()'s return value.
         await Server.update(server.id, patch);
         const fresh = (await Server.find(server.id)) as ServerRow | null;
 
@@ -210,7 +231,8 @@ export class ServerController {
 
         if (changedFields.length > 0) {
             await ServerLogService.record({
-                userId: server.user_id,
+                userId: actor,
+                teamId,
                 serverId: server.id,
                 event: "server.updated",
                 message: `Server updated: ${changedFields.join(", ")}.`,
@@ -220,7 +242,8 @@ export class ServerController {
 
         if (keyRotated) {
             await ServerLogService.record({
-                userId: server.user_id,
+                userId: actor,
+                teamId,
                 serverId: server.id,
                 event: "server.key_replaced",
                 level: "warning",
@@ -230,7 +253,8 @@ export class ServerController {
 
         if (connectionChanged && previousStatus !== "pending") {
             await ServerLogService.record({
-                userId: server.user_id,
+                userId: actor,
+                teamId,
                 serverId: server.id,
                 event: "server.status_reset",
                 level: "warning",
@@ -246,10 +270,14 @@ export class ServerController {
         const server = await findOwned(req, res);
         if (!server) return;
 
+        const teamId = Number(server.team_id);
+        const actor = Number(req.user?.userId);
+
         const provisions = (await Provision.all()) as { server_id: number; status: string }[];
         if (provisions.some((p) => Number(p.server_id) === server.id && p.status !== "deleted")) {
             await ServerLogService.record({
-                userId: server.user_id,
+                userId: actor,
+                teamId,
                 serverId: server.id,
                 event: "server.delete_blocked",
                 level: "warning",
@@ -269,7 +297,8 @@ export class ServerController {
         );
         if (sites.length > 0) {
             await ServerLogService.record({
-                userId: server.user_id,
+                userId: actor,
+                teamId,
                 serverId: server.id,
                 event: "server.delete_blocked",
                 level: "warning",
@@ -305,11 +334,10 @@ export class ServerController {
         for (const b of (await ServerBackup.all()) as { id: number; server_id: number }[]) {
             if (b.server_id === server.id) await ServerBackup.delete(b.id);
         }
-
-
         for (const f of (await ServerFirewallRule.all()) as { id: number; server_id: number }[]) {
-        if (f.server_id === server.id) await ServerFirewallRule.delete(f.id);
+            if (f.server_id === server.id) await ServerFirewallRule.delete(f.id);
         }
+
         // The server's log goes with it, like every other child record.
         await ServerLogService.deleteForServer(server.id);
 

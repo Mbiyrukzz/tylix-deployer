@@ -3,6 +3,7 @@ import { Model } from "@tylix/orm";
 export interface ServerLogAttributes {
     id: number;
     user_id: number;
+    team_id: number;
     server_id: number | null;
     provision_id: number | null;
     event: string;
@@ -17,6 +18,7 @@ export class ServerLog extends Model {
     static table = "server_logs";
     static fillable: (keyof ServerLogAttributes)[] = [
         "user_id",
+        "team_id",
         "server_id",
         "provision_id",
         "event",

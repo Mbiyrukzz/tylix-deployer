@@ -18,6 +18,7 @@ export interface SourceProviderAttributes {
     token: string;
     status: string;
     user_id: number;
+    team_id: number;
     created_at: string;
     updated_at: string;
 }
@@ -31,6 +32,7 @@ export class SourceProvider extends Model {
         "token",
         "status",
         "user_id",
+        "team_id",
     ];
 
 

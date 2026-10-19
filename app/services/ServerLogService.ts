@@ -10,14 +10,23 @@
  *   - Events can belong to a provision before the server record exists
  *     (provision_id set, server_id null). attachProvision() links them
  *     once the server is added to the list.
+ *   - Every event carries team_id, so a whole team can see a server's
+ *     history. Callers don't have to pass it: record() reads it from the
+ *     server (or provision) the event is about. userId is the person who
+ *     acted.
  */
 
 import { ServerLog } from "../models/ServerLog.js";
+import { Server } from "../models/Server.js";
+import { Provision } from "../models/Provision.js";
 
 export type LogLevel = "info" | "success" | "warning" | "error";
 
 export interface LogInput {
+    /** The person who acted. */
     userId: number;
+    /** Optional. When omitted it is read from the server or provision. */
+    teamId?: number | null;
     serverId?: number | null;
     provisionId?: number | null;
     /** Dotted name, e.g. "server.created", "server.reboot.failed". */
@@ -30,6 +39,7 @@ export interface LogInput {
 export interface ServerLogRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number | null;
     provision_id: number | null;
     event: string;
@@ -86,11 +96,33 @@ function parseMeta(raw: unknown): Record<string, unknown> {
     }
 }
 
+/** The team an event belongs to: given, else the server's, else the provision's. */
+async function resolveTeamId(input: LogInput): Promise<number | null> {
+    const given = Number(input.teamId);
+    if (Number.isInteger(given) && given > 0) return given;
+
+    try {
+        if (input.serverId) {
+            const server = (await Server.find(input.serverId)) as { team_id?: number | null } | null;
+            if (server?.team_id) return Number(server.team_id);
+        }
+        if (input.provisionId) {
+            const provision = (await Provision.find(input.provisionId)) as { team_id?: number | null } | null;
+            if (provision?.team_id) return Number(provision.team_id);
+        }
+    } catch {
+        // Logging must never fail the caller; the event is stored without a team.
+    }
+
+    return null;
+}
+
 export const ServerLogService = {
     async record(input: LogInput): Promise<void> {
         try {
             await ServerLog.create({
                 user_id: input.userId,
+                team_id: await resolveTeamId(input),
                 server_id: input.serverId ?? null,
                 provision_id: input.provisionId ?? null,
                 event: input.event.slice(0, 64),
@@ -106,10 +138,16 @@ export const ServerLogService = {
     /** Links every event of a provision to the server record it produced. */
     async attachProvision(provisionId: number, serverId: number): Promise<void> {
         try {
+            const server = (await Server.find(serverId)) as { team_id?: number | null } | null;
+            const teamId = server?.team_id ? Number(server.team_id) : 0;
+
             const rows = (await ServerLog.all()) as ServerLogRow[];
             for (const row of rows) {
                 if (Number(row.provision_id) === provisionId && !row.server_id) {
-                    await ServerLog.update(row.id, { server_id: serverId });
+                    await ServerLog.update(row.id, {
+                        server_id: serverId,
+                        ...(teamId && !row.team_id ? { team_id: teamId } : {}),
+                    });
                 }
             }
         } catch (error) {
@@ -117,10 +155,14 @@ export const ServerLogService = {
         }
     },
 
-    /** Newest first. Only this user's events for this server. */
-       async list(
+    /**
+     * Newest first. All events for this server, whoever on the team caused
+     * them. The caller must already have checked that the server belongs to
+     * the caller's team (userId is kept only so existing callers still compile).
+     */
+    async list(
         serverId: number,
-        userId: number,
+        _userId: number,
         options: { level?: string; category?: string; limit?: number } = {},
     ) {
         const limit = Math.min(Math.max(Number(options.limit) || 100, 1), 500);
@@ -133,7 +175,6 @@ export const ServerLogService = {
             .filter(
                 (r) =>
                     Number(r.server_id) === serverId &&
-                    r.user_id === userId &&
                     (!level || r.level === level) &&
                     (!prefixes || prefixes.some((p) => String(r.event).startsWith(p))),
             )

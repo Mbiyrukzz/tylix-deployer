@@ -3,6 +3,7 @@ import { Model } from "@tylix/orm";
 export interface BackupStorageAttributes {
     id: number;
     user_id: number;
+    team_id: number;
     name: string;
     provider: string;
     app_key: string;
@@ -16,6 +17,7 @@ export class BackupStorage extends Model {
 static table = "backup_storages";
 static fillable: (keyof BackupStorageAttributes)[] = [
 "user_id",
+"team_id",
 "name",
 "provider",
 "app_key",

@@ -11,20 +11,31 @@
 
 import { VerifyEmailMail } from "./VerifyEmailMail.js";
 import { ResetPasswordMail } from "./ResetPasswordMail.js";
+import { TeamInviteMail, type TeamInviteDetails } from "./TeamInviteMail.js";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
+
+type MailConfigArg = Parameters<VerifyEmailMail["send"]>[1];
 
 interface MailableUser {
     email: string;
     [key: string]: unknown;
 }
 
-export async function sendVerificationEmail(user: MailableUser, token: string, mailConfig: unknown) {
+export async function sendVerificationEmail(user: MailableUser, token: string, mailConfig: MailConfigArg) {
     const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${token}`;
     await new VerifyEmailMail(verifyUrl).send(user.email, mailConfig);
 }
 
-export async function sendPasswordResetEmail(user: MailableUser, token: string, mailConfig: unknown) {
+export async function sendPasswordResetEmail(user: MailableUser, token: string, mailConfig: MailConfigArg) {
     const resetUrl = `${APP_URL}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
     await new ResetPasswordMail(resetUrl).send(user.email, mailConfig);
+}
+
+export function inviteUrl(token: string): string {
+    return `${APP_URL}/accept-invite?token=${token}`;
+}
+
+export async function sendTeamInviteEmail(email: string, details: TeamInviteDetails, mailConfig: MailConfigArg) {
+    await new TeamInviteMail(details).send(email, mailConfig);
 }

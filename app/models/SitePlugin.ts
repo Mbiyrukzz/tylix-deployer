@@ -3,6 +3,7 @@ import { Model } from "@tylix/orm";
 export interface SitePluginAttributes {
     id: number;
     user_id: number;
+    team_id: number;
     site_id: number;
     server_id: number;
     plugin: string;
@@ -20,6 +21,7 @@ export class SitePlugin extends Model {
     static table = "site_plugins";
     static fillable: (keyof SitePluginAttributes)[] = [
         "user_id",
+        "team_id",
         "site_id",
         "server_id",
         "plugin",

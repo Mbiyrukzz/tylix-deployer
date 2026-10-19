@@ -16,7 +16,7 @@ import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { validateProvision, normalizeProvision } from "../validators/ProvisionValidator.js";
-// AWS: providerSecret picks api_token or credentials; providerName replaces the local name table.
+import { requireTeam, teamIdOfRow } from "../services/TeamScope.js";
 import { adapterFor, instanceRefOf, providerName, providerSecret } from "../services/ProviderAdapter.js";
 import { Server } from "../models/Server.js";
 import { dispatch } from "@tylix/core";
@@ -27,6 +27,7 @@ interface ProvisionRow {
     id: number;
     user_id: number;
     provider_id: number;
+    team_id: number | null;
     name: string;
     region: string;
     plan: string;
@@ -57,9 +58,13 @@ function toPublic(row: ProvisionRow) {
 }
 
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ProvisionRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const row = (await Provision.find(req.params.id)) as ProvisionRow | null;
 
-    if (!row || row.user_id !== req.user?.userId) {
+    // teamIdOfRow also covers older rows that were never stamped.
+    if (!row || (await teamIdOfRow(row)) !== teamId) {
         res.status(404);
         res.json({ error: "Provision not found." });
         return null;
@@ -69,10 +74,13 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Provisi
 }
 
 export class ProvisionController {
-    async index(req: TylixRequest, res: TylixResponse) {
+        async index(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const rows = (await Provision.all()) as ProvisionRow[];
         const own = rows
-            .filter((p) => p.user_id === req.user?.userId && p.status !== "deleted" && p.status !== "dry_run")
+            .filter((p) => Number(p.team_id) === teamId && p.status !== "deleted" && p.status !== "dry_run")
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         return res.json(own.map(toPublic));
@@ -86,6 +94,8 @@ export class ProvisionController {
     }
 
     async store(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
         const result = validateProvision(req.body);
         if (!result.valid) {
             res.status(422);
@@ -94,11 +104,11 @@ export class ProvisionController {
 
         const input = normalizeProvision(req.body);
 
-        const provider = (await Provider.find(input.provider_id)) as
-            | { id: number; user_id: number; kind: string; api_token: string; credentials: string }
+                const provider = (await Provider.find(input.provider_id)) as
+            | { id: number; user_id: number; team_id: number | null; kind: string; api_token: string; credentials: string }
             | null;
 
-        if (!provider || provider.user_id !== req.user?.userId) {
+        if (!provider || (await teamIdOfRow(provider)) !== teamId) {
             res.status(422);
             return res.json({ errors: { provider_id: ["Choose a provider connection."] } });
         }
@@ -174,16 +184,17 @@ export class ProvisionController {
         }
 
         const existing = (await Provision.all()) as ProvisionRow[];
-        const taken = existing.some(
-            (p) => p.user_id === req.user?.userId && p.name === input.name && p.status !== "deleted",
+         const taken = existing.some(
+            (p) => Number(p.team_id) === teamId && p.name === input.name && p.status !== "deleted",
         );
         if (taken) {
             res.status(409);
-            return res.json({ error: "You already have a server with that name." });
+            return res.json({ error: "Your team already has a server with that name." });
         }
 
-        const row = (await Provision.create({
+                const row = (await Provision.create({
             user_id: req.user?.userId,
+            team_id: teamId,
             provider_id: input.provider_id,
             name: input.name,
             region: input.region,
@@ -242,11 +253,11 @@ export class ProvisionController {
                 return res.json({ error: "Type the server name to confirm." });
             }
 
-            const provider = (await Provider.find(row.provider_id)) as
-                | { user_id: number; kind: string; api_token: string; credentials: string }
+                       const provider = (await Provider.find(row.provider_id)) as
+                | { user_id: number; team_id?: number | null; kind: string; api_token: string; credentials: string }
                 | null;
 
-            if (!provider || provider.user_id !== req.user?.userId) {
+            if (!provider || (await teamIdOfRow(provider)) !== (await teamIdOfRow(row))) {
                 res.status(409);
                 return res.json({
                     error: "The provider connection is gone, so this server has to be deleted at the provider by hand.",

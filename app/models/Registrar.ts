@@ -14,6 +14,7 @@ export interface RegistrarAttributes {
     credentials: string;
     status: string;
     user_id: number;
+    team_id: number;
     created_at: string;
     updated_at: string;
 }
@@ -27,6 +28,7 @@ static fillable: (keyof RegistrarAttributes)[] = [
 "credentials",
 "status",
 "user_id",
+"team_id",
 ];
 
 }

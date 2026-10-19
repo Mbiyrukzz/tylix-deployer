@@ -1,0 +1,183 @@
+page AcceptInvite
+
+title "Join team"
+
+state
+  loading: true
+  token: ""
+  needsLogin: false
+  error: ""
+  teamName: ""
+  role: ""
+  alreadyMember: false
+  blocked: ""
+  total: 0
+  counts: []
+  conflicts: []
+  confirmed: false
+  busy: false
+
+action
+  toggleConfirm() {
+    this.confirmed = not this.confirmed
+  }
+
+  async load() {
+    const parts = window.location.search.split("token=")
+    this.token = parts.length > 1 ? parts[1].split("&")[0] : ""
+
+    if this.token is "" {
+      this.error = "This invitation link is incomplete."
+      this.loading = false
+      return null
+    }
+
+    const result = await useApi("/api/team/invitations/preview?token=" + this.token)
+
+    if result.status is 401 {
+      localStorage.setItem("returnTo", window.location.pathname + window.location.search)
+      this.needsLogin = true
+    } else if result.ok {
+      const d = result.data
+      this.teamName = d.team.name
+      this.role = d.role
+      this.alreadyMember = d.already_member
+      this.blocked = d.blocked
+      this.total = d.total
+      this.conflicts = d.conflicts
+      this.counts = Object.keys(d.counts).map((k) => ({ name: k.split("_").join(" "), n: d.counts[k] }))
+      this.confirmed = d.total is 0
+
+      if d.already_member {
+        await useApi("/api/team/invitations/accept", { method: "POST", body: { token: this.token, confirm: true } })
+      }
+    } else {
+      this.error = result.data?.error or "This invitation couldn't be loaded."
+    }
+
+    this.loading = false
+  }
+
+  async accept() {
+    if this.busy {
+      return null
+    }
+
+    this.busy = true
+    this.error = ""
+
+    const result = await useApi("/api/team/invitations/accept", { method: "POST", body: { token: this.token, confirm: this.confirmed } })
+
+    this.busy = false
+
+    if result.ok {
+      window.location.href = "/settings/team"
+    } else if result.status is 401 {
+      this.needsLogin = true
+    } else {
+      this.error = result.data?.error or "Couldn't accept the invitation."
+      if Array.isArray(result.data?.conflicts) {
+        this.conflicts = result.data.conflicts
+      }
+    }
+  }
+
+onMount
+  async {
+    await this.load()
+  }
+
+template
+  <div class="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 px-6 py-10 transition-colors">
+    <div class="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm dark:shadow-none">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading invitation…</p>
+{{/if}}
+
+{{#if not loading}}
+{{#if needsLogin}}
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Log in to continue</h1>
+      <p class="text-slate-500 text-sm mb-6">Log in or register with the email address this invitation was sent to. You'll come back here automatically.</p>
+      <div class="flex items-center gap-3">
+        <a href="/login" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Log in</a>
+        <a href="/register" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Register</a>
+      </div>
+{{/if}}
+
+{{#if not needsLogin}}
+{{#if teamName is ""}}
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Invitation problem</h1>
+      <p role="alert" class="text-rose-500 text-sm">{{ error }}</p>
+{{/if}}
+
+{{#if teamName is not ""}}
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Join {{ teamName }}</h1>
+      <p class="text-slate-500 text-sm mb-6">You've been invited as <span class="font-semibold text-slate-700 dark:text-slate-300">{{ role }}</span>.</p>
+
+{{#if alreadyMember}}
+      <p class="text-slate-600 dark:text-slate-300 text-sm mb-6">You're already on this team.</p>
+      <a href="/settings/team" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Open the team</a>
+{{/if}}
+
+{{#if not alreadyMember}}
+{{#if blocked}}
+      <p role="alert" class="text-amber-700 dark:text-amber-400 text-sm">{{ blocked }}</p>
+{{/if}}
+
+{{#if not blocked}}
+{{#if total is not 0}}
+      <div class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-5">
+        <p class="text-amber-800 dark:text-amber-400 text-sm font-semibold mb-2">Your existing data moves into this team</p>
+        <p class="text-amber-800 dark:text-amber-400 text-sm mb-2">Everyone on the team will be able to see and use it, including provider tokens and SSH keys:</p>
+        <ul class="text-amber-800 dark:text-amber-400 text-sm list-disc pl-5">
+{{#each c in counts}}
+          <li>{{ c.n }} {{ c.name }}</li>
+{{/each}}
+        </ul>
+        <p class="text-amber-800 dark:text-amber-400 text-xs mt-2">Leaving the team later does not move it back.</p>
+      </div>
+{{/if}}
+
+{{#if conflicts.length is not 0}}
+      <div class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-5">
+        <p class="text-rose-700 dark:text-rose-400 text-sm font-semibold mb-2">Fix these first</p>
+        <ul class="text-rose-700 dark:text-rose-400 text-sm list-disc pl-5">
+{{#each x in conflicts}}
+          <li>{{ x }}</li>
+{{/each}}
+        </ul>
+      </div>
+{{/if}}
+
+{{#if total is not 0}}
+{{#if confirmed}}
+      <button onclick="{{ toggleConfirm() }}" class="text-sm text-emerald-700 dark:text-emerald-500 border border-emerald-300 dark:border-emerald-900/50 rounded-lg px-4 py-2 mb-5 font-medium">✓ I understand and want to move my data</button>
+{{/if}}
+{{#if not confirmed}}
+      <button onclick="{{ toggleConfirm() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 mb-5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">I understand and want to move my data</button>
+{{/if}}
+{{/if}}
+
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if busy}}
+      <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Joining…</button>
+{{/if}}
+{{#if not busy}}
+{{#if confirmed}}
+{{#if conflicts.length is 0}}
+      <button onclick="{{ accept() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Join team</button>
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>

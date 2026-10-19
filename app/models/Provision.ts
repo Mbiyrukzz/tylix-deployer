@@ -26,6 +26,7 @@ export interface ProvisionAttributes {
     ssh_key: string;
     server_id: number;
     user_id: number;
+    team_id: number;
     root_password: string;
     instance_ref: string;
     created_at: string;
@@ -49,6 +50,7 @@ export class Provision extends Model {
         "ssh_key",
         "server_id",
         "user_id",
+        "team_id",
         "root_password",
         "instance_ref",
     ];

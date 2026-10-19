@@ -4,6 +4,7 @@ export interface DeploymentAttributes {
     id: number;
     site_id: number;
     user_id: number;
+    team_id: number;
     status: string;
     log: string;
     branch: string;
@@ -18,6 +19,7 @@ export class Deployment extends Model {
     static fillable: (keyof DeploymentAttributes)[] = [
         "site_id",
         "user_id",
+        "team_id",
         "status",
         "log",
         "branch",
