@@ -2,8 +2,8 @@ component Hero
 
 import { IconArrowRight } from "tylix-icons"
 
-props
-  loggedIn: boolean
+uses
+  Auth
 
 template
 <section class="relative overflow-hidden px-6 pt-24 pb-16 bg-slate-200 dark:bg-slate-950 transition-colors">
@@ -27,8 +27,8 @@ template
         Watch CPU, memory and disk live.
 </p>
 
-<div class="flex flex-wrap items-center justify-center gap-3 mb-5">
-{{#if loggedIn}}
+<div class="flex flex-wrap items-center justify-center gap-3 mb-5 min-h-[52px]">
+{{#if Auth.user}}
 <a href="/dashboard" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
           Go to Dashboard
 <IconArrowRight class="w-4 h-4" />
@@ -40,7 +40,8 @@ template
           My Domains
 </a>
 {{/if}}
-{{#if not loggedIn}}
+{{#if not Auth.loading}}
+{{#if not Auth.user}}
 <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
           Start free trial
 <IconArrowRight class="w-4 h-4" />
@@ -49,18 +50,21 @@ template
           Continue as Guest
 </a>
 {{/if}}
+{{/if}}
 </div>
 
-{{#if not loggedIn}}
+{{#if Auth.user}}
+<p class="text-slate-500 text-sm mb-3">
+<a href="/pricing" class="text-emerald-700 dark:text-emerald-400 hover:underline">See pricing</a>
+</p>
+{{/if}}
+{{#if not Auth.loading}}
+{{#if not Auth.user}}
 <p class="text-slate-500 text-sm mb-3">
         14-day free trial for new accounts ·
 <a href="/pricing" class="text-emerald-700 dark:text-emerald-400 hover:underline">See pricing</a>
 </p>
 {{/if}}
-{{#if loggedIn}}
-<p class="text-slate-500 text-sm mb-3">
-<a href="/pricing" class="text-emerald-700 dark:text-emerald-400 hover:underline">See pricing</a>
-</p>
 {{/if}}
 
 <p class="text-slate-500 text-xs font-mono mb-14">SSH keys stored encrypted · Your machine, your rules</p>
