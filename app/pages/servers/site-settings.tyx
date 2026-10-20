@@ -30,8 +30,18 @@ state
   nginxOriginal: ""
   nginxError: ""
   nginxMessage: ""
+  nginxLineNums: "1"
+  nginxLineCount: 1
 
 action
+  global(name) {
+    return Reflect.get(window, name)
+  }
+
+  setGlobal(name, value) {
+    Reflect.set(window, name, value)
+  }
+
   describe(site) {
     const labels = [
       ["tylix", "Tylix"],
@@ -204,6 +214,20 @@ action
     }
   }
 
+  refreshLines() {
+    const nl = String.fromCharCode(10)
+    const count = this.nginxText.split(nl).length
+    this.nginxLineCount = count
+    this.nginxLineNums = Array.from({ length: count }, (_, i) => i + 1).join(nl)
+  }
+
+  focusEditor() {
+    const el = document.getElementById("nginx-editor")
+    if el {
+      el.focus()
+    }
+  }
+
   async loadNginx() {
     this.nginxLoading = true
     this.nginxError = ""
@@ -221,6 +245,7 @@ action
       this.nginxText = result.data.content
       this.nginxOriginal = result.data.content
       this.nginxLoaded = true
+      this.refreshLines()
     } else {
       this.nginxError = result.data?.error or "Couldn't load the nginx config."
     }
@@ -228,29 +253,49 @@ action
     this.nginxLoading = false
   }
 
+  async reloadNginx() {
+    if this.nginxText is not this.nginxOriginal {
+      if not window.confirm("Reloading replaces your unsaved changes with the version on the server. Continue?") {
+        return null
+      }
+    }
+
+    await this.loadNginx()
+    window.setTimeout(() => this.focusEditor(), 80)
+  }
+
   async openNginx() {
     this.nginxOpen = true
+    document.body.style.overflow = "hidden"
 
     if not this.nginxLoaded {
       await this.loadNginx()
     }
+
+    window.setTimeout(() => this.focusEditor(), 120)
   }
 
   closeNginx() {
+    if not this.nginxOpen {
+      return null
+    }
+
     if this.nginxText is not this.nginxOriginal {
       if not window.confirm("Discard your unsaved nginx changes?") {
         return null
       }
       this.nginxText = this.nginxOriginal
+      this.refreshLines()
     }
 
     this.nginxOpen = false
     this.nginxError = ""
     this.nginxMessage = ""
+    document.body.style.overflow = ""
   }
 
   async saveNginx() {
-    if this.nginxSaving {
+    if this.nginxSaving or this.nginxLoading {
       return null
     }
 
@@ -264,6 +309,7 @@ action
       this.nginxText = result.data.content
       this.nginxOriginal = result.data.content
       this.nginxMessage = "Saved. nginx accepted the config and was reloaded."
+      this.refreshLines()
     } else if result.status is 401 {
       window.location.href = "/login"
     } else {
@@ -277,10 +323,80 @@ action
     this.nginxText = this.nginxOriginal
     this.nginxError = ""
     this.nginxMessage = ""
+    this.refreshLines()
+    this.focusEditor()
+  }
+
+  onNginxKey(e) {
+    if not this.nginxOpen {
+      return null
+    }
+
+    if e.key is "Escape" {
+      this.closeNginx()
+      return null
+    }
+
+    const modifier = e.ctrlKey or e.metaKey
+    const pressed = e.key.toLowerCase()
+
+    if modifier and pressed is "s" {
+      e.preventDefault()
+      this.saveNginx()
+      return null
+    }
+
+    const inEditor = e.target and e.target.id is "nginx-editor"
+
+    if e.key is "Tab" and inEditor and not e.shiftKey {
+      e.preventDefault()
+      const ta = e.target
+      const start = ta.selectionStart
+      const end = ta.selectionEnd
+      const pad = "    "
+      ta.value = ta.value.slice(0, start) + pad + ta.value.slice(end)
+      ta.selectionStart = start + pad.length
+      ta.selectionEnd = start + pad.length
+      this.nginxText = ta.value
+      this.refreshLines()
+    }
+  }
+
+  onNginxInput(e) {
+    if e.target and e.target.id is "nginx-editor" {
+      this.nginxText = e.target.value
+      this.refreshLines()
+    }
+  }
+
+  onNginxScroll(e) {
+    if e.target and e.target.id is "nginx-editor" {
+      const gutter = document.getElementById("nginx-gutter")
+      if gutter {
+        gutter.scrollTop = e.target.scrollTop
+      }
+    }
   }
 
 onMount
   async {
+    document.body.style.overflow = ""
+
+    const old = this.global("tylixNginxHandlers")
+    if old {
+      document.removeEventListener("keydown", old.key)
+      document.removeEventListener("input", old.input)
+      document.removeEventListener("scroll", old.scroll, true)
+    }
+
+    const keyHandler = (e) => this.onNginxKey(e)
+    const inputHandler = (e) => this.onNginxInput(e)
+    const scrollHandler = (e) => this.onNginxScroll(e)
+    document.addEventListener("keydown", keyHandler)
+    document.addEventListener("input", inputHandler)
+    document.addEventListener("scroll", scrollHandler, true)
+    this.setGlobal("tylixNginxHandlers", { key: keyHandler, input: inputHandler, scroll: scrollHandler })
+
     const params = new URLSearchParams(window.location.search)
     const id = params.get("id")
     this.siteId = id or ""
@@ -365,15 +481,15 @@ template
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
                 <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">nginx configuration</h2>
-                <p class="text-slate-500 text-sm">This site's nginx config. It stays closed so it isn't changed by accident.</p>
+                <p class="text-slate-500 text-sm">This site's nginx config. It opens in a full-size editor so it isn't changed by accident.</p>
               </div>
 {{#if nginxReady}}
-{{#if not nginxOpen}}
-              <button onclick="{{ openNginx() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 hover:bg-slate-300/50 dark:hover:bg-slate-800 transition-colors">Edit</button>
-{{/if}}
-{{#if nginxOpen}}
-              <button onclick="{{ closeNginx() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 hover:bg-slate-300/50 dark:hover:bg-slate-800 transition-colors">Close</button>
-{{/if}}
+              <button onclick="{{ openNginx() }}" class="shrink-0 inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 hover:border-emerald-500/60 hover:bg-slate-300/50 dark:hover:bg-slate-800 transition-colors">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
+                  <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Edit
+              </button>
 {{/if}}
             </div>
 
@@ -382,55 +498,8 @@ template
 {{/if}}
 
 {{#if nginxReady}}
-{{#if not nginxOpen}}
             <p class="text-slate-500 text-xs font-mono mt-5 break-all">{{ nginxFile }}</p>
             <p class="text-slate-500 text-xs mt-2">Just need to send an old address somewhere else? Use <a href="{{ '/servers/site-redirects?id=' + siteId }}" class="text-emerald-700 dark:text-emerald-500 hover:underline">Redirects</a> instead of editing the config.</p>
-{{/if}}
-
-{{#if nginxOpen}}
-            <div class="mt-5">
-{{#if nginxLoading}}
-              <p class="text-slate-500 text-sm">Loading the config…</p>
-{{/if}}
-
-{{#if nginxError}}
-              <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 mb-4">
-                <p class="text-rose-500 text-xs font-medium uppercase tracking-wider mb-1">Not saved</p>
-                <p class="text-rose-500 text-xs font-mono whitespace-pre-wrap break-words">{{ nginxError }}</p>
-              </div>
-{{/if}}
-
-{{#if nginxMessage}}
-              <p role="status" class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ nginxMessage }}</p>
-{{/if}}
-
-{{#if nginxLoaded}}
-              <p class="text-slate-500 text-xs font-mono mb-2 break-all">{{ nginxPath }}</p>
-
-              <textarea
-                value="{{ nginxText }}"
-                oninput="{{ nginxText = $event.target.value }}"
-                rows="26"
-                spellcheck="false"
-                wrap="off"
-                class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono leading-5 px-4 py-3 overflow-x-auto focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-              ></textarea>
-
-              <div class="flex flex-wrap items-center gap-3 mt-4">
-                <button onclick="{{ saveNginx() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
-                  {{#if nginxSaving}}Testing and saving…{{/if}}{{#if not nginxSaving}}Test and save{{/if}}
-                </button>
-{{#if nginxText is not nginxOriginal}}
-                <button onclick="{{ discardNginx() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Discard changes</button>
-                <span class="text-amber-600 dark:text-amber-500 text-xs">Unsaved changes</span>
-{{/if}}
-                <button onclick="{{ loadNginx() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Reload from server</button>
-              </div>
-
-              <p class="text-slate-500 text-xs mt-4">Every save is tested with <span class="font-mono">nginx -t</span> before nginx reloads, and your previous version is restored automatically if the test fails. Plugins and redirects keep their settings in separate files that this config pulls in with an <span class="font-mono">include</span> line. Leave that line in place or they stop working. Certificates added by HTTPS also live in this file, and recreating the site or changing its HTTPS settings can rewrite it.</p>
-{{/if}}
-            </div>
-{{/if}}
 {{/if}}
           </div>
 
@@ -526,6 +595,122 @@ template
 
         </div>
       </div>
+
+{{#if nginxReady}}
+{{#if nginxOpen}}
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-8">
+        <div onclick="{{ closeNginx() }}" class="absolute inset-0 bg-slate-950/60 backdrop-blur-md"></div>
+
+        <div class="relative flex flex-col w-full max-w-[1100px] h-full max-h-[92vh] rounded-2xl border border-slate-700/60 bg-slate-950/90 backdrop-blur-xl overflow-hidden shadow-2xl">
+
+          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-800 bg-slate-900/80">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-950 text-emerald-400">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4.5 h-4.5">
+                  <path d="M6 3h6l4 4v10H6V3zM12 3v4h4M8.5 11h5M8.5 14h3" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-slate-200 text-sm font-medium truncate">nginx configuration</p>
+                <p class="text-slate-500 text-xs font-mono truncate">{{ nginxFile }}</p>
+              </div>
+{{#if nginxText is not nginxOriginal}}
+              <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Unsaved changes
+              </span>
+{{/if}}
+{{#if nginxText is nginxOriginal}}
+{{#if nginxLoaded}}
+              <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In sync with server
+              </span>
+{{/if}}
+{{/if}}
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="{{ reloadNginx() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Reload from server</button>
+              <button onclick="{{ closeNginx() }}" title="Close (Esc)" aria-label="Close the nginx editor" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-1.5 transition-colors">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
+                  <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Close
+                <span class="hidden sm:inline font-mono text-[10px] text-slate-500 border border-slate-700 rounded px-1">Esc</span>
+              </button>
+            </div>
+          </div>
+
+{{#if nginxError}}
+          <div role="alert" class="mx-5 mt-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 max-h-44 overflow-y-auto">
+            <p class="text-rose-400 text-xs font-medium uppercase tracking-wider mb-1">Not saved</p>
+            <p class="text-rose-400 text-xs font-mono whitespace-pre-wrap break-words">{{ nginxError }}</p>
+          </div>
+{{/if}}
+
+{{#if nginxMessage}}
+          <div role="status" class="mx-5 mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+            <p class="text-emerald-400 text-sm">{{ nginxMessage }}</p>
+          </div>
+{{/if}}
+
+{{#if nginxLoading}}
+          <div class="flex-1 flex items-center justify-center">
+            <div class="flex items-center gap-3">
+              <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              <p class="text-slate-300 text-sm">Loading the config…</p>
+            </div>
+          </div>
+{{/if}}
+
+{{#if nginxLoaded}}
+{{#if not nginxLoading}}
+          <div class="flex-1 min-h-0 flex flex-col px-5 pt-4 pb-4">
+            <div class="flex-1 min-h-0 flex rounded-xl border border-slate-800 bg-slate-950 overflow-hidden focus-within:border-emerald-500/50 transition-colors">
+              <div
+                id="nginx-gutter"
+                aria-hidden="true"
+                class="shrink-0 w-14 overflow-hidden select-none text-right pr-3 pl-2 pt-3 pb-10 bg-slate-900/60 border-r border-slate-800 text-slate-600 text-[13px] leading-6 font-mono whitespace-pre"
+              >{{ nginxLineNums }}</div>
+              <textarea
+                id="nginx-editor"
+                value="{{ nginxText }}"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+                wrap="off"
+                aria-label="nginx configuration"
+                class="flex-1 min-w-0 h-full resize-none bg-transparent text-slate-200 text-[13px] leading-6 font-mono pl-4 pr-4 pt-3 pb-10 overflow-auto whitespace-pre focus:outline-none"
+              ></textarea>
+            </div>
+
+            <p class="text-slate-500 text-xs mt-3 leading-relaxed">Keep the <span class="font-mono text-slate-400">include</span> line in place. Plugins and redirects keep their settings in separate files that this config pulls in, and they stop working without it. Certificates added by HTTPS also live here, and recreating the site or changing its HTTPS settings can rewrite this file.</p>
+          </div>
+{{/if}}
+{{/if}}
+
+          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-slate-800 bg-slate-900/80">
+            <p class="text-slate-500 text-xs">
+              <span class="font-mono text-slate-300">{{ nginxLineCount }}</span> lines
+              <span class="mx-1.5 text-slate-700">&bull;</span>
+              Ctrl+S to test and save
+              <span class="mx-1.5 text-slate-700">&bull;</span>
+              Tested with <span class="font-mono text-slate-400">nginx -t</span> first, and restored if the test fails
+            </p>
+
+            <div class="flex items-center gap-2">
+{{#if nginxText is not nginxOriginal}}
+              <button onclick="{{ discardNginx() }}" class="text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-2 hover:bg-slate-800 transition-colors">Discard changes</button>
+{{/if}}
+              <button onclick="{{ saveNginx() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                {{#if nginxSaving}}Testing and saving…{{/if}}{{#if not nginxSaving}}Test and save{{/if}}
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+{{/if}}
+{{/if}}
 {{/if}}
 
     </div>

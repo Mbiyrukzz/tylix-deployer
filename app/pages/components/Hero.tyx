@@ -51,10 +51,17 @@ template
 {{/if}}
 </div>
 
+{{#if not loggedIn}}
 <p class="text-slate-500 text-sm mb-3">
         14-day free trial for new accounts ·
 <a href="/pricing" class="text-emerald-700 dark:text-emerald-400 hover:underline">See pricing</a>
 </p>
+{{/if}}
+{{#if loggedIn}}
+<p class="text-slate-500 text-sm mb-3">
+<a href="/pricing" class="text-emerald-700 dark:text-emerald-400 hover:underline">See pricing</a>
+</p>
+{{/if}}
 
 <p class="text-slate-500 text-xs font-mono mb-14">SSH keys stored encrypted · Your machine, your rules</p>
 </div>
