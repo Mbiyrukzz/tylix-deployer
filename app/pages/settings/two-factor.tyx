@@ -2,6 +2,9 @@ page SettingsTwoFactor
 
 title "Two-factor"
 
+needs
+  Auth
+
 state
   loading: true
   enabled: false

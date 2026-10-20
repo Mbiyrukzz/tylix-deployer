@@ -2,6 +2,9 @@ page SettingsBilling
 
 title "Billing"
 
+needs
+  Auth
+
 state
   loading: true
   enforced: false

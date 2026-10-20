@@ -2,6 +2,9 @@ page SettingsTeam
 
 title "Team"
 
+needs
+  Auth
+
 state
   loading: true
   teamName: ""

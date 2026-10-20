@@ -6,12 +6,12 @@ state
 
 action
   async login(email, password, code, sendSms) {
-const result = await useApi("/api/login", { method: "POST", body: { email: email, password: password, code: code or "", send_sms: Boolean(sendSms) } })
-if result.ok {
-this.user = result.data.user or result.data
-}
-return result
-}
+    const result = await useApi("/api/login", { method: "POST", body: { email: email, password: password, code: code or "", send_sms: Boolean(sendSms) } })
+    if result.ok {
+      this.user = result.data.user or result.data
+    }
+    return result
+  }
 
   async logout() {
     await useApi("/api/auth/logout", { method: "POST" })
@@ -24,6 +24,13 @@ init
     const me = await useApi("/api/me")
     if me.ok {
       this.user = me.data
+    } else {
+      const path = window.location.pathname
+      const isPublic = path is "/" or path is "/login" or path is "/register" or path.startsWith("/accept-invite")
+      if not isPublic {
+        window.location.replace("/login")
+        await new Promise(() => setTimeout(() => 0, 60000))
+      }
     }
     this.loading = false
   }

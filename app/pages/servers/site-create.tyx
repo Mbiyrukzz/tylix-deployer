@@ -4,6 +4,9 @@ import { IconArrowLeft } from "tylix-icons"
 
 title "Create site"
 
+needs
+  Auth
+
 state
   serverId: ""
   server: null

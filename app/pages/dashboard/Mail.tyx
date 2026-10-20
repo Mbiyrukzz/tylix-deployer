@@ -2,6 +2,9 @@ page MailInbox
 
 import { IconArrowLeft, IconMail } from "tylix-icons"
 
+needs
+  Auth
+
 state
   user: null
   checkedAuth: false

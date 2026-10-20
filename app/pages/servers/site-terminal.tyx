@@ -4,6 +4,9 @@ import { IconArrowLeft } from "tylix-icons"
 
 title "Terminal"
 
+needs
+  Auth
+
 state
   siteId: ""
   serverId: ""

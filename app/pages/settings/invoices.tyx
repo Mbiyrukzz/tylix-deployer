@@ -2,6 +2,9 @@ page SettingsInvoices
 
 title "Invoices"
 
+needs
+  Auth
+
 state
   loading: true
   rows: []

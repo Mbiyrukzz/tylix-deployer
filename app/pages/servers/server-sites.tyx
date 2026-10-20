@@ -4,6 +4,9 @@ import { IconArrowLeft, IconDatabase } from "tylix-icons"
 
 title "Sites"
 
+needs
+  Auth
+
 state
   serverId: ""
   server: null
