@@ -1,15 +1,11 @@
 page Home
 
-uses
-  Auth
-
 template
   <div>
-    <Hero loggedIn="{{ Auth.user }}" />
+    <Hero />
     <StackGrid />
-    <DomainsSection />
     <PricingTeaser />
     <HowItWorks />
-    <CTASection loggedIn="{{ Auth.user }}" />
+    <CTASection />
     <SiteFooter />
   </div>

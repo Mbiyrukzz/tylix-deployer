@@ -2,8 +2,8 @@ component CTASection
 
 import { IconArrowRight } from "tylix-icons"
 
-props
-  loggedIn: boolean
+uses
+  Auth
 
 template
   <section class="px-6 py-20 bg-slate-200 dark:bg-slate-950 transition-colors">
@@ -13,17 +13,21 @@ template
       </span>
       <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">Deploy your first app today</h2>
       <p class="text-slate-500 max-w-xl mx-auto mb-8">Connect a server and ship your next release in minutes.</p>
-{{#if loggedIn}}
-      <a href="/servers" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-        Open my servers
-        <IconArrowRight class="w-4 h-4" />
-      </a>
+      <div class="min-h-[52px]">
+{{#if Auth.user}}
+        <a href="/servers" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          Open my servers
+          <IconArrowRight class="w-4 h-4" />
+        </a>
 {{/if}}
-{{#if not loggedIn}}
-      <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-        Create your account
-        <IconArrowRight class="w-4 h-4" />
-      </a>
+{{#if not Auth.loading}}
+{{#if not Auth.user}}
+        <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          Create your account
+          <IconArrowRight class="w-4 h-4" />
+        </a>
 {{/if}}
+{{/if}}
+      </div>
     </div>
   </section>
