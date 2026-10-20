@@ -119,19 +119,10 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         }
     }) as Handler));
 
-    // Paystack calls this. No auth: the signature is the proof.
+       // Paystack calls this. No auth: the signature is the proof.
     router.post("/api/webhooks/paystack", (async (req: any, res: any) => {
-        const raw: string = req.rawBody ? String(req.rawBody) : JSON.stringify(req.body ?? {});
+        const raw: string = req.rawBody ? String(req.rawBody) : "";
         const signature = String(req.headers?.["x-paystack-signature"] ?? "");
-
-                console.log("[billing] webhook debug:", {
-            hasRawBody: Boolean(req.rawBody),
-            bodyType: typeof req.body,
-            rawLength: raw.length,
-            sigLength: signature.length,
-            hasKey: Boolean(process.env.PAYSTACK_SECRET_KEY),
-            headerNames: Object.keys(req.headers ?? {}),
-        });
 
         if (!PaystackService.validSignature(raw, signature)) {
             return res.status(401).json({ error: "Bad signature." });
