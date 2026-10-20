@@ -93,7 +93,10 @@ export async function entitlementFor(teamId: number): Promise<Entitlement> {
     const def = getPlanDef(sub.plan);
     const periodEnd = String(sub.current_period_end ?? "");
     const stillPaid = periodEnd !== "" && new Date(periodEnd).getTime() > Date.now();
-    const live = LIVE_STATUSES.includes(sub.status) || (sub.status === "canceled" && stillPaid);
+    const live =
+        sub.status === "trialing" || sub.status === "canceled"
+            ? stillPaid
+            : LIVE_STATUSES.includes(sub.status);
 
     if (!def || !live) {
         return {

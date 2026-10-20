@@ -14,6 +14,11 @@ state
   rows: []
   plans: []
   error: ""
+  busy: ""
+  message: ""
+  dueCount: 0
+  dueText: ""
+  currentPlanId: ""
 
 action
   describe(limit) {
@@ -54,6 +59,60 @@ action
     return this.describe(limits.members) + " members · " + this.describe(limits.servers) + " servers · " + this.describe(limits.sites) + " sites · " + this.describe(limits.providers) + " connections"
   }
 
+  async choose(planId) {
+    this.busy = planId
+    this.error = ""
+    this.message = ""
+    const result = await useApi("/api/billing/checkout", { method: "POST", body: { plan: planId } })
+    if result.ok {
+      window.location.href = result.data.url
+      return null
+    }
+    this.error = result.data?.error or "Couldn't start the payment."
+    this.busy = ""
+  }
+
+  async cancelPlan() {
+    this.busy = "cancel"
+    this.error = ""
+    const result = await useApi("/api/billing/cancel", { method: "POST" })
+    if result.ok {
+      this.message = "Cancelled. Your plan stays active until the period ends."
+      await this.load()
+    } else {
+      this.error = result.data?.error or "Couldn't cancel."
+    }
+    this.busy = ""
+  }
+
+  async confirmReturn() {
+    const ref = new URLSearchParams(window.location.search).get("reference")
+    if ref {
+      const result = await useApi("/api/billing/verify?reference=" + ref)
+      if result.ok {
+        this.message = "Payment received. Your plan is active."
+      }
+      window.history.replaceState({}, "", "/settings/billing")
+    }
+  }
+
+    async loadInvoices() {
+    const result = await useApi("/api/billing/invoices")
+    if result.ok {
+      const open = result.data.filter((i) => i.status is not "paid")
+      this.dueCount = open.length
+      if open.length > 0 {
+        this.dueText = open[0].amountText + " (" + open[0].number + ")"
+      }
+    }
+  }
+
+  async payNow() {
+    if this.currentPlanId is not "" {
+      await this.choose(this.currentPlanId)
+    }
+  }
+
   async load() {
     const result = await useApi("/api/billing")
 
@@ -86,9 +145,9 @@ action
       this.plans = data.plans.map((p) => ({
         id: p.id,
         name: p.name,
-        price: p.price_usd,
+        priceText: "$" + p.price_usd + "/month",
         summary: this.planSummary(p.limits),
-        current: p.id is ent.plan
+        current: p.id is ent.plan and ent.status is not "trialing"
       }))
     } else {
       this.error = result.data?.error or "Couldn't load billing."
@@ -97,9 +156,12 @@ action
     this.loading = false
   }
 
+
 onMount
   async {
+    await this.confirmReturn()
     await this.load()
+    await this.loadInvoices()
   }
 
 template
@@ -119,6 +181,20 @@ template
 {{#if not loading}}
 {{#if error}}
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+{{#if message}}
+      <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ message }}</p>
+{{/if}}
+{{#if dueCount is not 0}}
+      <div role="alert" class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-6 flex items-center justify-between gap-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">You have an unpaid invoice: {{ dueText }}.</p>
+        <div class="flex items-center gap-4 shrink-0">
+          <a href="/settings/invoices" class="text-sm text-amber-800 dark:text-amber-400 hover:underline">View</a>
+{{#if canManage}}
+          <button onclick="{{ payNow() }}" class="rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 transition-colors">Pay now</button>
+{{/if}}
+        </div>
+      </div>
 {{/if}}
 
       <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
@@ -142,10 +218,15 @@ template
         </div>
 
 {{#if stateName is "legacy"}}
-        <p class="text-slate-500 text-sm">Your team has no plan yet, so nothing is limited. Plans are coming; you'll be able to choose one here.</p>
+        <p class="text-slate-500 text-sm">Your team has no plan yet, so nothing is limited. Choose a plan below to get started.</p>
 {{/if}}
 {{#if stateName is "active"}}
+{{#if statusText is "trialing"}}
+        <p class="text-slate-500 text-sm">Free trial. It ends {{ periodEnd }}. Choose a plan below to keep adding servers and sites after that.</p>
+{{/if}}
+{{#if statusText is not "trialing"}}
         <p class="text-slate-500 text-sm">Current period ends {{ periodEnd }}.</p>
+{{/if}}
 {{/if}}
 {{#if cancelNote}}
         <p class="text-amber-700 dark:text-amber-500 text-sm mt-2">This plan won't renew. It stays active until the date above.</p>
@@ -155,6 +236,18 @@ template
 {{/if}}
 {{#if not enforced}}
         <p class="text-slate-500 text-xs mt-3">Limits are shown but not enforced yet.</p>
+{{/if}}
+{{#if canManage}}
+{{#if statusText is "active"}}
+{{#if not cancelNote}}
+{{#if busy is "cancel"}}
+        <button disabled class="mt-4 text-sm text-rose-600 dark:text-rose-500 opacity-50">Cancelling…</button>
+{{/if}}
+{{#if busy is not "cancel"}}
+        <button onclick="{{ cancelPlan() }}" class="mt-4 text-sm text-rose-600 dark:text-rose-500 hover:underline">Cancel plan</button>
+{{/if}}
+{{/if}}
+{{/if}}
 {{/if}}
       </div>
 
@@ -177,20 +270,31 @@ template
 
       <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Plans</h2>
+                <p class="text-slate-500 text-xs mt-4">Prices are shown in USD. You are charged the equivalent in KES at checkout. Payments are processed by Paystack, and plans renew monthly until cancelled.</p>
         <div class="divide-y divide-slate-200 dark:divide-slate-800">
 {{#each p in plans}}
           <div class="flex items-center justify-between gap-4 py-3">
             <div class="min-w-0">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ p.name }} · ${{ p.price }}/month</p>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ p.name }} · {{ p.priceText }}</p>
               <p class="text-slate-500 text-xs">{{ p.summary }}</p>
             </div>
 {{#if p.current}}
             <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 shrink-0">Current</span>
 {{/if}}
+{{#if not p.current}}
+{{#if canManage}}
+{{#if busy is p.id}}
+            <button disabled class="shrink-0 rounded-xl bg-emerald-600 text-white text-sm font-medium px-4 py-2 opacity-50">Opening…</button>
+{{/if}}
+{{#if busy is not p.id}}
+            <button onclick="{{ choose(p.id) }}" class="shrink-0 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 transition-colors">Choose</button>
+{{/if}}
+{{/if}}
+{{/if}}
           </div>
 {{/each}}
         </div>
-        <p class="text-slate-500 text-xs mt-4">Choosing and paying for a plan comes with Paystack in the next step.</p>
+        <p class="text-slate-500 text-xs mt-4">Payments are processed by Paystack. Plans renew monthly until cancelled.</p>
       </div>
 {{/if}}
 

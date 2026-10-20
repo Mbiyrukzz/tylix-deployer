@@ -39,6 +39,7 @@ import { Site } from "../models/Site.js";
 import { SitePlugin } from "../models/SitePlugin.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { SshKey } from "../models/SshKey.js";
+import { BillingService } from "./BillingService.js";
 
 export type TeamRole = "owner" | "admin" | "member";
 
@@ -159,7 +160,7 @@ export class TeamService {
      * The team this user is currently working in. For now that is their first
      * membership (their personal team). A team switcher comes later.
      */
-    static async ensureTeam(user: { id: number; name: string }): Promise<TeamContext> {
+    static async ensureTeam(user: { id: number; name: string; created_at?: string | Date }): Promise<TeamContext> {
         const memberships = await this.membershipsFor(user.id);
 
 let context: TeamContext | null = null;
@@ -185,6 +186,13 @@ if (memberships.length > 0) {
         if (!context) {
             const label = user.name?.trim() ? `${user.name.trim()}'s team` : "My team";
             context = await this.createTeam(user, label);
+
+            // New accounts get a free trial. A billing problem must never stop a team from being created.
+            try {
+                await BillingService.startTrialFor(context.team.id, user);
+            } catch (error) {
+                console.error("[billing] couldn't start the trial:", error);
+            }
         }
 
         // Only a team's owner adopts their old rows; members never do.
