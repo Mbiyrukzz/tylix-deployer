@@ -3,9 +3,10 @@ component StackGrid
 template
   <section class="px-6 py-20 bg-slate-200 dark:bg-slate-950 transition-colors">
     <div class="max-w-5xl mx-auto">
-      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-2">Supported stacks</p>
-      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">One deployer, every stack you run</h2>
-      <p class="text-slate-500 max-w-2xl mb-10">Pick a stack, point it at your repo and server, and Tylix handles the build and release steps.</p>
+
+      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-2">Stacks and domains</p>
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">Every stack you run, and the domains it lives on</h2>
+      <p class="text-slate-500 max-w-2xl mb-10">Pick a stack, point it at your repo and server, and Tylix handles the build and release steps. Manage the domain and its DNS from the same place.</p>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -23,8 +24,20 @@ template
 
         <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">PHP</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">PHP</h3>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">PHP and WordPress</h3>
           <p class="text-slate-500 text-xs font-mono leading-relaxed">nginx · php-fpm · cron</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-lime-500/10 text-lime-700 dark:text-lime-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">JS</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Node.js</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">npm install · process manager</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-slate-500/10 text-slate-700 dark:text-slate-300 flex items-center justify-center font-mono text-sm font-semibold mb-4">NX</div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Next.js</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">build · start · proxy</p>
         </div>
 
         <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
@@ -35,20 +48,8 @@ template
 
         <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">NG</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Angular</h3>
-          <p class="text-slate-500 text-xs font-mono leading-relaxed">ng build · static hosting</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="w-10 h-10 rounded-xl bg-lime-500/10 text-lime-700 dark:text-lime-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">JS</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Node.js</h3>
-          <p class="text-slate-500 text-xs font-mono leading-relaxed">npm install · process manager</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">HT</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Static sites</h3>
-          <p class="text-slate-500 text-xs font-mono leading-relaxed">build · sync · cache</p>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">React and Angular</h3>
+          <p class="text-slate-500 text-xs font-mono leading-relaxed">build · static hosting</p>
         </div>
 
         <div class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-700 bg-slate-200 dark:bg-slate-900/40 p-5 hover:border-emerald-500/50 transition-colors">
@@ -58,5 +59,90 @@ template
         </div>
 
       </div>
+
+      <div class="mt-14 rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2">
+
+          <div class="p-8 md:p-10">
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 mb-3">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Domain management
+            </span>
+            <h3 class="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">Your domains, next to your servers</h3>
+            <p class="text-slate-500 text-sm mb-6">Connect your registrar once. Then see every domain, edit its DNS and watch renewals without leaving the deployer.</p>
+
+            <ul class="space-y-3 mb-7">
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center">1</span>
+                <p class="text-sm text-slate-600 dark:text-slate-400"><span class="text-slate-800 dark:text-slate-200 font-medium">All domains in one list.</span> Expiry dates and status at a glance.</p>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center">2</span>
+                <p class="text-sm text-slate-600 dark:text-slate-400"><span class="text-slate-800 dark:text-slate-200 font-medium">DNS records.</span> Add, change and remove them, and point a domain at your server.</p>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center">3</span>
+                <p class="text-sm text-slate-600 dark:text-slate-400"><span class="text-slate-800 dark:text-slate-200 font-medium">Renewals.</span> See which domains expire soon before they lapse.</p>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center">4</span>
+                <p class="text-sm text-slate-600 dark:text-slate-400"><span class="text-slate-800 dark:text-slate-200 font-medium">Email and billing.</span> Check mail settings and the registrar account from the same page.</p>
+              </li>
+            </ul>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-slate-500 text-xs mr-1">Works with</span>
+              <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">Namecheap</span>
+              <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">Cloudflare</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-300/40 dark:bg-slate-950/60 p-8 md:p-10 flex items-center border-t lg:border-t-0 lg:border-l border-slate-300 dark:border-slate-800" aria-hidden="true">
+            <div class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+              <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+                <p class="text-slate-800 dark:text-slate-200 text-sm font-medium font-mono">example.com</p>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                </span>
+              </div>
+              <div class="px-4 py-2 grid grid-cols-[48px_1fr_auto] gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <span>Type</span><span>Name and value</span><span>TTL</span>
+              </div>
+              <div class="px-4 py-2.5 grid grid-cols-[48px_1fr_auto] gap-3 items-center border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                <span class="font-mono font-semibold text-emerald-700 dark:text-emerald-400">A</span>
+                <span class="font-mono text-slate-600 dark:text-slate-400 truncate">example.com to 203.0.113.10</span>
+                <span class="font-mono text-slate-400">300</span>
+              </div>
+              <div class="px-4 py-2.5 grid grid-cols-[48px_1fr_auto] gap-3 items-center border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                <span class="font-mono font-semibold text-sky-600 dark:text-sky-400">CNAME</span>
+                <span class="font-mono text-slate-600 dark:text-slate-400 truncate">www to example.com</span>
+                <span class="font-mono text-slate-400">300</span>
+              </div>
+              <div class="px-4 py-2.5 grid grid-cols-[48px_1fr_auto] gap-3 items-center border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                <span class="font-mono font-semibold text-amber-600 dark:text-amber-400">MX</span>
+                <span class="font-mono text-slate-600 dark:text-slate-400 truncate">mail.example.com, priority 10</span>
+                <span class="font-mono text-slate-400">3600</span>
+              </div>
+              <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <span class="text-xs text-slate-500">Renews in 41 days</span>
+                <span class="text-xs font-medium text-emerald-700 dark:text-emerald-400">Manage DNS</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="mt-10 flex flex-wrap items-center justify-center gap-2">
+        <span class="text-slate-500 text-xs mr-1">Servers on</span>
+        <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">Linode</span>
+        <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">Hetzner</span>
+        <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">DigitalOcean</span>
+        <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">Vultr</span>
+        <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">AWS</span>
+        <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">UpCloud</span>
+        <span class="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">Contabo</span>
+        <span class="rounded-full border border-dashed border-slate-400 dark:border-slate-700 px-3 py-1 text-xs text-slate-500">or any server over SSH</span>
+      </div>
+
     </div>
   </section>

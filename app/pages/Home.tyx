@@ -7,6 +7,8 @@ template
   <div>
     <Hero loggedIn="{{ Auth.user }}" />
     <StackGrid />
+    <DomainsSection />
+    <PricingTeaser />
     <HowItWorks />
     <CTASection loggedIn="{{ Auth.user }}" />
     <SiteFooter />
