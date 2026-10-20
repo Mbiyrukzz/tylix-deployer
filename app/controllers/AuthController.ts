@@ -32,6 +32,20 @@ import {
     validateResetPassword,
 } from "../validators/AuthValidator.js";
 import { TwoFactorService } from "../services/TwoFactorService.js";
+import { renderVerifyPage } from "../services/VerifyPage.js";
+
+// Taken from the mailer's own signature so it always matches.
+type MailConfig = Parameters<typeof sendVerificationEmail>[2];
+
+function sendHtml(res: TylixResponse, status: number, html: string) {
+    const r = res as any;
+    r.status(status);
+    const type = "text/html; charset=utf-8";
+    if (typeof r.setHeader === "function") r.setHeader("Content-Type", type);
+    else if (typeof r.header === "function") r.header("Content-Type", type);
+    else if (typeof r.set === "function") r.set("Content-Type", type);
+    return r.send(html);
+}
 
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 
@@ -52,13 +66,13 @@ function clientIp(req: TylixRequest): string {
 interface AuthControllerOptions {
     secret: string;
     tokenExpiresInSeconds?: number;
-    mailConfig: unknown;
+    mailConfig: MailConfig;
 }
 
 export class AuthController {
     secret: string;
     accessTokenTtlSeconds: number;
-    mailConfig: unknown;
+    mailConfig: MailConfig;
 
     constructor({ secret, tokenExpiresInSeconds, mailConfig }: AuthControllerOptions) {
         this.secret = secret;
@@ -159,7 +173,7 @@ export class AuthController {
             recordFailedLogin(email);
             return res.status(401).json({ error: "That code is incorrect.", code: "TWO_FACTOR_INVALID" });
         }
-        
+
         clearLoginAttempts(email);
 
         const accessToken = signToken({ userId: user.id }, this.secret, {
@@ -218,21 +232,25 @@ export class AuthController {
     async verifyEmail(req: TylixRequest, res: TylixResponse) {
         const token = req.query.token as string;
         if (!token) {
-            return res.status(400).json({ error: "Missing verification token." });
+            return sendHtml(res, 400, renderVerifyPage("invalid"));
         }
 
         const { valid, payload } = verifyToken(token, this.secret);
         if (!valid || !payload || payload.purpose !== "email-verify") {
-            return res.status(400).json({ error: "Invalid or expired verification link." });
+            return sendHtml(res, 400, renderVerifyPage("invalid"));
         }
 
         const user = await User.find(payload.userId as number);
         if (!user) {
-            return res.status(404).json({ error: "User not found." });
+            return sendHtml(res, 400, renderVerifyPage("invalid"));
+        }
+
+        if (User.isEmailVerified(user)) {
+            return sendHtml(res, 200, renderVerifyPage("already", user.email));
         }
 
         await User.markEmailVerified(user.id);
-        return res.json({ ok: true, message: "Email verified. You can now log in." });
+        return sendHtml(res, 200, renderVerifyPage("success", user.email));
     }
 
     async forgotPassword(req: TylixRequest, res: TylixResponse) {

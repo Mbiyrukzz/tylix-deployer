@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { registerTerminal } from "./services/Terminal.js";
+import { registerStats } from "./services/StatsChannel.js";
 
 export async function channels(server: any) {
     // `tylix channels:work` doesn't set up the database on its own (`tylix dev`
@@ -10,4 +11,5 @@ export async function channels(server: any) {
     await bootstrap.bootstrapDatabase();
 
     registerTerminal(server);
+    registerStats(server);
 }

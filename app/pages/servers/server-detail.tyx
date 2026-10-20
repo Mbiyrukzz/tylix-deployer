@@ -21,7 +21,9 @@ state
   statsBusy: false
   statsError: ""
   hasStats: false
-  poller: null
+  live: false
+  streaming: false
+  reconnectTimer: null
   copied: false
   sshCommand: ""
   lastChecked: ""
@@ -53,6 +55,14 @@ state
   rebootError: ""
 
 action
+  global(name) {
+    return Reflect.get(window, name)
+  }
+
+  setGlobal(name, value) {
+    Reflect.set(window, name, value)
+  }
+
   updated(server) {
     this.server = server
     this.status = server.status
@@ -130,7 +140,7 @@ action
     return fallback
   }
 
-    decorateSite(site) {
+  decorateSite(site) {
     return Object.assign({}, site, { href: "/servers/site-detail?id=" + site.id })
   }
 
@@ -162,6 +172,64 @@ action
     return hours + "h " + Math.floor((sec % 3600) / 60) + "m"
   }
 
+  applyStats(s) {
+    if this.rebooting and Date.now() - this.rebootStartedAt < 15000 {
+      return null
+    }
+
+    this.rebooting = false
+
+    const cpu = this.cpuHistory.concat([s.cpu_pct]).slice(-30)
+    const mem = this.memHistory.concat([s.mem_pct]).slice(-30)
+
+    this.cpuHistory = cpu
+    this.memHistory = mem
+    this.cpuPoints = this.chartPoints(cpu)
+    this.memPoints = this.chartPoints(mem)
+    this.cpuArea = this.chartArea(cpu)
+    this.memArea = this.chartArea(mem)
+    this.cpuNow = s.cpu_pct
+    this.memNow = s.mem_pct
+    this.cpuColor = this.toneColor(s.cpu_pct, "#10b981")
+    this.memColor = this.toneColor(s.mem_pct, "#38bdf8")
+    this.diskColor = this.toneColor(s.disk_pct, "#10b981")
+    this.cpuBar = "width: " + Math.min(100, s.cpu_pct) + "%"
+    this.memBar = "width: " + Math.min(100, s.mem_pct) + "%"
+    this.memText = this.formatBytes(s.mem_used) + " of " + this.formatBytes(s.mem_total)
+    this.diskPct = s.disk_pct
+    this.diskText = this.formatBytes(s.disk_used) + " of " + this.formatBytes(s.disk_total)
+    this.diskDash = Math.min(226.2, Math.round(s.disk_pct * 2.262 * 10) / 10) + " 226.2"
+    this.loadText = s.load.join("  ")
+    this.uptimeText = this.formatUptime(s.uptime)
+    this.lastChecked = new Date().toLocaleTimeString()
+
+    const warn = []
+    if s.cpu_pct >= 85 {
+      warn.push("CPU is at " + s.cpu_pct + "%")
+    }
+    if s.mem_pct >= 90 {
+      warn.push("memory is at " + s.mem_pct + "%")
+    }
+    if s.disk_pct >= 90 {
+      warn.push("disk is at " + s.disk_pct + "%")
+    }
+    this.alertText = warn.join(" · ")
+
+    this.statsError = ""
+    this.hasStats = true
+    this.status = "online"
+  }
+
+  applyStatsError(message) {
+    if this.rebooting and Date.now() - this.rebootStartedAt < 180000 {
+      this.status = "rebooting"
+    } else {
+      this.rebooting = false
+      this.statsError = message or "Couldn't load stats."
+      this.status = "offline"
+    }
+  }
+
   async loadStats() {
     if not this.server or this.statsBusy {
       return null
@@ -171,66 +239,108 @@ action
     const result = await useApi("/api/servers/" + this.server.id + "/stats")
 
     if result.ok {
-      if this.rebooting and Date.now() - this.rebootStartedAt < 15000 {
-        this.statsBusy = false
-        return null
-      }
-
-      this.rebooting = false
-
-      const s = result.data
-      const cpu = this.cpuHistory.concat([s.cpu_pct]).slice(-30)
-      const mem = this.memHistory.concat([s.mem_pct]).slice(-30)
-
-      this.cpuHistory = cpu
-      this.memHistory = mem
-      this.cpuPoints = this.chartPoints(cpu)
-      this.memPoints = this.chartPoints(mem)
-      this.cpuArea = this.chartArea(cpu)
-      this.memArea = this.chartArea(mem)
-      this.cpuNow = s.cpu_pct
-      this.memNow = s.mem_pct
-      this.cpuColor = this.toneColor(s.cpu_pct, "#10b981")
-      this.memColor = this.toneColor(s.mem_pct, "#38bdf8")
-      this.diskColor = this.toneColor(s.disk_pct, "#10b981")
-      this.cpuBar = "width: " + Math.min(100, s.cpu_pct) + "%"
-      this.memBar = "width: " + Math.min(100, s.mem_pct) + "%"
-      this.memText = this.formatBytes(s.mem_used) + " of " + this.formatBytes(s.mem_total)
-      this.diskPct = s.disk_pct
-      this.diskText = this.formatBytes(s.disk_used) + " of " + this.formatBytes(s.disk_total)
-      this.diskDash = Math.min(226.2, Math.round(s.disk_pct * 2.262 * 10) / 10) + " 226.2"
-      this.loadText = s.load.join("  ")
-      this.uptimeText = this.formatUptime(s.uptime)
-      this.lastChecked = new Date().toLocaleTimeString()
-
-      const warn = []
-      if s.cpu_pct >= 85 {
-        warn.push("CPU is at " + s.cpu_pct + "%")
-      }
-      if s.mem_pct >= 90 {
-        warn.push("memory is at " + s.mem_pct + "%")
-      }
-      if s.disk_pct >= 90 {
-        warn.push("disk is at " + s.disk_pct + "%")
-      }
-      this.alertText = warn.join(" · ")
-
-      this.statsError = ""
-      this.hasStats = true
-      this.status = "online"
+      this.applyStats(result.data)
     } else if result.status is 401 {
       window.location.href = "/login"
     } else {
-      if this.rebooting and Date.now() - this.rebootStartedAt < 180000 {
-        this.status = "rebooting"
-      } else {
-        this.rebooting = false
-        this.statsError = result.data?.error or "Couldn't load stats."
-        this.status = "offline"
-      }
+      this.applyStatsError(result.data?.error)
     }
 
     this.statsBusy = false
+  }
+
+  dropStream() {
+    const ws = this.global("tylixStatsSocket")
+    if ws {
+      ws.onopen = null
+      ws.onmessage = null
+      ws.onclose = null
+      ws.close()
+      this.setGlobal("tylixStatsSocket", null)
+    }
+    this.streaming = false
+    this.live = false
+  }
+
+  scheduleReconnect() {
+    if this.reconnectTimer {
+      return null
+    }
+    this.reconnectTimer = window.setTimeout(() => this.reconnectNow(), 4000)
+  }
+
+  async reconnectNow() {
+    this.reconnectTimer = null
+    if not this.server {
+      return null
+    }
+
+    await this.loadStats()
+    await this.openStream()
+  }
+
+  onStreamMessage(raw) {
+    const msg = JSON.parse(raw)
+
+    if msg.t is "ready" {
+      this.live = true
+    } else if msg.t is "stats" {
+      this.applyStats(msg.d)
+    } else if msg.t is "error" {
+      this.applyStatsError(msg.m)
+    }
+  }
+
+  onStreamClosed() {
+    this.setGlobal("tylixStatsSocket", null)
+    this.streaming = false
+    this.live = false
+    this.scheduleReconnect()
+  }
+
+  async openStream() {
+    if not this.server or this.streaming {
+      return null
+    }
+
+    this.streaming = true
+    const result = await useApi("/api/servers/" + this.server.id + "/stats-ticket", { method: "POST" })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.status is 404 {
+      this.streaming = false
+      this.server = null
+      this.notFound = true
+      return null
+    }
+
+    if not result.ok {
+      this.streaming = false
+      this.scheduleReconnect()
+      return null
+    }
+
+    let url = result.data.url
+    if not url {
+      const hostname = window.location.hostname
+      if hostname is "localhost" or hostname is "127.0.0.1" {
+        const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
+        url = "ws://" + hostname + ":" + port + "/serverstats"
+      } else {
+        url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.host + "/channels/serverstats"
+      }
+    }
+
+    const ticket = result.data.ticket
+    const ws = new WebSocket(url)
+    ws.onopen = () => ws.send(JSON.stringify({ t: "auth", ticket: ticket }))
+    ws.onmessage = (e) => this.onStreamMessage(e.data)
+    ws.onclose = () => this.onStreamClosed()
+    this.setGlobal("tylixStatsSocket", ws)
   }
 
   async deleteServer() {
@@ -244,6 +354,7 @@ action
     const result = await useApi("/api/servers/" + this.server.id, { method: "DELETE" })
 
     if result.ok {
+      this.dropStream()
       window.location.href = "/servers"
     } else if result.status is 401 {
       window.location.href = "/login"
@@ -256,6 +367,8 @@ action
 
 onMount
   async {
+    this.dropStream()
+
     const params = new URLSearchParams(window.location.search)
     const serverId = params.get("id")
     this.serverId = serverId or ""
@@ -290,10 +403,7 @@ onMount
           this.sites = mine.map((x) => this.decorateSite(x))
         }
 
-        await this.loadStats()
-        if not this.poller {
-          this.poller = window.setInterval(() => this.loadStats(), 10000)
-        }
+        await this.openStream()
       } else {
         this.notFound = true
         this.loading = false
@@ -483,7 +593,18 @@ template
       </div>
 
 {{#if hasStats}}
-      <p class="text-slate-400 text-xs mb-6">Live · refreshes every 10s · last checked {{ lastChecked }}</p>
+{{#if live}}
+      <p class="flex items-center gap-1.5 text-slate-400 text-xs mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Live · last update {{ lastChecked }}
+      </p>
+{{/if}}
+{{#if not live}}
+      <p class="flex items-center gap-1.5 text-slate-400 text-xs mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        Reconnecting… · last checked {{ lastChecked }}
+      </p>
+{{/if}}
 {{/if}}
 {{#if not hasStats}}
       <div class="mb-6"></div>
@@ -534,14 +655,14 @@ template
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-1">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Sites</h2>
-                        <a href="{{ '/servers/site-create?id=' + serverId }}" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">New site</a>
+            <a href="{{ '/servers/site-create?id=' + serverId }}" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">New site</a>
           </div>
           <p class="text-slate-500 text-sm mb-4">Apps deployed on this server.</p>
 
 {{#if sites.length is 0}}
           <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
             <p class="text-slate-500 text-sm mb-3">Nothing deployed here yet.</p>
-                        <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+            <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
               Create a site
             </a>
           </div>
