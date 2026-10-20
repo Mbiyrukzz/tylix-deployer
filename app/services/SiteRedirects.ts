@@ -9,18 +9,29 @@
  * Every change rewrites the whole file, runs `nginx -t`, and puts the previous
  * file back if nginx rejects it (RedirectRejected). Everything that reaches the
  * config is validated against strict patterns first.
+ *
+ * The server must belong to the same team as the site.
  */
 
 import { createHash } from "node:crypto";
 import { Server } from "../models/Server.js";
 import { sshExec } from "./Ssh.js";
 import { shellScript, serverTarget } from "./Shell.js";
+import { teamIdOfRow } from "./TeamScope.js";
 
 export interface RedirectSite {
     id: number;
+    user_id: number;
+    team_id?: number | null;
     server_id: number;
     domain: string;
     isolated_user: string;
+    [key: string]: unknown;
+}
+
+interface ServerRow {
+    user_id: number;
+    team_id?: number | null;
     [key: string]: unknown;
 }
 
@@ -181,8 +192,10 @@ function lastLine(stderr: string, stdout: string): string {
 }
 
 async function targetFor(site: RedirectSite) {
-    const server = await Server.find(site.server_id);
-    if (!server) throw new Error("The server no longer exists.");
+    const server = (await Server.find(site.server_id)) as ServerRow | null;
+    if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+        throw new Error("The server no longer exists.");
+    }
     return serverTarget(server as never);
 }
 

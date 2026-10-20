@@ -1,11 +1,15 @@
 /**
  * Feature: Registrar (domain registrar / DNS host connections)
  *
- * Same owner-scoped shape as ProviderController:
+ * Same team-scoped shape as ProviderController (rows carry team_id; older rows
+ * that were never stamped are resolved by teamIdOfRow). Any team member can
+ * list connections; adding, changing and removing need the admin role.
+ *
+ *
  *   - credentials are encrypted with CryptoService and NEVER returned
  *     (responses carry has_token instead)
  *   - credentials are verified against the registrar's API before they are saved
- *   - someone else's connection answers 404, not 403
+ *   - a connection on another team answers 404, not 403
  *   - responses carry `features`, so the UI knows which sections to show
  *
  * All routes sit behind requireAuth ("auth": true in feature.json).
@@ -28,10 +32,12 @@ import {
 } from "../validators/RegistrarValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { registrarFor, registrarName, featuresOf } from "../services/RegistrarAdapter.js";
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 
 interface RegistrarRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     kind: string;
     label: string;
     api_token: string;
@@ -91,11 +97,14 @@ function sealed(kind: string, secret: string): { api_token: string; credentials:
         : { api_token: encrypted, credentials: "" };
 }
 
-/** Loads the row for :id, or answers 404 (also when it belongs to someone else). */
+/** Loads the row for :id, or answers 404 (also when it is on another team). */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<RegistrarRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const row = (await Registrar.find(req.params.id)) as RegistrarRow | null;
 
-    if (!row || row.user_id !== req.user?.userId) {
+    if (!row || (await teamIdOfRow(row)) !== teamId) {
         res.status(404);
         res.json({ error: "Registrar connection not found." });
         return null;
@@ -103,12 +112,14 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Registr
     return row;
 }
 
-/** Labels are unique per user, case-insensitive. `exceptId` lets a rename keep its own name. */
-async function isDuplicateLabel(userId: unknown, label: string, exceptId?: number): Promise<boolean> {
+/** Labels are unique per team, case-insensitive. `exceptId` lets a rename keep its own name. */
+async function isDuplicateLabel(teamId: number, label: string, exceptId?: number): Promise<boolean> {
     const rows = (await Registrar.all()) as RegistrarRow[];
-    return rows.some(
-        (r) => r.user_id === userId && r.label.toLowerCase() === label.toLowerCase() && r.id !== exceptId,
-    );
+    for (const r of rows) {
+        if (r.id === exceptId || r.label.toLowerCase() !== label.toLowerCase()) continue;
+        if ((await teamIdOfRow(r)) === teamId) return true;
+    }
+    return false;
 }
 
 /** Null if the credentials work, otherwise the status and message to answer with. */
@@ -144,11 +155,15 @@ function problemBody(kind: string, problem: { status: number; message: string })
 }
 
 export class RegistrarController {
-    /** GET /api/registrars: the caller's connections, newest first. */
+    /** GET /api/registrars: the team's connections, newest first. */
     async index(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const rows = (await Registrar.all()) as RegistrarRow[];
+        const flags = await Promise.all(rows.map(async (r) => (await teamIdOfRow(r)) === teamId));
         const own = rows
-            .filter((r) => r.user_id === req.user?.userId)
+            .filter((_, i) => flags[i])
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         return res.json(own.map(toPublic));
@@ -163,6 +178,10 @@ export class RegistrarController {
 
     /** POST /api/registrars: validate, verify with the registrar, then save. */
     async store(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+        if (!requireRole(req, res, "admin")) return;
+
         const result = validateRegistrar(req.body);
         if (!result.valid) {
             res.status(422);
@@ -172,9 +191,9 @@ export class RegistrarController {
         const input = normalizeRegistrar(req.body);
         const secret = credentialSecret(input.kind, input);
 
-        if (await isDuplicateLabel(req.user?.userId, input.label)) {
+        if (await isDuplicateLabel(teamId, input.label)) {
             res.status(409);
-            return res.json({ error: "You already have a connection with that name." });
+            return res.json({ error: "Your team already has a connection with that name." });
         }
 
         // Nothing is saved unless the registrar accepts the credentials.
@@ -190,6 +209,7 @@ export class RegistrarController {
             ...sealed(input.kind, secret),
             status: "connected",
             user_id: req.user?.userId,
+            team_id: teamId,
         })) as RegistrarRow | null;
 
         if (!row) {
@@ -209,6 +229,7 @@ export class RegistrarController {
     async update(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
+        if (!requireRole(req, res, "admin")) return;
 
         // The stored kind decides, never the request body.
         const result = validateRegistrar(req.body, { isUpdate: true, kind: row.kind });
@@ -219,12 +240,13 @@ export class RegistrarController {
 
         const input = normalizeRegistrar(req.body);
 
-        if (await isDuplicateLabel(req.user?.userId, input.label, row.id)) {
+        if (await isDuplicateLabel(await teamIdOfRow(row), input.label, row.id)) {
             res.status(409);
-            return res.json({ error: "You already have a connection with that name." });
+            return res.json({ error: "Your team already has a connection with that name." });
         }
 
-        const patch: Record<string, unknown> = { label: input.label };
+        // Stamp older rows with their team the first time they are saved.
+        const patch: Record<string, unknown> = { label: input.label, team_id: await teamIdOfRow(row) };
 
         // Empty means "keep the stored credentials".
         const secret = credentialSecret(row.kind, input);
@@ -252,6 +274,7 @@ export class RegistrarController {
     async destroy(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
+        if (!requireRole(req, res, "admin")) return;
 
         // Nothing depends on a registrar connection: removing it only forgets the key.
         await Registrar.delete(row.id);

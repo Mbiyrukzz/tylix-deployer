@@ -1,5 +1,9 @@
 /**
  * Database backups per server, MySQL only (same as DatabaseManager).
+ * Team-scoped: a server on another team answers 404. Any member can list
+ * backups and storage connections; everything else (creating and deleting
+ * backups, running them, logs, downloading files, managing Dropbox
+ * connections) needs the admin role.
  *
  * The schedule lives ON the server, not in the deployer, so backups keep
  * running when the deployer is down or restarting:
@@ -14,17 +18,17 @@
  * `retention` files per database, and (when a Dropbox storage is chosen)
  * uploads each file and prunes Dropbox to the same retention.
  *
- *   GET    /api/backup-storages
- *   POST   /api/backup-storages                       connect Dropbox
- *   DELETE /api/backup-storages/:sid
- *   GET    /api/servers/:id/backups
- *   POST   /api/servers/:id/backups
- *   DELETE /api/servers/:id/backups/:bid               removes the schedule; files stay on the server
- *   POST   /api/servers/:id/backups/:bid/run           starts a run in the background
- *   GET    /api/servers/:id/backups/:bid/log
- *   GET    /api/servers/:id/backups/:bid/files
- *   GET    /api/servers/:id/backups/:bid/files/download?name=
- *   DELETE /api/servers/:id/backups/:bid/files?name=
+ *   GET    /api/backup-storages                        any member
+ *   POST   /api/backup-storages                        admin: connect Dropbox
+ *   DELETE /api/backup-storages/:sid                   admin
+ *   GET    /api/servers/:id/backups                    any member
+ *   POST   /api/servers/:id/backups                    admin
+ *   DELETE /api/servers/:id/backups/:bid               admin: removes the schedule; files stay on the server
+ *   POST   /api/servers/:id/backups/:bid/run           admin: starts a run in the background
+ *   GET    /api/servers/:id/backups/:bid/log           admin
+ *   GET    /api/servers/:id/backups/:bid/files         admin
+ *   GET    /api/servers/:id/backups/:bid/files/download?name=   admin
+ *   DELETE /api/servers/:id/backups/:bid/files?name=   admin
  */
 
 import type { Router } from "@tylix/core";
@@ -34,13 +38,14 @@ import { ServerBackup } from "../models/ServerBackup.js";
 import { BackupStorage } from "../models/BackupStorage.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { sshExec, type SshTarget } from "../services/Ssh.js";
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
 type Res = Parameters<Handler>[1];
 
 interface ServerRow {
-    id: number; user_id: number; name: string; host: string; port: number; ssh_user: string; ssh_key: string;
+    id: number; user_id: number; team_id: number | null; name: string; host: string; port: number; ssh_user: string; ssh_key: string;
     [key: string]: unknown;
 }
 interface BackupRow {
@@ -49,7 +54,7 @@ interface BackupRow {
     [key: string]: unknown;
 }
 interface StorageRow {
-    id: number; user_id: number; name: string; provider: string; app_key: string;
+    id: number; user_id: number; team_id: number | null; name: string; provider: string; app_key: string;
     app_secret: string; refresh_token: string; created_at: string;
     [key: string]: unknown;
 }
@@ -95,9 +100,13 @@ function qs(req: Req, key: string): string {
     return typeof q[key] === "string" ? (q[key] as string) : "";
 }
 
+/** Loads a server and answers 404 itself if it is missing or not on the caller's team. */
 async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
+    const teamId = requireTeam(req as any, res as any);
+    if (!teamId) return null;
+
     const s = (await Server.find(req.params.id)) as ServerRow | null;
-    if (!s || s.user_id !== req.user?.userId) {
+    if (!s || Number(s.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Server not found." });
         return null;
@@ -105,14 +114,20 @@ async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
     return s;
 }
 
+/** A backup belongs to the team of its server, so checking the server is enough. */
 async function ownedBackup(req: Req, res: Res, server: ServerRow): Promise<BackupRow | null> {
     const b = (await ServerBackup.find(req.params.bid)) as BackupRow | null;
-    if (!b || b.server_id !== server.id || b.user_id !== req.user?.userId) {
+    if (!b || b.server_id !== server.id) {
         res.status(404);
         res.json({ error: "Backup not found." });
         return null;
     }
     return b;
+}
+
+/** Storage rows are team-scoped; teamIdOfRow also covers rows created before team_id existed. */
+async function storageOnTeam(s: StorageRow | null, teamId: number): Promise<boolean> {
+    return Boolean(s) && (await teamIdOfRow(s as StorageRow)) === teamId;
 }
 
 function namesOf(row: BackupRow): string[] {
@@ -410,15 +425,32 @@ const publicStorage = (s: StorageRow) => ({
 });
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
-    // ---- storages (Dropbox connections) -------------------------------------
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
+    // ---- storages (Dropbox connections, shared by the team) -----------------
     router.get("/api/backup-storages", auth(async (req, res) => {
-        const rows = ((await BackupStorage.all()) as StorageRow[])
-            .filter((s) => s.user_id === req.user?.userId)
-            .sort((a, b) => a.id - b.id);
-        return res.json(rows.map(publicStorage));
+        const teamId = requireTeam(req as any, res as any);
+        if (!teamId) return;
+
+        const all = (await BackupStorage.all()) as StorageRow[];
+        const own: StorageRow[] = [];
+        for (const s of all) {
+            if (await storageOnTeam(s, teamId)) own.push(s);
+        }
+        own.sort((a, b) => a.id - b.id);
+
+        return res.json(own.map(publicStorage));
     }));
 
-    router.post("/api/backup-storages", auth(async (req, res) => {
+    router.post("/api/backup-storages", write(async (req, res) => {
+        const teamId = requireTeam(req as any, res as any);
+        if (!teamId) return;
+
         const body = (req.body ?? {}) as Record<string, unknown>;
         const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
         const name = str(body.name);
@@ -443,6 +475,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
         const row = (await BackupStorage.create({
             user_id: req.user?.userId,
+            team_id: teamId,
             name,
             provider: "dropbox",
             app_key: key,
@@ -459,9 +492,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(publicStorage(row));
     }));
 
-    router.delete("/api/backup-storages/:sid", auth(async (req, res) => {
+    router.delete("/api/backup-storages/:sid", write(async (req, res) => {
+        const teamId = requireTeam(req as any, res as any);
+        if (!teamId) return;
+
         const s = (await BackupStorage.find(req.params.sid)) as StorageRow | null;
-        if (!s || s.user_id !== req.user?.userId) {
+        if (!s || !(await storageOnTeam(s, teamId))) {
             res.status(404);
             return res.json({ error: "Connection not found." });
         }
@@ -486,7 +522,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             ((await BackupStorage.all()) as StorageRow[]).map((s) => [s.id, s.name] as const),
         );
         const rows = ((await ServerBackup.all()) as BackupRow[])
-            .filter((b) => b.server_id === server.id && b.user_id === req.user?.userId)
+            .filter((b) => b.server_id === server.id)
             .sort((a, b) => a.id - b.id);
 
         return res.json(
@@ -503,9 +539,10 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         );
     }));
 
-    router.post("/api/servers/:id/backups", auth(async (req, res) => {
+    router.post("/api/servers/:id/backups", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
+        const teamId = Number(server.team_id);
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -531,9 +568,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         }
         if (ids.length === 0) return fail("Select at least one database.");
 
-        const owned = ((await ServerDatabase.all()) as DbRow[]).filter(
-            (d) => d.server_id === server.id && d.user_id === req.user?.userId,
-        );
+        // Databases belong to the server, and the server belongs to the team.
+        const owned = ((await ServerDatabase.all()) as DbRow[]).filter((d) => d.server_id === server.id);
         const chosen = owned.filter((d) => ids.includes(d.id));
         if (chosen.length !== new Set(ids).size || chosen.some((d) => !SAFE_NAME.test(d.name))) {
             return fail("One of the selected databases doesn't exist on this server.");
@@ -543,7 +579,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         let dropbox: DropboxCreds | null = null;
         if (storageId > 0) {
             const s = (await BackupStorage.find(storageId)) as StorageRow | null;
-            if (!s || s.user_id !== req.user?.userId) return fail("Choose a storage connection.");
+            if (!s || !(await storageOnTeam(s, teamId))) return fail("Choose a storage connection.");
 
             const slug = String(server.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "server";
             dropbox = {
@@ -581,7 +617,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ id: row.id, name, databases, storage_id: storageId, schedule, retention });
     }));
 
-    router.delete("/api/servers/:id/backups/:bid", auth(async (req, res) => {
+    router.delete("/api/servers/:id/backups/:bid", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const backup = await ownedBackup(req, res, server);
@@ -599,7 +635,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.end();
     }));
 
-    router.post("/api/servers/:id/backups/:bid/run", auth(async (req, res) => {
+    router.post("/api/servers/:id/backups/:bid/run", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const backup = await ownedBackup(req, res, server);
@@ -616,7 +652,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ ok: true });
     }));
 
-    router.get("/api/servers/:id/backups/:bid/log", auth(async (req, res) => {
+    router.get("/api/servers/:id/backups/:bid/log", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const backup = await ownedBackup(req, res, server);
@@ -632,7 +668,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     }));
 
     // ---- backup files ----------------------------------------------------------
-    router.get("/api/servers/:id/backups/:bid/files", auth(async (req, res) => {
+    router.get("/api/servers/:id/backups/:bid/files", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const backup = await ownedBackup(req, res, server);
@@ -655,7 +691,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(files);
     }));
 
-    router.get("/api/servers/:id/backups/:bid/files/download", auth(async (req, res) => {
+    router.get("/api/servers/:id/backups/:bid/files/download", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const backup = await ownedBackup(req, res, server);
@@ -691,7 +727,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return raw.end(data);
     }));
 
-    router.delete("/api/servers/:id/backups/:bid/files", auth(async (req, res) => {
+    router.delete("/api/servers/:id/backups/:bid/files", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const backup = await ownedBackup(req, res, server);

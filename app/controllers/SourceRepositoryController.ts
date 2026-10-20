@@ -5,16 +5,19 @@
  *   GET /api/source-providers/:id/branches?repo=owner/name
  *
  * The saved token is decrypted here, used against GitHub/GitLab, and never
- * returned. Someone else's connection answers 404, not 403.
+ * returned. A connection on another team answers 404, not 403.
+ * Any team member can browse repositories (the saved token stays server-side).
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "../services/CryptoService.js";
+import { requireTeam, teamIdOfRow } from "../services/TeamScope.js";
 
 interface Row {
     id: number;
     user_id: number;
+    team_id: number | null;
     kind: string;
     token: string;
     [key: string]: unknown;
@@ -160,9 +163,12 @@ async function listBranches(kind: string, token: string, repo: string): Promise<
 }
 
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Row | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const row = (await SourceProvider.find(req.params.id)) as Row | null;
 
-    if (!row || row.user_id !== req.user?.userId) {
+    if (!row || (await teamIdOfRow(row)) !== teamId) {
         res.status(404);
         res.json({ error: "Connection not found." });
         return null;

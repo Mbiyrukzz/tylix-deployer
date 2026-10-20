@@ -22,6 +22,7 @@ import { Server } from "../models/Server.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { sshExec } from "../services/Ssh.js";
+import { teamIdOfRow } from "../services/TeamScope.js";
 
 const STEPS = ["user", "clone", "install", "webserver"] as const;
 type Step = (typeof STEPS)[number];
@@ -155,12 +156,14 @@ export const CreateSite = {
 
         try {
             const server = (await Server.find(site.server_id)) as
-                | { user_id: number; host: string; port: number; ssh_user: string; ssh_key: string }
-                | null;
+    | { user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string }
+    | null;
 
-            if (!server || server.user_id !== site.user_id) {
-                throw new Error("The server no longer exists.");
-            }
+// The site and its server must be on the same team. Different people often
+// create them, so comparing user_id would fail for a teammate's site.
+if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+    throw new Error("The server no longer exists.");
+}
 
             const target: Target = {
                 host: server.host,
@@ -216,13 +219,13 @@ export const CreateSite = {
                 // 2. Clone (or leave a placeholder page when there is no repository).
                 if (step === "clone") {
                     if (hasRepo) {
-                        const provider = (await SourceProvider.find(site.source_control_id)) as
-                            | { user_id: number; kind: string; token: string }
-                            | null;
+                       const provider = (await SourceProvider.find(site.source_control_id)) as
+    | { user_id: number; team_id?: number | null; kind: string; token: string }
+    | null;
 
-                        if (!provider || provider.user_id !== site.user_id) {
-                            throw new Error("The source control connection no longer exists.");
-                        }
+if (!provider || (await teamIdOfRow(provider)) !== (await teamIdOfRow(site))) {
+    throw new Error("The source control connection no longer exists.");
+}
 
                         const token = CryptoService.decrypt(provider.token);
                         secrets.push(token, encodeURIComponent(token));

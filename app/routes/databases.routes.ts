@@ -1,6 +1,7 @@
 /**
- * Database users and databases on a server (MySQL). Owner-scoped: anything
- * that isn't yours answers 404.
+ * Database users and databases on a server (MySQL). Team-scoped: anything on
+ * another team answers 404. Any member can list; everything else (including
+ * viewing a password) needs the admin role.
  *
  * GET    /api/servers/:id/databases       { users, databases } for a server
  * POST   /api/servers/:id/db-users        { name }  create a MySQL user (password is generated)
@@ -30,11 +31,15 @@ import {
     DEFAULT_COLLATION,
 } from "../validators/DatabaseValidator.js";
 
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 type Handler = Parameters<Router["post"]>[1];
+
+
 
 interface ServerRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     host: string;
     port: number;
     ssh_user: string;
@@ -71,9 +76,14 @@ const publicUser = (u: DbUserRow) => ({
     created_at: u.created_at,
 });
 
+const teamOf = (req: TylixRequest) => Number((req.user as { teamId?: unknown } | undefined)?.teamId);
+
 async function ownedServer(req: TylixRequest, res: TylixResponse): Promise<ServerRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const server = (await Server.find(req.params.id)) as ServerRow | null;
-    if (!server || server.user_id !== req.user?.userId) {
+    if (!server || Number(server.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Server not found." });
         return null;
@@ -81,9 +91,16 @@ async function ownedServer(req: TylixRequest, res: TylixResponse): Promise<Serve
     return server;
 }
 
+/** A record belongs to the team of its server. If the server is gone, only its creator may clean it up. */
+async function mayTouch(req: TylixRequest, serverId: number, rowUserId: number): Promise<boolean> {
+    const server = (await Server.find(serverId)) as ServerRow | null;
+    if (server) return Number(server.team_id) === teamOf(req);
+    return rowUserId === req.user?.userId;
+}
+
 async function ownedDbUser(req: TylixRequest, res: TylixResponse): Promise<DbUserRow | null> {
     const row = (await DbUser.find(req.params.id)) as DbUserRow | null;
-    if (!row || row.user_id !== req.user?.userId) {
+    if (!row || !(await mayTouch(req, row.server_id, row.user_id))) {
         res.status(404);
         res.json({ error: "Database user not found." });
         return null;
@@ -92,9 +109,9 @@ async function ownedDbUser(req: TylixRequest, res: TylixResponse): Promise<DbUse
 }
 
 /** The server a row belongs to (it may have been removed since). */
-async function serverFor(serverId: number, userId: unknown): Promise<ServerRow | null> {
+async function serverFor(serverId: number, teamId: number): Promise<ServerRow | null> {
     const server = (await Server.find(serverId)) as ServerRow | null;
-    return server && server.user_id === userId ? server : null;
+    return server && Number(server.team_id) === teamId ? server : null;
 }
 
 function serverGone(res: TylixResponse) {
@@ -108,6 +125,13 @@ function sshFailed(res: TylixResponse, error: string) {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res,next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     // ---- list ----------------------------------------------------------
     router.get(
         "/api/servers/:id/databases",
@@ -116,10 +140,10 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             if (!server) return;
 
             const users = ((await DbUser.all()) as DbUserRow[])
-                .filter((u) => u.user_id === req.user?.userId && u.server_id === server.id)
+                .filter((u) => u.server_id === server.id)
                 .sort((a, b) => a.name.localeCompare(b.name));
             const dbs = ((await ServerDatabase.all()) as DbRow[])
-                .filter((d) => d.user_id === req.user?.userId && d.server_id === server.id)
+                .filter((d) => d.server_id === server.id)
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const names = new Map(users.map((u) => [u.id, u.name]));
@@ -142,7 +166,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     // ---- create user ---------------------------------------------------
     router.post(
         "/api/servers/:id/db-users",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const server = await ownedServer(req, res);
             if (!server) return;
 
@@ -190,7 +214,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     // ---- show / reset password ----------------------------------------
     router.get(
         "/api/db-users/:id/password",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const user = await ownedDbUser(req, res);
             if (!user) return;
 
@@ -200,11 +224,11 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/db-users/:id/password",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const user = await ownedDbUser(req, res);
             if (!user) return;
 
-            const server = await serverFor(user.server_id, req.user?.userId);
+            const server = await serverFor(user.server_id, teamOf(req));
             if (!server) return serverGone(res);
 
             const password = generatePassword();
@@ -219,7 +243,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     // ---- delete user ---------------------------------------------------
     router.delete(
         "/api/db-users/:id",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const user = await ownedDbUser(req, res);
             if (!user) return;
 
@@ -229,7 +253,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 return res.json({ error: "This user still owns databases. Delete those databases first." });
             }
 
-            const server = await serverFor(user.server_id, req.user?.userId);
+            const server = await serverFor(user.server_id, teamOf(req));
             if (server) {
                 const result = await DatabaseManager.dropUser(serverTarget(server), user.name);
                 if (!result.ok) return sshFailed(res, result.error);
@@ -244,7 +268,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     // ---- create database ----------------------------------------------
     router.post(
         "/api/servers/:id/databases",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const server = await ownedServer(req, res);
             if (!server) return;
 
@@ -270,7 +294,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             if (charsetProblem) errors.collation = [charsetProblem];
 
             const owner = ownerId ? ((await DbUser.find(ownerId)) as DbUserRow | null) : null;
-            const ownerOk = Boolean(owner && owner.user_id === req.user?.userId && owner.server_id === server.id);
+            const ownerOk = Boolean(owner && owner.server_id === server.id);
             if (!ownerOk) errors.db_user_id = ["Choose a database user."];
 
             if (Object.keys(errors).length > 0) {
@@ -319,14 +343,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     // ---- delete database ----------------------------------------------
     router.delete(
         "/api/databases/:id",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const row = (await ServerDatabase.find(req.params.id)) as DbRow | null;
-            if (!row || row.user_id !== req.user?.userId) {
+            if (!row || !(await mayTouch(req, row.server_id, row.user_id))) {
                 res.status(404);
                 return res.json({ error: "Database not found." });
             }
 
-            const server = await serverFor(row.server_id, req.user?.userId);
+            const server = await serverFor(row.server_id, teamOf(req));
             if (server) {
                 const owner = (await DbUser.find(row.db_user_id)) as DbUserRow | null;
                 const result = await DatabaseManager.dropDatabase(serverTarget(server), row.name, owner?.name ?? null);

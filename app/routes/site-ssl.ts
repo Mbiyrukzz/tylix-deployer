@@ -1,19 +1,30 @@
 /**
- * SSL routes for a site.
+ * SSL routes for a site. Team-scoped (the site's server must be on the
+ * caller's team; anything else answers 404). Any member can see the state
+ * and expiry; enabling, installing a custom certificate and disabling all
+ * change what the machine serves, so they need the admin role.
  *
- * GET  /api/sites/:id/ssl            current state, expiry and log
- * POST /api/sites/:id/ssl            enable Let's Encrypt or install a custom certificate
- * POST /api/sites/:id/ssl/disable    switch back to HTTP only
+ * GET  /api/sites/:id/ssl            any member: current state, expiry and log
+ * POST /api/sites/:id/ssl            admin: enable Let's Encrypt or install a custom certificate
+ * POST /api/sites/:id/ssl/disable    admin: switch back to HTTP only
  */
 
 import type { Router } from "@tylix/core";
 import { SiteSslController } from "../controllers/SiteSslController.js";
+import { requireRole } from "../services/TeamScope.js";
 
 type Handler = Parameters<Router["post"]>[1];
 
 const controller = new SiteSslController();
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     router.get(
         "/api/sites/:id/ssl",
         auth(async (req, res) => {
@@ -23,14 +34,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/sites/:id/ssl",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await controller.enable(req, res);
         }),
     );
 
     router.post(
         "/api/sites/:id/ssl/disable",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await controller.disable(req, res);
         }),
     );

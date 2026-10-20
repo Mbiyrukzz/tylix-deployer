@@ -30,9 +30,12 @@ import { Server } from "../models/Server.js";
 import { sshExec } from "./Ssh.js";
 import { serverTarget } from "./Shell.js";
 import { SitePlugin } from "../models/SitePlugin.js";
+import { teamIdOfRow } from "./TeamScope.js";
 
 interface SiteRow {
     id: number;
+    user_id: number; 
+    team_id?: number | null;
     server_id: number;
     type: string;
     domain: string;
@@ -42,6 +45,8 @@ interface SiteRow {
 
 interface ServerRow {
     id: number;
+    user_id: number; 
+    team_id?: number | null;
     ssh_user: string;
 }
 
@@ -219,9 +224,11 @@ export class SiteDestroyer {
         } else {
             const server = (await Server.find(site.server_id)) as ServerRow | null;
 
-            if (!server) {
-                say("The server record no longer exists, so there is nothing to clean up.");
-            } else {
+          if (!server) {
+    say("The server record no longer exists, so there is nothing to clean up.");
+} else if ((await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+    return fail('This site\'s server is on a different team, so server cleanup was refused. Use "Delete anyway" to remove just the record.');
+} else {
                 const domain = String(site.domain || "");
                 const user = String(site.isolated_user || "");
 

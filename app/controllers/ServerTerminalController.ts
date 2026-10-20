@@ -1,18 +1,21 @@
 /**
  * POST /api/servers/:id/terminal   body { cols, rows }
  *
- * Owner-scoped (anything not yours answers 404). Returns a signed 30-second
- * ticket; the shell itself is opened by the "terminal" channel
- * (services/Terminal.ts) when the browser presents that ticket.
+ * Team-scoped and admin only (a server on another team answers 404; a plain
+ * member answers 403). Returns a signed 30-second ticket; the shell itself
+ * is opened by the "terminal" channel (services/Terminal.ts) when the
+ * browser presents that ticket.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { signTicket } from "../services/TerminalTicket.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 interface ServerRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     [key: string]: unknown;
 }
 
@@ -23,12 +26,17 @@ const clamp = (value: unknown, min: number, max: number, fallback: number) => {
 
 export class ServerTerminalController {
     async ticket(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const server = (await Server.find(req.params.id)) as ServerRow | null;
 
-        if (!server || server.user_id !== req.user?.userId) {
+        if (!server || Number(server.team_id) !== teamId) {
             res.status(404);
             return res.json({ error: "Server not found." });
         }
+
+        if (!requireRole(req, res, "admin")) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const cols = clamp(body.cols, 20, 300, 100);

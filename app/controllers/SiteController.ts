@@ -1,13 +1,27 @@
 /**
- * Feature: Site (owner-scoped)
+ * Feature: Site (team-scoped)
  *
- * A site belongs to a server, and the server must belong to the caller.
- * Anything not owned answers 404, never 403. store() saves the row as
- * "pending", starts the provisioner in the background, and returns right
- * away so the browser can go to the site details page and watch progress.
+ * A site belongs to a server, and the server must belong to the caller's
+ * team. Anything on another team answers 404, never 403. store() saves the
+ * row as "pending", starts the provisioner in the background, and returns
+ * right away so the browser can go to the site details page and watch
+ * progress.
+ *
+ * Teams: sites belong to a team (team_id). user_id is the person who
+ * created the site. Everyone on the team sees it.
+ *
+ * Plans: creating a site is checked against the team's site limit
+ * (EntitlementService). Deleting and deploying are never limited.
+ *
+ * Roles:
+ *   - member: view sites, deployments and logs, and trigger a deploy
+ *   - admin / owner: also create and delete sites, edit the deploy script,
+ *     and see and edit the env file
+ * To change who may do what, change the role in the requireRole() call.
  *
  * Deployment: the env is stored encrypted and only returned by
- * deployment(). deploy() starts SiteDeployer in the background.
+ * deployment() to admins and owners. deploy() starts SiteDeployer in the
+ * background.
  *
  * Deleting: destroy() needs ?confirm=<domain> (the API enforces the typed
  * confirmation, not just the UI), marks the site "deleting" and starts
@@ -26,10 +40,13 @@ import { SiteDeployer, canDeploy, defaultDeployScript, envPathFor } from "../ser
 import { SiteDestroyer } from "../services/SiteDestroyer.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { needsPort } from "../services/SiteTypes.js";
+import { requireTeam, requireRole, hasRole } from "../services/TeamScope.js";
+import { requireWithin } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     source_control_id: number;
     type: string;
@@ -64,6 +81,7 @@ interface DeploymentRow {
     id: number;
     site_id: number;
     user_id: number;
+    team_id: number | null;
     status: string;
     log: string;
     branch: string;
@@ -78,11 +96,6 @@ async function deploymentsFor(siteId: number): Promise<DeploymentRow[]> {
     return all.filter((d) => Number(d.site_id) === Number(siteId)).sort((a, b) => Number(b.id) - Number(a.id));
 }
 
-/**
- * SiteDeployer only writes to the site row, so history rows are closed here.
- * The newest running row takes the site's result; any older running row was
- * interrupted (restart, stale deploy) and is marked failed.
- */
 const MAX_LOG_CHARS = 200_000;
 
 function clipLog(text: string): string {
@@ -168,10 +181,14 @@ function readEnv(row: SiteRow): string {
     }
 }
 
+/** Loads a site and answers 404 itself if it is missing or not on the caller's team. */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const site = (await Site.find(req.params.id)) as SiteRow | null;
 
-    if (!site || site.user_id !== req.user?.userId) {
+    if (!site || Number(site.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Site not found." });
         return null;
@@ -213,9 +230,12 @@ async function findConflict(input: NormalizedSite): Promise<string | null> {
 
 export class SiteController {
     async index(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const sites = (await Site.all()) as SiteRow[];
         const own = sites
-            .filter((s) => s.user_id === req.user?.userId)
+            .filter((s) => Number(s.team_id) === teamId)
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         return res.json(own.map((s) => toPublic(s)));
@@ -228,7 +248,12 @@ export class SiteController {
         return res.json(toPublic(site, true));
     }
 
+    /** Admin only. Limited by the team's plan. */
     async store(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+        if (!requireRole(req, res, "admin")) return;
+
         const result = validateSite(req.body);
         if (!result.valid) {
             res.status(422);
@@ -237,16 +262,16 @@ export class SiteController {
 
         const input = normalizeSite(req.body);
 
-        const server = (await Server.find(input.server_id)) as { user_id: number } | null;
-        if (!server || server.user_id !== req.user?.userId) {
+        const server = (await Server.find(input.server_id)) as { team_id: number | null } | null;
+        if (!server || Number(server.team_id) !== teamId) {
             res.status(404);
             return res.json({ error: "Server not found." });
         }
 
         if (input.source_control_id !== 0) {
-            const sc = (await SourceProvider.find(input.source_control_id)) as { user_id: number } | null;
+            const sc = (await SourceProvider.find(input.source_control_id)) as { team_id: number | null } | null;
 
-            if (!sc || sc.user_id !== req.user?.userId) {
+            if (!sc || Number(sc.team_id) !== teamId) {
                 res.status(422);
                 return res.json({ errors: { source_control_id: ["Source control not found."] } });
             }
@@ -262,8 +287,13 @@ export class SiteController {
             return res.json({ error: conflict });
         }
 
+        // Last check before the row is created. The site row exists straight away
+        // (status "pending"), so two quick requests can't both slip under the limit.
+        if (!(await requireWithin(res, teamId, "sites"))) return;
+
         const site = (await Site.create({
             user_id: req.user?.userId,
+            team_id: teamId,
             server_id: input.server_id,
             source_control_id: input.source_control_id,
             type: input.type,
@@ -317,6 +347,7 @@ export class SiteController {
     async destroy(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const query = (req as { query?: Record<string, unknown> }).query ?? {};
         const confirm = String(query.confirm ?? "");
@@ -355,18 +386,23 @@ export class SiteController {
 
     // ---- deployment ----
 
-    /** GET /api/sites/:id/deployment: script, env, status and log for the Deployment tab. */
+    /**
+     * GET /api/sites/:id/deployment: script, env, status and log for the Deployment tab.
+     * Plain members get env "" and env_hidden true: env files hold production secrets.
+     */
     async deployment(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
 
         const defaultScript = defaultDeployScript(site);
+        const canSeeEnv = hasRole(req, "admin");
 
         return res.json({
             can_deploy: canDeploy(site),
             deploy_script: String(site.deploy_script || "") || defaultScript,
             default_script: defaultScript,
-            env: readEnv(site),
+            env: canSeeEnv ? readEnv(site) : "",
+            env_hidden: !canSeeEnv,
             env_path: envPathFor(site),
             deploy_status: String(site.deploy_status || "idle"),
             deploy_log: String(site.deploy_log ?? ""),
@@ -374,7 +410,7 @@ export class SiteController {
         });
     }
 
-        /** GET /api/sites/:id/deployments: newest first, without logs. */
+    /** GET /api/sites/:id/deployments: newest first, without logs. */
     async deployments(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
@@ -406,6 +442,7 @@ export class SiteController {
     async saveDeployment(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const errors: Record<string, string[]> = {};
@@ -454,7 +491,7 @@ export class SiteController {
         return res.end();
     }
 
-    /** POST /api/sites/:id/deploy */
+    /** POST /api/sites/:id/deploy: any team member may deploy. */
     async deploy(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
@@ -478,7 +515,9 @@ export class SiteController {
         await Site.update(site.id, { deploy_status: "deploying", deploy_log: "" });
         await Deployment.create({
             site_id: site.id,
-            user_id: site.user_id,
+            // The person who pressed Deploy, not the site's creator.
+            user_id: Number(req.user?.userId),
+            team_id: Number(site.team_id),
             status: "deploying",
             log: "",
             branch: String(site.branch ?? ""),

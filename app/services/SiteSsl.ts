@@ -14,6 +14,8 @@
  * The custom private key is never stored by tylix-deploy; it only travels to
  * the server inside the install script.
  *
+ * The server must belong to the same team as the site, like in SiteDeployer.
+ *
  * NOTE: SiteProvisioner still writes the plain http vhost at site creation.
  * Re-running it on a site with HTTPS on would overwrite the https vhost.
  */
@@ -24,9 +26,12 @@ import { sshExec } from "./Ssh.js";
 import { getType } from "./SiteTypes.js";
 import { shellScript, serverTarget } from "./Shell.js";
 import { SitePlugin } from "../models/SitePlugin.js";
+import { teamIdOfRow } from "./TeamScope.js";
 
 export interface SslRow {
     id: number;
+    user_id: number;
+    team_id: number | null;
     server_id: number;
     type: string;
     domain: string;
@@ -39,6 +44,15 @@ export interface SslRow {
     build_command: string;
     ssl_mode: string;
     [key: string]: unknown;
+}
+
+interface ServerRow {
+    user_id: number;
+    team_id: number | null;
+    host: string;
+    port: number;
+    ssh_user: string;
+    ssh_key: string;
 }
 
 export type SslRequest =
@@ -78,7 +92,7 @@ const PROXY_HEADERS = (port: number) => `proxy_pass http://127.0.0.1:${port};
 function locations(site: SslRow): string {
     const runtime = getType(site.type)?.runtime ?? "static";
 
-        if (runtime === "php") {
+    if (runtime === "php") {
         const entry = site.octane === true ? "@octane" : "/index.php?$query_string";
         return `
     location / {
@@ -117,13 +131,11 @@ function locations(site: SslRow): string {
 }
 
 function common(site: SslRow, names: string): string {
-       return `    server_name ${names};
+    return `    server_name ${names};
     include /etc/nginx/tylix-plugins/${site.domain}/*.conf;
     root __DOC_ROOT__;
     index index.php index.html;
     client_max_body_size 64m;
-
-
 
     access_log /var/log/nginx/${site.domain}-access.log;
     error_log /var/log/nginx/${site.domain}-error.log;
@@ -357,15 +369,15 @@ export class SiteSsl {
             const site = (await Site.find(siteId)) as SslRow | null;
             if (!site) return;
 
-                        const plugins = (await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[];
+            const plugins = (await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[];
             site.octane = plugins.some(
                 (p) => Number(p.site_id) === siteId && p.plugin === "octane" && p.status === "installed",
             );
 
-            const server = (await Server.find(site.server_id)) as
-                | { host: string; port: number; ssh_user: string; ssh_key: string }
-                | null;
-            if (!server) throw new Error("The server no longer exists.");
+            const server = (await Server.find(site.server_id)) as ServerRow | null;
+            if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+                throw new Error("The server no longer exists.");
+            }
 
             const target = serverTarget(server);
             let expires = "";

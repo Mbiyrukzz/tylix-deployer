@@ -1,5 +1,6 @@
 /**
- * SSL endpoints for a site (owner-scoped; anything not yours answers 404).
+ * SSL endpoints for a site (team-scoped; a site on another team answers 404).
+ * Any team member can see the status; changing it needs the admin role.
  *
  *   show     GET  /api/sites/:id/ssl
  *   enable   POST /api/sites/:id/ssl          { mode: "letsencrypt", email }
@@ -14,10 +15,12 @@ import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Site } from "../models/Site.js";
 import { SiteSsl } from "../services/SiteSsl.js";
 import type { SslRequest } from "../services/SiteSsl.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     type: string;
     domain: string;
@@ -55,9 +58,12 @@ function parseAliases(raw: unknown): string[] {
 }
 
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const site = (await Site.find(req.params.id)) as SiteRow | null;
 
-    if (!site || site.user_id !== req.user?.userId) {
+    if (!site || Number(site.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Site not found." });
         return null;
@@ -105,6 +111,7 @@ export class SiteSslController {
     async enable(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
         if (!guard(site, res)) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
@@ -158,6 +165,7 @@ export class SiteSslController {
     async disable(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
         if (!guard(site, res)) return;
 
         if (String(site.ssl_mode || "none") === "none") {

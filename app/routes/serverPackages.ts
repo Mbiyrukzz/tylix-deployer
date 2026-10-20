@@ -2,6 +2,9 @@
  * GET  /api/servers/:id/packages        catalog + what is installed (asks the server over SSH)
  * GET  /api/servers/:id/packages/task   latest install task (cheap, used for polling)
  * POST /api/servers/:id/packages        queue an install { packages: string[] }
+
+ *
+ * Team-scoped. Any member can look; installing packages needs the admin role.
  */
 
 import type { Router } from "@tylix/core";
@@ -11,11 +14,13 @@ import { ServerTask } from "../models/ServerTask.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { PACKAGES, detectInstalled } from "../services/Installers.js";
 
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 type Handler = Parameters<Router["post"]>[1];
 
 interface ServerRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     host: string;
     port: number;
     ssh_user: string;
@@ -37,16 +42,17 @@ interface TaskRow {
 
 const STALE_MS = 30 * 60 * 1000;
 
-async function ownServer(id: unknown, userId: unknown): Promise<ServerRow | null> {
+/** The server, only if it is on the given team. */
+async function ownServer(id: unknown, teamId: number): Promise<ServerRow | null> {
     const row = (await Server.find(id as number)) as ServerRow | null;
-    return row && row.user_id === userId ? row : null;
+    return row && Number(row.team_id) === teamId ? row : null;
 }
 
 // ADAPT: the one ORM call I couldn't confirm. Replace with your list/where
 // query if `all()` isn't how your Model lists rows.
-async function latestTask(serverId: number, userId: unknown): Promise<TaskRow | null> {
+async function latestTask(serverId: number): Promise<TaskRow | null> {
     const all = (await ServerTask.all()) as TaskRow[];
-    const mine = all.filter((t) => Number(t.server_id) === Number(serverId) && t.user_id === userId);
+    const mine = all.filter((t) => Number(t.server_id) === Number(serverId));
     mine.sort((a, b) => b.id - a.id);
     return mine[0] ?? null;
 }
@@ -72,10 +78,20 @@ function present(t: TaskRow | null) {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     router.get(
         "/api/servers/:id/packages",
         auth(async (req, res) => {
-            const server = await ownServer(req.params.id, req.user?.userId);
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
+            const server = await ownServer(req.params.id, teamId);
             if (!server) {
                 res.status(404);
                 return res.json({ error: "Server not found." });
@@ -94,7 +110,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 return res.json({ error: error instanceof Error ? error.message : "Couldn't reach the server." });
             }
 
-            const task = await latestTask(server.id, req.user?.userId);
+            const task = await latestTask(server.id);
             return res.json({
                 packages: PACKAGES.map((p) => ({
                     id: p.id,
@@ -110,19 +126,25 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     router.get(
         "/api/servers/:id/packages/task",
         auth(async (req, res) => {
-            const server = await ownServer(req.params.id, req.user?.userId);
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
+            const server = await ownServer(req.params.id, teamId);
             if (!server) {
                 res.status(404);
                 return res.json({ error: "Server not found." });
             }
-            return res.json({ task: present(await latestTask(server.id, req.user?.userId)) });
+            return res.json({ task: present(await latestTask(server.id)) });
         }),
     );
 
     router.post(
         "/api/servers/:id/packages",
-        auth(async (req, res) => {
-            const server = await ownServer(req.params.id, req.user?.userId);
+        write(async (req, res) => {
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
+            const server = await ownServer(req.params.id, teamId);
             if (!server) {
                 res.status(404);
                 return res.json({ error: "Server not found." });
@@ -137,13 +159,13 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 return res.json({ error: "Choose at least one package from the list." });
             }
 
-            if (isActive(await latestTask(server.id, req.user?.userId))) {
+            if (isActive(await latestTask(server.id))) {
                 res.status(409);
                 return res.json({ error: "An install is already running on this server. Wait for it to finish." });
             }
 
             const task = (await ServerTask.create({
-                user_id: server.user_id,
+                user_id: req.user?.userId,
                 server_id: server.id,
                 packages: JSON.stringify(ids),
                 step: "",

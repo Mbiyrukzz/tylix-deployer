@@ -17,10 +17,13 @@ import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
 import { getType } from "./SiteTypes.js";
 import { shellScript, serverTarget } from "./Shell.js";
+import { teamIdOfRow } from "./TeamScope.js";
 
 
 export interface DeployRow {
     id: number;
+    user_id: number;
+    team_id: number | null;
     server_id: number;
     source_control_id: number;
     type: string;
@@ -451,18 +454,22 @@ export class SiteDeployer {
             if (!site) return;
 
             const server = (await Server.find(site.server_id)) as
-                | { host: string; port: number; ssh_user: string; ssh_key: string }
-                | null;
-            if (!server) throw new Error("The server no longer exists.");
+    | { user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string }
+    | null;
+if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+    throw new Error("The server no longer exists.");
+}
 
-            let source: { kind: string; token: string } | null = null;
-            if (Number(site.source_control_id) !== 0) {
-                const sc = (await SourceProvider.find(site.source_control_id)) as
-                    | { kind: string; token: string }
-                    | null;
-                if (!sc) throw new Error("The source control connection no longer exists.");
-                source = { kind: sc.kind, token: CryptoService.decrypt(sc.token) };
-            }
+let source: { kind: string; token: string } | null = null;
+if (Number(site.source_control_id) !== 0) {
+    const sc = (await SourceProvider.find(site.source_control_id)) as
+        | { user_id: number; team_id?: number | null; kind: string; token: string }
+        | null;
+    if (!sc || (await teamIdOfRow(sc)) !== (await teamIdOfRow(site))) {
+        throw new Error("The source control connection no longer exists.");
+    }
+    source = { kind: sc.kind, token: CryptoService.decrypt(sc.token) };
+}
 
             const token = source?.token ?? "";
             const mask = (text: string) => (token ? text.split(token).join("***") : text);

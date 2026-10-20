@@ -1,8 +1,8 @@
 /**
  * Sites inside a server.
  *
- * GET  /api/sites       the signed-in user's sites
- * POST /api/sites       validate, create and queue a CreateSite job
+ * GET  /api/sites       the team's sites (any member)
+ * POST /api/sites       (admin) validate, create and queue a CreateSite job
  * GET  /api/sites/:id   one site (the page polls this for step/status/log)
  *
  * Every value validated here ends up in shell commands and nginx config
@@ -14,12 +14,14 @@ import { dispatch } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { Site } from "../models/Site.js";
 import { SourceProvider } from "../models/SourceProvider.js";
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 
 type Handler = Parameters<Router["post"]>[1];
 
 type SiteRow = {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     type: string;
     domain: string;
@@ -61,12 +63,22 @@ function present(row: SiteRow) {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res);
+        });
+
     router.get(
         "/api/sites",
         auth(async (req, res) => {
+    const teamId = requireTeam(req as any, res as any);
+    if (!teamId) return;
+
     const rows = (await Site.all()) as SiteRow[];
     const own = rows
-        .filter((r) => r.user_id === req.user?.userId)
+        .filter((r) => Number(r.team_id) === teamId)
         .sort((a, b) => b.id - a.id);
     return res.json(own.map(present));
 }),
@@ -75,9 +87,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     router.get(
         "/api/sites/:id",
         auth(async (req, res) => {
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
             const row = (await Site.find(req.params.id)) as SiteRow | null;
 
-            if (!row || row.user_id !== req.user?.userId) {
+            if (!row || Number(row.team_id) !== teamId) {
                 res.status(404);
                 return res.json({ error: "Site not found." });
             }
@@ -88,18 +103,21 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/sites",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const b = (req.body || {}) as Record<string, unknown>;
             const errors: Record<string, string[]> = {};
             const fail = (field: string, message: string) => {
                 (errors[field] ||= []).push(message);
             };
 
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
             const server = (await Server.find(Number(b.server_id))) as
-                | { id: number; user_id: number }
+                | { id: number; user_id: number; team_id: number | null }
                 | null;
 
-            if (!server || server.user_id !== req.user?.userId) {
+            if (!server || Number(server.team_id) !== teamId) {
                 res.status(404);
                 return res.json({ error: "Server not found." });
             }
@@ -160,8 +178,10 @@ if (NODE_TYPES.includes(type)) {
             let repository = "";
             let branch = "";
             if (sourceControlId !== 0) {
-                const sc = (await SourceProvider.find(sourceControlId)) as { user_id: number } | null;
-                if (!sc || sc.user_id !== req.user?.userId) {
+                const sc = (await SourceProvider.find(sourceControlId)) as
+                    | { user_id: number; team_id?: number | null }
+                    | null;
+                if (!sc || (await teamIdOfRow(sc)) !== teamId) {
                     fail("source_control_id", "Source control connection not found.");
                 }
 
@@ -198,6 +218,7 @@ if (NODE_TYPES.includes(type)) {
 
             const row = (await Site.create({
                 user_id: req.user?.userId,
+                team_id: teamId,
                 server_id: server.id,
                 type,
                 domain,

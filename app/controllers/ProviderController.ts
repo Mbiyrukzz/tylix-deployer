@@ -2,14 +2,18 @@
  * Feature: Provider (cloud provider connections)
  *
  * A provider row is one connected cloud account (a Linode, Hetzner,
- * DigitalOcean, Vultr or AWS credential). Same owner-scoped shape as ServerController:
+ * DigitalOcean, Vultr or AWS credential). Team-scoped, like ServerController:
  *
+ *   - any team member can list and view connections
+ *   - creating, updating and deleting need the admin role
+ *   - adding a connection is checked against the team's plan
+ *     (EntitlementService); editing and deleting are never limited
  *   - credentials are encrypted with CryptoService before they are stored and
  *     are NEVER returned to the client (responses carry has_token instead).
  *     Single-token providers use api_token; AWS keeps its access key pair as
  *     JSON in credentials.
  *   - the credentials are verified against the provider's API before they are saved
- *   - someone else's connection answers 404, not 403
+ *   - a connection on another team answers 404, not 403 (checked before the role)
  *
  * All routes sit behind requireAuth ("auth": true in feature.json).
  */
@@ -24,9 +28,9 @@ import {
     MULTI_FIELD_KINDS,
 } from "../validators/ProviderValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
-// REF: instanceRefOf is new in this import. AWS: providerName replaces the local name table.
 import { adapterFor, instanceRefOf, providerName } from "../services/ProviderAdapter.js";
-import { requireTeam } from "../services/TeamScope.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireWithin } from "../services/EntitlementService.js";
 
 interface ProviderRow {
     id: number;
@@ -66,7 +70,6 @@ function sealed(kind: string, secret: string): { api_token: string; credentials:
         : { api_token: encrypted, credentials: "" };
 }
 
-/** Loads a connection and answers 404 itself if it is missing or not the caller's. */
 /** Loads a connection and answers 404 itself if it is missing or not on the caller's team. */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ProviderRow | null> {
     const teamId = requireTeam(req, res);
@@ -96,6 +99,7 @@ async function isDuplicateLabel(
             p.id !== exceptId,
     );
 }
+
 /**
  * Returns null if the credentials work, otherwise the HTTP status and message to answer with.
  *
@@ -140,7 +144,8 @@ function tokenProblemBody(kind: string, problem: { status: number; message: stri
 }
 
 export class ProviderController {
-       async index(req: TylixRequest, res: TylixResponse) {
+    /** Any team member. */
+    async index(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
 
@@ -152,6 +157,7 @@ export class ProviderController {
         return res.json(own.map(toPublic));
     }
 
+    /** Any team member. */
     async show(req: TylixRequest, res: TylixResponse) {
         const provider = await findOwned(req, res);
         if (!provider) return;
@@ -159,9 +165,12 @@ export class ProviderController {
         return res.json(toPublic(provider));
     }
 
+    /** Admin only. Limited by the team's plan. */
     async store(req: TylixRequest, res: TylixResponse) {
-    const teamId = requireTeam(req, res);
+        const teamId = requireTeam(req, res);
         if (!teamId) return;
+        if (!requireRole(req, res, "admin")) return;
+
         const result = validateProvider(req.body);
         if (!result.valid) {
             res.status(422);
@@ -171,10 +180,13 @@ export class ProviderController {
         const input = normalizeProvider(req.body);
         const secret = credentialSecret(input.kind, input);
 
-                if (await isDuplicateLabel(teamId, input.label)) {
+        if (await isDuplicateLabel(teamId, input.label)) {
             res.status(409);
             return res.json({ error: "Your team already has a connection with that name." });
         }
+
+        // Before checkToken, so a team over its limit doesn't wait on the provider's API.
+        if (!(await requireWithin(res, teamId, "providers"))) return;
 
         const problem = await checkToken(input.kind, secret);
         if (problem) {
@@ -182,7 +194,7 @@ export class ProviderController {
             return res.json(tokenProblemBody(input.kind, problem));
         }
 
-                const provider = (await Provider.create({
+        const provider = (await Provider.create({
             kind: input.kind,
             label: input.label,
             ...sealed(input.kind, secret),
@@ -200,9 +212,11 @@ export class ProviderController {
         return res.json(toPublic(provider));
     }
 
+    /** Admin only. A connection on another team answers 404 before the role is checked. */
     async update(req: TylixRequest, res: TylixResponse) {
         const provider = await findOwned(req, res);
         if (!provider) return;
+        if (!requireRole(req, res, "admin")) return;
 
         // The stored kind decides, never the request body: the type is fixed.
         const result = validateProvider(req.body, { isUpdate: true, kind: provider.kind });
@@ -213,9 +227,9 @@ export class ProviderController {
 
         const input = normalizeProvider(req.body);
 
-                if (await isDuplicateLabel(Number(provider.team_id), input.label, provider.id)) {
+        if (await isDuplicateLabel(Number(provider.team_id), input.label, provider.id)) {
             res.status(409);
-            return res.json({ error: "You already have a connection with that name." });
+            return res.json({ error: "Your team already has a connection with that name." });
         }
 
         const patch: Record<string, unknown> = { label: input.label };
@@ -245,12 +259,14 @@ export class ProviderController {
         return res.json(toPublic(fresh));
     }
 
+    /** Admin only. A connection on another team answers 404 before the role is checked. */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const provider = await findOwned(req, res);
         if (!provider) return;
+        if (!requireRole(req, res, "admin")) return;
 
-        // REF: widened row type, and "has a machine" now means "has a reference"
-        // (Vultr ids are UUIDs and AWS refs are region/id, so Number(instance_id) > 0 would miss them).
+        // "Has a machine" means "has a reference" (Vultr ids are UUIDs and AWS
+        // refs are region/id, so Number(instance_id) > 0 would miss them).
         const provisions = (await Provision.all()) as {
             provider_id: number;
             instance_id: number;

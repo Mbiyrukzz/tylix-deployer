@@ -6,6 +6,10 @@
  * DELETE /api/team/invitations/:id        revoke (owner or admin)
  * GET    /api/team/invitations/preview    ?token=  what accepting would do (read-only)
  * POST   /api/team/invitations/accept     { token, confirm: true }
+ *
+ * Plans: sending an invitation is checked against the team's member limit
+ * (a pending invitation holds a seat). Accepting one is checked against the
+ * servers, sites and provider connections the person would bring with them.
  */
 
 import type { Router } from "@tylix/core";
@@ -13,6 +17,7 @@ import { User } from "../models/User.js";
 import { TeamInvitation, type TeamInvitationAttributes } from "../models/TeamInvitation.js";
 import { TeamService } from "../services/TeamService.js";
 import { TeamInvitationService, InviteError } from "../services/TeamInvitationService.js";
+import { requireWithin, requireRoomFor, usageOf } from "../services/EntitlementService.js";
 import { inviteUrl, sendTeamInviteEmail } from "../mail/mailer.js";
 
 type Handler = Parameters<Router["get"]>[1];
@@ -72,6 +77,9 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             const c = await adminContext(req, res);
             if (!c) return;
 
+            // Members plus pending invitations must stay within the plan.
+            if (!(await requireWithin(res as any, c.team.id, "members"))) return;
+
             const email = typeof req.body?.email === "string" ? req.body.email : "";
             const role = typeof req.body?.role === "string" ? req.body.role : "member";
 
@@ -88,10 +96,10 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             } catch (error) {
                 emailSent = false;
                 console.error("[team-invitations] email failed:", {
-  message: error instanceof Error ? error.message : String(error),
-  code: (error as NodeJS.ErrnoException)?.code,
-  stack: error instanceof Error ? error.stack : undefined,
-});
+                    message: error instanceof Error ? error.message : String(error),
+                    code: (error as NodeJS.ErrnoException)?.code,
+                    stack: error instanceof Error ? error.stack : undefined,
+                });
             }
 
             // The link is returned to the inviter so they can copy it if mail isn't working.
@@ -153,6 +161,26 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             if (!user) return res.status(404).json({ error: "Account not found." });
 
             const token = typeof req.body?.token === "string" ? req.body.token : "";
+
+            // Joining brings the person's own servers, sites and connections into the
+            // team, so they must fit the team's plan. The seat itself was already
+            // counted when the invitation was sent.
+            const info = await TeamInvitationService.inspect(token, user);
+
+            if (!info.alreadyMember && !info.blocked) {
+                const mine = await TeamService.contextFor(Number(user.id));
+
+                if (mine && mine.team.id !== info.team.id) {
+                    const [servers, sites, providers] = await Promise.all([
+                        usageOf(mine.team.id, "servers"),
+                        usageOf(mine.team.id, "sites"),
+                        usageOf(mine.team.id, "providers"),
+                    ]);
+
+                    if (!(await requireRoomFor(res as any, info.team.id, { servers, sites, providers }))) return;
+                }
+            }
+
             const { team } = await TeamInvitationService.accept(token, user, req.body?.confirm === true);
 
             return res.json({ team: { id: team.id, name: team.name } });

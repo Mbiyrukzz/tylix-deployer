@@ -1,13 +1,16 @@
 /**
- * Helpers for reading the caller's team in controllers and jobs.
+ * Helpers for reading the caller's team and role in controllers and jobs.
  *
  * req.user.teamId and req.user.teamRole are added by the auth hook
  * (AuthHydrate.ts). If the hook couldn't load the team, teamId is missing:
  * requireTeam() then answers 503 instead of pretending the user has no data.
+ *
+ * Call requireTeam() first, then requireRole().
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { TeamService } from "./TeamService.js";
+import type { TeamRole } from "./TeamService.js";
 
 /** The caller's team id, or null if it wasn't loaded. */
 export function teamIdOf(req: TylixRequest): number | null {
@@ -23,6 +26,32 @@ export function requireTeam(req: TylixRequest, res: TylixResponse): number | nul
     res.status(503);
     res.json({ error: "Your team couldn't be loaded. Try again in a moment." });
     return null;
+}
+
+/** The caller's role in their current team, or null if it wasn't loaded. */
+export function roleOf(req: TylixRequest): TeamRole | null {
+    const role = String(req.user?.teamRole ?? "");
+    return role === "owner" || role === "admin" || role === "member" ? role : null;
+}
+
+/** True when the caller's role is at least `minimum`. */
+export function hasRole(req: TylixRequest, minimum: TeamRole): boolean {
+    const role = roleOf(req);
+    return role !== null && TeamService.can(role, minimum);
+}
+
+/** Returns true if the caller has the role, or answers 403 itself and returns false. */
+export function requireRole(req: TylixRequest, res: TylixResponse, minimum: TeamRole): boolean {
+    if (hasRole(req, minimum)) return true;
+
+    res.status(403);
+    res.json({
+        error:
+            minimum === "owner"
+                ? "Only the team owner can do that."
+                : "Only team owners and admins can do that.",
+    });
+    return false;
 }
 
 /**

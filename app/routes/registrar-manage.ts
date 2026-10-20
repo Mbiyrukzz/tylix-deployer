@@ -22,8 +22,8 @@
  * POST   /api/registrars/:id/domains/:domainId/forwarders     { from, to }
  * DELETE /api/registrars/:id/domains/:domainId/forwarders/:forwarderId
  *
- * Same rules as the provider routes: the connection must be the caller's (404
- * otherwise), credentials are decrypted here and never returned, and a feature
+ * Same rules as the provider routes: the connection must be on the caller's team (404
+ * otherwise). Reading is open to every member; every change needs the admin role, credentials are decrypted here and never returned, and a feature
  * the registrar doesn't have answers 422 with code "unsupported".
  *
  * Set REGISTRAR_DEBUG=1 for per-request logging. Logs never include request
@@ -48,11 +48,13 @@ import {
 import { RegistrarError } from "../services/registrars/http.js";
 import { validateRecord, normalizeRecord } from "../validators/DnsValidator.js";
 
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 type Handler = Parameters<Router["get"]>[1];
 
 interface Row {
     id: number;
     user_id: number;
+    team_id: number | null;
     kind: string;
     api_token: string;
     credentials: string;
@@ -71,9 +73,12 @@ async function run(
     job: (adapter: RegistrarAdapter) => Promise<unknown>,
     success = 200,
 ): Promise<void> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return;
+
     const row = (await Registrar.find(req.params.id)) as Row | null;
 
-    if (!row || row.user_id !== req.user?.userId) {
+    if (!row || (await teamIdOfRow(row)) !== teamId) {
         res.status(404);
         res.json({ error: "Registrar connection not found." });
         return;
@@ -149,6 +154,13 @@ function toInput(i: Record<string, unknown>): DnsRecordInput {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     console.log("[registrars] routes registered");
 
     const base = "/api/registrars/:id";
@@ -165,7 +177,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/registrars",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await ctrl.store(req, res);
         }),
     );
@@ -179,14 +191,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         base,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await ctrl.update(req, res);
         }),
     );
 
     router.delete(
         base,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await ctrl.destroy(req, res);
         }),
     );
@@ -243,7 +255,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         `${base}/domains/:domainId/records`,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateRecord(req.body);
             if (!result.valid) {
                 res.status(422);
@@ -257,7 +269,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         `${base}/domains/:domainId/records/:recordId`,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateRecord(req.body);
             if (!result.valid) {
                 res.status(422);
@@ -273,7 +285,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         `${base}/domains/:domainId/records/:recordId`,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(
                 req,
                 res,
@@ -300,7 +312,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     // so the UI should make the user type the domain name before sending this.
     router.put(
         `${base}/domains/:domainId/nameservers`,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const raw = (req.body as { servers?: unknown })?.servers;
             const servers = Array.isArray(raw) ? raw.map((s) => String(s).trim().toLowerCase()).filter(Boolean) : [];
 
@@ -322,7 +334,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         `${base}/domains/:domainId/settings`,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const body = (req.body ?? {}) as { autoRenew?: unknown; locked?: unknown };
             const hasRenew = typeof body.autoRenew === "boolean";
             const hasLock = typeof body.locked === "boolean";
@@ -353,7 +365,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         `${base}/domains/:domainId/forwarders`,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const b = (req.body ?? {}) as { from?: unknown; to?: unknown };
             const from = typeof b.from === "string" ? b.from.trim().toLowerCase() : "";
             const to = typeof b.to === "string" ? b.to.trim().toLowerCase() : "";
@@ -373,7 +385,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         `${base}/domains/:domainId/forwarders/:forwarderId`,
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(
                 req,
                 res,

@@ -1,19 +1,22 @@
 /**
  * POST /api/sites/:id/terminal   body { cols, rows }
  *
- * Owner-scoped (anything not yours answers 404). Returns a signed 30-second
- * ticket; the shell itself is opened by the "terminal" channel
- * (services/Terminal.ts) when the browser presents that ticket.
+ * Team-scoped and admin only (a site on another team answers 404; a plain
+ * member answers 403). Returns a signed 30-second ticket; the shell itself
+ * is opened by the "terminal" channel (services/Terminal.ts) when the
+ * browser presents that ticket.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { signTicket } from "../services/TerminalTicket.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     status: string;
     [key: string]: unknown;
@@ -26,12 +29,17 @@ const clamp = (value: unknown, min: number, max: number, fallback: number) => {
 
 export class SiteTerminalController {
     async ticket(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const site = (await Site.find(req.params.id)) as SiteRow | null;
 
-        if (!site || site.user_id !== req.user?.userId) {
+        if (!site || Number(site.team_id) !== teamId) {
             res.status(404);
             return res.json({ error: "Site not found." });
         }
+
+        if (!requireRole(req, res, "admin")) return;
 
         if (site.status !== "ready") {
             res.status(409);

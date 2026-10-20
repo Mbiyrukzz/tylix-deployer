@@ -1,3 +1,19 @@
+/**
+ * SSH keys. Team-scoped: the key library is shared by the team, and a server
+ * on another team answers 404. Any member can list keys and see which keys
+ * are deployed; everything that changes access to a machine (adding or
+ * deleting a key, deploying or removing one, listing server users over SSH)
+ * needs the admin role.
+ *
+ * GET    /api/ssh-keys                              any member
+ * POST   /api/ssh-keys                              admin (private key is returned once, never stored)
+ * DELETE /api/ssh-keys/:id                          admin
+ * GET    /api/servers/:id/ssh-users                 admin
+ * GET    /api/servers/:id/ssh-keys                  any member
+ * POST   /api/servers/:id/ssh-keys                  admin: deploy a key for a server user
+ * DELETE /api/servers/:id/ssh-keys/:deploymentId    admin: remove it from the server
+ */
+
 import type { Router } from "@tylix/core";
 import { createHash } from "node:crypto";
 import { Server } from "../models/Server.js";
@@ -5,17 +21,24 @@ import { SshKey } from "../models/SshKey.js";
 import { ServerSshKey } from "../models/ServerSshKey.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { generateKeyPair, sshExec, type SshTarget } from "../services/Ssh.js";
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
 type Res = Parameters<Handler>[1];
 
-interface ServerRow { id: number; user_id: number; host: string; port: number; ssh_user: string; ssh_key: string }
-interface KeyRow { id: number; user_id: number; name: string; public_key: string; fingerprint: string; created_at: string }
-interface DeployRow { id: number; user_id: number; server_id: number; ssh_key_id: number; ssh_user: string; created_at: string }
-interface ServerRow { id: number; user_id: number; host: string; port: number; ssh_user: string; ssh_key: string; [key: string]: unknown }
-interface KeyRow { id: number; user_id: number; name: string; public_key: string; fingerprint: string; created_at: string; [key: string]: unknown }
-interface DeployRow { id: number; user_id: number; server_id: number; ssh_key_id: number; ssh_user: string; created_at: string; [key: string]: unknown }
+interface ServerRow {
+    id: number; user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string;
+    [key: string]: unknown;
+}
+interface KeyRow {
+    id: number; user_id: number; team_id: number | null; name: string; public_key: string; fingerprint: string; created_at: string;
+    [key: string]: unknown;
+}
+interface DeployRow {
+    id: number; user_id: number; server_id: number; ssh_key_id: number; ssh_user: string; created_at: string;
+    [key: string]: unknown;
+}
 
 const KEY_RE =
     /^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(?:256|384|521)|sk-ssh-ed25519@openssh\.com) ([A-Za-z0-9+/]+={0,3})(?: .*)?$/;
@@ -86,9 +109,13 @@ function targetFor(server: ServerRow): SshTarget {
     };
 }
 
+/** Loads a server and answers 404 itself if it is missing or not on the caller's team. */
 async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
+    const teamId = requireTeam(req as any, res as any);
+    if (!teamId) return null;
+
     const s = (await Server.find(req.params.id)) as ServerRow | null;
-    if (!s || s.user_id !== req.user?.userId) {
+    if (!s || Number(s.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Server not found." });
         return null;
@@ -96,21 +123,37 @@ async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
     return s;
 }
 
-async function ownedKey(userId: unknown, id: unknown): Promise<KeyRow | null> {
+/** A key is on the team if its team matches; teamIdOfRow also covers keys saved before team_id existed. */
+async function teamKey(teamId: number, id: unknown): Promise<KeyRow | null> {
     const k = (await SshKey.find(id as number)) as KeyRow | null;
-    return k && k.user_id === userId ? k : null;
+    return k && (await teamIdOfRow(k)) === teamId ? k : null;
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
-    // ── key library ────────────────────────────────────────────────
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
+    // ── key library (shared by the team) ───────────────────────────
     router.get("/api/ssh-keys", auth(async (req, res) => {
-        const keys = ((await SshKey.all()) as KeyRow[])
-            .filter((k) => k.user_id === req.user?.userId)
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        return res.json(keys);
+        const teamId = requireTeam(req as any, res as any);
+        if (!teamId) return;
+
+        const own: KeyRow[] = [];
+        for (const k of (await SshKey.all()) as KeyRow[]) {
+            if ((await teamIdOfRow(k)) === teamId) own.push(k);
+        }
+        own.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return res.json(own);
     }));
 
-    router.post("/api/ssh-keys", auth(async (req, res) => {
+    router.post("/api/ssh-keys", write(async (req, res) => {
+        const teamId = requireTeam(req as any, res as any);
+        if (!teamId) return;
+
         const body = (req.body ?? {}) as Record<string, unknown>;
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const pasted = typeof body.public_key === "string" ? body.public_key.trim() : "";
@@ -136,16 +179,21 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         }
 
         const fp = fingerprint(parsed.blob);
-        const existing = ((await SshKey.all()) as KeyRow[]).find(
-            (k) => k.user_id === req.user?.userId && k.fingerprint === fp,
-        );
+        let existing: KeyRow | null = null;
+        for (const k of (await SshKey.all()) as KeyRow[]) {
+            if (k.fingerprint === fp && (await teamIdOfRow(k)) === teamId) {
+                existing = k;
+                break;
+            }
+        }
         if (existing) {
             res.status(409);
-            return res.json({ error: `You already added this key as "${existing.name}".` });
+            return res.json({ error: `Your team already added this key as "${existing.name}".` });
         }
 
         const key = (await SshKey.create({
             user_id: req.user?.userId,
+            team_id: teamId,
             name,
             public_key: parsed.canonical,
             fingerprint: fp,
@@ -161,8 +209,11 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ key, private_key: privateKey ?? null });
     }));
 
-    router.delete("/api/ssh-keys/:id", auth(async (req, res) => {
-        const key = await ownedKey(req.user?.userId, req.params.id);
+    router.delete("/api/ssh-keys/:id", write(async (req, res) => {
+        const teamId = requireTeam(req as any, res as any);
+        if (!teamId) return;
+
+        const key = await teamKey(teamId, req.params.id);
         if (!key) {
             res.status(404);
             return res.json({ error: "Key not found." });
@@ -178,7 +229,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     }));
 
     // ── per-server ─────────────────────────────────────────────────
-    router.get("/api/servers/:id/ssh-users", auth(async (req, res) => {
+    router.get("/api/servers/:id/ssh-users", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
 
@@ -208,7 +259,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(rows);
     }));
 
-    router.post("/api/servers/:id/ssh-keys", auth(async (req, res) => {
+    router.post("/api/servers/:id/ssh-keys", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
 
@@ -219,7 +270,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             return res.json({ error: "Choose a valid server user." });
         }
 
-        const key = await ownedKey(req.user?.userId, body.ssh_key_id);
+        const key = await teamKey(Number(server.team_id), body.ssh_key_id);
         if (!key) {
             res.status(404);
             return res.json({ error: "Key not found." });
@@ -259,12 +310,13 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(row);
     }));
 
-    router.delete("/api/servers/:id/ssh-keys/:deploymentId", auth(async (req, res) => {
+    router.delete("/api/servers/:id/ssh-keys/:deploymentId", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
 
+        // A deployment belongs to the team of its server, so checking the server is enough.
         const dep = (await ServerSshKey.find(req.params.deploymentId)) as DeployRow | null;
-        if (!dep || dep.server_id !== server.id || dep.user_id !== req.user?.userId) {
+        if (!dep || dep.server_id !== server.id) {
             res.status(404);
             return res.json({ error: "Deployment not found." });
         }

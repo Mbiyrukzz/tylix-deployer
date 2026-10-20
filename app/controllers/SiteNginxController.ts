@@ -1,19 +1,23 @@
 /**
- * Feature: Site nginx config editor (owner-scoped)
+ * Feature: Site nginx config editor (team-scoped)
  *
- * A site that isn't the caller's answers 404, never 403. The config can only
- * be read or edited once the site is "ready" (the file doesn't exist before).
- * Saving runs nginx -t and rolls back by itself if it fails (see SiteNginx).
+ * A site that isn't on the caller's team answers 404, never 403. Any team
+ * member can read the config; saving needs the admin role. The config can
+ * only be read or edited once the site is "ready" (the file doesn't exist
+ * before). Saving runs nginx -t and rolls back by itself if it fails (see
+ * SiteNginx).
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Site } from "../models/Site.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { SiteNginx, NginxRejected, MAX_NGINX_BYTES, nginxPathFor } from "../services/SiteNginx.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     domain: string;
     isolated_user: string;
@@ -22,9 +26,12 @@ interface SiteRow {
 }
 
 async function findOwnedSite(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const site = (await Site.find(req.params.id)) as SiteRow | null;
 
-    if (!site || site.user_id !== req.user?.userId) {
+    if (!site || Number(site.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Site not found." });
         return null;
@@ -58,6 +65,7 @@ export class SiteNginxController {
     async save(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
         if (site.status !== "ready") return notReady(res);
 
         const raw = ((req.body ?? {}) as Record<string, unknown>).content;
@@ -84,12 +92,16 @@ export class SiteNginxController {
 
         if (!content.endsWith("\n")) content += "\n";
 
+        const actor = Number(req.user?.userId);
+        const teamId = Number(site.team_id);
+
         try {
             await SiteNginx.write(site, content);
         } catch (err) {
             if (err instanceof NginxRejected) {
                 await ServerLogService.record({
-                    userId: site.user_id,
+                    userId: actor,
+                    teamId,
                     serverId: site.server_id,
                     event: "site.nginx_rejected",
                     level: "warning",
@@ -105,7 +117,8 @@ export class SiteNginxController {
         }
 
         await ServerLogService.record({
-            userId: site.user_id,
+            userId: actor,
+            teamId,
             serverId: site.server_id,
             event: "site.nginx_updated",
             level: "success",

@@ -4,6 +4,8 @@
  *
  * run() never throws. Failures are saved on the site_plugins row.
  * A successful uninstall deletes the row.
+ *
+ * The server must belong to the same team as the site, like in SiteDeployer.
  */
 
 import { Site } from "../models/Site.js";
@@ -14,13 +16,22 @@ import { sshExec } from "./Ssh.js";
 import { shellScript, serverTarget } from "./Shell.js";
 import { envPathFor, type DeployRow } from "./SiteDeployer.js";
 import { getPlugin, type PluginSite } from "./SitePlugins.js";
+import { teamIdOfRow } from "./TeamScope.js";
 
 type Action = "install" | "uninstall";
 
 interface SiteRow extends PluginSite {
+    user_id: number;
+    team_id: number | null;
     server_id: number;
     app_directory: string;
     env_content: string;
+}
+
+interface ServerRow {
+    user_id: number;
+    team_id: number | null;
+    [key: string]: unknown;
 }
 
 interface PluginRow {
@@ -105,8 +116,10 @@ export class SitePluginInstaller {
             if (!row) throw new Error("The plugin record no longer exists.");
             rowId = row.id;
 
-            const server = await Server.find(site.server_id);
-            if (!server) throw new Error("The server no longer exists.");
+            const server = (await Server.find(site.server_id)) as ServerRow | null;
+            if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+                throw new Error("The server no longer exists.");
+            }
             const target = serverTarget(server as never);
 
             const port = portOf(row);

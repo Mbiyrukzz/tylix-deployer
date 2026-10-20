@@ -5,9 +5,14 @@
  * the machine is online. The ProvisionServer job creates the instance and
  * advances `step`.
  *
+ *   - team-scoped: any member can list and view provisions; creating and
+ *     deleting one (it costs money) needs the admin role
+ *   - creating one is checked against the team's server limit. Machines that
+ *     are still being created count too, so two quick requests can't both
+ *     slip under the limit
  *   - ssh_key (encrypted private key, filled in by the job) is NEVER returned
  *   - region, plan and image are checked against the live provider catalog
- *   - someone else's provision answers 404, not 403
+ *   - another team's provision answers 404, not 403 (checked before the role)
  *   - a provision that already has a provider instance is deleted at the
  *     provider first (through ProviderAdapter), so no billable machine is orphaned
  */
@@ -16,7 +21,8 @@ import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { validateProvision, normalizeProvision } from "../validators/ProvisionValidator.js";
-import { requireTeam, teamIdOfRow } from "../services/TeamScope.js";
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { requireWithin } from "../services/EntitlementService.js";
 import { adapterFor, instanceRefOf, providerName, providerSecret } from "../services/ProviderAdapter.js";
 import { Server } from "../models/Server.js";
 import { dispatch } from "@tylix/core";
@@ -36,7 +42,7 @@ interface ProvisionRow {
     step: string;
     status: string;
     instance_id: number;
-    instance_ref: string; // REF
+    instance_ref: string;
     ip: string;
     error: string;
     ssh_key: string;
@@ -46,7 +52,7 @@ interface ProvisionRow {
     [key: string]: unknown;
 }
 
-// REF: the UI gets has_instance (any provider id) and has_root_password (so it can hide
+// The UI gets has_instance (any provider id) and has_root_password (so it can hide
 // the button on providers that never issue one). The password itself is never returned.
 function toPublic(row: ProvisionRow) {
     const { ssh_key, root_password, ...rest } = row;
@@ -57,6 +63,7 @@ function toPublic(row: ProvisionRow) {
     };
 }
 
+/** Loads a provision and answers 404 itself if it is missing or not on the caller's team. */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ProvisionRow | null> {
     const teamId = requireTeam(req, res);
     if (!teamId) return null;
@@ -74,7 +81,8 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Provisi
 }
 
 export class ProvisionController {
-        async index(req: TylixRequest, res: TylixResponse) {
+    /** Any team member. */
+    async index(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
 
@@ -86,6 +94,7 @@ export class ProvisionController {
         return res.json(own.map(toPublic));
     }
 
+    /** Any team member. */
     async show(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
@@ -93,9 +102,12 @@ export class ProvisionController {
         return res.json(toPublic(row));
     }
 
+    /** Admin only: this creates a billable machine at the provider. Limited by the team's plan. */
     async store(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
+        if (!requireRole(req, res, "admin")) return;
+
         const result = validateProvision(req.body);
         if (!result.valid) {
             res.status(422);
@@ -104,7 +116,7 @@ export class ProvisionController {
 
         const input = normalizeProvision(req.body);
 
-                const provider = (await Provider.find(input.provider_id)) as
+        const provider = (await Provider.find(input.provider_id)) as
             | { id: number; user_id: number; team_id: number | null; kind: string; api_token: string; credentials: string }
             | null;
 
@@ -112,6 +124,20 @@ export class ProvisionController {
             res.status(422);
             return res.json({ errors: { provider_id: ["Choose a provider connection."] } });
         }
+
+        const existing = (await Provision.all()) as ProvisionRow[];
+
+        // A machine still being created isn't a server yet, but it will be, so it
+        // counts now. Checked before the catalog calls so a team over its limit
+        // doesn't wait on the provider's API.
+        const inFlight = existing.filter(
+            (p) =>
+                Number(p.team_id) === teamId &&
+                (p.status === "pending" || p.status === "running") &&
+                !Number(p.server_id),
+        ).length;
+
+        if (!(await requireWithin(res, teamId, "servers", 1 + inFlight))) return;
 
         const name = providerName(provider.kind);
 
@@ -183,8 +209,7 @@ export class ProvisionController {
             return res.json({ errors });
         }
 
-        const existing = (await Provision.all()) as ProvisionRow[];
-         const taken = existing.some(
+        const taken = existing.some(
             (p) => Number(p.team_id) === teamId && p.name === input.name && p.status !== "deleted",
         );
         if (taken) {
@@ -192,7 +217,7 @@ export class ProvisionController {
             return res.json({ error: "Your team already has a server with that name." });
         }
 
-                const row = (await Provision.create({
+        const row = (await Provision.create({
             user_id: req.user?.userId,
             team_id: teamId,
             provider_id: input.provider_id,
@@ -204,7 +229,7 @@ export class ProvisionController {
             step: "queued",
             status: "pending",
             instance_id: 0,
-            instance_ref: "", // REF: empty until the provider accepts the create call
+            instance_ref: "", // empty until the provider accepts the create call
             ip: "",
             error: "",
             ssh_key: "",
@@ -234,16 +259,17 @@ export class ProvisionController {
         return res.json({ error: "Provisions can't be edited." });
     }
 
+    /** Admin only. Another team's provision answers 404 before the role is checked. */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
+        if (!requireRole(req, res, "admin")) return;
 
         if (row.status === "running") {
             res.status(409);
             return res.json({ error: "This server is still being created. Wait for it to finish or fail first." });
         }
 
-        // REF: was Number(row.instance_id) > 0
         const ref = instanceRefOf(row);
 
         if (ref) {
@@ -253,7 +279,7 @@ export class ProvisionController {
                 return res.json({ error: "Type the server name to confirm." });
             }
 
-                       const provider = (await Provider.find(row.provider_id)) as
+            const provider = (await Provider.find(row.provider_id)) as
                 | { user_id: number; team_id?: number | null; kind: string; api_token: string; credentials: string }
                 | null;
 
@@ -271,7 +297,7 @@ export class ProvisionController {
 
                 try {
                     // remove() already treats "already deleted" (404) as success.
-                    await adapter.remove(ref); // REF: string reference
+                    await adapter.remove(ref);
                 } catch (error) {
                     console.error(
                         `Provision ${row.id}: ${provider.kind} delete failed:`,

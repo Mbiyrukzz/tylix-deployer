@@ -5,11 +5,14 @@
  * /etc/nginx/tylix-backups/<domain>.conf.bak first, the new content is written,
  * and `nginx -t` must pass before nginx is reloaded. If the test fails, the
  * backup is put back and NginxRejected is thrown with nginx's own message.
+ *
+ * The server must belong to the same team as the site.
  */
 
 import { Server } from "../models/Server.js";
 import { sshExec } from "./Ssh.js";
 import { shellScript, serverTarget } from "./Shell.js";
+import { teamIdOfRow } from "./TeamScope.js";
 
 export const MAX_NGINX_BYTES = 50_000;
 
@@ -21,17 +24,27 @@ export class NginxRejected extends Error {}
 
 export interface NginxSite {
     id: number;
+    user_id: number;
+    team_id?: number | null;
     server_id: number;
     domain: string;
     isolated_user: string;
     [key: string]: unknown;
 }
 
+interface ServerRow {
+    user_id: number;
+    team_id?: number | null;
+    [key: string]: unknown;
+}
+
 export const nginxPathFor = (domain: string) => `/etc/nginx/sites-available/${domain}.conf`;
 
 async function targetFor(site: NginxSite) {
-    const server = await Server.find(site.server_id);
-    if (!server) throw new Error("The server no longer exists.");
+    const server = (await Server.find(site.server_id)) as ServerRow | null;
+    if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+        throw new Error("The server no longer exists.");
+    }
     return serverTarget(server as never);
 }
 

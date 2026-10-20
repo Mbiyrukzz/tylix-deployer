@@ -16,8 +16,8 @@
  *     reaches the client.
  *
  * Each answer is cached in memory for 10 minutes. Credential-based answers are
- * cached per connection, so one user's credentials are never what serves another
- * user. Failed lookups are not cached.
+ * cached per connection, so one team's credentials are never what serves another
+ * team. Failed lookups are not cached.
  *
  * Every plan carries `currency` ("USD" for Linode, DigitalOcean, Vultr and AWS,
  * "EUR" for Hetzner). AWS plans have monthly = 0: prices are not looked up.
@@ -25,7 +25,8 @@
 
 import type { Router } from "@tylix/core";
 import { Provider } from "../models/Provider.js";
-// AWS: providerSecret picks api_token or credentials; providerName replaces the local name table.
+import { requireTeam, teamIdOfRow } from "../services/TeamScope.js";
+
 import { adapterFor, providerName, providerSecret, PROVIDER_KINDS } from "../services/ProviderAdapter.js";
 
 const TTL_MS = 10 * 60 * 1000;
@@ -67,6 +68,9 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             let scope = "public";
 
             if (!PUBLIC_CATALOG.includes(kind)) {
+                const teamId = requireTeam(req as any, res as any);
+                if (!teamId) return;
+
                 const providerId = Number(query.provider);
 
                 if (!Number.isInteger(providerId) || providerId <= 0) {
@@ -77,13 +81,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 const row = (await Provider.find(providerId)) as {
                     id: number;
                     user_id: number;
+                    team_id: number | null;
                     kind: string;
                     api_token: string;
                     credentials: string;
                 } | null;
 
-                // Someone else's connection (or the wrong kind) answers 404, like everywhere else.
-                if (!row || row.user_id !== req.user?.userId || row.kind !== kind) {
+                // A connection on another team (or the wrong kind) answers 404, like everywhere else.
+                if (!row || (await teamIdOfRow(row)) !== teamId || row.kind !== kind) {
                     res.status(404);
                     return res.json({ error: "Provider connection not found." });
                 }

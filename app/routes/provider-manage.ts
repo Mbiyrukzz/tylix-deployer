@@ -10,8 +10,8 @@
  * DELETE /api/providers/:id/domains/:domainId/records/:recordId
  * GET    /api/providers/:id/billing
  *
- * Same rules as everywhere else: the connection must be the caller's (404
- * otherwise), the credentials are decrypted here and never returned, and a
+ * Same rules as everywhere else: the connection must be on the caller's team (404
+ * otherwise). Reading is open to every member; every change needs the admin role, the credentials are decrypted here and never returned, and a
  * token that lacks the Domains/Account access answers 403 with code
  * "missing_access" and a message saying how to fix it.
  *
@@ -37,11 +37,13 @@ import {
     normalizeRecord,
 } from "../validators/DnsValidator.js";
 
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 type Handler = Parameters<Router["get"]>[1];
 
 interface ProviderRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     kind: string;
     api_token: string;
     credentials: string;
@@ -54,9 +56,12 @@ async function run(
     job: (adapter: ManageAdapter, kind: string) => Promise<unknown>,
     success = 200,
 ): Promise<void> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return;
+
     const row = (await Provider.find(req.params.id)) as ProviderRow | null;
 
-    if (!row || row.user_id !== req.user?.userId) {
+    if (!row || (await teamIdOfRow(row)) !== teamId) {
         res.status(404);
         res.json({ error: "Provider connection not found." });
         return;
@@ -120,6 +125,13 @@ async function run(
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     // ---- Domains ----
 
     router.get(
@@ -131,7 +143,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/domains",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateDomain(req.body);
             if (!result.valid) {
                 res.status(422);
@@ -157,7 +169,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         "/api/providers/:id/domains/:domainId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateDomainSettings(req.body);
             if (!result.valid) {
                 res.status(422);
@@ -173,7 +185,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         "/api/providers/:id/domains/:domainId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(req, res, (adapter) => adapter.removeDomain(String(req.params.domainId)), 204);
         }),
     );
@@ -196,7 +208,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/domains/:domainId/records",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateRecord(req.body);
             if (!result.valid) {
                 res.status(422);
@@ -212,7 +224,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         "/api/providers/:id/domains/:domainId/records/:recordId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateRecord(req.body);
             if (!result.valid) {
                 res.status(422);
@@ -230,7 +242,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         "/api/providers/:id/domains/:domainId/records/:recordId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(
                 req,
                 res,

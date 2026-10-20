@@ -39,8 +39,7 @@ function coversPort(rule: RuleRow, port: number): boolean {
 }
 
 export async function syncFirewall(
-    server: { id: number; user_id: number; port: number },
-    target: SshTarget,
+server: { id: number; user_id: number; team_id?: number | null; port: number },    target: SshTarget,
 ): Promise<SyncResult> {
     const sshPort = Number(server.port);
     let rules = await rulesOf(server.id);
@@ -53,8 +52,9 @@ export async function syncFirewall(
         ];
         for (const d of defaults) {
             await ServerFirewallRule.create({
-                user_id: server.user_id,
-                server_id: server.id,
+    user_id: server.user_id,
+    ...(server.team_id ? { team_id: Number(server.team_id) } : {}),
+    server_id: server.id,
                 name: d.name,
                 type: "allow",
                 source: "any",
@@ -116,8 +116,7 @@ export interface ResetResult {
  * page are touched; rules added by hand on the machine are left alone.
  */
 export async function resetFirewall(
-    server: { id: number; user_id: number; port: number },
-    target: SshTarget,
+server: { id: number; user_id: number; team_id?: number | null; port: number },    target: SshTarget,
 ): Promise<ResetResult> {
     const sshPort = Number(server.port);
 
@@ -171,8 +170,9 @@ export async function resetFirewall(
             await ServerFirewallRule.update(row.id, { status: "ready", error: "" });
         } else {
             await ServerFirewallRule.create({
-                user_id: server.user_id,
-                server_id: server.id,
+    user_id: server.user_id,
+    ...(server.team_id ? { team_id: Number(server.team_id) } : {}),
+    server_id: server.id,
                 name: d.name,
                 type: d.type,
                 source: d.source,

@@ -14,6 +14,13 @@
  * Teams: servers belong to a team (team_id), not to one user. user_id is
  * the person who added the server. Everyone on the team sees it.
  *
+ * Roles: any member can list and view servers; adding, editing and deleting
+ * one needs the admin role. The team check runs first, so a server on
+ * another team is a 404 and never a 403.
+ *
+ * Plans: adding a server is checked against the team's plan
+ * (EntitlementService). Editing and deleting are never limited.
+ *
  * Deleting a server is refused while it still has sites, so no site record
  * is ever left pointing at a server that is gone.
  *
@@ -35,7 +42,8 @@ import { ServerDatabase } from "../models/ServerDatabase.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
-import { requireTeam } from "../services/TeamScope.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireWithin } from "../services/EntitlementService.js";
 import { ServerSshKey } from "../models/ServerSshKey.js";
 import { ServerWorker } from "../models/ServerWorker.js";
 import { ServerCronJob } from "../models/ServerCronJob.js";
@@ -98,6 +106,7 @@ async function isDuplicate(
 }
 
 export class ServerController {
+    /** Any team member. */
     async index(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
@@ -110,6 +119,7 @@ export class ServerController {
         return res.json(own.map(toPublic));
     }
 
+    /** Any team member. */
     async show(req: TylixRequest, res: TylixResponse) {
         const server = await findOwned(req, res);
         if (!server) return;
@@ -117,9 +127,11 @@ export class ServerController {
         return res.json(toPublic(server));
     }
 
+    /** Admin only. Limited by the team's plan. */
     async store(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const result = validateServer(req.body);
         if (!result.valid) {
@@ -133,6 +145,8 @@ export class ServerController {
             res.status(409);
             return res.json({ error: "Your team has already added a server with that host and port." });
         }
+
+        if (!(await requireWithin(res, teamId, "servers"))) return;
 
         const server = (await Server.create({
             name: input.name,
@@ -164,9 +178,11 @@ export class ServerController {
         return res.json(toPublic(server));
     }
 
+    /** Admin only. Another team's server answers 404 before the role is checked. */
     async update(req: TylixRequest, res: TylixResponse) {
         const server = await findOwned(req, res);
         if (!server) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const teamId = Number(server.team_id);
         const actor = Number(req.user?.userId);
@@ -266,9 +282,11 @@ export class ServerController {
         return res.json(toPublic(fresh));
     }
 
+    /** Admin only. Another team's server answers 404 before the role is checked. */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const server = await findOwned(req, res);
         if (!server) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const teamId = Number(server.team_id);
         const actor = Number(req.user?.userId);
@@ -341,7 +359,6 @@ export class ServerController {
         // The server's log goes with it, like every other child record.
         await ServerLogService.deleteForServer(server.id);
 
-        // ASSUMPTION: Model exposes delete(id).
         await Server.delete(server.id);
         res.status(204);
         return res.end();

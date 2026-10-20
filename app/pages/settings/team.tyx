@@ -7,14 +7,13 @@ state
   teamName: ""
   role: ""
   canManage: false
+  canLeave: false
   members: []
   invites: []
   busy: false
   error: ""
   notice: ""
   link: ""
-   renaming: false
-  renameError: ""
 
 action
   readValue(id) {
@@ -25,7 +24,7 @@ action
     return String(Reflect.get(el, "value"))
   }
 
-    clearValue(id) {
+  clearValue(id) {
     const el = document.getElementById(id)
     if el {
       Reflect.set(el, "value", "")
@@ -44,33 +43,6 @@ action
     }
   }
 
-    async rename() {
-    if this.renaming {
-      return null
-    }
-
-    const name = this.readValue("team-name").trim()
-
-    this.renaming = true
-    this.renameError = ""
-    this.notice = ""
-
-    const result = await useApi("/api/team", { method: "PUT", body: { name: name } })
-
-    this.renaming = false
-
-    if result.ok {
-      this.teamName = result.data.team.name
-      this.notice = "Team renamed."
-    } else if result.status is 401 {
-      window.location.href = "/login"
-    } else if result.data?.errors?.name {
-      this.renameError = result.data.errors.name[0]
-    } else {
-      this.renameError = result.data?.error or "Couldn't rename the team."
-    }
-  }
-
   async load() {
     const result = await useApi("/api/team")
 
@@ -83,13 +55,12 @@ action
       this.teamName = result.data.team.name
       this.role = result.data.role
       this.canManage = result.data.role is "owner" or result.data.role is "admin"
-      this.members = result.data.members.map((m) => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        role: m.role,
-        joined: String(m.joined_at).slice(0, 10)
-      }))
+
+      const list = await useApi("/api/team/members")
+      if list.ok {
+        this.members = list.data.members
+        this.canLeave = list.data.can_leave
+      }
 
       if this.canManage {
         await this.loadInvites()
@@ -146,6 +117,77 @@ action
     }
   }
 
+  async changeRole(id, role) {
+    this.error = ""
+    this.notice = ""
+    this.link = ""
+
+    const result = await useApi("/api/team/members/" + id, { method: "PUT", body: { role: role } })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      await this.load()
+    } else {
+      this.error = result.data?.error or "Couldn't change that role."
+    }
+  }
+
+  async promote(id) {
+    await this.changeRole(id, "admin")
+  }
+
+  async demote(id) {
+    await this.changeRole(id, "member")
+  }
+
+  async removeMember(id) {
+    if not window.confirm("Remove this person from the team? They lose access to its servers and sites immediately.") {
+      return null
+    }
+
+    this.error = ""
+    this.notice = ""
+    this.link = ""
+
+    const result = await useApi("/api/team/members/" + id, { method: "DELETE" })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      await this.load()
+    } else {
+      this.error = result.data?.error or "Couldn't remove that member."
+    }
+  }
+
+  async leave() {
+    if not window.confirm("Leave this team? You lose access to its servers and sites.") {
+      return null
+    }
+
+    this.error = ""
+
+    const result = await useApi("/api/team/leave", { method: "POST" })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      window.location.href = "/settings/team"
+    } else {
+      this.error = result.data?.error or "Couldn't leave the team."
+    }
+  }
+
 onMount
   async {
     await this.load()
@@ -166,6 +208,10 @@ template
 {{/if}}
 
 {{#if not loading}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
       <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ teamName }}</h2>
         <p class="text-slate-500 text-sm mb-5">Your role: <span class="font-semibold text-slate-700 dark:text-slate-300">{{ role }}</span></p>
@@ -176,39 +222,38 @@ template
             <div class="min-w-0">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ m.name }}</p>
               <p class="text-slate-500 text-xs font-mono truncate">{{ m.email }}</p>
+{{#if m.is_me}}
+              <p class="text-slate-500 text-xs">This is you</p>
+{{/if}}
             </div>
-            <div class="text-right shrink-0">
-              <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">{{ m.role }}</span>
-              <p class="text-slate-500 text-xs mt-1">Joined {{ m.joined }}</p>
+            <div class="flex items-center gap-2 shrink-0">
+{{#if m.can_promote}}
+              <button onclick="{{ promote(m.id) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Make admin</button>
+{{/if}}
+{{#if m.can_demote}}
+              <button onclick="{{ demote(m.id) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Make member</button>
+{{/if}}
+{{#if m.can_remove}}
+              <button onclick="{{ removeMember(m.id) }}" class="text-xs text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg px-2.5 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Remove</button>
+{{/if}}
+              <div class="text-right">
+                <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">{{ m.role }}</span>
+                <p class="text-slate-500 text-xs mt-1">Joined {{ m.joined }}</p>
+              </div>
             </div>
           </div>
 {{/each}}
         </div>
+
+{{#if canLeave}}
+        <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
+          <button onclick="{{ leave() }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Leave team</button>
+        </div>
+{{/if}}
       </div>
 
 {{#if canManage}}
       <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
-              <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
-        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Team name</h2>
-        <p class="text-slate-500 text-sm mb-5">Shown to everyone on the team and in invitation emails.</p>
-
-        <label for="team-name" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Name</label>
-        <input id="team-name" type="text" maxlength="100" value="{{ teamName }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
-
-{{#if renameError}}
-        <p role="alert" class="text-rose-500 text-sm mt-4">{{ renameError }}</p>
-{{/if}}
-
-        <div class="mt-6">
-{{#if renaming}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Saving…</button>
-{{/if}}
-{{#if not renaming}}
-          <button onclick="{{ rename() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Save name</button>
-{{/if}}
-        </div>
-      </div>
-        
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Invite someone</h2>
         <p class="text-slate-500 text-sm mb-5">They get an email with a link that works once and expires in 7 days. If they already have servers or connections of their own, they'll be asked to bring them into this team.</p>
 
@@ -221,9 +266,6 @@ template
           <option value="admin">Admin (can invite and manage the team)</option>
         </select>
 
-{{#if error}}
-        <p role="alert" class="text-rose-500 text-sm mt-4">{{ error }}</p>
-{{/if}}
 {{#if notice}}
         <p role="status" class="text-emerald-700 dark:text-emerald-500 text-sm mt-4">{{ notice }}</p>
 {{/if}}

@@ -1,15 +1,22 @@
+/**
+ * Cron jobs on a server (team-scoped). A server on another team answers 404.
+ * Any member can list the jobs; creating, running, reading logs and deleting
+ * need the admin role (they run commands as root over SSH).
+ */
+
 import type { Router } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { ServerCronJob } from "../models/ServerCronJob.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { sshExec, type SshTarget } from "../services/Ssh.js";
 
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
 type Res = Parameters<Handler>[1];
 
 interface ServerRow {
-    id: number; user_id: number; host: string; port: number; ssh_user: string; ssh_key: string;
+    id: number; user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string;
     [key: string]: unknown;
 }
 interface CronRow {
@@ -44,8 +51,11 @@ function asRoot(connectUser: string, script: string): string {
 }
 
 async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
+    const teamId = requireTeam(req as any, res as any);
+    if (!teamId) return null;
+
     const s = (await Server.find(req.params.id)) as ServerRow | null;
-    if (!s || s.user_id !== req.user?.userId) {
+    if (!s || Number(s.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Server not found." });
         return null;
@@ -55,7 +65,7 @@ async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
 
 async function ownedJob(req: Req, res: Res, server: ServerRow): Promise<CronRow | null> {
     const j = (await ServerCronJob.find(req.params.cid)) as CronRow | null;
-    if (!j || j.server_id !== server.id || j.user_id !== req.user?.userId) {
+    if (!j || j.server_id !== server.id) {
         res.status(404);
         res.json({ error: "Cron job not found." });
         return null;
@@ -150,6 +160,13 @@ function runScript(j: { command: string; user: string }): string {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     router.get("/api/servers/:id/cron-jobs", auth(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
@@ -160,7 +177,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(rows);
     }));
 
-    router.post("/api/servers/:id/cron-jobs", auth(async (req, res) => {
+    router.post("/api/servers/:id/cron-jobs", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
 
@@ -198,7 +215,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(job);
     }));
 
-    router.post("/api/servers/:id/cron-jobs/:cid/run", auth(async (req, res) => {
+    router.post("/api/servers/:id/cron-jobs/:cid/run", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const job = await ownedJob(req, res, server);
@@ -214,7 +231,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ output: r.stdout.trim() });
     }));
 
-    router.get("/api/servers/:id/cron-jobs/:cid/log", auth(async (req, res) => {
+    router.get("/api/servers/:id/cron-jobs/:cid/log", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const job = await ownedJob(req, res, server);
@@ -229,7 +246,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ log: r.stdout.trim() || "No output yet." });
     }));
 
-    router.delete("/api/servers/:id/cron-jobs/:cid", auth(async (req, res) => {
+    router.delete("/api/servers/:id/cron-jobs/:cid", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const job = await ownedJob(req, res, server);

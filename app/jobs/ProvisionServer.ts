@@ -344,10 +344,9 @@ export const ProvisionServer = {
                 await save(id, { step: "firewall" });
                 try {
                     const fw = await syncFirewall(
-                        { id: Number(row.server_id), user_id: row.user_id, port: 22 },
-                        target,
-                    );
-
+    { id: Number(row.server_id), user_id: row.user_id, team_id: teamId, port: 22 },
+    target,
+);
                     if (fw.enableError || fw.failed > 0) {
                         await log(
                             row,

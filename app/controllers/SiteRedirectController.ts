@@ -1,10 +1,11 @@
 /**
- * Feature: Site redirects (owner-scoped)
+ * Feature: Site redirects (team-scoped)
  *
- * A site that isn't the caller's answers 404, never 403. Redirects can only be
- * managed once the site is "ready" (the nginx config doesn't exist before).
- * Every change is tested with nginx -t and rolled back by SiteRedirects if
- * nginx rejects it.
+ * A site that isn't on the caller's team answers 404, never 403. Any team
+ * member can see the redirects; adding and removing need the admin role.
+ * Redirects can only be managed once the site is "ready" (the nginx config
+ * doesn't exist before). Every change is tested with nginx -t and rolled
+ * back by SiteRedirects if nginx rejects it.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -16,10 +17,12 @@ import {
     RedirectRejected,
     MAX_REDIRECTS,
 } from "../services/SiteRedirects.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     domain: string;
     isolated_user: string;
@@ -28,9 +31,12 @@ interface SiteRow {
 }
 
 async function findOwnedSite(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const site = (await Site.find(req.params.id)) as SiteRow | null;
 
-    if (!site || site.user_id !== req.user?.userId) {
+    if (!site || Number(site.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Site not found." });
         return null;
@@ -82,13 +88,18 @@ export class SiteRedirectController {
     async store(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
         if (site.status !== "ready") return notReady(res);
+
+        const actor = Number(req.user?.userId);
+        const teamId = Number(site.team_id);
 
         try {
             const { rules, rule } = await SiteRedirects.add(site, req.body);
 
             await ServerLogService.record({
-                userId: site.user_id,
+                userId: actor,
+                teamId,
                 serverId: site.server_id,
                 event: "site.redirect_added",
                 level: "success",
@@ -101,7 +112,8 @@ export class SiteRedirectController {
         } catch (err) {
             if (err instanceof RedirectRejected) {
                 await ServerLogService.record({
-                    userId: site.user_id,
+                    userId: actor,
+                    teamId,
                     serverId: site.server_id,
                     event: "site.redirect_rejected",
                     level: "warning",
@@ -116,6 +128,7 @@ export class SiteRedirectController {
     async destroy(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
         if (site.status !== "ready") return notReady(res);
 
         const id = String(req.params.redirectId ?? "");
@@ -128,7 +141,8 @@ export class SiteRedirectController {
             const { rules, rule } = await SiteRedirects.remove(site, id);
 
             await ServerLogService.record({
-                userId: site.user_id,
+                userId: Number(req.user?.userId),
+                teamId: Number(site.team_id),
                 serverId: site.server_id,
                 event: "site.redirect_removed",
                 message: `Redirect removed on ${site.domain}: ${rule.from}.`,

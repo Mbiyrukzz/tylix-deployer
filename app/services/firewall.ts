@@ -1,14 +1,19 @@
 /**
- * Server firewall routes (owner only).
+ * Server firewall routes. Team-scoped: a server on another team answers 404.
+ * Any member can list the rules; adding, editing, removing, syncing and
+ * resetting need the admin role (they change what the machine lets in).
  *
- * GET    /api/servers/:id/firewall            list rules
- * POST   /api/servers/:id/firewall            add a rule and apply it
- * PUT    /api/servers/:id/firewall/:ruleId    edit a rule (name-only edits don't touch the server)
- * DELETE /api/servers/:id/firewall/:ruleId    remove a rule from the server and the list
- * POST   /api/servers/:id/firewall/sync       seed defaults if empty, re-apply all, enable ufw
+ * GET    /api/servers/:id/firewall            any member: list rules
+ * POST   /api/servers/:id/firewall            admin: add a rule and apply it
+ * PUT    /api/servers/:id/firewall/:ruleId    admin: edit a rule (name-only edits don't touch the server)
+ * DELETE /api/servers/:id/firewall/:ruleId    admin: remove a rule from the server and the list
+ * POST   /api/servers/:id/firewall/sync       admin: seed defaults if empty, re-apply all, enable ufw
+ * POST   /api/servers/:id/firewall/reset      admin: reset the server's firewall to defaults
  *
  * Lockout guards: a deny from "any" over the SSH port is refused, and so is
  * removing or editing away the last allow rule that covers it.
+ *
+ * Log entries record who acted (the caller), not who added the server.
  */
 
 import type { Router } from "@tylix/core";
@@ -19,6 +24,7 @@ import { CryptoService } from "../services/CryptoService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { FirewallService } from "../services/FirewallService.js";
 import { syncFirewall, resetFirewall } from "../services/FirewallSync.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 import type { SshTarget } from "../services/Ssh.js";
 import { validateRule, normalizeRule, parsePort } from "../validators/FirewallRuleValidator.js";
 
@@ -27,6 +33,7 @@ type Handler = Parameters<Router["get"]>[1];
 interface ServerRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     host: string;
     port: number;
     ssh_user: string;
@@ -50,16 +57,23 @@ interface RuleRow {
 /** Server ids with a firewall change in flight, so two can't interleave. */
 const working = new Set<number>();
 
+/** Loads a server and answers 404 itself if it is missing or not on the caller's team. */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ServerRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const server = (await Server.find(req.params.id)) as ServerRow | null;
 
-    if (!server || server.user_id !== req.user?.userId) {
+    if (!server || Number(server.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Server not found." });
         return null;
     }
     return server;
 }
+
+/** The person making this request, for the log. */
+const actorOf = (req: TylixRequest) => Number(req.user?.userId);
 
 function targetFor(server: ServerRow): SshTarget {
     return {
@@ -94,6 +108,13 @@ function sameSpec(
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     router.get(
         "/api/servers/:id/firewall",
         auth(async (req, res) => {
@@ -106,7 +127,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/servers/:id/firewall",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const server = await findOwned(req, res);
             if (!server) return;
 
@@ -139,7 +160,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
             try {
                 const row = (await ServerFirewallRule.create({
-                    user_id: server.user_id,
+                    user_id: actorOf(req),
                     server_id: server.id,
                     ...input,
                     status: "pending",
@@ -156,7 +177,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 if (!applied.ok) {
                     await ServerFirewallRule.update(row.id, { status: "failed", error: applied.error ?? "" });
                     await ServerLogService.record({
-                        userId: server.user_id,
+                        userId: actorOf(req),
+                        teamId: Number(server.team_id),
                         serverId: server.id,
                         event: "firewall.rule_failed",
                         level: "error",
@@ -169,7 +191,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
                 await ServerFirewallRule.update(row.id, { status: "ready", error: "" });
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: actorOf(req),
+                    teamId: Number(server.team_id),
                     serverId: server.id,
                     event: "firewall.rule_added",
                     level: "success",
@@ -187,7 +210,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         "/api/servers/:id/firewall/:ruleId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const server = await findOwned(req, res);
             if (!server) return;
 
@@ -240,7 +263,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             if (sameSpec(rule, input)) {
                 await ServerFirewallRule.update(rule.id, { name: input.name });
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: actorOf(req),
+                    teamId: Number(server.team_id),
                     serverId: server.id,
                     event: "firewall.rule_renamed",
                     message: `Firewall rule "${rule.name}" renamed to "${input.name}".`,
@@ -274,7 +298,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
                 await ServerFirewallRule.update(rule.id, { ...input, status: "ready", error: "" });
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: actorOf(req),
+                    teamId: Number(server.team_id),
                     serverId: server.id,
                     event: "firewall.rule_updated",
                     level: "success",
@@ -294,7 +319,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         "/api/servers/:id/firewall/:ruleId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const server = await findOwned(req, res);
             if (!server) return;
 
@@ -335,7 +360,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
                 await ServerFirewallRule.delete(rule.id);
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: actorOf(req),
+                    teamId: Number(server.team_id),
                     serverId: server.id,
                     event: "firewall.rule_removed",
                     level: "warning",
@@ -352,7 +378,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/servers/:id/firewall/sync",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const server = await findOwned(req, res);
             if (!server) return;
 
@@ -366,7 +392,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 const { failed, enableError } = await syncFirewall(server, targetFor(server));
 
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: actorOf(req),
+                    teamId: Number(server.team_id),
                     serverId: server.id,
                     event: "firewall.synced",
                     level: failed > 0 || enableError ? "warning" : "success",
@@ -389,9 +416,9 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         }),
     );
 
-        router.post(
+    router.post(
         "/api/servers/:id/firewall/reset",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const server = await findOwned(req, res);
             if (!server) return;
 
@@ -405,7 +432,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 const { removed, failed, enableError } = await resetFirewall(server, targetFor(server));
 
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: actorOf(req),
+                    teamId: Number(server.team_id),
                     serverId: server.id,
                     event: "firewall.reset",
                     level: enableError || failed > 0 ? "error" : "warning",

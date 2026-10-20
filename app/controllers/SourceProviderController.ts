@@ -4,7 +4,8 @@
  * A connection to GitHub or GitLab, made with a personal access token.
  *   - the token is verified against the provider before it is saved
  *   - the token is stored encrypted and is NEVER returned
- *   - someone else's connection answers 404, not 403
+ *   - a connection on another team answers 404, not 403
+ *   - any team member can list them; adding, changing and removing need the admin role
  *
  * Do not re-run `make:feature SourceProvider`: it would overwrite this file.
  */
@@ -12,12 +13,14 @@
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "../services/CryptoService.js";
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 
 const KINDS = ["github", "gitlab"];
 
 interface Row {
     id: number;
     user_id: number;
+    team_id: number | null;
     kind: string;
     label: string;
     username: string;
@@ -68,9 +71,12 @@ async function verify(kind: string, token: string): Promise<Verified> {
 }
 
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Row | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const row = (await SourceProvider.find(req.params.id)) as Row | null;
 
-    if (!row || row.user_id !== req.user?.userId) {
+    if (!row || (await teamIdOfRow(row)) !== teamId) {
         res.status(404);
         res.json({ error: "Connection not found." });
         return null;
@@ -83,8 +89,12 @@ const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
 export class SourceProviderController {
     async index(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+
         const rows = (await SourceProvider.all()) as Row[];
-        const own = rows.filter((r) => r.user_id === req.user?.userId).sort((a, b) => b.id - a.id);
+        const flags = await Promise.all(rows.map(async (r) => (await teamIdOfRow(r)) === teamId));
+        const own = rows.filter((_, i) => flags[i]).sort((a, b) => b.id - a.id);
         return res.json(own.map(toPublic));
     }
 
@@ -95,6 +105,10 @@ export class SourceProviderController {
     }
 
     async store(req: TylixRequest, res: TylixResponse) {
+        const teamId = requireTeam(req, res);
+        if (!teamId) return;
+        if (!requireRole(req, res, "admin")) return;
+
         const body = (req.body ?? {}) as Record<string, unknown>;
         const kind = str(body.kind).toLowerCase();
         const label = str(body.label);
@@ -118,6 +132,7 @@ export class SourceProviderController {
 
         const row = (await SourceProvider.create({
             user_id: req.user?.userId,
+            team_id: teamId,
             kind,
             label,
             username: checked.username,
@@ -137,6 +152,7 @@ export class SourceProviderController {
     async update(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const label = str(body.label);
@@ -147,7 +163,8 @@ export class SourceProviderController {
             return res.json({ errors: { label: ["Give it a name of up to 60 characters."] } });
         }
 
-        const patch: Record<string, unknown> = { label };
+        // Stamp older rows with their team the first time they are saved.
+        const patch: Record<string, unknown> = { label, team_id: await teamIdOfRow(row) };
 
         // A blank token keeps the current one.
         if (token) {
@@ -169,6 +186,7 @@ export class SourceProviderController {
     async destroy(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
+        if (!requireRole(req, res, "admin")) return;
 
         await SourceProvider.delete(row.id);
         res.status(204);

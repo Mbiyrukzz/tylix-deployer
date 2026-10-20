@@ -4,16 +4,22 @@
  * Installs packages from the catalog (services/Installers.ts) on an existing
  * server over SSH. Re-runnable: installers skip finished components.
  * Progress is written to the server_tasks row, one step at a time.
+ *
+ * TEAMS: the task and its server must belong to the same team. Rows saved
+ * before every create path stamped team_id fall back to the creator's team
+ * (teamIdOfRow).
  */
 
 import { ServerTask } from "../models/ServerTask.js";
 import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { stepsForPackages, runInstallStep } from "../services/Installers.js";
+import { teamIdOfRow } from "../services/TeamScope.js";
 
 interface TaskRow {
     id: number;
     user_id: number;
+    team_id?: number | null;
     server_id: number;
     packages: string;
     step: string;
@@ -25,6 +31,7 @@ interface TaskRow {
 interface ServerRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     host: string;
     port: number;
     ssh_user: string;
@@ -45,7 +52,7 @@ export const InstallPackages = {
 
         try {
             const server = (await Server.find(task.server_id)) as ServerRow | null;
-            if (!server || server.user_id !== task.user_id) {
+            if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(task))) {
                 throw new Error("That server no longer exists.");
             }
 

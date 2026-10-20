@@ -1,15 +1,30 @@
+/**
+ * Supervisor workers on a server. Team-scoped: a server on another team
+ * answers 404. Any member can list workers and see whether they are running;
+ * creating, starting, stopping, restarting, reading logs and deleting need
+ * the admin role (they run commands as root over SSH).
+ *
+ * GET    /api/servers/:id/workers                       any member
+ * GET    /api/servers/:id/workers/status                any member
+ * POST   /api/servers/:id/workers                       admin
+ * POST   /api/servers/:id/workers/:wid/:action          admin: start | stop | restart
+ * GET    /api/servers/:id/workers/:wid/log              admin
+ * DELETE /api/servers/:id/workers/:wid                  admin
+ */
+
 import type { Router } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { ServerWorker } from "../models/ServerWorker.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { sshExec, type SshTarget } from "../services/Ssh.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
 type Res = Parameters<Handler>[1];
 
 interface ServerRow {
-    id: number; user_id: number; host: string; port: number; ssh_user: string; ssh_key: string;
+    id: number; user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string;
     [key: string]: unknown;
 }
 interface WorkerRow {
@@ -41,9 +56,13 @@ function asRoot(connectUser: string, script: string): string {
     return `${connectUser === "root" ? "" : "sudo -n "}sh -c ${sq(script)}`;
 }
 
+/** Loads a server and answers 404 itself if it is missing or not on the caller's team. */
 async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
+    const teamId = requireTeam(req as any, res as any);
+    if (!teamId) return null;
+
     const s = (await Server.find(req.params.id)) as ServerRow | null;
-    if (!s || s.user_id !== req.user?.userId) {
+    if (!s || Number(s.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Server not found." });
         return null;
@@ -51,9 +70,10 @@ async function ownedServer(req: Req, res: Res): Promise<ServerRow | null> {
     return s;
 }
 
+/** A worker belongs to the team of its server, so checking the server is enough. */
 async function ownedWorker(req: Req, res: Res, server: ServerRow): Promise<WorkerRow | null> {
     const w = (await ServerWorker.find(req.params.wid)) as WorkerRow | null;
-    if (!w || w.server_id !== server.id || w.user_id !== req.user?.userId) {
+    if (!w || w.server_id !== server.id) {
         res.status(404);
         res.json({ error: "Worker not found." });
         return null;
@@ -149,6 +169,13 @@ function parseStatus(out: string) {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     router.get("/api/servers/:id/workers", auth(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
@@ -172,7 +199,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(parseStatus(r.stdout));
     }));
 
-    router.post("/api/servers/:id/workers", auth(async (req, res) => {
+    router.post("/api/servers/:id/workers", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
 
@@ -211,7 +238,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json(worker);
     }));
 
-    router.post("/api/servers/:id/workers/:wid/:action", auth(async (req, res) => {
+    router.post("/api/servers/:id/workers/:wid/:action", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const worker = await ownedWorker(req, res, server);
@@ -238,7 +265,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ ok: true });
     }));
 
-    router.get("/api/servers/:id/workers/:wid/log", auth(async (req, res) => {
+    router.get("/api/servers/:id/workers/:wid/log", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const worker = await ownedWorker(req, res, server);
@@ -253,7 +280,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ log: r.stdout.trim() || "No output yet." });
     }));
 
-    router.delete("/api/servers/:id/workers/:wid", auth(async (req, res) => {
+    router.delete("/api/servers/:id/workers/:wid", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const worker = await ownedWorker(req, res, server);

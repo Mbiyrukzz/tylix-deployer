@@ -6,7 +6,7 @@
  *                                         already created (tag or label tylix-provision-<id>),
  *                                         so a retry never creates a second billable machine.
  * GET  /api/provisions/:id/root-password  returns the decrypted root password
- * POST /api/servers/:id/reboot            reboots a server over SSH (owner only)
+ * POST /api/servers/:id/reboot            reboots a server over SSH (admin only)
  *
  * Each of these writes an event to the server log. The root password is
  * never logged, only the fact that someone viewed it.
@@ -23,11 +23,13 @@ import { CryptoService } from "../services/CryptoService.js";
 import { ServerRebootService } from "../services/ServerRebootService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 type Handler = Parameters<Router["post"]>[1];
 
 interface RebootRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     host: string;
     port: number;
     ssh_user: string;
@@ -38,14 +40,24 @@ interface RebootRow {
 const rebooting = new Set<number>();
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res, next) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res, next);
+        });
+
     router.post(
         "/api/provisions/:id/retry",
-        auth(async (req, res) => {
+        write(async (req, res) => {
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
             const row = (await Provision.find(req.params.id)) as
-                | { id: number; user_id: number; status: string; server_id?: number }
+                | { id: number; user_id: number; team_id?: number | null; status: string; server_id?: number }
                 | null;
 
-            if (!row || row.user_id !== req.user?.userId) {
+            if (!row || (await teamIdOfRow(row)) !== teamId) {
                 res.status(404);
                 return res.json({ error: "Provision not found." });
             }
@@ -59,7 +71,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             await dispatch("ProvisionServer", { provisionId: row.id });
 
             await ServerLogService.record({
-                userId: row.user_id,
+                userId: Number(req.user?.userId),
                 provisionId: row.id,
                 serverId: Number(row.server_id) || null,
                 event: "provision.retried",
@@ -73,12 +85,15 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.get(
         "/api/provisions/:id/root-password",
-        auth(async (req, res) => {
+        write(async (req, res) => {
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
             const row = (await Provision.find(req.params.id)) as
-                | { id: number; user_id: number; server_id?: number; root_password?: string }
+                | { id: number; user_id: number; team_id?: number | null; server_id?: number; root_password?: string }
                 | null;
 
-            if (!row || row.user_id !== req.user?.userId) {
+            if (!row || (await teamIdOfRow(row)) !== teamId) {
                 res.status(404);
                 return res.json({ error: "Provision not found." });
             }
@@ -94,7 +109,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             }
 
             await ServerLogService.record({
-                userId: row.user_id,
+                userId: Number(req.user?.userId),
                 provisionId: row.id,
                 serverId: Number(row.server_id) || null,
                 event: "provision.root_password_viewed",
@@ -108,17 +123,20 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/servers/:id/reboot",
-        auth(async (req, res) => {
+        write(async (req, res) => {
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
             const server = (await Server.find(req.params.id)) as RebootRow | null;
 
-            if (!server || server.user_id !== req.user?.userId) {
+            if (!server || Number(server.team_id) !== teamId) {
                 res.status(404);
                 return res.json({ error: "Server not found." });
             }
 
             if (rebooting.has(server.id)) {
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: Number(req.user?.userId),
                     serverId: server.id,
                     event: "server.reboot.blocked",
                     level: "warning",
@@ -135,7 +153,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
             try {
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: Number(req.user?.userId),
                     serverId: server.id,
                     event: "server.reboot.requested",
                     message: "Reboot requested.",
@@ -150,7 +168,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
                 if (!result.ok) {
                     await ServerLogService.record({
-                        userId: server.user_id,
+                        userId: Number(req.user?.userId),
                         serverId: server.id,
                         event: "server.reboot.failed",
                         level: "error",
@@ -162,7 +180,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 }
 
                 await ServerLogService.record({
-                    userId: server.user_id,
+                    userId: Number(req.user?.userId),
                     serverId: server.id,
                     event: "server.reboot.sent",
                     level: "success",

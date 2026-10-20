@@ -25,8 +25,8 @@
  * PUT    /api/providers/:id/ips/:ipId                        { rdns }
  * DELETE /api/providers/:id/ips/:ipId
  *
- * Same rules as the domains routes: the connection must be the caller's (404
- * otherwise), credentials are decrypted here and never returned, and a token
+ * Same rules as the domains routes: the connection must be on the caller's team (404
+ * otherwise). Reading is open to every member; every change needs the admin role, credentials are decrypted here and never returned, and a token
  * that lacks access answers 403 with code "missing_access".
  */
 
@@ -61,11 +61,13 @@ import {
     normalizeRdns,
 } from "../validators/ResourceValidator.js";
 
+import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 type Handler = Parameters<Router["get"]>[1];
 
 interface ProviderRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     kind: string;
     api_token: string;
     credentials: string;
@@ -78,9 +80,12 @@ async function run(
     job: (adapter: ResourceAdapter, kind: string) => Promise<unknown>,
     success = 200,
 ): Promise<void> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return;
+
     const row = (await Provider.find(req.params.id)) as ProviderRow | null;
 
-    if (!row || row.user_id !== req.user?.userId) {
+    if (!row || (await teamIdOfRow(row)) !== teamId) {
         res.status(404);
         res.json({ error: "Provider connection not found." });
         return;
@@ -152,6 +157,13 @@ function invalid(res: TylixResponse, errors: Record<string, string[]>) {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+    // Admin-only: a route registered with write() answers 403 to a plain member.
+    const write = (handler: Handler): Handler =>
+        auth(async (req, res) => {
+            if (!requireRole(req as any, res as any, "admin")) return;
+            return handler(req, res);
+        });
+
     // ---- Machines ----
 
     router.get(
@@ -163,7 +175,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/machines/:machineId/:action",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const action = String(req.params.action);
             if (!validateMachineAction(action)) {
                 res.status(422);
@@ -191,7 +203,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/firewalls",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateFirewallCreate(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -202,7 +214,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         "/api/providers/:id/firewalls/:firewallId/rules",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateFirewallRules(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -213,7 +225,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         "/api/providers/:id/firewalls/:firewallId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(req, res, (adapter) => adapter.removeFirewall(String(req.params.firewallId)), 204);
         }),
     );
@@ -229,7 +241,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/volumes",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateVolumeCreate(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -240,7 +252,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/volumes/:volumeId/attach",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateMachineRef(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -256,14 +268,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/volumes/:volumeId/detach",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(req, res, (adapter) => adapter.detachVolume(String(req.params.volumeId)), 204);
         }),
     );
 
     router.delete(
         "/api/providers/:id/volumes/:volumeId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(req, res, (adapter) => adapter.removeVolume(String(req.params.volumeId)), 204);
         }),
     );
@@ -279,7 +291,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/images",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateImageCreate(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -290,7 +302,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         "/api/providers/:id/images/:imageId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateImageRename(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -301,7 +313,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         "/api/providers/:id/images/:imageId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(req, res, (adapter) => adapter.removeImage(String(req.params.imageId)), 204);
         }),
     );
@@ -317,7 +329,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.post(
         "/api/providers/:id/ips",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateIpAllocate(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -328,7 +340,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.put(
         "/api/providers/:id/ips/:ipId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             const result = validateRdns(req.body);
             if (!result.valid) return invalid(res, result.errors);
 
@@ -339,7 +351,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
     router.delete(
         "/api/providers/:id/ips/:ipId",
-        auth(async (req, res) => {
+        write(async (req, res) => {
             await run(req, res, (adapter) => adapter.removeIp(String(req.params.ipId)), 204);
         }),
     );

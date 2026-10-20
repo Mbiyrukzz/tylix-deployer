@@ -1,19 +1,24 @@
 /**
- * Feature: Site commands (owner-scoped)
+ * Feature: Site commands (team-scoped, admin only)
  *
- * A site that isn't the caller's answers 404, never 403. Commands can only be
- * run once the site is "ready". run() returns 202 right away and the work
- * continues in the background; the page polls GET /api/sites/:id/commands.
+ * A site that isn't on the caller's team answers 404, never 403. Commands
+ * run on the server as the site's user, so both listing (the output can
+ * contain secrets) and running need the admin role.
+ * Commands can only be run once the site is "ready". run() returns 202
+ * right away and the work continues in the background; the page polls
+ * GET /api/sites/:id/commands.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Site } from "../models/Site.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { SiteCommands, MAX_COMMAND_CHARS } from "../services/SiteCommands.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     domain: string;
     isolated_user: string;
@@ -24,9 +29,12 @@ interface SiteRow {
 const DIR = /^[A-Za-z0-9._\/-]+$/;
 
 async function findOwnedSite(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const site = (await Site.find(req.params.id)) as SiteRow | null;
 
-    if (!site || site.user_id !== req.user?.userId) {
+    if (!site || Number(site.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Site not found." });
         return null;
@@ -45,6 +53,7 @@ export class SiteCommandController {
     async index(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
 
         return res.json(SiteCommands.list(site.id).map(toPublic));
     }
@@ -53,6 +62,7 @@ export class SiteCommandController {
     async run(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
 
         if (site.status !== "ready") {
             res.status(409);
@@ -92,10 +102,13 @@ export class SiteCommandController {
             return res.json({ error: "A command is still running on this site. Wait for it to finish." });
         }
 
-        const run = SiteCommands.start(site, site.user_id, command, directory);
+        // The person who ran it, not the site's creator.
+        const actor = Number(req.user?.userId);
+        const run = SiteCommands.start(site, actor, command, directory);
 
         await ServerLogService.record({
-            userId: site.user_id,
+            userId: actor,
+            teamId: Number(site.team_id),
             serverId: site.server_id,
             event: "site.command_run",
             message: `Ran a command on ${site.domain}: ${command.split("\n")[0].slice(0, 120)}`,

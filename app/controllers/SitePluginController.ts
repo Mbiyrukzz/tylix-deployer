@@ -1,9 +1,11 @@
 /**
- * Feature: Site plugins (owner-scoped)
+ * Feature: Site plugins (team-scoped)
  *
- * A site that isn't the caller's answers 404, never 403. Installing and
- * removing return 202 right away and the work continues in the background.
- * The page polls GET /api/sites/:id/plugins for status and log.
+ * A site that isn't on the caller's team answers 404, never 403. Any team
+ * member can see the plugin list; installing and removing need the admin
+ * role. Installing and removing return 202 right away and the work
+ * continues in the background. The page polls GET /api/sites/:id/plugins
+ * for status and log.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -12,10 +14,12 @@ import { SitePlugin } from "../models/SitePlugin.js";
 import { canDeploy, type DeployRow } from "../services/SiteDeployer.js";
 import { getPlugin, pluginsFor, publicPlugin, type PluginDef } from "../services/SitePlugins.js";
 import { SitePluginInstaller, portOf } from "../services/SitePluginInstaller.js";
+import { requireTeam, requireRole } from "../services/TeamScope.js";
 
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     type: string;
     port: number;
@@ -26,6 +30,7 @@ interface SiteRow {
 interface PluginRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     site_id: number;
     server_id: number;
     plugin: string;
@@ -41,9 +46,12 @@ interface PluginRow {
 const STALE_MS = 20 * 60_000;
 
 async function findOwnedSite(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
+    const teamId = requireTeam(req, res);
+    if (!teamId) return null;
+
     const site = (await Site.find(req.params.id)) as SiteRow | null;
 
-    if (!site || site.user_id !== req.user?.userId) {
+    if (!site || Number(site.team_id) !== teamId) {
         res.status(404);
         res.json({ error: "Site not found." });
         return null;
@@ -112,6 +120,7 @@ export class SitePluginController {
     async install(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const id = String(((req.body ?? {}) as Record<string, unknown>).plugin ?? "");
         const def = getPlugin(id);
@@ -143,6 +152,7 @@ export class SitePluginController {
 
         const data = {
             user_id: req.user?.userId,
+            team_id: Number(site.team_id),
             site_id: site.id,
             server_id: site.server_id,
             plugin: def.id,
@@ -167,6 +177,7 @@ export class SitePluginController {
     async uninstall(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
 
         const def = getPlugin(String(req.params.plugin ?? ""));
         const rows = await rowsFor(site.id);

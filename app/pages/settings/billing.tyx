@@ -1,0 +1,199 @@
+page SettingsBilling
+
+title "Billing"
+
+state
+  loading: true
+  enforced: false
+  canManage: false
+  stateName: ""
+  planName: ""
+  statusText: ""
+  periodEnd: ""
+  cancelNote: false
+  rows: []
+  plans: []
+  error: ""
+
+action
+  describe(limit) {
+    if limit is null {
+      return "Unlimited"
+    }
+    return String(limit)
+  }
+
+  row(label, used, limit) {
+    let percent = 0
+    if limit is null {
+      percent = 0
+    } else if limit is 0 {
+      percent = 100
+    } else {
+      percent = Math.min(100, Math.round((used / limit) * 100))
+    }
+
+    let bar = "h-2 rounded-full bg-emerald-500"
+    if limit is not null and used >= limit {
+      bar = "h-2 rounded-full bg-amber-500"
+    }
+    if limit is not null and used > limit {
+      bar = "h-2 rounded-full bg-rose-500"
+    }
+
+    return {
+      label: label,
+      used: used,
+      limitText: this.describe(limit),
+      barClass: bar,
+      style: "width: " + percent + "%"
+    }
+  }
+
+  planSummary(limits) {
+    return this.describe(limits.members) + " members · " + this.describe(limits.servers) + " servers · " + this.describe(limits.sites) + " sites · " + this.describe(limits.providers) + " connections"
+  }
+
+  async load() {
+    const result = await useApi("/api/billing")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      const data = result.data
+      const ent = data.entitlement
+      const usage = data.usage
+      const limits = ent.limits
+
+      this.enforced = data.enforced
+      this.canManage = data.can_manage
+      this.stateName = ent.state
+      this.planName = ent.planName
+      this.statusText = ent.status
+      this.periodEnd = String(ent.periodEnd).slice(0, 10)
+      this.cancelNote = ent.cancelAtPeriodEnd
+
+      this.rows = [
+        this.row("Team members", usage.members, limits.members),
+        this.row("Servers", usage.servers, limits.servers),
+        this.row("Sites", usage.sites, limits.sites),
+        this.row("Provider connections", usage.providers, limits.providers)
+      ]
+
+      this.plans = data.plans.map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price_usd,
+        summary: this.planSummary(p.limits),
+        current: p.id is ent.plan
+      }))
+    } else {
+      this.error = result.data?.error or "Couldn't load billing."
+    }
+
+    this.loading = false
+  }
+
+onMount
+  async {
+    await this.load()
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="settings" />
+    <SettingsSidebar active="billing" />
+    <div class="min-w-0">
+    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Billing</h1>
+      <p class="text-slate-500 text-sm mb-8">Your team's plan and what it uses.</p>
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if not loading}}
+{{#if error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <div class="flex items-center gap-3 mb-2">
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">{{ planName }}</h2>
+{{#if stateName is "active"}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ statusText }}
+          </span>
+{{/if}}
+{{#if stateName is "lapsed"}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Ended
+          </span>
+{{/if}}
+{{#if stateName is "legacy"}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> No limits
+          </span>
+{{/if}}
+        </div>
+
+{{#if stateName is "legacy"}}
+        <p class="text-slate-500 text-sm">Your team has no plan yet, so nothing is limited. Plans are coming; you'll be able to choose one here.</p>
+{{/if}}
+{{#if stateName is "active"}}
+        <p class="text-slate-500 text-sm">Current period ends {{ periodEnd }}.</p>
+{{/if}}
+{{#if cancelNote}}
+        <p class="text-amber-700 dark:text-amber-500 text-sm mt-2">This plan won't renew. It stays active until the date above.</p>
+{{/if}}
+{{#if stateName is "lapsed"}}
+        <p class="text-rose-600 dark:text-rose-500 text-sm">Your plan has ended. Everything you have keeps running, but you can't add new servers, sites, connections or members until you renew.</p>
+{{/if}}
+{{#if not enforced}}
+        <p class="text-slate-500 text-xs mt-3">Limits are shown but not enforced yet.</p>
+{{/if}}
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-5">Usage</h2>
+        <div class="space-y-5">
+{{#each r in rows}}
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-slate-700 dark:text-slate-300 text-sm font-medium">{{ r.label }}</span>
+              <span class="text-slate-500 text-sm font-mono">{{ r.used }} / {{ r.limitText }}</span>
+            </div>
+            <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div class="{{ r.barClass }}" style="{{ r.style }}"></div>
+            </div>
+          </div>
+{{/each}}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Plans</h2>
+        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each p in plans}}
+          <div class="flex items-center justify-between gap-4 py-3">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ p.name }} · ${{ p.price }}/month</p>
+              <p class="text-slate-500 text-xs">{{ p.summary }}</p>
+            </div>
+{{#if p.current}}
+            <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 shrink-0">Current</span>
+{{/if}}
+          </div>
+{{/each}}
+        </div>
+        <p class="text-slate-500 text-xs mt-4">Choosing and paying for a plan comes with Paystack in the next step.</p>
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

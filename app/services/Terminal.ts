@@ -10,7 +10,8 @@
  *
  * Until a valid ticket arrives the socket is unauthenticated and everything
  * else is ignored; it is closed after 10 seconds. After auth the site or
- * server is re-read from the database and must belong to the ticket's user.
+ * server is re-read from the database and must belong to the same team as
+ * the ticket's user.
  *
  * Two kinds of session, chosen by the ticket:
  *   site terminal    ssh -tt to the site's server, as the site's isolated
@@ -34,6 +35,7 @@ import { join } from "node:path";
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { serverTarget } from "./Shell.js";
+import { teamIdOfRow } from "./TeamScope.js";
 import { verifyTicket, terminalConfigured } from "./TerminalTicket.js";
 import type { TicketPayload } from "./TerminalTicket.js";
 
@@ -57,6 +59,7 @@ export interface ChannelHost {
 interface SiteRow {
     id: number;
     user_id: number;
+    team_id: number | null;
     server_id: number;
     domain: string;
     isolated_user: string;
@@ -66,6 +69,7 @@ interface SiteRow {
 
 interface ServerRecord {
     user_id: number;
+    team_id: number | null;
     host: string;
     port: number;
     ssh_user: string;
@@ -164,6 +168,14 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
     s.counted = true;
     perUser.set(ticket.u, open + 1);
 
+    // The ticket's user decides which team this terminal belongs to.
+    const userTeam = await teamIdOfRow({ user_id: ticket.u });
+    if (s.finished) return;
+    if (!userTeam) {
+        finish(ws, s, "Your team couldn't be loaded. Click Connect again.");
+        return;
+    }
+
     let server: ServerRecord | null;
     let command: string;
     let label: string;
@@ -172,7 +184,7 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
         // ---- server terminal ----
         server = (await Server.find(ticket.v)) as ServerRecord | null;
         if (s.finished) return;
-        if (!server || server.user_id !== ticket.u) {
+        if (!server || (await teamIdOfRow(server)) !== userTeam) {
             finish(ws, s, "Server not found.");
             return;
         }
@@ -183,7 +195,7 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
         // ---- site terminal ----
         const site = (await Site.find(ticket.s)) as SiteRow | null;
         if (s.finished) return;
-        if (!site || site.user_id !== ticket.u || site.status !== "ready") {
+        if (!site || site.status !== "ready" || (await teamIdOfRow(site)) !== userTeam) {
             finish(ws, s, "Site not found.");
             return;
         }
@@ -194,7 +206,7 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
 
         server = (await Server.find(site.server_id)) as ServerRecord | null;
         if (s.finished) return;
-        if (!server) {
+        if (!server || (await teamIdOfRow(server)) !== userTeam) {
             finish(ws, s, "The server no longer exists.");
             return;
         }
@@ -251,7 +263,7 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
 
     s.idle = setTimeout(() => finish(ws, s, "Closed after 15 minutes of inactivity."), IDLE_MS);
 
-    console.log(`[terminal] opened ${label} for user ${ticket.u}`);
+    console.log(`[terminal] opened ${label} for user ${ticket.u} (team ${userTeam})`);
 }
 
 function bumpIdle(ws: Socket, s: Session): void {

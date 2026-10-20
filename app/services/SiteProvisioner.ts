@@ -13,6 +13,9 @@
  *
  * Every script is idempotent, so a failed site can be re-run later.
  *
+ * The server and the source control connection must belong to the same team
+ * as the site, like in SiteDeployer.
+ *
  * ASSUMPTION: sshExec(server, script) runs `script` through `bash -s` as the
  * server's ssh_user and resolves with { code, stdout, stderr }. The ssh user
  * is root or has passwordless sudo.
@@ -25,9 +28,12 @@ import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
 import { getType, isPhp } from "./SiteTypes.js";
 import { serverTarget } from "./Shell.js";
+import { teamIdOfRow } from "./TeamScope.js";
 
 interface SiteRow {
     id: number;
+    user_id: number;
+    team_id: number | null;
     server_id: number;
     source_control_id: number;
     type: string;
@@ -44,6 +50,12 @@ interface SiteRow {
     build_command: string;
     start_command: string;
     install_deps: number | boolean;
+    [key: string]: unknown;
+}
+
+interface ServerRow {
+    user_id: number;
+    team_id: number | null;
     [key: string]: unknown;
 }
 
@@ -532,21 +544,26 @@ export class SiteProvisioner {
             const site = (await Site.find(siteId)) as SiteRow | null;
             if (!site) return;
 
-            const server = await Server.find(site.server_id);
-            if (!server) throw new Error("The server no longer exists.");
+            const server = (await Server.find(site.server_id)) as ServerRow | null;
+            if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+                throw new Error("The server no longer exists.");
+            }
 
             let source: Source | null = null;
             if (Number(site.source_control_id) !== 0) {
                 // The column is `token` (encrypted), not api_token.
                 const sc = (await SourceProvider.find(site.source_control_id)) as
-                    | { kind: string; token: string }
+                    | { user_id: number; team_id?: number | null; kind: string; token: string }
                     | null;
-                if (!sc) throw new Error("The source control connection no longer exists.");
+                if (!sc || (await teamIdOfRow(sc)) !== (await teamIdOfRow(site))) {
+                    throw new Error("The source control connection no longer exists.");
+                }
                 source = { kind: sc.kind, token: CryptoService.decrypt(sc.token) };
             }
 
             const token = source?.token ?? "";
             const mask = (text: string) => (token ? text.split(token).join("***") : text);
+            const target = serverTarget(server as never);
 
             await Site.update(siteId, { status: "creating", step: "user", error: "", log: "" });
 
@@ -554,7 +571,8 @@ export class SiteProvisioner {
                 await Site.update(siteId, { step: phase.step });
                 log += `==> ${phase.title}\n`;
 
-const result = await sshExec(serverTarget(server as never), phase.script, 20 * 60_000);                const out = mask([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
+                const result = await sshExec(target, phase.script, 20 * 60_000);
+                const out = mask([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
                 if (out) log += out + "\n";
                 log += "\n";
                 await Site.update(siteId, { log });
