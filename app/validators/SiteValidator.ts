@@ -137,7 +137,7 @@ export function normalizeSite(data: unknown): NormalizedSite {
         aliases: cleanAliases(b),
         isolated_user: deriveUser(b, domain),
         php_version: info && info.runtime === "php" ? text(b.php_version) : "",
-        port: info && (info.runtime === "node" || info.runtime === "mern") ? Number(text(b.port)) || 0 : 0,
+        port: needsPort(type) ? Number(text(b.port)) || 0 : 0,
         repository: sourceControlId !== 0 ? text(b.repository) : "",
         branch: sourceControlId !== 0 ? text(b.branch) || "main" : "",
         web_directory: pick(cleanDir(b.web_directory), d?.web_directory),

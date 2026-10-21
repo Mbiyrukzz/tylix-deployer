@@ -4,7 +4,7 @@
  *   pull     git pull --ff-only (token passed through git's env config)
  *   env      writes the saved env to the site's .env (mode 600)
  *   script   runs the deployment script as the isolated user
- *   restart  restarts the Node service, or reloads php-fpm
+ *   restart  restarts the app service (node, mern, python, java), or reloads php-fpm
  *
  * run() never throws; failures are saved on the row.
  */
@@ -18,7 +18,6 @@ import { sshExec } from "./Ssh.js";
 import { getType } from "./SiteTypes.js";
 import { shellScript, serverTarget } from "./Shell.js";
 import { teamIdOfRow } from "./TeamScope.js";
-
 
 export interface DeployRow {
     id: number;
@@ -67,6 +66,7 @@ function envDirFor(site: DeployRow): string | null {
     if (runtime === "php") return "";
     if (runtime === "node") return s(site.app_directory);
     if (runtime === "mern") return s(site.backend_directory);
+    if (runtime === "python" || runtime === "java") return s(site.app_directory);
     return null;
 }
 
@@ -76,6 +76,35 @@ export function envPathFor(site: DeployRow): string {
     if (dir === null) return "";
     const root = `/home/${site.isolated_user}/${site.domain}`;
     return dir ? `${root}/${dir}/.env` : `${root}/.env`;
+}
+
+/**
+ * Wraps deploy steps so a failure rolls the code back to the previous commit
+ * and re-runs the same steps there. (Node, static, python and java deploys.)
+ */
+function guarded(steps: string[]): string {
+    const body = steps.join("\n");
+    return `cd "$SITE_ROOT"
+SITE_USER="$(id -un)"
+PREV="$(cat "/home/$SITE_USER/.prev-head-$SITE_USER" 2>/dev/null || true)"
+
+redo() {
+${body}
+}
+
+rollback() {
+  set +e
+  trap - ERR
+  echo "Deployment failed, rolling back." >&2
+  if [ -n "$PREV" ]; then
+    git reset --keep "$PREV" >&2 && ( redo ) >&2
+  fi
+  echo "Command failed (exit $1): $2. Code rolled back to the previous version." >&2
+  exit "$1"
+}
+trap 'rc=$?; cmd=$BASH_COMMAND; rollback "$rc" "$cmd"' ERR
+
+redo`;
 }
 
 export function defaultDeployScript(site: DeployRow): string {
@@ -90,7 +119,7 @@ export function defaultDeployScript(site: DeployRow): string {
     const composer = `COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }
 php$PHP_VERSION -d error_reporting=22527 "$COMPOSER_BIN" install --no-dev --no-interaction --prefer-dist --optimize-autoloader`;
 
-     if (site.type === "laravel") {
+    if (site.type === "laravel") {
         return `cd "$SITE_ROOT"
 SITE_USER="$(id -un)"
 PREV="$(cat "/home/$SITE_USER/.prev-head-$SITE_USER" 2>/dev/null || true)"
@@ -135,6 +164,7 @@ DOWN=0
 
 echo "Deployment completed."`;
     }
+
     if (site.type === "wordpress") {
         return `echo "Nothing to deploy for this site type."`;
     }
@@ -143,10 +173,36 @@ echo "Deployment completed."`;
         return [`cd "$SITE_ROOT"`, `if [ -f composer.json ]; then`, composer, `fi`].join("\n");
     }
 
-       if (runtime === "mern") {
+    if (runtime === "mern") {
         const lines = [cd(s(site.backend_directory)), npmInstall, "", cd(s(site.app_directory)), npmInstall];
         if (build) lines.push(build);
         return guarded(lines);
+    }
+
+    if (runtime === "python") {
+        // gunicorn (django) or uvicorn + gunicorn (fastapi) are installed here as a safety net,
+        // in case the project's requirements.txt doesn't list them.
+        const server = site.type === "fastapi" ? "'uvicorn[standard]' gunicorn" : "gunicorn";
+        const lines = [
+            cd(s(site.app_directory)),
+            `command -v python3 >/dev/null && python3 -c 'import venv, ensurepip' 2>/dev/null || { echo "Python 3 with venv is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }`,
+            `[ -d .venv ] || python3 -m venv .venv`,
+            `.venv/bin/pip install --upgrade pip wheel`,
+            `if [ -f requirements.txt ]; then .venv/bin/pip install -r requirements.txt; fi`,
+            `.venv/bin/pip install ${server}`,
+        ];
+        if (build) lines.push(build);
+        return guarded(lines);
+    }
+
+    if (runtime === "java") {
+        // An empty build command auto-detects the wrapper or system Maven.
+        const autodetect = `if [ -f mvnw ]; then sh mvnw -B -DskipTests package; elif [ -f gradlew ]; then sh gradlew build -x test; else mvn -B -DskipTests package; fi`;
+        return guarded([
+            cd(s(site.app_directory)),
+            `command -v java >/dev/null && command -v javac >/dev/null || { echo "The JDK is not installed on this server. Install Java from the server's Packages page, then deploy again." >&2; exit 1; }`,
+            build || autodetect,
+        ]);
     }
 
     // node and static
@@ -154,31 +210,6 @@ echo "Deployment completed."`;
     if (build) lines.push(build);
     return guarded(lines);
 }
-
-    const guarded = (steps: string[]) => {
-        const body = steps.join("\n");
-        return `cd "$SITE_ROOT"
-SITE_USER="$(id -un)"
-PREV="$(cat "/home/$SITE_USER/.prev-head-$SITE_USER" 2>/dev/null || true)"
-
-redo() {
-${body}
-}
-
-rollback() {
-  set +e
-  trap - ERR
-  echo "Deployment failed, rolling back." >&2
-  if [ -n "$PREV" ]; then
-    git reset --keep "$PREV" >&2 && ( redo ) >&2
-  fi
-  echo "Command failed (exit $1): $2. Code rolled back to the previous version." >&2
-  exit "$1"
-}
-trap 'rc=$?; cmd=$BASH_COMMAND; rollback "$rc" "$cmd"' ERR
-
-redo`;
-    };
 
 // The deploy_log column is TEXT-sized (64 KB in bytes). Keep the tail, because
 // that is where the error is, and stay under the limit even for 4-byte chars.
@@ -376,7 +407,9 @@ echo "Deployment script finished"`,
     });
 
     // ---- restart ----
-    if ((runtime === "node" || runtime === "mern") && s(site.start_command) !== "") {
+    const appRuntime = runtime === "node" || runtime === "mern" || runtime === "python" || runtime === "java";
+
+    if (appRuntime && s(site.start_command) !== "") {
         phases.push({
             title: "Restarting the app",
             script: shellScript(
@@ -412,7 +445,7 @@ echo "PHP-FPM reloaded"`,
         });
     }
 
-        const pluginScript = pluginRestartScript(plugins);
+    const pluginScript = pluginRestartScript(plugins);
     if (pluginScript) {
         phases.push({
             title: "Restarting plugin services",
@@ -454,22 +487,22 @@ export class SiteDeployer {
             if (!site) return;
 
             const server = (await Server.find(site.server_id)) as
-    | { user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string }
-    | null;
-if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
-    throw new Error("The server no longer exists.");
-}
+                | { user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string }
+                | null;
+            if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+                throw new Error("The server no longer exists.");
+            }
 
-let source: { kind: string; token: string } | null = null;
-if (Number(site.source_control_id) !== 0) {
-    const sc = (await SourceProvider.find(site.source_control_id)) as
-        | { user_id: number; team_id?: number | null; kind: string; token: string }
-        | null;
-    if (!sc || (await teamIdOfRow(sc)) !== (await teamIdOfRow(site))) {
-        throw new Error("The source control connection no longer exists.");
-    }
-    source = { kind: sc.kind, token: CryptoService.decrypt(sc.token) };
-}
+            let source: { kind: string; token: string } | null = null;
+            if (Number(site.source_control_id) !== 0) {
+                const sc = (await SourceProvider.find(site.source_control_id)) as
+                    | { user_id: number; team_id?: number | null; kind: string; token: string }
+                    | null;
+                if (!sc || (await teamIdOfRow(sc)) !== (await teamIdOfRow(site))) {
+                    throw new Error("The source control connection no longer exists.");
+                }
+                source = { kind: sc.kind, token: CryptoService.decrypt(sc.token) };
+            }
 
             const token = source?.token ?? "";
             const mask = (text: string) => (token ? text.split(token).join("***") : text);
@@ -477,7 +510,7 @@ if (Number(site.source_control_id) !== 0) {
 
             await save({ deploy_status: "deploying" });
 
-                        const installed = ((await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[])
+            const installed = ((await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[])
                 .filter((r) => Number(r.site_id) === siteId && r.status === "installed")
                 .map((r) => r.plugin);
 

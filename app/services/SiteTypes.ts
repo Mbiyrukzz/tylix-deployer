@@ -7,9 +7,11 @@
  *   node    one Node process behind an nginx proxy (tylix, nextjs, nodejs)
  *   mern    React build served by nginx + Node API on a port, /api proxied
  *   static  files served by nginx, optionally built first (angular, static)
+ *   python  virtualenv + gunicorn/uvicorn on a port behind an nginx proxy (fastapi, django)
+ *   java    a built jar (Maven or Gradle) on a port behind an nginx proxy (java)
  */
 
-export type Runtime = "php" | "node" | "mern" | "static";
+export type Runtime = "php" | "node" | "mern" | "static" | "python" | "java";
 
 export interface SiteTypeDefaults {
     web_directory: string;
@@ -80,6 +82,38 @@ export const SITE_TYPES: SiteTypeInfo[] = [
         defaults: defaults({ build_command: "npm run build", start_command: "npm start" }),
     },
     {
+        id: "fastapi",
+        label: "FastAPI",
+        description: "FastAPI in its own virtualenv, run by uvicorn as a service behind nginx.",
+        runtime: "python",
+        usesRepository: true,
+        defaults: defaults({
+            start_command: ".venv/bin/uvicorn main:app --host 127.0.0.1 --port $PORT --proxy-headers --forwarded-allow-ips 127.0.0.1",
+        }),
+    },
+    {
+        id: "django",
+        label: "Django",
+        description: "Django in its own virtualenv, run by gunicorn behind nginx. nginx serves /static/ from STATIC_ROOT.",
+        runtime: "python",
+        usesRepository: true,
+        defaults: defaults({
+            web_directory: "staticfiles",
+            build_command: ".venv/bin/python manage.py migrate --noinput && .venv/bin/python manage.py collectstatic --noinput",
+            start_command: ".venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:$PORT --workers 3",
+        }),
+    },
+    {
+        id: "java",
+        label: "Java API (Spring Boot)",
+        description: "A Java API built with Maven or Gradle and run as a jar service behind nginx.",
+        runtime: "java",
+        usesRepository: true,
+        defaults: defaults({
+            start_command: "java -Xmx512m -jar target/*.jar --server.port=$PORT",
+        }),
+    },
+    {
         id: "wordpress",
         label: "WordPress",
         description: "Downloads the latest WordPress and creates its database.",
@@ -126,8 +160,12 @@ export function getType(id: string): SiteTypeInfo | undefined {
 
 export const isPhp = (id: string) => getType(id)?.runtime === "php";
 
-/** Types that run a Node process on a port. */
+export const isPython = (id: string) => getType(id)?.runtime === "python";
+
+export const isJava = (id: string) => getType(id)?.runtime === "java";
+
+/** Types that run a process on a port (node, mern API, python, java). */
 export const needsPort = (id: string) => {
     const runtime = getType(id)?.runtime;
-    return runtime === "node" || runtime === "mern";
+    return runtime === "node" || runtime === "mern" || runtime === "python" || runtime === "java";
 };

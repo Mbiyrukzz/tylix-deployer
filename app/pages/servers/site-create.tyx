@@ -22,6 +22,9 @@ state
   type: "tylix"
   usesPhp: false
   usesNode: true
+  usesApp: true
+  usesPython: false
+  usesJava: false
   usesRepo: true
   isMern: false
   isAngular: false
@@ -68,6 +71,9 @@ action
     this.type = value
     this.usesPhp = false
     this.usesNode = false
+    this.usesApp = false
+    this.usesPython = false
+    this.usesJava = false
     this.usesRepo = true
     this.isMern = false
     this.isAngular = false
@@ -80,6 +86,7 @@ action
 
     if value is "tylix" {
       this.usesNode = true
+      this.usesApp = true
       this.buildCommand = "npm run build"
       this.startCommand = "npm start"
     } else if value is "laravel" {
@@ -95,13 +102,31 @@ action
       this.resetSource()
     } else if value is "nodejs" {
       this.usesNode = true
+      this.usesApp = true
       this.startCommand = "npm start"
     } else if value is "nextjs" {
       this.usesNode = true
+      this.usesApp = true
       this.buildCommand = "npm run build"
       this.startCommand = "npm start"
+    } else if value is "fastapi" {
+      this.usesApp = true
+      this.usesPython = true
+      this.startCommand = ".venv/bin/uvicorn main:app --host 127.0.0.1 --port $PORT --proxy-headers --forwarded-allow-ips 127.0.0.1"
+    } else if value is "django" {
+      this.usesApp = true
+      this.usesPython = true
+      this.showWebDir = true
+      this.webDirectory = "staticfiles"
+      this.buildCommand = ".venv/bin/python manage.py migrate --noinput && .venv/bin/python manage.py collectstatic --noinput"
+      this.startCommand = ".venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:$PORT --workers 3"
+    } else if value is "java" {
+      this.usesApp = true
+      this.usesJava = true
+      this.startCommand = "java -Xmx512m -jar target/*.jar --server.port=$PORT"
     } else if value is "mern" {
       this.usesNode = true
+      this.usesApp = true
       this.isMern = true
       this.appDirectory = "client"
       this.backendDirectory = "server"
@@ -330,6 +355,9 @@ template
             <option value="php">PHP</option>
             <option value="nodejs">Node.js (NPM)</option>
             <option value="nextjs">Next.js</option>
+            <option value="fastapi">FastAPI</option>
+            <option value="django">Django</option>
+            <option value="java">Java API (Spring Boot)</option>
             <option value="wordpress">WordPress</option>
             <option value="mern">MERN (React + Node API)</option>
             <option value="angular">Angular</option>
@@ -343,6 +371,15 @@ template
 {{/if}}
 {{#if isAngular}}
           <p class="text-slate-500 text-xs mt-2">Built on the server with npm and served as a single-page app.</p>
+{{/if}}
+{{#if usesPython}}
+          <p class="text-slate-500 text-xs mt-2">Runs in its own virtualenv. The first deploy installs requirements.txt and starts the app. Needs Python from the Packages page.</p>
+{{/if}}
+{{#if type is "django"}}
+          <p class="text-slate-500 text-xs mt-2">Runs under gunicorn. The web directory is your STATIC_ROOT, served by nginx at /static/.</p>
+{{/if}}
+{{#if usesJava}}
+          <p class="text-slate-500 text-xs mt-2">Built with Maven or Gradle on the server and run as a jar. Needs Java from the Packages page.</p>
 {{/if}}
         </div>
 
@@ -376,7 +413,7 @@ template
         </div>
 {{/if}}
 
-{{#if usesNode}}
+{{#if usesApp}}
         <div>
           <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">App port</label>
           <input type="text" autocomplete="off" value="{{ port }}" oninput="{{ port = $event.target.value }}" placeholder="Auto (first free port from 3000)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
@@ -510,16 +547,24 @@ template
           <p class="text-slate-500 text-xs mt-2">The Node API. The start command runs here. Add its .env on the server after creating the site.</p>
         </div>
 {{/if}}
+{{/if}}
 
+{{#if usesApp}}
         <div>
           <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Build command</label>
           <input type="text" autocomplete="off" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+{{#if usesJava}}
+          <p class="text-slate-500 text-xs mt-2">Leave empty to auto-detect mvnw, gradlew or mvn. Gradle: sh gradlew bootJar -x test.</p>
+{{/if}}
+{{#if usesPython}}
+          <p class="text-slate-500 text-xs mt-2">Runs after pip install on every deploy, inside the site folder (use .venv/bin/python).</p>
+{{/if}}
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Start command</label>
           <input type="text" autocomplete="off" value="{{ startCommand }}" oninput="{{ startCommand = $event.target.value }}" placeholder="npm start" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">Runs as the isolated user under systemd and restarts if it crashes.</p>
+          <p class="text-slate-500 text-xs mt-2">Runs as the isolated user under systemd and restarts if it crashes. Listen on $PORT.</p>
         </div>
 {{/if}}
 {{#if isAngular}}

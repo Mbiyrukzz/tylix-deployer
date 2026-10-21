@@ -6,9 +6,11 @@
  *   clone      git clone from GitHub or GitLab
  *   wordpress  download WordPress (wordpress type only)
  *   database   MySQL database + wp-config.php (wordpress type only)
- *   install    composer install / npm install
+ *   install    composer install / npm install (python and java: runtime check only)
  *   build      npm build (angular, mern client, tylix, nextjs)
- *   service    systemd unit running the Node app (node and mern types)
+ *   service    systemd unit running the app (node, mern, python and java types).
+ *              Node apps are started now; python and java apps are built and
+ *              started by the first deploy.
  *   webserver  php-fpm pool (php types) + nginx vhost, tested before reload
  *
  * Every script is idempotent, so a failed site can be re-run later.
@@ -188,9 +190,22 @@ function vhost(site: SiteRow, aliases: string[]): string {
         );
     }
 
-    if (runtime === "node") {
+    if (runtime === "node" || runtime === "python" || runtime === "java") {
+        // Django collects static files into web_directory (STATIC_ROOT); nginx serves them directly.
+        const statics =
+            site.type === "django" && s(site.web_directory) !== ""
+                ? `
+    location /static/ {
+        alias __DOC_ROOT__/;
+        expires 30d;
+        access_log off;
+    }
+`
+                : "";
+
         return (
             head +
+            statics +
             `
     location / {
         ${PROXY_HEADERS(Number(site.port))}
@@ -365,6 +380,35 @@ echo "Database $DB_NAME ready and wp-config.php written"`,
         });
     }
 
+    // ---- python / java: only check the runtime here. The first deploy does the
+    // virtualenv, pip and build work, because that needs the .env to exist. ----
+
+    if (runtime === "python" && hasRepo) {
+        phases.push({
+            step: "install",
+            title: "Checking Python",
+            script: script(
+                base,
+                `
+command -v python3 >/dev/null 2>&1 && python3 -c 'import venv, ensurepip' 2>/dev/null || { echo "Python 3 with venv isn't installed on this server. Install it from the Packages page, then create the site again." >&2; exit 1; }
+echo "$(python3 --version) is available"`,
+            ),
+        });
+    }
+
+    if (runtime === "java" && hasRepo) {
+        phases.push({
+            step: "install",
+            title: "Checking Java",
+            script: script(
+                base,
+                `
+command -v java >/dev/null 2>&1 && command -v javac >/dev/null 2>&1 || { echo "The JDK isn't installed on this server. Install Java from the Packages page, then create the site again." >&2; exit 1; }
+java -version 2>&1 | head -n 1`,
+            ),
+        });
+    }
+
     // ---- install / build ----
 
     if (isPhp(site.type) && site.type !== "wordpress" && doInstall) {
@@ -422,13 +466,36 @@ fi`,
         });
     }
 
-    // ---- node service ----
+    // ---- app service (node, mern, python, java) ----
 
-    if ((runtime === "node" || runtime === "mern") && hasRepo && s(site.start_command) !== "") {
+    const appRuntime = runtime === "node" || runtime === "mern" || runtime === "python" || runtime === "java";
+
+    if (appRuntime && hasRepo && s(site.start_command) !== "") {
         const workSnippet = runtime === "mern" ? BACKEND_WORK : APP_WORK;
+        // Python and java apps aren't built yet, so the unit is enabled but not
+        // started. The first deploy builds the app and starts it.
+        const startNow = runtime === "node" || runtime === "mern";
+        const extraUnit =
+            runtime === "python"
+                ? "Environment=PYTHONUNBUFFERED=1"
+                : runtime === "java"
+                  ? "SuccessExitStatus=143"
+                  : "Environment=NODE_ENV=production";
+
+        const afterEnable = startNow
+            ? `$SUDO systemctl restart "$UNIT"
+sleep 3
+if $SUDO systemctl is-active --quiet "$UNIT"; then
+  echo "App is running on port $PORT"
+else
+  echo "WARNING: the app did not stay up. Last log lines:"
+  $SUDO journalctl -u "$UNIT" -n 15 --no-pager || true
+fi`
+            : `echo "Service $UNIT created. It starts after the first deploy (add your .env on the Deployment tab first)."`;
+
         phases.push({
             step: "service",
-            title: "Starting the app",
+            title: startNow ? "Starting the app" : "Creating the app service",
             script: script(
                 base,
                 `
@@ -450,7 +517,7 @@ After=network.target
 [Service]
 Type=simple
 User=$SITE_USER
-Environment=NODE_ENV=production
+${extraUnit}
 Environment=PORT=$PORT
 ExecStart=/bin/bash $RUNNER
 Restart=on-failure
@@ -461,14 +528,7 @@ WantedBy=multi-user.target
 UNIT_CONF
 $SUDO systemctl daemon-reload
 $SUDO systemctl enable "$UNIT" >/dev/null 2>&1
-$SUDO systemctl restart "$UNIT"
-sleep 3
-if $SUDO systemctl is-active --quiet "$UNIT"; then
-  echo "App is running on port $PORT"
-else
-  echo "WARNING: the app did not stay up. Last log lines:"
-  $SUDO journalctl -u "$UNIT" -n 15 --no-pager || true
-fi`,
+${afterEnable}`,
             ),
         });
     }

@@ -129,6 +129,27 @@ $APT install nodejs
 
 const TOOLS = once("tools", "Installing git and build tools", `$APT install git build-essential`);
 
+// Python 3 with venv/pip and the headers most wheels need to compile (PostgreSQL
+// driver, cryptography, Pillow). Used by FastAPI and Django sites: each site gets
+// its own virtualenv, so nothing is installed system-wide with pip.
+// MySQL client headers are left out on purpose: they can clash with the mysql.com
+// packages. Use PyMySQL, or install default-libmysqlclient-dev by hand for mysqlclient.
+const PYTHON = once(
+    "python",
+    "Installing Python 3",
+    `$APT install python3 python3-venv python3-pip python3-dev build-essential pkg-config libpq-dev libffi-dev libssl-dev libjpeg-dev zlib1g-dev
+python3 -c "import venv, ensurepip"`,
+);
+
+// OpenJDK 21 (the JDK, not just the JRE, so Maven/Gradle can compile) and Maven.
+// Spring projects that ship mvnw or gradlew use their wrapper; unzip is needed by gradlew.
+const JAVA = once(
+    "java",
+    "Installing Java 21 and Maven",
+    `$APT install openjdk-21-jdk-headless maven unzip
+[[ "$(javac -version 2>&1)" == *"21"* ]]`,
+);
+
 // UFW goes last. The server's real SSH port is allowed before the firewall is
 // switched on (servers added by hand may not use 22).
 const UFW = once(
@@ -169,7 +190,7 @@ export function installStepsFor(template: string): InstallStep[] {
 
     if (template === "tylix") {
         return [
-            BASE, NGINX, MYSQL, REDIS, SUPERVISOR, POSTGRES, MONGO, NODE, TOOLS, UFW,
+            BASE, NGINX, MYSQL, REDIS, SUPERVISOR, POSTGRES, MONGO, NODE, TOOLS, PYTHON, JAVA, UFW,
             verify(["nginx", "mysql", "redis-server", "supervisor", "mongod"], true),
         ];
     }
@@ -239,6 +260,8 @@ export const PACKAGES: PackageDef[] = [
     { id: "composer", label: "Composer", group: "PHP", needs: ["base"], step: COMPOSER },
     { id: "node", label: "Node.js 22", group: "Node", needs: ["base"], step: NODE },
     { id: "pm2", label: "PM2", group: "Node", needs: ["base", "node"], step: PM2 },
+    { id: "python", label: "Python 3 (venv, pip, build deps)", group: "Python", needs: ["base"], step: PYTHON },
+    { id: "java", label: "Java 21 + Maven", group: "Java", needs: ["base"], step: JAVA },
     { id: "nginx", label: "nginx", group: "Web", needs: ["base"], step: NGINX },
     { id: "certbot", label: "Certbot (SSL)", group: "Web", needs: ["base", "nginx"], step: CERTBOT },
     { id: "mysql", label: "MySQL 8.4", group: "Databases", needs: ["base"], step: MYSQL },
@@ -287,6 +310,8 @@ const CHECKS: Record<string, string> = {
     composer: "command -v composer",
     node: "command -v node",
     pm2: "command -v pm2",
+    python: "dpkg -s python3-venv && dpkg -s python3-dev",
+    java: "command -v javac && command -v mvn",
     nginx: "command -v nginx",
     certbot: "command -v certbot",
     mysql: "command -v mysqld",

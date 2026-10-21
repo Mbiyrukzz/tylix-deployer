@@ -47,7 +47,10 @@ export interface PluginDef {
     uninstall: (c: PluginContext) => string;
 }
 
-const ALL = ["tylix", "laravel", "php", "nodejs", "nextjs", "wordpress", "mern", "angular", "react", "static"];
+const ALL = [
+    "tylix", "laravel", "php", "nodejs", "nextjs", "wordpress", "mern", "angular", "react", "static",
+    "fastapi", "django", "java",
+];
 const NGINX_SERVED = ["angular", "react", "static", "mern"];
 
 // ---------------------------------------------------------------- helpers
@@ -430,7 +433,8 @@ ${testReload()}`,
 
 // ---------------------------------------------------------------- more plugins
 
-const NODE_TYPES = ["nodejs", "nextjs", "tylix", "mern"];
+// Every type that runs an app-<user> service on a port.
+const NODE_TYPES = ["nodejs", "nextjs", "tylix", "mern", "fastapi", "django", "java"];
 
 const scheduler: PluginDef = {
     id: "scheduler",
@@ -456,11 +460,14 @@ echo "Scheduler removed"`,
 const resourceLimits: PluginDef = {
     id: "resource-limits",
     name: "Resource limits",
-    group: "Node.js",
+    group: "App services",
     description: "Caps the app at 768 MB of memory and raises its open-file limit, so one runaway site can't take the server down.",
     types: NODE_TYPES,
     needsRepo: false,
-    notes: ["Restarts the app once to apply. If the app goes over the cap, systemd kills it and restarts it."],
+    notes: [
+        "Restarts the app once to apply. If the app goes over the cap, systemd kills it and restarts it.",
+        "Java apps: keep -Xmx below the cap (the default start command uses -Xmx512m), because the JVM uses memory beyond its heap.",
+    ],
     install: () => `
 UNIT="app-$SITE_USER"
 [ -f "/etc/systemd/system/$UNIT.service" ] || { echo "The app service $UNIT does not exist yet. Deploy the site once, then install this plugin." >&2; exit 1; }
