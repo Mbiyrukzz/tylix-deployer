@@ -7,6 +7,12 @@ title "Site commands"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   siteId: ""
   serverId: ""
@@ -114,6 +120,9 @@ action
   }
 
   async run() {
+    if Billing.locked {
+      return null
+    }
     if this.starting {
       return null
     }
@@ -195,6 +204,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
+      <LockedBanner />
+
       <div class="mb-8">
         <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
         <p class="text-slate-500 text-sm">Commands</p>
@@ -238,9 +249,20 @@ template
                   class="min-w-0 flex-1 sm:flex-none sm:w-64 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                   placeholder="Folder (optional), e.g. client"
                 />
+{{#if Billing.locked}}
+                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 cursor-not-allowed select-none">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Run
+                </button>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ run() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
                   {{#if starting}}Starting…{{/if}}{{#if not starting}}Run{{/if}}
                 </button>
+{{/if}}
               </div>
             </div>
 

@@ -7,6 +7,12 @@ title "Packages"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   checkedAuth: false
   loading: true
@@ -92,6 +98,9 @@ action
   }
 
   async install() {
+    if Billing.locked {
+      return null
+    }
     if this.installing or this.busy or this.selected.length is 0 {
       return null
     }
@@ -116,6 +125,9 @@ action
   }
 
   async retryTask() {
+    if Billing.locked {
+      return null
+    }
     if not this.task {
       return null
     }
@@ -163,6 +175,8 @@ template
         <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
           <IconArrowLeft class="w-4 h-4" /> {{ serverName }}
         </a>
+
+        <LockedBanner />
 
         <div class="flex items-end justify-between gap-4 mb-8">
           <div>
@@ -227,7 +241,18 @@ template
           <pre class="mt-4 max-h-40 overflow-auto rounded-lg bg-slate-300/50 dark:bg-slate-950 p-3 text-xs text-rose-600 dark:text-rose-400 font-mono whitespace-pre-wrap">{{ task.error }}</pre>
 {{/if}}
           <div class="mt-4">
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Retry
+            </button>
+{{/if}}
+{{#if not Billing.locked}}
             <button onclick="{{ retryTask() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Retry</button>
+{{/if}}
           </div>
 {{/if}}
         </div>
@@ -286,7 +311,18 @@ template
           <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Install selected</button>
 {{/if}}
 {{#if selected.length is not 0}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Install selected
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ install() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Install selected</button>
+{{/if}}
 {{/if}}
 {{/if}}
         </div>

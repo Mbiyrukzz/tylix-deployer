@@ -12,9 +12,11 @@ uses
   Provisions
   Providers
   Mail
+  Billing
 
 background
   Mail
+  Billing
 
 meta
   transition "fade"
@@ -509,6 +511,8 @@ template
     <div class="min-w-0 px-6 lg:px-10 py-10">
     <div class="max-w-7xl mx-auto">
 
+      <LockedBanner />
+
       <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div class="min-w-0">
           <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">{{ todayText }}</p>
@@ -521,12 +525,30 @@ template
           <a href="/providers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
             Cloud providers
           </a>
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            New server
+          </button>
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            New site
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <a href="/servers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
             New server
           </a>
           <a href="{{ newSiteHref }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
             New site
           </a>
+{{/if}}
         </div>
       </div>
 
@@ -737,7 +759,18 @@ template
       <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center mb-8">
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No cloud providers connected</h3>
         <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr or UpCloud account to create servers from here.</p>
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Connect a provider
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
         <a href="/providers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect a provider</a>
+{{/if}}
       </div>
 {{/if}}
 {{#if providerCount is not 0}}
@@ -784,7 +817,18 @@ template
       <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center mb-8">
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domain registrars connected</h3>
         <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect Porkbun, Cloudflare, GoDaddy or another registrar to see your domains, expiry dates and DNS next to your servers.</p>
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Connect a registrar
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
         <a href="/registrars" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect a registrar</a>
+{{/if}}
       </div>
 {{/if}}
 
@@ -869,9 +913,20 @@ template
               <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
                 Provision a server at one of your cloud providers or connect your own over SSH, then start deploying to it.
               </p>
+{{#if Billing.locked}}
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Add your first server
+              </button>
+{{/if}}
+{{#if not Billing.locked}}
               <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
                 Add your first server
               </a>
+{{/if}}
             </div>
 {{/if}}
 {{/if}}
@@ -925,6 +980,16 @@ template
               <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">
                 Sites are created on a server. Pick a server, then choose a framework and a repository.
               </p>
+{{#if Billing.locked}}
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Create a site
+              </button>
+{{/if}}
+{{#if not Billing.locked}}
 {{#if totalServers is 0}}
               <a href="/servers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
                 Add a server first
@@ -934,6 +999,7 @@ template
               <a href="{{ newSiteHref }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">
                 Create a site
               </a>
+{{/if}}
 {{/if}}
             </div>
 {{/if}}
@@ -995,7 +1061,12 @@ template
 {{/if}}
                 <div>
                   <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Connect a server</p>
+{{#if Billing.locked}}
+                  <p class="text-slate-400 text-xs">View only. Pay to continue.</p>
+{{/if}}
+{{#if not Billing.locked}}
                   <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline">Add or provision a server</a>
+{{/if}}
                 </div>
               </div>
 
@@ -1008,7 +1079,12 @@ template
 {{/if}}
                 <div>
                   <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Create a site</p>
+{{#if Billing.locked}}
+                  <p class="text-slate-400 text-xs">View only. Pay to continue.</p>
+{{/if}}
+{{#if not Billing.locked}}
                   <a href="{{ newSiteHref }}" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline">Pick a framework and repo</a>
+{{/if}}
                 </div>
               </div>
 
@@ -1059,12 +1135,30 @@ template
           <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Quick actions</h2>
             <div class="grid grid-cols-1 gap-2">
+{{#if Billing.locked}}
+              <div title="Pay to continue" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-400 cursor-not-allowed select-none">
+                New server
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+              </div>
+              <div title="Pay to continue" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-400 cursor-not-allowed select-none">
+                New site
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+              </div>
+{{/if}}
+{{#if not Billing.locked}}
               <a href="/servers" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 New server <span class="text-slate-400">&rarr;</span>
               </a>
               <a href="{{ newSiteHref }}" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 New site <span class="text-slate-400">&rarr;</span>
               </a>
+{{/if}}
               <a href="/registrars" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 My domains <span class="text-slate-400">&rarr;</span>
               </a>

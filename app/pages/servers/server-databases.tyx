@@ -7,6 +7,12 @@ title "Databases"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   serverId: ""
   server: null
@@ -104,6 +110,9 @@ action
   }
 
   askDeleteDb(id) {
+    if Billing.locked {
+      return null
+    }
     this.actionError = ""
     this.confirmUser = 0
     this.confirmText = ""
@@ -111,6 +120,9 @@ action
   }
 
   askDeleteUser(id) {
+    if Billing.locked {
+      return null
+    }
     this.actionError = ""
     this.confirmDb = 0
     this.confirmText = ""
@@ -137,6 +149,9 @@ action
   }
 
   async createUser() {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -164,6 +179,9 @@ action
   }
 
   async createDatabase() {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -222,6 +240,9 @@ action
   }
 
   async resetPassword(userId, userName) {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -241,6 +262,9 @@ action
   }
 
   async deleteUser(id) {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -262,6 +286,9 @@ action
   }
 
   async deleteDb(id, name) {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -338,6 +365,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
+      <LockedBanner />
+
       <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Databases</h1>
       <p class="text-slate-500 text-sm mb-8">MySQL users and databases on this server. Create a user first, then a database owned by that user.</p>
 
@@ -353,7 +382,18 @@ template
             <h2 class="text-slate-800 dark:text-slate-200 font-medium">Database users</h2>
             <p class="text-slate-500 text-sm mt-1">Accounts your sites log in with. Passwords are generated and stored encrypted.</p>
           </div>
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Create user
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ openModal('user') }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create user</button>
+{{/if}}
         </div>
 
 {{#if users.length is 0}}
@@ -370,13 +410,35 @@ template
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <button onclick="{{ showUserPassword(u.id, u.name) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Show password</button>
+{{#if Billing.locked}}
+                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-xs bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 cursor-not-allowed select-none">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Reset password
+                </button>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ resetPassword(u.id, u.name) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Reset password</button>
+{{/if}}
 {{#if confirmUser is u.id}}
                 <button onclick="{{ deleteUser(u.id) }}" class="text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-full px-3 py-1.5 transition">Delete user</button>
                 <button onclick="{{ cancelDelete() }}" class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-2 py-1.5 transition-colors">Cancel</button>
 {{/if}}
 {{#if confirmUser is not u.id}}
+{{#if Billing.locked}}
+                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-xs bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 cursor-not-allowed select-none">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Delete
+                </button>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ askDeleteUser(u.id) }}" class="text-xs text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-full px-3 py-1.5 hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
 {{/if}}
               </div>
             </div>
@@ -395,7 +457,18 @@ template
           <button disabled class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Create database</button>
 {{/if}}
 {{#if users.length is not 0}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Create database
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ openModal('database') }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create database</button>
+{{/if}}
 {{/if}}
         </div>
 
@@ -420,7 +493,18 @@ template
               <div class="flex flex-wrap items-center gap-2">
                 <button onclick="{{ showDbEnv(d.db_user_id, d.name, d.user_name) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Connection details</button>
 {{#if confirmDb is not d.id}}
+{{#if Billing.locked}}
+                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-xs bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 cursor-not-allowed select-none">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Delete
+                </button>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ askDeleteDb(d.id) }}" class="text-xs text-rose-500 hover:text-rose-400 border border-rose-900/50 rounded-full px-3 py-1.5 hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
 {{/if}}
               </div>
             </div>
@@ -473,7 +557,18 @@ template
             <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Create user
+            </button>
+{{/if}}
+{{#if not Billing.locked}}
             <button onclick="{{ createUser() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create user</button>
+{{/if}}
 {{/if}}
           </div>
         </div>
@@ -546,7 +641,18 @@ template
             <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Create database
+            </button>
+{{/if}}
+{{#if not Billing.locked}}
             <button onclick="{{ createDatabase() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create database</button>
+{{/if}}
 {{/if}}
           </div>
         </div>

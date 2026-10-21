@@ -7,6 +7,12 @@ title "SSH Keys"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   server: null
   serverId: ""
@@ -74,6 +80,9 @@ action
   }
 
    async deploy() {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -121,6 +130,9 @@ action
   }
 
   async remove(id) {
+    if Billing.locked {
+      return null
+    }
     if this.removingId {
       return null
     }
@@ -210,6 +222,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
+      <LockedBanner />
+
       <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">SSH Keys</h1>
       <p class="text-slate-500 text-sm mb-6">Give people or machines SSH access to this server, as any user on it.</p>
 
@@ -281,7 +295,18 @@ template
           <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Deploying…</button>
 {{/if}}
 {{#if not busy}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Deploy key
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ deploy() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Deploy key</button>
+{{/if}}
 {{/if}}
         </div>
       </div>
@@ -302,7 +327,18 @@ template
             <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ d.name }} <span class="text-slate-500 font-mono font-normal">→ {{ d.ssh_user }}</span></p>
             <p class="text-slate-500 text-xs font-mono truncate">{{ d.fingerprint }}</p>
           </div>
+{{#if Billing.locked}}
+          <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none px-3 py-1.5">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Remove
+          </span>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ remove(d.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-3 py-1.5">Remove</button>
+{{/if}}
         </div>
 {{/each}}
       </div>

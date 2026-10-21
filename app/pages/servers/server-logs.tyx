@@ -7,6 +7,12 @@ title "Logs"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   server: null
   serverId: ""
@@ -187,6 +193,8 @@ template
       <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
+
+      <LockedBanner />
 
       <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Logs</h1>
       <p class="text-slate-500 text-sm mb-6">Everything that happened to this server, newest first: creation, edits, reboots and blocked actions. Keys and passwords are never recorded.</p>

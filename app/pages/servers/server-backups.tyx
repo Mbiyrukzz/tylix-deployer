@@ -7,6 +7,12 @@ title "Backups"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   server: null
   serverId: ""
@@ -106,6 +112,9 @@ action
   }
 
   async create() {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -134,6 +143,9 @@ action
   }
 
   async runNow(id) {
+    if Billing.locked {
+      return null
+    }
     this.error = ""
     this.note = ""
     const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id + "/run", { method: "POST" })
@@ -192,6 +204,9 @@ action
   }
 
   askDeleteFile(name) {
+    if Billing.locked {
+      return null
+    }
     this.confirmFile = name
   }
 
@@ -200,6 +215,9 @@ action
   }
 
   async deleteFile(id, name) {
+    if Billing.locked {
+      return null
+    }
     this.error = ""
     const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id + "/files?name=" + name, { method: "DELETE" })
     if result.ok {
@@ -211,6 +229,9 @@ action
   }
 
   askRemove(id) {
+    if Billing.locked {
+      return null
+    }
     this.confirmId = id
   }
 
@@ -219,6 +240,9 @@ action
   }
 
   async remove(id) {
+    if Billing.locked {
+      return null
+    }
     this.error = ""
     const result = await useApi("/api/servers/" + this.serverId + "/backups/" + id, { method: "DELETE" })
     if result.ok {
@@ -231,11 +255,17 @@ action
   }
 
   toggleDropbox() {
+    if Billing.locked {
+      return null
+    }
     this.showDropbox = not this.showDropbox
     this.dropboxError = ""
   }
 
   async connectDropbox() {
+    if Billing.locked {
+      return null
+    }
     if this.dropboxBusy {
       return null
     }
@@ -265,6 +295,9 @@ action
   }
 
   async removeStorage(id) {
+    if Billing.locked {
+      return null
+    }
     this.error = ""
     const result = await useApi("/api/backup-storages/" + id, { method: "DELETE" })
     if result.ok {
@@ -328,6 +361,8 @@ template
       <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
+
+      <LockedBanner />
 
       <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Backups</h1>
       <p class="text-slate-500 text-sm mb-6">Scheduled MySQL backups. The schedule runs on the server itself, so it keeps working even when this app is offline.</p>
@@ -397,7 +432,18 @@ template
 {{/each}}
         </div>
         <p class="text-slate-400 text-xs mb-1">Files are always kept on the server in <span class="font-mono">/var/backups/tylix/</span> so you can download them here. Dropbox gets a copy too.</p>
+{{#if Billing.locked}}
+        <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Connect Dropbox
+        </span>
+{{/if}}
+{{#if not Billing.locked}}
         <button onclick="{{ toggleDropbox() }}" class="text-sm text-emerald-700 dark:text-emerald-500 hover:underline font-medium mb-4">Connect Dropbox</button>
+{{/if}}
 
 {{#if showDropbox}}
         <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
@@ -421,14 +467,36 @@ template
           <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking with Dropbox…</button>
 {{/if}}
 {{#if not dropboxBusy}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Connect
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ connectDropbox() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Connect</button>
+{{/if}}
 {{/if}}
         </div>
 {{/if}}
 
 {{#each s in storages}}
         <p class="text-slate-500 text-xs mb-1">Dropbox: <span class="font-mono">{{ s.name }}</span>
+{{#if Billing.locked}}
+          <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Remove
+          </span>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ removeStorage(s.id) }}" class="text-rose-600 dark:text-rose-500 hover:underline ml-2">Remove</button>
+{{/if}}
         </p>
 {{/each}}
 
@@ -437,7 +505,18 @@ template
           <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Schedule backup
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Schedule backup</button>
+{{/if}}
 {{/if}}
         </div>
       </div>
@@ -462,10 +541,32 @@ template
               <p class="text-slate-400 text-xs truncate">{{ b.storage_name }} · keeps {{ b.retention }} per database</p>
             </div>
             <div class="flex shrink-0 items-center gap-1">
+{{#if Billing.locked}}
+              <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none px-2 py-1">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Run now
+              </span>
+{{/if}}
+{{#if not Billing.locked}}
               <button onclick="{{ runNow(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Run now</button>
+{{/if}}
               <button onclick="{{ viewFiles(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Files</button>
               <button onclick="{{ viewLog(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Log</button>
+{{#if Billing.locked}}
+              <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none px-2 py-1">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Delete
+              </span>
+{{/if}}
+{{#if not Billing.locked}}
               <button onclick="{{ askRemove(b.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-2 py-1">Delete</button>
+{{/if}}
             </div>
           </div>
 
@@ -505,7 +606,18 @@ template
                 <button onclick="{{ cancelDeleteFile() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-1 py-1">Cancel</button>
 {{/if}}
 {{#if confirmFile is not f.name}}
+{{#if Billing.locked}}
+                <span title="Pay to continue" class="inline-flex items-center gap-1 text-xs text-slate-400 select-none">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Delete
+                </span>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ askDeleteFile(f.name) }}" class="text-xs text-rose-600 dark:text-rose-500 hover:underline">Delete</button>
+{{/if}}
 {{/if}}
               </div>
             </div>

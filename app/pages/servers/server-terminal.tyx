@@ -9,6 +9,10 @@ needs
 
 uses
   Servers
+  Billing
+
+background
+  Billing
 
 state
   checkedAuth: false
@@ -278,6 +282,9 @@ action
   }
 
   sendInput(d) {
+    if Billing.locked {
+      return null
+    }
     const ws = this.global("tylixSocket")
     if ws and ws.readyState is 1 {
       this.lastInputAt = Date.now()
@@ -286,6 +293,9 @@ action
   }
 
   runCommand(cmd) {
+    if Billing.locked {
+      return null
+    }
     const enter = String.fromCharCode(13)
     this.sendInput(cmd + enter)
     this.focusTerm()
@@ -373,6 +383,9 @@ action
   }
 
   async connect() {
+    if Billing.locked {
+      return null
+    }
     if not this.server {
       return null
     }
@@ -534,6 +547,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
+      <LockedBanner />
+
       <div class="mb-6">
         <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-2">Terminal</h1>
         <p class="text-slate-500 text-sm">Open a shell on any of your servers. Switching servers ends the current session.</p>
@@ -558,7 +573,18 @@ template
       <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6 flex items-start justify-between gap-4">
         <p class="text-rose-500 text-sm break-words">{{ error }}</p>
 {{#if server}}
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Try again
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
         <button onclick="{{ connect() }}" class="shrink-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-1.5 hover:bg-rose-500/5 transition-colors">Try again</button>
+{{/if}}
 {{/if}}
       </div>
 {{/if}}
@@ -613,7 +639,18 @@ template
               <button onclick="{{ disconnect() }}" class="text-xs text-rose-500 border border-rose-500/30 rounded-full px-3 py-1.5 hover:bg-rose-500/5 transition-colors">Disconnect</button>
 {{/if}}
 {{#if phase is "closed"}}
+{{#if Billing.locked}}
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-xs bg-slate-800 text-slate-500 border border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Reconnect
+              </button>
+{{/if}}
+{{#if not Billing.locked}}
               <button onclick="{{ connect() }}" class="text-xs bg-emerald-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-emerald-400 transition-all">Reconnect</button>
+{{/if}}
 {{/if}}
               <button onclick="{{ toggleExpand() }}" title="Expand or collapse (Esc to exit)" aria-label="Toggle expanded terminal" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-1.5 transition-colors">
 {{#if expanded}}
@@ -654,7 +691,18 @@ template
 {{#if server}}
                 <p class="text-slate-200 font-medium mb-1">Ready to connect to {{ server.name }}</p>
                 <p class="text-slate-500 text-sm mb-6">You'll get a shell as <span class="font-mono text-slate-400">{{ server.ssh_user }}</span>. Sessions close after 15 minutes without typing.</p>
+{{#if Billing.locked}}
+                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-800 text-slate-500 border border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Connect
+                </button>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Connect</button>
+{{/if}}
 {{/if}}
 {{#if not server}}
                 <p class="text-slate-200 font-medium mb-1">Choose a server</p>
@@ -680,7 +728,18 @@ template
 {{#if expanded}}
             <div class="flex flex-wrap items-center gap-1.5">
 {{#each c in commands}}
+{{#if Billing.locked}}
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-xs bg-slate-800 text-slate-500 border border-slate-700 rounded-full px-3 py-1 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                {{ c.label }}
+              </button>
+{{/if}}
+{{#if not Billing.locked}}
               <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-xs rounded-full border border-slate-700 bg-slate-950/60 text-slate-300 px-3 py-1 hover:border-emerald-500/50 transition-all">{{ c.label }}</button>
+{{/if}}
 {{/each}}
             </div>
 {{/if}}
@@ -715,7 +774,18 @@ template
 {{#if live}}
         <div class="flex flex-wrap gap-2">
 {{#each c in commands}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            {{ c.label }}
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-sm rounded-full border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 px-4 py-1.5 hover:border-emerald-500/50 transition-all">{{ c.label }}</button>
+{{/if}}
 {{/each}}
         </div>
 {{/if}}

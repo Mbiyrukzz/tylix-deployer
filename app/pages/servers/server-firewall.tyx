@@ -7,6 +7,12 @@ title "Firewall"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   server: null
   serverId: ""
@@ -57,6 +63,9 @@ action
   }
 
   newRule() {
+    if Billing.locked {
+      return null
+    }
     this.resetForm()
     this.showForm = true
   }
@@ -67,6 +76,9 @@ action
   }
 
   startEdit(id) {
+    if Billing.locked {
+      return null
+    }
     const r = this.rules.find((x) => x.id is id)
     if not r {
       return null
@@ -90,6 +102,9 @@ action
   }
 
   async sync() {
+    if Billing.locked {
+      return null
+    }
     if this.syncing {
       return null
     }
@@ -107,6 +122,9 @@ action
   }
 
   async save() {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -159,6 +177,9 @@ action
   }
 
   askRemove(id) {
+    if Billing.locked {
+      return null
+    }
     this.confirmId = id
   }
 
@@ -167,6 +188,9 @@ action
   }
 
   askReset() {
+    if Billing.locked {
+      return null
+    }
     this.confirmReset = true
   }
 
@@ -175,6 +199,9 @@ action
   }
 
   async reset() {
+    if Billing.locked {
+      return null
+    }
     if this.resetting {
       return null
     }
@@ -202,6 +229,9 @@ action
   }
 
   async remove(id) {
+    if Billing.locked {
+      return null
+    }
     this.error = ""
     this.note = ""
     const result = await useApi("/api/servers/" + this.serverId + "/firewall/" + id, { method: "DELETE" })
@@ -269,6 +299,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
+      <LockedBanner />
+
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Firewall</h1>
@@ -284,16 +316,49 @@ template
           <button onclick="{{ cancelReset() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2">Cancel</button>
 {{/if}}
 {{#if not confirmReset}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Reset to defaults
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ askReset() }}" class="text-sm border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl px-4 py-2 hover:border-rose-500/50">Reset to defaults</button>
+{{/if}}
 {{/if}}
 {{/if}}
 {{#if syncing}}
           <button disabled class="text-sm border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl px-4 py-2 opacity-50">Syncing…</button>
 {{/if}}
 {{#if not syncing}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Sync
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ sync() }}" class="text-sm border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl px-4 py-2 hover:border-emerald-500/50">Sync</button>
 {{/if}}
+{{/if}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Create
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ newRule() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Create</button>
+{{/if}}
         </div>
       </div>
 
@@ -374,10 +439,32 @@ template
 {{/if}}
 {{#if not busy}}
 {{#if editId is 0}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Add rule
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Add rule</button>
 {{/if}}
+{{/if}}
 {{#if editId is not 0}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Save changes
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Save changes</button>
+{{/if}}
 {{/if}}
 {{/if}}
           <button onclick="{{ cancelForm() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2">Cancel</button>
@@ -436,8 +523,30 @@ template
                 <button onclick="{{ cancelRemove() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-2 py-1">Cancel</button>
 {{/if}}
 {{#if confirmId is not r.id}}
+{{#if Billing.locked}}
+                <span title="Pay to continue" class="inline-flex items-center gap-1 text-xs text-slate-400 select-none px-2 py-1">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Edit
+                </span>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ startEdit(r.id) }}" class="text-xs text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Edit</button>
+{{/if}}
+{{#if Billing.locked}}
+                <span title="Pay to continue" class="inline-flex items-center gap-1 text-xs text-slate-400 select-none px-2 py-1">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                    <rect x="4" y="9" width="12" height="8" rx="2" />
+                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                  </svg>
+                  Delete
+                </span>
+{{/if}}
+{{#if not Billing.locked}}
                 <button onclick="{{ askRemove(r.id) }}" class="text-xs text-rose-600 dark:text-rose-500 hover:underline px-2 py-1">Delete</button>
+{{/if}}
 {{/if}}
               </td>
             </tr>

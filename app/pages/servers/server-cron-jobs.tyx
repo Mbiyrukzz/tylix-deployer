@@ -7,6 +7,12 @@ title "Cron jobs"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   server: null
   serverId: ""
@@ -78,6 +84,9 @@ action
   }
 
   async create() {
+    if Billing.locked {
+      return null
+    }
     if this.busy {
       return null
     }
@@ -104,6 +113,9 @@ action
   }
 
   async runNow(id) {
+    if Billing.locked {
+      return null
+    }
     if this.busyId {
       return null
     }
@@ -142,6 +154,9 @@ action
   }
 
   askRemove(id) {
+    if Billing.locked {
+      return null
+    }
     this.confirmId = id
   }
 
@@ -150,6 +165,9 @@ action
   }
 
   async remove(id) {
+    if Billing.locked {
+      return null
+    }
     if this.busyId {
       return null
     }
@@ -220,6 +238,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
+      <LockedBanner />
+
       <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Cron jobs</h1>
       <p class="text-slate-500 text-sm mb-6">Commands that run on a schedule. Each job's output is appended to its own log on the server.</p>
 
@@ -274,7 +294,18 @@ template
           <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Create cron job
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Create cron job</button>
+{{/if}}
 {{/if}}
         </div>
       </div>
@@ -299,9 +330,31 @@ template
               <p class="text-slate-400 text-xs font-mono truncate">{{ c.ssh_user }}</p>
             </div>
             <div class="flex shrink-0 items-center gap-1">
+{{#if Billing.locked}}
+              <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none px-2 py-1">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Run now
+              </span>
+{{/if}}
+{{#if not Billing.locked}}
               <button onclick="{{ runNow(c.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Run now</button>
+{{/if}}
               <button onclick="{{ viewLog(c.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Log</button>
+{{#if Billing.locked}}
+              <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none px-2 py-1">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Delete
+              </span>
+{{/if}}
+{{#if not Billing.locked}}
               <button onclick="{{ askRemove(c.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-2 py-1">Delete</button>
+{{/if}}
             </div>
           </div>
 
