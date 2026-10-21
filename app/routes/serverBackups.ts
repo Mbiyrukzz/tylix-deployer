@@ -3,7 +3,8 @@
  * Team-scoped: a server on another team answers 404. Any member can list
  * backups and storage connections; everything else (creating and deleting
  * backups, running them, logs, downloading files, managing Dropbox
- * connections) needs the admin role.
+ * connections) needs the admin role. Writes answer 402 while the team is
+ * view only (withBillingLock).
  *
  * The schedule lives ON the server, not in the deployer, so backups keep
  * running when the deployer is down or restarting:
@@ -39,6 +40,7 @@ import { BackupStorage } from "../models/BackupStorage.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { sshExec, type SshTarget } from "../services/Ssh.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
@@ -424,7 +426,10 @@ const publicStorage = (s: StorageRow) => ({
     created_at: s.created_at,
 });
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    // Every POST, PUT, PATCH and DELETE below answers 402 while the team is view only.
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {

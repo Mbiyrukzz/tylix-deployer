@@ -3,6 +3,7 @@
  * the caller's team; anything else answers 404). Any member can see the
  * deployment history; everything else needs the admin role, because the
  * script runs on the machine, the env holds secrets and logs can echo them.
+ * Writes answer 402 while the team is view only (withBillingLock).
  *
  * GET  /api/sites/:id/deployment                   admin: script, env, status and log
  * PUT  /api/sites/:id/deployment                   admin: save script and/or env
@@ -14,12 +15,15 @@
 import type { Router } from "@tylix/core";
 import { SiteController } from "../controllers/SiteController.js";
 import { requireRole } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 
 type Handler = Parameters<Router["post"]>[1];
 
 const controller = new SiteController();
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {

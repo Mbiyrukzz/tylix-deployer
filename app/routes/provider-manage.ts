@@ -14,6 +14,7 @@
  * otherwise). Reading is open to every member; every change needs the admin role, the credentials are decrypted here and never returned, and a
  * token that lacks the Domains/Account access answers 403 with code
  * "missing_access" and a message saying how to fix it.
+ * Writes answer 402 while the team is view only (withBillingLock).
  *
  * ASSUMPTION: Router exposes put() and delete() like get() and post().
  */
@@ -38,6 +39,7 @@ import {
 } from "../validators/DnsValidator.js";
 
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 type Handler = Parameters<Router["get"]>[1];
 
 interface ProviderRow {
@@ -124,7 +126,10 @@ async function run(
     }
 }
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    // Every POST, PUT, PATCH and DELETE below answers 402 while the team is view only.
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {

@@ -3,6 +3,7 @@
  * caller's team; anything else answers 404). Any member can see which
  * plugins are available and their status; installing and removing one runs
  * commands on the machine, so it needs the admin role.
+ * Writes answer 402 while the team is view only (withBillingLock).
  *
  * GET    /api/sites/:id/plugins            any member: plugins available for this site, with status and log
  * POST   /api/sites/:id/plugins            admin: install one   body { plugin }
@@ -12,12 +13,15 @@
 import type { Router } from "@tylix/core";
 import { SitePluginController } from "../controllers/SitePluginController.js";
 import { requireRole } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 
 type Handler = Parameters<Router["post"]>[1];
 
 const controller = new SitePluginController();
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {

@@ -9,6 +9,10 @@ needs
 
 uses
   Providers
+  Billing
+
+background
+  Billing
 
 state
   checkedAuth: false
@@ -246,7 +250,7 @@ action
   }
 
   async submit() {
-    if this.saving {
+    if Billing.locked or this.saving {
       return null
     }
 
@@ -286,7 +290,7 @@ action
 
   // A machine that already exists somewhere else: saved through the normal Servers API.
   async submitCustom() {
-    if this.saving {
+    if Billing.locked or this.saving {
       return null
     }
 
@@ -358,6 +362,8 @@ template
       <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
+
+      <LockedBanner />
 
       <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Create server</h1>
       <p class="text-slate-500 text-sm mb-8">Provision a new machine at your cloud provider, or add one you already have.</p>
@@ -619,6 +625,21 @@ template
 
       <div class="flex items-center justify-end gap-3 mt-8">
         <a href="/servers" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</a>
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+{{#if custom}}
+          Add server
+{{/if}}
+{{#if not custom}}
+          Create server
+{{/if}}
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
 {{#if custom}}
 {{#if saving}}
         <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Adding…</button>
@@ -633,6 +654,7 @@ template
 {{/if}}
 {{#if not saving}}
         <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</button>
+{{/if}}
 {{/if}}
 {{/if}}
       </div>

@@ -22,7 +22,8 @@
  * (EntitlementService). Editing and deleting are never limited.
  *
  * Deleting a server is refused while it still has sites, so no site record
- * is ever left pointing at a server that is gone.
+ * is ever left pointing at a server that is gone. The records that hang off
+ * the server are removed by ServerRecords.
  *
  * Every state change is written to the server log (ServerLogService). Log
  * entries never contain the key itself, only the fact that it changed.
@@ -36,19 +37,12 @@
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { Provision } from "../models/Provision.js";
-import { Site } from "../models/Site.js";
-import { DbUser } from "../models/DbUser.js";
-import { ServerDatabase } from "../models/ServerDatabase.js";
 import { validateServer, normalizeServer } from "../validators/ServerValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
+import { ServerRecords } from "../services/ServerRecords.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { requireWithin, requireActive } from "../services/EntitlementService.js";
-import { ServerSshKey } from "../models/ServerSshKey.js";
-import { ServerWorker } from "../models/ServerWorker.js";
-import { ServerCronJob } from "../models/ServerCronJob.js";
-import { ServerBackup } from "../models/ServerBackup.js";
-import { ServerFirewallRule } from "../models/ServerFirewallRule.js";
 
 interface ServerRow {
     id: number;
@@ -313,56 +307,31 @@ export class ServerController {
 
         // Sites must be deleted first (each one cleans up its own files, nginx
         // config, user and database on the machine), so nothing is left orphaned.
-        const sites = ((await Site.all()) as { server_id: number }[]).filter(
-            (s) => Number(s.server_id) === server.id,
-        );
-        if (sites.length > 0) {
+        const siteCount = await ServerRecords.siteCount(server.id);
+        if (siteCount > 0) {
             await ServerLogService.record({
                 userId: actor,
                 teamId,
                 serverId: server.id,
                 event: "server.delete_blocked",
                 level: "warning",
-                message: `Delete refused: the server still has ${sites.length} site${sites.length === 1 ? "" : "s"}.`,
-                meta: { sites: sites.length },
+                message: `Delete refused: the server still has ${siteCount} site${siteCount === 1 ? "" : "s"}.`,
+                meta: { sites: siteCount },
             });
 
             res.status(409);
             return res.json({
                 error:
-                    sites.length === 1
+                    siteCount === 1
                         ? "This server still has 1 site. Delete it first, then delete the server."
-                        : `This server still has ${sites.length} sites. Delete them first, then delete the server.`,
+                        : `This server still has ${siteCount} sites. Delete them first, then delete the server.`,
             });
         }
 
-        // The machine's databases go with it; drop our records so nothing is orphaned.
-        for (const d of (await ServerDatabase.all()) as { id: number; server_id: number }[]) {
-            if (d.server_id === server.id) await ServerDatabase.delete(d.id);
-        }
-        for (const u of (await DbUser.all()) as { id: number; server_id: number }[]) {
-            if (u.server_id === server.id) await DbUser.delete(u.id);
-        }
-        for (const k of (await ServerSshKey.all()) as { id: number; server_id: number }[]) {
-            if (k.server_id === server.id) await ServerSshKey.delete(k.id);
-        }
-        for (const w of (await ServerWorker.all()) as { id: number; server_id: number }[]) {
-            if (w.server_id === server.id) await ServerWorker.delete(w.id);
-        }
-        for (const c of (await ServerCronJob.all()) as { id: number; server_id: number }[]) {
-            if (c.server_id === server.id) await ServerCronJob.delete(c.id);
-        }
-        for (const b of (await ServerBackup.all()) as { id: number; server_id: number }[]) {
-            if (b.server_id === server.id) await ServerBackup.delete(b.id);
-        }
-        for (const f of (await ServerFirewallRule.all()) as { id: number; server_id: number }[]) {
-            if (f.server_id === server.id) await ServerFirewallRule.delete(f.id);
-        }
+        // Databases, DB users, SSH keys, workers, cron jobs, backups, firewall
+        // rules, tasks and the server's log all go with it.
+        await ServerRecords.removeAll(server.id);
 
-        // The server's log goes with it, like every other child record.
-        await ServerLogService.deleteForServer(server.id);
-
-        await Server.delete(server.id);
         res.status(204);
         return res.end();
     }

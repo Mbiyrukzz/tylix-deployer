@@ -2,6 +2,7 @@
  * Cron jobs on a server (team-scoped). A server on another team answers 404.
  * Any member can list the jobs; creating, running, reading logs and deleting
  * need the admin role (they run commands as root over SSH).
+ * Writes answer 402 while the team is view only (withBillingLock).
  */
 
 import type { Router } from "@tylix/core";
@@ -11,6 +12,7 @@ import { CryptoService } from "../services/CryptoService.js";
 import { sshExec, type SshTarget } from "../services/Ssh.js";
 
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
 type Res = Parameters<Handler>[1];
@@ -159,7 +161,10 @@ function runScript(j: { command: string; user: string }): string {
     ].join("\n");
 }
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    // Every POST, PUT, PATCH and DELETE below answers 402 while the team is view only.
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {

@@ -6,6 +6,9 @@
  * Feature: Auth
  *
  * Do not edit this section.
+ *
+ * NOTE: hand-edited after generation (register mail failure handling and a
+ * reset-password rate limit). Re-running the generator overwrites these edits.
  */
 
 import { createRateLimiter } from "@tylix/core";
@@ -53,6 +56,7 @@ const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const registerLimiter = createRateLimiter({ max: 20, windowMs: 60 * 60 * 1000 });
 const forgotIpLimiter = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
 const forgotEmailLimiter = createRateLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
+const resetIpLimiter = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
 
 // Emails are case-insensitive: always compare and store them trimmed and lowercased.
 function normalizeEmail(value: unknown): string {
@@ -114,11 +118,24 @@ export class AuthController {
             this.secret,
             { expiresInSeconds: 60 * 60 * 24 },
         );
-        await sendVerificationEmail(user, verificationToken, this.mailConfig);
+
+        // The account already exists at this point, so a mail failure must not
+        // turn into a 500: the person would be unable to log in and unable to
+        // register again.
+        let emailSent = true;
+        try {
+            await sendVerificationEmail(user, verificationToken, this.mailConfig);
+        } catch (err) {
+            emailSent = false;
+            console.error("Verification email failed:", err);
+        }
 
         return res.status(201).json({
             user: User.toSafeObject(user),
-            message: "Registration successful. Check your email to verify your account before logging in.",
+            email_sent: emailSent,
+            message: emailSent
+                ? "Registration successful. Check your email to verify your account before logging in."
+                : "Your account was created, but we couldn't send the verification email. Please contact support to verify your account.",
         });
     }
 
@@ -291,6 +308,13 @@ export class AuthController {
     }
 
     async resetPassword(req: TylixRequest, res: TylixResponse) {
+        const limit = resetIpLimiter(clientIp(req));
+        if (!limit.allowed) {
+            return res.status(429).json({
+                error: `Too many attempts. Try again in ${limit.retryAfterSeconds} seconds.`,
+            });
+        }
+
         const result = validateResetPassword(req.body);
         if (!result.valid) {
             return res.status(422).json({ errors: result.errors });

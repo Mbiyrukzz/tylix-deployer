@@ -15,6 +15,8 @@
  *   - another team's provision answers 404, not 403 (checked before the role)
  *   - a provision that already has a provider instance is deleted at the
  *     provider first (through ProviderAdapter), so no billable machine is orphaned
+ *   - deleting also removes the server's records (ServerRecords), and is
+ *     refused while the server still has sites
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -24,7 +26,7 @@ import { validateProvision, normalizeProvision } from "../validators/ProvisionVa
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 import { requireWithin, requireActive } from "../services/EntitlementService.js";
 import { adapterFor, instanceRefOf, providerName, providerSecret } from "../services/ProviderAdapter.js";
-import { Server } from "../models/Server.js";
+import { ServerRecords } from "../services/ServerRecords.js";
 import { dispatch } from "@tylix/core";
 
 const TYLIX_MIN_MEMORY_MB = 4096;
@@ -151,10 +153,11 @@ export class ProvisionController {
             return res.json({ errors: { provider_id: ["This provider connection can't be used. Edit it and paste the credentials again."] } });
         }
 
+        const MAX_ATTEMPTS = 3;
         let regions, images, plans;
         let authRejected = false;
 
-        for (let attempt = 1; attempt <= 3 && !plans; attempt++) {
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS && !plans; attempt++) {
             try {
                 [regions, images, plans] = await Promise.all([
                     adapter.regions(),
@@ -173,7 +176,10 @@ export class ProvisionController {
                     break;
                 }
 
-                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+                // No point waiting after the last attempt.
+                if (attempt < MAX_ATTEMPTS) {
+                    await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+                }
             }
         }
 
@@ -242,6 +248,8 @@ export class ProvisionController {
             return res.json({ error: "Could not save the request." });
         }
 
+        let current: ProvisionRow = row;
+
         try {
             await dispatch("ProvisionServer", { provisionId: row.id });
         } catch {
@@ -249,10 +257,16 @@ export class ProvisionController {
                 status: "failed",
                 error: "Couldn't queue the provisioning job.",
             });
+            // Answer with the row as it is now, not the stale "pending" copy.
+            current = ((await Provision.find(row.id)) as ProvisionRow | null) ?? {
+                ...row,
+                status: "failed",
+                error: "Couldn't queue the provisioning job.",
+            };
         }
 
         res.status(201);
-        return res.json(toPublic(row));
+        return res.json(toPublic(current));
     }
 
     async update(_req: TylixRequest, res: TylixResponse) {
@@ -270,6 +284,22 @@ export class ProvisionController {
         if (row.status === "running") {
             res.status(409);
             return res.json({ error: "This server is still being created. Wait for it to finish or fail first." });
+        }
+
+        // Checked before touching the provider, so we never destroy the machine
+        // and then refuse because sites still point at it.
+        const serverId = Number(row.server_id);
+        if (serverId > 0) {
+            const sites = await ServerRecords.siteCount(serverId);
+            if (sites > 0) {
+                res.status(409);
+                return res.json({
+                    error:
+                        sites === 1
+                            ? "This server still has 1 site. Delete it first, then delete the server."
+                            : `This server still has ${sites} sites. Delete them first, then delete the server.`,
+                });
+            }
         }
 
         const ref = instanceRefOf(row);
@@ -323,8 +353,8 @@ export class ProvisionController {
             }
         }
 
-        if (Number(row.server_id) > 0) {
-            await Server.delete(row.server_id);
+        if (serverId > 0) {
+            await ServerRecords.removeAll(serverId);
         }
 
         await Provision.update(row.id, { status: "deleted", step: "deleted", ssh_key: "", error: "" });

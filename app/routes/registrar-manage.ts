@@ -25,6 +25,7 @@
  * Same rules as the provider routes: the connection must be on the caller's team (404
  * otherwise). Reading is open to every member; every change needs the admin role, credentials are decrypted here and never returned, and a feature
  * the registrar doesn't have answers 422 with code "unsupported".
+ * Writes answer 402 while the team is view only (withBillingLock).
  *
  * Set REGISTRAR_DEBUG=1 for per-request logging. Logs never include request
  * bodies or query strings: they can carry API keys.
@@ -49,6 +50,7 @@ import { RegistrarError } from "../services/registrars/http.js";
 import { validateRecord, normalizeRecord } from "../validators/DnsValidator.js";
 
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 type Handler = Parameters<Router["get"]>[1];
 
 interface Row {
@@ -153,7 +155,10 @@ function toInput(i: Record<string, unknown>): DnsRecordInput {
     };
 }
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    // Every POST, PUT, PATCH and DELETE below answers 402 while the team is view only.
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {

@@ -3,7 +3,8 @@
  * on another team answers 404. Any member can list keys and see which keys
  * are deployed; everything that changes access to a machine (adding or
  * deleting a key, deploying or removing one, listing server users over SSH)
- * needs the admin role.
+ * needs the admin role. Writes answer 402 while the team is view only
+ * (withBillingLock).
  *
  * GET    /api/ssh-keys                              any member
  * POST   /api/ssh-keys                              admin (private key is returned once, never stored)
@@ -22,6 +23,7 @@ import { ServerSshKey } from "../models/ServerSshKey.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { generateKeyPair, sshExec, type SshTarget } from "../services/Ssh.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
@@ -129,7 +131,10 @@ async function teamKey(teamId: number, id: unknown): Promise<KeyRow | null> {
     return k && (await teamIdOfRow(k)) === teamId ? k : null;
 }
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    // Every POST, PUT, PATCH and DELETE below answers 402 while the team is view only.
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {

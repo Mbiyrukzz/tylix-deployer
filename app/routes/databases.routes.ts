@@ -13,6 +13,8 @@
  *
  * The server is changed first and the row is saved only if that worked, so
  * the list never shows something that doesn't exist.
+ *
+ * Writes answer 402 while the team is view only (withBillingLock).
  */
 
 import type { Router, TylixRequest, TylixResponse } from "@tylix/core";
@@ -32,6 +34,7 @@ import {
 } from "../validators/DatabaseValidator.js";
 
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 type Handler = Parameters<Router["post"]>[1];
 
 
@@ -124,7 +127,10 @@ function sshFailed(res: TylixResponse, error: string) {
     return res.json({ error });
 }
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    // Every POST, PUT, PATCH and DELETE below answers 402 while the team is view only.
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res,next) => {

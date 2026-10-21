@@ -5,6 +5,7 @@
 
  *
  * Team-scoped. Any member can look; installing packages needs the admin role.
+ * Installing answers 402 while the team is view only (withBillingLock).
  */
 
 import type { Router } from "@tylix/core";
@@ -15,6 +16,7 @@ import { CryptoService } from "../services/CryptoService.js";
 import { PACKAGES, detectInstalled } from "../services/Installers.js";
 
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { withBillingLock } from "../services/BillingLock.js";
 type Handler = Parameters<Router["post"]>[1];
 
 interface ServerRow {
@@ -77,7 +79,10 @@ function present(t: TaskRow | null) {
     return { id: t.id, status: t.status, step: t.step, error: t.error, packages };
 }
 
-export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
+export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
+    // Every POST, PUT, PATCH and DELETE below answers 402 while the team is view only.
+    const auth = withBillingLock(baseAuth);
+
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
         auth(async (req, res, next) => {
