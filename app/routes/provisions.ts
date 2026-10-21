@@ -8,6 +8,7 @@
  * GET  /api/provisions/:id/root-password  returns the decrypted root password
  * POST /api/servers/:id/reboot            reboots a server over SSH (admin only)
  *
+ * Retry and reboot answer 402 when the team's subscription has ended (view only).
  * Each of these writes an event to the server log. The root password is
  * never logged, only the fact that someone viewed it.
  *
@@ -22,6 +23,7 @@ import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerRebootService } from "../services/ServerRebootService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 type Handler = Parameters<Router["post"]>[1];
@@ -52,6 +54,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         write(async (req, res) => {
             const teamId = requireTeam(req as any, res as any);
             if (!teamId) return;
+
+            if (!(await requireActive(res, teamId))) return;
 
             const row = (await Provision.find(req.params.id)) as
                 | { id: number; user_id: number; team_id?: number | null; status: string; server_id?: number }
@@ -126,6 +130,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         write(async (req, res) => {
             const teamId = requireTeam(req as any, res as any);
             if (!teamId) return;
+
+            if (!(await requireActive(res, teamId))) return;
 
             const server = (await Server.find(req.params.id)) as RebootRow | null;
 

@@ -1,0 +1,27 @@
+capability Billing
+
+state
+  loaded: false
+  locked: false
+  phase: "legacy"
+  planName: ""
+  periodEnd: ""
+  message: ""
+
+action
+  async load() {
+    const result = await useApi("/api/billing/access")
+    if result.ok {
+      this.locked = result.data.locked
+      this.phase = result.data.state
+      this.planName = result.data.planName
+      this.periodEnd = result.data.periodEnd
+      this.message = result.data.message
+    }
+    this.loaded = true
+  }
+
+init
+  async {
+    await this.load()
+  }

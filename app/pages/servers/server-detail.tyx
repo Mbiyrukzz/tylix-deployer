@@ -7,6 +7,12 @@ title "Server"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   server: null
   serverId: ""
@@ -78,6 +84,9 @@ action
   }
 
   askDelete() {
+    if Billing.locked {
+      return null
+    }
     this.error = ""
     this.confirmDelete = true
   }
@@ -87,6 +96,9 @@ action
   }
 
   askReboot() {
+    if Billing.locked {
+      return null
+    }
     this.rebootError = ""
     this.rebootConfirm = true
   }
@@ -96,7 +108,7 @@ action
   }
 
   async rebootServer() {
-    if not this.server or this.rebootBusy {
+    if Billing.locked or not this.server or this.rebootBusy {
       return null
     }
 
@@ -344,7 +356,7 @@ action
   }
 
   async deleteServer() {
-    if not this.server or this.deleting {
+    if Billing.locked or not this.server or this.deleting {
       return null
     }
 
@@ -437,6 +449,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
+      <LockedBanner />
+
       <div class="flex items-start justify-between gap-4 mb-6">
         <div class="min-w-0">
           <div class="flex items-center gap-3 mb-2">
@@ -464,7 +478,18 @@ template
           </div>
           <p class="text-slate-500 text-sm font-mono">{{ server.ssh_user }}@{{ server.host }}:{{ server.port }}</p>
         </div>
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="shrink-0 inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Edit
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
         <ServerForm server="{{ server }}" onSaved="{{ updated }}" />
+{{/if}}
       </div>
 
 {{#if rebooting}}
@@ -655,16 +680,38 @@ template
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-1">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Sites</h2>
+{{#if Billing.locked}}
+            <span title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm text-slate-400 select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              New site
+            </span>
+{{/if}}
+{{#if not Billing.locked}}
             <a href="{{ '/servers/site-create?id=' + serverId }}" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">New site</a>
+{{/if}}
           </div>
           <p class="text-slate-500 text-sm mb-4">Apps deployed on this server.</p>
 
 {{#if sites.length is 0}}
           <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
             <p class="text-slate-500 text-sm mb-3">Nothing deployed here yet.</p>
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Create a site
+            </button>
+{{/if}}
+{{#if not Billing.locked}}
             <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
               Create a site
             </a>
+{{/if}}
           </div>
 {{/if}}
 
@@ -688,6 +735,18 @@ template
         <p role="alert" class="text-rose-500 text-sm mb-4">{{ rebootError }}</p>
 {{/if}}
 
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Reboot server
+        </button>
+        <p class="text-slate-500 text-xs mt-2">View only. Pay to continue.</p>
+{{/if}}
+
+{{#if not Billing.locked}}
 {{#if rebooting}}
         <button disabled class="text-sm text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-900/50 rounded-lg px-4 py-2 opacity-60">
           Rebooting…
@@ -719,6 +778,7 @@ template
         </div>
 {{/if}}
 {{/if}}
+{{/if}}
       </div>
 
       <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white dark:bg-slate-900 p-6">
@@ -729,6 +789,18 @@ template
         <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
 {{/if}}
 
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Delete server
+        </button>
+        <p class="text-slate-500 text-xs mt-2">View only. Pay to continue.</p>
+{{/if}}
+
+{{#if not Billing.locked}}
 {{#if not confirmDelete}}
         <button onclick="{{ askDelete() }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-lg px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
           Delete server
@@ -751,6 +823,7 @@ template
           </button>
 {{/if}}
         </div>
+{{/if}}
 {{/if}}
       </div>
 {{/if}}

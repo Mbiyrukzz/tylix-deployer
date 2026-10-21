@@ -1,0 +1,23 @@
+component LockedBanner
+
+uses
+  Billing
+
+template
+{{#if Billing.locked}}
+<div class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-5 mb-6 flex flex-wrap items-center justify-between gap-4">
+  <div class="flex items-center gap-3 min-w-0">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-5 h-5 shrink-0 text-amber-700 dark:text-amber-400">
+      <rect x="4" y="9" width="12" height="8" rx="2" />
+      <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+    </svg>
+    <div class="min-w-0">
+      <p class="text-amber-900 dark:text-amber-300 text-sm font-semibold">View only</p>
+      <p class="text-amber-800/80 dark:text-amber-400/80 text-xs">{{ Billing.message }}</p>
+    </div>
+  </div>
+  <a href="/settings/billing" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+    Pay to continue
+  </a>
+</div>
+{{/if}}

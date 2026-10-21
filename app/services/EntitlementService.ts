@@ -4,8 +4,10 @@
  * Answers "what is this team allowed to do?" in one place.
  *
  *   entitlementFor(teamId)          the plan, its limits and the subscription state
+ *   accessFor(teamId)               view-only or not, for the UI
  *   usageFor(teamId)                what the team uses today
  *   check(teamId, resource)         can the team add one more?
+ *   requireActive(...)              for controllers: answers 402 itself when the team is view only
  *   requireWithin(...)              for controllers: answers 402 itself when over the limit
  *   requireRoomFor(...)             same, for several resources at once (joining a team)
  *
@@ -13,8 +15,12 @@
  *   legacy   no subscription row. No limits. (Everyone who existed before billing.)
  *   active   a paid or trial plan whose status is active, trialing or past_due,
  *            or canceled but still inside the period it paid for
- *   lapsed   the subscription ended. Nothing is deleted or stopped; only adding
- *            new servers, sites, connections and members is refused.
+ *   lapsed   the subscription ended. Nothing is deleted or stopped. The account is
+ *            view only: requireActive refuses writes, and nothing new can be added.
+ *
+ * past_due keeps access for BILLING_GRACE_DAYS (default 3) after the period it
+ * already paid for ends. A failed renewal isn't retried, so without this a
+ * past_due team would never lock.
  *
  * BILLING_ENFORCE=1 turns refusals on. Without it, check() still reports
  * "within: false" and the require functions log a warning, but let the request through.
@@ -39,6 +45,8 @@ import {
 
 const LIVE_STATUSES = ["active", "trialing", "past_due"];
 
+const LOCKED_MESSAGE = "Your subscription has ended. Pay to continue.";
+
 export interface Entitlement {
     state: "legacy" | "active" | "lapsed";
     plan: PlanId | null;
@@ -62,7 +70,19 @@ export interface CheckResult {
     enforced: boolean;
 }
 
+export interface Access {
+    /** True when the team is view only right now. False while enforcement is off. */
+    locked: boolean;
+    state: Entitlement["state"];
+    status: string;
+    planName: string;
+    periodEnd: string;
+    message: string;
+}
+
 export const enforcing = () => process.env.BILLING_ENFORCE === "1";
+
+const graceMs = () => (Number(process.env.BILLING_GRACE_DAYS ?? 3) || 0) * 86_400_000;
 
 async function subscriptionOf(teamId: number): Promise<SubscriptionAttributes | null> {
     const rows = (await Subscription.all()) as SubscriptionAttributes[];
@@ -92,11 +112,18 @@ export async function entitlementFor(teamId: number): Promise<Entitlement> {
 
     const def = getPlanDef(sub.plan);
     const periodEnd = String(sub.current_period_end ?? "");
-    const stillPaid = periodEnd !== "" && new Date(periodEnd).getTime() > Date.now();
-    const live =
-        sub.status === "trialing" || sub.status === "canceled"
-            ? stillPaid
-            : LIVE_STATUSES.includes(sub.status);
+    const endsAt = periodEnd !== "" ? new Date(periodEnd).getTime() : 0;
+    const stillPaid = endsAt > Date.now();
+    const inGrace = endsAt > 0 && endsAt + graceMs() > Date.now();
+
+    let live: boolean;
+    if (sub.status === "trialing" || sub.status === "canceled") {
+        live = stillPaid;
+    } else if (sub.status === "past_due") {
+        live = inGrace;
+    } else {
+        live = LIVE_STATUSES.includes(sub.status);
+    }
 
     if (!def || !live) {
         return {
@@ -118,6 +145,21 @@ export async function entitlementFor(teamId: number): Promise<Entitlement> {
         limits: def.limits,
         periodEnd,
         cancelAtPeriodEnd: Number(sub.cancel_at_period_end) === 1,
+    };
+}
+
+/** What the pages need: is this team view only, and why. */
+export async function accessFor(teamId: number): Promise<Access> {
+    const ent = await entitlementFor(teamId);
+    const lapsed = ent.state === "lapsed";
+
+    return {
+        locked: lapsed && enforcing(),
+        state: ent.state,
+        status: ent.status,
+        planName: ent.planName,
+        periodEnd: ent.periodEnd,
+        message: lapsed ? LOCKED_MESSAGE : "",
     };
 }
 
@@ -191,6 +233,29 @@ function incomingRefusal(result: CheckResult, adding: number): string {
         return "This team's subscription has ended, so it can't take on anything new right now. Ask the team owner to renew the plan.";
     }
     return `This team's ${result.planName} plan allows ${result.limit} ${label}. It has ${result.used} and you would bring ${adding} more. Ask the team owner to upgrade, or move some of yours out first.`;
+}
+
+/**
+ * For controllers that change things (create, edit, deploy, reboot).
+ * Returns true to carry on, or answers 402 itself and returns false.
+ *
+ *   if (!(await requireActive(res, teamId))) return;
+ *
+ * Leave it off reads, login, logout, billing and the Paystack webhook:
+ * a view-only team still has to see its data and be able to pay.
+ */
+export async function requireActive(res: TylixResponse, teamId: number): Promise<boolean> {
+    const ent = await entitlementFor(teamId);
+    if (ent.state !== "lapsed") return true;
+
+    if (!enforcing()) {
+        console.warn(`[billing] team ${teamId} is lapsed (${ent.status}); not enforced.`);
+        return true;
+    }
+
+    res.status(402);
+    res.json({ error: LOCKED_MESSAGE, code: "subscription_lapsed" });
+    return false;
 }
 
 /**
