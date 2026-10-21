@@ -2,7 +2,14 @@ page Register
 
 title "Create account"
 
+needs
+  Auth
+
 state
+  ready: false
+  signedIn: false
+  signedInEmail: ""
+  showForm: false
   name: ""
   email: ""
   password: ""
@@ -10,6 +17,8 @@ state
   agreedToTerms: false
   error: ""
   submitting: false
+  submitLabel: "Create account"
+  submitDim: ""
   registered: false
 
 action
@@ -34,6 +43,8 @@ action
       }
 
       this.submitting = true
+      this.submitLabel = "Creating account…"
+      this.submitDim = "opacity-50 pointer-events-none"
       this.error = ""
 
       const result = await useApi("/api/register", {
@@ -41,18 +52,31 @@ action
         body: { name: this.name, email: this.email, password: this.password }
       })
 
+      this.submitting = false
+      this.submitLabel = "Create account"
+      this.submitDim = ""
+
       if result.ok {
+        this.showForm = false
         this.registered = true
-        this.submitting = false
       } else if result.status is 422 and result.data.errors {
         const firstField = Object.keys(result.data.errors)[0]
         this.error = result.data.errors[firstField][0]
-        this.submitting = false
       } else {
         this.error = result.error or "Could not create account. Check your details and try again."
-        this.submitting = false
       }
     }
+  }
+
+onMount
+  async {
+    if Auth.user {
+      this.signedInEmail = Auth.user.email
+      this.signedIn = true
+    } else {
+      this.showForm = true
+    }
+    this.ready = true
   }
 
 template
@@ -113,6 +137,24 @@ template
             <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
           </a>
 
+{{#if not ready}}
+          <p class="text-slate-500 text-sm text-center">Loading…</p>
+{{/if}}
+
+{{#if signedIn}}
+          <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center text-lg mb-5 text-emerald-700 dark:text-emerald-400">✓</div>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">You're already signed in</h1>
+          <p class="text-slate-500 text-sm mb-8">
+            Signed in as <span class="text-slate-800 dark:text-slate-300 font-medium">{{ signedInEmail }}</span>.
+          </p>
+          <a href="/dashboard" class="inline-block w-full text-center bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all mb-3">
+            Go to Dashboard
+          </a>
+          <a href="/pricing" class="inline-block w-full text-center border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl py-2.5 font-medium hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            See pricing
+          </a>
+{{/if}}
+
 {{#if registered}}
           <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center text-lg mb-5 text-emerald-700 dark:text-emerald-400">✓</div>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Check your email</h1>
@@ -125,7 +167,7 @@ template
           </a>
 {{/if}}
 
-{{#if not registered}}
+{{#if showForm}}
           <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Get started</p>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Create your account</h1>
           <p class="text-slate-500 text-sm mb-8">Deploy your first app in minutes.</p>
@@ -205,16 +247,9 @@ template
             </span>
           </label>
 
-{{#if submitting}}
-          <button disabled class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold opacity-50 transition">
-            Creating account…
+          <button onclick="{{ submit() }}" class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all {{ submitDim }}">
+            {{ submitLabel }}
           </button>
-{{/if}}
-{{#if not submitting}}
-          <button onclick="{{ submit() }}" class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
-            Create account
-          </button>
-{{/if}}
 
           <p class="text-sm text-slate-500 text-center mt-6">
             Already have an account? <a href="/login" class="text-emerald-700 dark:text-emerald-400 hover:underline">Log in</a>

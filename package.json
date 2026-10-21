@@ -14,7 +14,7 @@
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.1152.0",
     "@tylix/auth": "^0.4.0",
-    "@tylix/cli": "^0.4.4",
+    "@tylix/cli": "^0.4.5",
     "@tylix/compiler": "^0.4.2",
     "@tylix/core": "^0.4.2",
     "@tylix/generator": "^0.4.0",
