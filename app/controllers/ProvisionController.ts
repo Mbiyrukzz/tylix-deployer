@@ -22,7 +22,7 @@ import { Provision } from "../models/Provision.js";
 import { Provider } from "../models/Provider.js";
 import { validateProvision, normalizeProvision } from "../validators/ProvisionValidator.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
-import { requireWithin } from "../services/EntitlementService.js";
+import { requireWithin, requireActive } from "../services/EntitlementService.js";
 import { adapterFor, instanceRefOf, providerName, providerSecret } from "../services/ProviderAdapter.js";
 import { Server } from "../models/Server.js";
 import { dispatch } from "@tylix/core";
@@ -107,6 +107,7 @@ export class ProvisionController {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, teamId))) return;
 
         const result = validateProvision(req.body);
         if (!result.valid) {
@@ -264,6 +265,7 @@ export class ProvisionController {
         const row = await findOwned(req, res);
         if (!row) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         if (row.status === "running") {
             res.status(409);

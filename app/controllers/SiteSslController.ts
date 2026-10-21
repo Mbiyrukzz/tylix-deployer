@@ -16,6 +16,7 @@ import { Site } from "../models/Site.js";
 import { SiteSsl } from "../services/SiteSsl.js";
 import type { SslRequest } from "../services/SiteSsl.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
@@ -112,6 +113,7 @@ export class SiteSslController {
         const site = await findOwned(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
         if (!guard(site, res)) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
@@ -166,6 +168,7 @@ export class SiteSslController {
         const site = await findOwned(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
         if (!guard(site, res)) return;
 
         if (String(site.ssl_mode || "none") === "none") {

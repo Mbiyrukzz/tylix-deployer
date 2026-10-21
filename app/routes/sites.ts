@@ -7,6 +7,9 @@
  *
  * Every value validated here ends up in shell commands and nginx config
  * inside the job, so the patterns below are strict on purpose.
+ *
+ * Writes are refused with 402 while the team is view only (see write()),
+ * and creating a site is checked against the team's plan limit.
  */
 
 import type { Router } from "@tylix/core";
@@ -15,6 +18,7 @@ import { Server } from "../models/Server.js";
 import { Site } from "../models/Site.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { requireActive, requireWithin } from "../services/EntitlementService.js";
 
 type Handler = Parameters<Router["post"]>[1];
 
@@ -63,25 +67,33 @@ function present(row: SiteRow) {
 }
 
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
-    // Admin-only: a route registered with write() answers 403 to a plain member.
+    // Admin-only, and refused (402) while the team is view only.
+    // A route registered with write() answers 403 to a plain member.
+    // Reads and anything a locked team must still do (billing, login) stay on plain auth().
     const write = (handler: Handler): Handler =>
-        auth(async (req, res) => {
+        auth(async (req, res, next) => {
             if (!requireRole(req as any, res as any, "admin")) return;
-            return handler(req, res);
+
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
+            if (!(await requireActive(res as any, teamId))) return;
+
+            return handler(req, res, next);
         });
 
     router.get(
         "/api/sites",
         auth(async (req, res) => {
-    const teamId = requireTeam(req as any, res as any);
-    if (!teamId) return;
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
 
-    const rows = (await Site.all()) as SiteRow[];
-    const own = rows
-        .filter((r) => Number(r.team_id) === teamId)
-        .sort((a, b) => b.id - a.id);
-    return res.json(own.map(present));
-}),
+            const rows = (await Site.all()) as SiteRow[];
+            const own = rows
+                .filter((r) => Number(r.team_id) === teamId)
+                .sort((a, b) => b.id - a.id);
+            return res.json(own.map(present));
+        }),
     );
 
     router.get(
@@ -124,8 +136,6 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
             const onServer = ((await Site.all()) as SiteRow[]).filter((s) => s.server_id === server.id);
 
-            
-
             const type = String(b.type || "");
             if (!TYPES.includes(type)) fail("type", "Choose a valid site type.");
 
@@ -153,26 +163,26 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 fail("isolated_user", "Use 1–32 lowercase letters, digits, - or _, starting with a letter (not a reserved name).");
             }
 
-          let phpVersion = "";
-if (PHP_TYPES.includes(type)) {
-    phpVersion = String(b.php_version || "");
-    if (!PHP_VERSIONS.includes(phpVersion)) fail("php_version", "Choose a valid PHP version.");
-}
+            let phpVersion = "";
+            if (PHP_TYPES.includes(type)) {
+                phpVersion = String(b.php_version || "");
+                if (!PHP_VERSIONS.includes(phpVersion)) fail("php_version", "Choose a valid PHP version.");
+            }
 
-let port = 0;
-if (NODE_TYPES.includes(type)) {
-    const rawPort = String(b.port ?? "").trim();
-    if (rawPort === "" || rawPort === "0") {
-        const used = new Set(onServer.map((s) => Number(s.port)));
-        port = 3000;
-        while (used.has(port)) port++;
-    } else {
-        port = Number(rawPort);
-        if (!Number.isInteger(port) || port < 1024 || port > 65535) {
-            fail("port", "The app port must be between 1024 and 65535.");
-        }
-    }
-}
+            let port = 0;
+            if (NODE_TYPES.includes(type)) {
+                const rawPort = String(b.port ?? "").trim();
+                if (rawPort === "" || rawPort === "0") {
+                    const used = new Set(onServer.map((s) => Number(s.port)));
+                    port = 3000;
+                    while (used.has(port)) port++;
+                } else {
+                    port = Number(rawPort);
+                    if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+                        fail("port", "The app port must be between 1024 and 65535.");
+                    }
+                }
+            }
 
             const sourceControlId = Number(b.source_control_id) || 0;
             let repository = "";
@@ -199,14 +209,14 @@ if (NODE_TYPES.includes(type)) {
 
             // Uniqueness on this server.
             if (Object.keys(errors).length === 0) {
-    const existing = ((await Site.all()) as SiteRow[]).filter((s) => s.server_id === server.id);
-    if (existing.some((s) => s.domain === domain)) {
-        fail("domain", "That domain already exists on this server.");
-    }
-                if (existing.some((s) => s.isolated_user === isolatedUser)) {
+                if (onServer.some((s) => s.domain === domain)) {
+                    fail("domain", "That domain already exists on this server.");
+                }
+                if (onServer.some((s) => s.isolated_user === isolatedUser)) {
                     fail("isolated_user", "That isolated user is already used on this server.");
                 }
-                if (type === "nodejs" && existing.some((s) => s.type === "nodejs" && Number(s.port) === port)) {
+                // Every app type that listens on a port, not just "nodejs".
+                if (NODE_TYPES.includes(type) && onServer.some((s) => NODE_TYPES.includes(s.type) && Number(s.port) === port)) {
                     fail("port", "That port is already used by another site on this server.");
                 }
             }
@@ -215,6 +225,10 @@ if (NODE_TYPES.includes(type)) {
                 res.status(422);
                 return res.json({ errors });
             }
+
+            // Last check before the row is created. The row exists straight away
+            // (status "pending"), so two quick requests can't both slip under the limit.
+            if (!(await requireWithin(res as any, teamId, "sites"))) return;
 
             const row = (await Site.create({
                 user_id: req.user?.userId,

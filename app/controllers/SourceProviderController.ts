@@ -14,6 +14,7 @@ import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 const KINDS = ["github", "gitlab"];
 
@@ -108,6 +109,7 @@ export class SourceProviderController {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, teamId))) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const kind = str(body.kind).toLowerCase();
@@ -153,6 +155,7 @@ export class SourceProviderController {
         const row = await findOwned(req, res);
         if (!row) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const label = str(body.label);
@@ -187,6 +190,7 @@ export class SourceProviderController {
         const row = await findOwned(req, res);
         if (!row) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         await SourceProvider.delete(row.id);
         res.status(204);

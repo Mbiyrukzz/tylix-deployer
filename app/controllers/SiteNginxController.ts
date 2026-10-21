@@ -13,6 +13,7 @@ import { Site } from "../models/Site.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { SiteNginx, NginxRejected, MAX_NGINX_BYTES, nginxPathFor } from "../services/SiteNginx.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
@@ -66,6 +67,7 @@ export class SiteNginxController {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
         if (site.status !== "ready") return notReady(res);
 
         const raw = ((req.body ?? {}) as Record<string, unknown>).content;

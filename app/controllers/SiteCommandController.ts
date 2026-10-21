@@ -14,6 +14,7 @@ import { Site } from "../models/Site.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { SiteCommands, MAX_COMMAND_CHARS } from "../services/SiteCommands.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
@@ -63,6 +64,7 @@ export class SiteCommandController {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         if (site.status !== "ready") {
             res.status(409);

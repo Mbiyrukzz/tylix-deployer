@@ -15,6 +15,7 @@ import { canDeploy, type DeployRow } from "../services/SiteDeployer.js";
 import { getPlugin, pluginsFor, publicPlugin, type PluginDef } from "../services/SitePlugins.js";
 import { SitePluginInstaller, portOf } from "../services/SitePluginInstaller.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
@@ -121,6 +122,7 @@ export class SitePluginController {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         const id = String(((req.body ?? {}) as Record<string, unknown>).plugin ?? "");
         const def = getPlugin(id);
@@ -178,6 +180,7 @@ export class SitePluginController {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         const def = getPlugin(String(req.params.plugin ?? ""));
         const rows = await rowsFor(site.id);

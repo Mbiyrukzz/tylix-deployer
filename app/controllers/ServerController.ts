@@ -43,7 +43,7 @@ import { validateServer, normalizeServer } from "../validators/ServerValidator.j
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
-import { requireWithin } from "../services/EntitlementService.js";
+import { requireWithin, requireActive } from "../services/EntitlementService.js";
 import { ServerSshKey } from "../models/ServerSshKey.js";
 import { ServerWorker } from "../models/ServerWorker.js";
 import { ServerCronJob } from "../models/ServerCronJob.js";
@@ -132,6 +132,7 @@ export class ServerController {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, teamId))) return;
 
         const result = validateServer(req.body);
         if (!result.valid) {
@@ -183,6 +184,7 @@ export class ServerController {
         const server = await findOwned(req, res);
         if (!server) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         const teamId = Number(server.team_id);
         const actor = Number(req.user?.userId);
@@ -287,6 +289,7 @@ export class ServerController {
         const server = await findOwned(req, res);
         if (!server) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         const teamId = Number(server.team_id);
         const actor = Number(req.user?.userId);

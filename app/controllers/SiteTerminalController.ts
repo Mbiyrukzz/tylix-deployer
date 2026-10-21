@@ -12,6 +12,7 @@ import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { signTicket } from "../services/TerminalTicket.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
@@ -31,6 +32,7 @@ export class SiteTerminalController {
     async ticket(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
+        if (!(await requireActive(res, teamId))) return;
 
         const site = (await Site.find(req.params.id)) as SiteRow | null;
 

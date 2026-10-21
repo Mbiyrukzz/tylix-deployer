@@ -30,7 +30,7 @@ import {
 import { CryptoService } from "../services/CryptoService.js";
 import { adapterFor, instanceRefOf, providerName } from "../services/ProviderAdapter.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
-import { requireWithin } from "../services/EntitlementService.js";
+import { requireWithin, requireActive } from "../services/EntitlementService.js";
 
 interface ProviderRow {
     id: number;
@@ -170,6 +170,7 @@ export class ProviderController {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, teamId))) return;
 
         const result = validateProvider(req.body);
         if (!result.valid) {
@@ -217,6 +218,7 @@ export class ProviderController {
         const provider = await findOwned(req, res);
         if (!provider) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         // The stored kind decides, never the request body: the type is fixed.
         const result = validateProvider(req.body, { isUpdate: true, kind: provider.kind });
@@ -264,6 +266,7 @@ export class ProviderController {
         const provider = await findOwned(req, res);
         if (!provider) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         // "Has a machine" means "has a reference" (Vultr ids are UUIDs and AWS
         // refs are region/id, so Number(instance_id) > 0 would miss them).

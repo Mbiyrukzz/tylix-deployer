@@ -18,6 +18,7 @@ import {
     MAX_REDIRECTS,
 } from "../services/SiteRedirects.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
@@ -89,6 +90,7 @@ export class SiteRedirectController {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
         if (site.status !== "ready") return notReady(res);
 
         const actor = Number(req.user?.userId);
@@ -129,6 +131,7 @@ export class SiteRedirectController {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
         if (site.status !== "ready") return notReady(res);
 
         const id = String(req.params.redirectId ?? "");

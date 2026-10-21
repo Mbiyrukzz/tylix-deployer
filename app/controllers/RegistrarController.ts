@@ -33,6 +33,7 @@ import {
 import { CryptoService } from "../services/CryptoService.js";
 import { registrarFor, registrarName, featuresOf } from "../services/RegistrarAdapter.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
+import { requireActive } from "../services/EntitlementService.js";
 
 interface RegistrarRow {
     id: number;
@@ -181,6 +182,7 @@ export class RegistrarController {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, teamId))) return;
 
         const result = validateRegistrar(req.body);
         if (!result.valid) {
@@ -230,6 +232,7 @@ export class RegistrarController {
         const row = await findOwned(req, res);
         if (!row) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         // The stored kind decides, never the request body.
         const result = validateRegistrar(req.body, { isUpdate: true, kind: row.kind });
@@ -275,6 +278,7 @@ export class RegistrarController {
         const row = await findOwned(req, res);
         if (!row) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         // Nothing depends on a registrar connection: removing it only forgets the key.
         await Registrar.delete(row.id);

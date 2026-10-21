@@ -11,7 +11,9 @@
  * created the site. Everyone on the team sees it.
  *
  * Plans: creating a site is checked against the team's site limit
- * (EntitlementService). Deleting and deploying are never limited.
+ * (EntitlementService). Deleting and deploying are never limited by the
+ * plan, but every write (create, delete, deploy, save script/env) is
+ * refused with 402 while the team is view only (requireActive).
  *
  * Roles:
  *   - member: view sites, deployments and logs, and trigger a deploy
@@ -41,7 +43,7 @@ import { SiteDestroyer } from "../services/SiteDestroyer.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { needsPort } from "../services/SiteTypes.js";
 import { requireTeam, requireRole, hasRole } from "../services/TeamScope.js";
-import { requireWithin } from "../services/EntitlementService.js";
+import { requireActive, requireWithin } from "../services/EntitlementService.js";
 
 interface SiteRow {
     id: number;
@@ -248,11 +250,12 @@ export class SiteController {
         return res.json(toPublic(site, true));
     }
 
-    /** Admin only. Limited by the team's plan. */
+    /** Admin only. Refused while the team is view only. Limited by the team's plan. */
     async store(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, teamId))) return;
 
         const result = validateSite(req.body);
         if (!result.valid) {
@@ -333,6 +336,7 @@ export class SiteController {
     }
 
     // Editing needs server-side changes (vhost, pool, service), so it comes in a later step.
+    // When it is built, add requireActive here like the other writes.
     async update(_req: TylixRequest, res: TylixResponse) {
         res.status(501);
         return res.json({ error: "Editing sites isn't supported yet." });
@@ -343,11 +347,13 @@ export class SiteController {
      *
      * Marks the site "deleting" and cleans up in the background. The page polls
      * GET /api/sites/:id until it answers 404 (gone) or status "delete_failed".
+     * Refused while the team is view only.
      */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(site.team_id)))) return;
 
         const query = (req as { query?: Record<string, unknown> }).query ?? {};
         const confirm = String(query.confirm ?? "");
@@ -443,6 +449,7 @@ export class SiteController {
         const site = await findOwned(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(site.team_id)))) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const errors: Record<string, string[]> = {};
@@ -491,10 +498,11 @@ export class SiteController {
         return res.end();
     }
 
-    /** POST /api/sites/:id/deploy: any team member may deploy. */
+    /** POST /api/sites/:id/deploy: any team member may deploy, unless the team is view only. */
     async deploy(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
+        if (!(await requireActive(res, Number(site.team_id)))) return;
 
         if (site.status !== "ready") {
             res.status(409);
