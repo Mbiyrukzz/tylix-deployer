@@ -7,6 +7,12 @@ title "Volumes"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   checkedAuth: false
   providerId: ""
@@ -144,6 +150,10 @@ action
   }
 
   async openCreate() {
+    if Billing.locked {
+      return null
+    }
+
     this.clearCreateErrors()
     this.createMode = "region"
     this.buildModes()
@@ -207,6 +217,10 @@ action
   }
 
   async create() {
+    if Billing.locked {
+      return null
+    }
+
     if this.creating {
       return null
     }
@@ -250,6 +264,10 @@ action
   // ---- Attach ----
 
   openAttach(id) {
+    if Billing.locked {
+      return null
+    }
+
     const v = this.list.find((x) => x.id is id)
     if not v {
       return null
@@ -269,6 +287,10 @@ action
   }
 
   async attach(volumeId, machineId) {
+    if Billing.locked {
+      return null
+    }
+
     if this.attachBusy {
       return null
     }
@@ -296,6 +318,10 @@ action
   // ---- Detach and delete ----
 
   askDetach(id) {
+    if Billing.locked {
+      return null
+    }
+
     this.actionError = ""
     this.attachingId = ""
     this.confirmId = id
@@ -303,6 +329,10 @@ action
   }
 
   askDelete(id) {
+    if Billing.locked {
+      return null
+    }
+
     this.actionError = ""
     this.attachingId = ""
     this.confirmId = id
@@ -315,6 +345,10 @@ action
   }
 
   async confirmDetach(id) {
+    if Billing.locked {
+      return null
+    }
+
     if this.busyId is not "" {
       return null
     }
@@ -337,6 +371,10 @@ action
   }
 
   async confirmDelete(id) {
+    if Billing.locked {
+      return null
+    }
+
     if this.busyId is not "" {
       return null
     }
@@ -398,13 +436,26 @@ template
         <IconArrowLeft class="w-4 h-4" /> Provider
       </a>
 
+      <LockedBanner />
+
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Volumes</h1>
           <p class="text-slate-500 text-sm">Block storage at {{ kindName }}.</p>
         </div>
 {{#if not locked}}
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Create volume
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
         <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create volume</button>
+{{/if}}
 {{/if}}
       </div>
 
@@ -541,7 +592,18 @@ template
           <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not creating}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Create volume
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create volume</button>
+{{/if}}
 {{/if}}
         </div>
       </div>
@@ -587,6 +649,10 @@ template
 {{#if attachingId is v.id}}
           <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-4 mt-4">
             <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-2">Attach to a server in {{ v.region }}</p>
+{{#if Billing.locked}}
+            <p class="text-slate-500 text-sm">Pay to continue before attaching this volume.</p>
+{{/if}}
+{{#if not Billing.locked}}
 {{#if attachOptions.length is 0}}
             <p class="text-slate-500 text-sm">There are no servers in that region. A volume can only be attached to a server in its own region.</p>
 {{/if}}
@@ -595,6 +661,7 @@ template
               <button onclick="{{ attach(v.id, m.id) }}" class="text-sm font-mono text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{{ m.label }}</button>
 {{/each}}
             </div>
+{{/if}}
 {{#if attachBusy}}
             <p class="text-slate-500 text-xs mt-3">Attaching…</p>
 {{/if}}
@@ -613,6 +680,35 @@ template
 {{/if}}
 
 {{#if busyId is not v.id}}
+{{#if Billing.locked}}
+{{#if v.attached}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Detach
+            </button>
+{{/if}}
+{{#if not v.attached}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Attach
+            </button>
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Delete
+            </button>
+{{/if}}
+{{/if}}
+
+{{#if not Billing.locked}}
 {{#if confirmId is v.id}}
 {{#if confirmKind is "detach"}}
             <span class="text-slate-600 dark:text-slate-300 text-sm">Detach {{ v.label }}? Unmount it on the server first.</span>
@@ -633,6 +729,7 @@ template
 {{#if not v.attached}}
             <button onclick="{{ openAttach(v.id) }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Attach</button>
             <button onclick="{{ askDelete(v.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
 {{/if}}
 {{/if}}
 {{/if}}

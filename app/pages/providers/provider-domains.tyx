@@ -7,6 +7,12 @@ title "Domains"
 needs
   Auth
 
+uses
+  Billing
+
+background
+  Billing
+
 state
   checkedAuth: false
   providerId: ""
@@ -83,6 +89,10 @@ action
   }
 
   openForm() {
+    if Billing.locked {
+      return null
+    }
+
     this.nameError = ""
     this.emailError = ""
     this.formError = ""
@@ -96,6 +106,10 @@ action
   }
 
   async create() {
+    if Billing.locked {
+      return null
+    }
+
     if this.saving {
       return null
     }
@@ -129,6 +143,10 @@ action
   }
 
   askRemove(id) {
+    if Billing.locked {
+      return null
+    }
+
     this.error = ""
     this.removing = id
   }
@@ -138,6 +156,10 @@ action
   }
 
   async confirmRemove(id) {
+    if Billing.locked {
+      return null
+    }
+
     if this.removeBusy {
       return null
     }
@@ -196,13 +218,26 @@ template
         <IconArrowLeft class="w-4 h-4" /> Provider
       </a>
 
+      <LockedBanner />
+
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Domains</h1>
           <p class="text-slate-500 text-sm">DNS zones hosted at {{ kindName }}.</p>
         </div>
 {{#if not locked}}
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Add domain
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
         <button onclick="{{ openForm() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Add domain</button>
+{{/if}}
 {{/if}}
       </div>
 
@@ -261,7 +296,18 @@ template
           <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not saving}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Create domain
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create domain</button>
+{{/if}}
 {{/if}}
         </div>
       </div>
@@ -307,12 +353,23 @@ template
 
           <div class="flex items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <a href="{{ d.href }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">DNS records</a>
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Delete
+            </button>
+{{/if}}
+{{#if not Billing.locked}}
 {{#if removing is d.id}}
             <button onclick="{{ confirmRemove(d.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Yes, delete</button>
             <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{/if}}
 {{#if removing is not d.id}}
             <button onclick="{{ askRemove(d.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
+{{/if}}
 {{/if}}
           </div>
         </div>

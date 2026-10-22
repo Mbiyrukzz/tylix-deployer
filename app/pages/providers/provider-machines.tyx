@@ -7,6 +7,13 @@ title "Machines"
 needs
   Auth
 
+uses
+  Servers
+  Billing
+
+background
+  Billing
+
 state
   checkedAuth: false
   providerId: ""
@@ -74,6 +81,18 @@ action
       since = m.created
     }
 
+    // Match this machine to a server the deployer knows about, by IP.
+    // Machines the deployer didn't create have no server record, so no link.
+    let href = ""
+    let serverId = 0
+    if m.ip {
+      const srv = Servers.data.find((s) => s.host is m.ip)
+      if srv {
+        serverId = srv.id
+        href = "/servers/server-detail?id=" + srv.id
+      }
+    }
+
     return Object.assign({}, m, {
       statusText: statusText,
       statusCls: statusCls,
@@ -82,7 +101,9 @@ action
       canStop: canStop,
       transitional: transitional,
       ipText: ipText,
-      since: since
+      since: since,
+      serverId: serverId,
+      href: href
     })
   }
 
@@ -149,6 +170,10 @@ action
   }
 
   askAction(id, action) {
+    if Billing.locked {
+      return null
+    }
+
     this.actionError = ""
     this.confirmId = id
     this.confirmAction = action
@@ -160,6 +185,10 @@ action
   }
 
   async act(id, action) {
+    if Billing.locked {
+      return null
+    }
+
     if this.busyId is not "" {
       return null
     }
@@ -221,6 +250,8 @@ onMount
     this.kind = p.data.kind
     this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
 
+    // Servers must be loaded before the machines are decorated, so IPs can be matched.
+    await Servers.load()
     await this.load()
     this.checkedAuth = true
   }
@@ -237,6 +268,8 @@ template
         <IconArrowLeft class="w-4 h-4" /> Provider
       </a>
 
+      <LockedBanner />
+
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Machines</h1>
@@ -251,7 +284,18 @@ template
           <button onclick="{{ refresh() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Refresh</button>
 {{/if}}
 {{/if}}
+{{#if Billing.locked}}
+          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+            </svg>
+            Create server
+          </button>
+{{/if}}
+{{#if not Billing.locked}}
           <a href="{{ createHref }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</a>
+{{/if}}
         </div>
       </div>
 
@@ -316,36 +360,76 @@ template
 
       <div class="space-y-3">
 {{#each m in machines}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
-                <IconServer class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
-              </div>
-              <div class="min-w-0">
-                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ m.label }}</h3>
-                <p class="text-slate-500 text-xs font-mono">{{ m.ipText }}</p>
-              </div>
-            </div>
-            <span class="{{ m.statusCls }}">
-              <span class="{{ m.dotCls }}"></span> {{ m.statusText }}
-            </span>
-          </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none transition-all">
 
-          <div class="grid grid-cols-3 gap-4 mt-4">
-            <div>
-              <p class="text-slate-500 text-xs mb-1">Region</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ m.region }}</p>
+{{#if m.href}}
+          <a href="{{ m.href }}" class="group block">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+                  <IconServer class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ m.label }}</h3>
+                  <p class="text-slate-500 text-xs font-mono">{{ m.ipText }}</p>
+                </div>
+              </div>
+              <span class="{{ m.statusCls }}">
+                <span class="{{ m.dotCls }}"></span> {{ m.statusText }}
+              </span>
             </div>
-            <div>
-              <p class="text-slate-500 text-xs mb-1">Plan</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ m.plan }}</p>
+
+            <div class="grid grid-cols-3 gap-4 mt-4">
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Region</p>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ m.region }}</p>
+              </div>
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Plan</p>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ m.plan }}</p>
+              </div>
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Created</p>
+                <p class="text-slate-900 dark:text-slate-100 text-sm">{{ m.since }}</p>
+              </div>
             </div>
-            <div>
-              <p class="text-slate-500 text-xs mb-1">Created</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ m.since }}</p>
+          </a>
+{{/if}}
+
+{{#if not m.href}}
+          <div>
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+                  <IconServer class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ m.label }}</h3>
+                  <p class="text-slate-500 text-xs font-mono">{{ m.ipText }}</p>
+                </div>
+              </div>
+              <span class="{{ m.statusCls }}">
+                <span class="{{ m.dotCls }}"></span> {{ m.statusText }}
+              </span>
             </div>
+
+            <div class="grid grid-cols-3 gap-4 mt-4">
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Region</p>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ m.region }}</p>
+              </div>
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Plan</p>
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ m.plan }}</p>
+              </div>
+              <div>
+                <p class="text-slate-500 text-xs mb-1">Created</p>
+                <p class="text-slate-900 dark:text-slate-100 text-sm">{{ m.since }}</p>
+              </div>
+            </div>
+            <p class="text-slate-400 text-xs mt-3">Not added to deployer</p>
           </div>
+{{/if}}
 
           <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
 {{#if busyId is m.id}}
@@ -353,6 +437,38 @@ template
 {{/if}}
 
 {{#if busyId is not m.id}}
+{{#if Billing.locked}}
+{{#if m.canBoot}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Boot
+            </button>
+{{/if}}
+{{#if m.canStop}}
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Reboot
+            </button>
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Shut down
+            </button>
+{{/if}}
+{{#if m.transitional}}
+            <span class="text-slate-400 text-xs">Wait for it to finish before sending another action.</span>
+{{/if}}
+{{/if}}
+
+{{#if not Billing.locked}}
 {{#if confirmId is m.id}}
             <span class="text-slate-600 dark:text-slate-300 text-sm">
 {{#if confirmAction is "shutdown"}}
@@ -376,6 +492,7 @@ template
 {{/if}}
 {{#if m.transitional}}
             <span class="text-slate-400 text-xs">Wait for it to finish before sending another action.</span>
+{{/if}}
 {{/if}}
 {{/if}}
 {{/if}}
