@@ -17,6 +17,12 @@
  *     provider first (through ProviderAdapter), so no billable machine is orphaned
  *   - deleting also removes the server's records (ServerRecords), and is
  *     refused while the server still has sites
+ *   - two-factor: when the caller has authenticator or SMS two-factor on,
+ *     creating and deleting also need a valid code (StepUpService). The check
+ *     runs last, after every check that can refuse the request, so a refused
+ *     request never spends a code. The code comes from the body (store) or
+ *     from the body or query string (destroy, which already reads `confirm`
+ *     from the query).
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -27,6 +33,7 @@ import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js"
 import { requireWithin, requireActive } from "../services/EntitlementService.js";
 import { adapterFor, instanceRefOf, providerName, providerSecret } from "../services/ProviderAdapter.js";
 import { ServerRecords } from "../services/ServerRecords.js";
+import { StepUpService } from "../services/StepUpService.js";
 import { dispatch } from "@tylix/core";
 
 const TYLIX_MIN_MEMORY_MB = 4096;
@@ -63,6 +70,13 @@ function toPublic(row: ProvisionRow) {
         has_instance: instanceRefOf(row) !== "",
         has_root_password: Boolean(root_password),
     };
+}
+
+/** The second-factor code the client sent: body first, then query string (DELETE requests). */
+function codeOf(req: TylixRequest): unknown {
+    const fromBody = (req.body as { code?: unknown } | undefined)?.code;
+    if (fromBody !== undefined && fromBody !== null && String(fromBody).trim() !== "") return fromBody;
+    return req.query?.code;
 }
 
 /** Loads a provision and answers 404 itself if it is missing or not on the caller's team. */
@@ -104,7 +118,10 @@ export class ProvisionController {
         return res.json(toPublic(row));
     }
 
-    /** Admin only: this creates a billable machine at the provider. Limited by the team's plan. */
+    /**
+     * Admin only: this creates a billable machine at the provider. Limited by the team's plan.
+     * With two-factor on, a valid code (body.code) is required.
+     */
     async store(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
@@ -224,6 +241,9 @@ export class ProvisionController {
             return res.json({ error: "Your team already has a server with that name." });
         }
 
+        // Last gate before the billable step: second factor, if the caller has one on.
+        if (!(await StepUpService.require(req, res, codeOf(req), "create this server"))) return;
+
         const row = (await Provision.create({
             user_id: req.user?.userId,
             team_id: teamId,
@@ -274,7 +294,10 @@ export class ProvisionController {
         return res.json({ error: "Provisions can't be edited." });
     }
 
-    /** Admin only. Another team's provision answers 404 before the role is checked. */
+    /**
+     * Admin only. Another team's provision answers 404 before the role is checked.
+     * With two-factor on, a valid code (body or query `code`) is required.
+     */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
@@ -304,6 +327,15 @@ export class ProvisionController {
 
         const ref = instanceRefOf(row);
 
+        type ProviderRow = {
+            user_id: number;
+            team_id?: number | null;
+            kind: string;
+            api_token: string;
+            credentials: string;
+        };
+        let provider: ProviderRow | null = null;
+
         if (ref) {
             const confirm = String(req.query?.confirm ?? "");
             if (confirm !== row.name) {
@@ -311,9 +343,7 @@ export class ProvisionController {
                 return res.json({ error: "Type the server name to confirm." });
             }
 
-            const provider = (await Provider.find(row.provider_id)) as
-                | { user_id: number; team_id?: number | null; kind: string; api_token: string; credentials: string }
-                | null;
+            provider = (await Provider.find(row.provider_id)) as ProviderRow | null;
 
             if (!provider || (await teamIdOfRow(provider)) !== (await teamIdOfRow(row))) {
                 res.status(409);
@@ -321,7 +351,12 @@ export class ProvisionController {
                     error: "The provider connection is gone, so this server has to be deleted at the provider by hand.",
                 });
             }
+        }
 
+        // Last gate before anything is destroyed: second factor, if the caller has one on.
+        if (!(await StepUpService.require(req, res, codeOf(req), "delete this server"))) return;
+
+        if (ref && provider) {
             const name = providerName(provider.kind);
 
             try {

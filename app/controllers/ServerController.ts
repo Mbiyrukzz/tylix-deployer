@@ -21,6 +21,10 @@
  * Plans: adding a server is checked against the team's plan
  * (EntitlementService). Editing and deleting are never limited.
  *
+ * Two-factor: when the caller has two-factor turned on (authenticator or
+ * SMS), adding and deleting a server also need a valid code (StepUpService).
+ * That check runs last, after every check that can refuse the request.
+ *
  * Deleting a server is refused while it still has sites, so no site record
  * is ever left pointing at a server that is gone. The records that hang off
  * the server are removed by ServerRecords.
@@ -41,6 +45,7 @@ import { validateServer, normalizeServer } from "../validators/ServerValidator.j
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { ServerRecords } from "../services/ServerRecords.js";
+import { StepUpService } from "../services/StepUpService.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { requireWithin, requireActive } from "../services/EntitlementService.js";
 
@@ -63,6 +68,11 @@ interface ServerRow {
 function toPublic(row: ServerRow) {
     const { ssh_key, ...rest } = row;
     return { ...rest, has_ssh_key: Boolean(ssh_key) };
+}
+
+/** The second-factor code the client sent, if any. */
+function codeOf(req: TylixRequest): unknown {
+    return (req.body as { code?: unknown } | undefined)?.code;
 }
 
 /** Loads a server and answers 404 itself if it is missing or not on the caller's team. */
@@ -121,7 +131,10 @@ export class ServerController {
         return res.json(toPublic(server));
     }
 
-    /** Admin only. Limited by the team's plan. */
+    /**
+     * Admin only. Limited by the team's plan.
+     * With two-factor on, a valid code (body.code) is required.
+     */
     async store(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
@@ -142,6 +155,9 @@ export class ServerController {
         }
 
         if (!(await requireWithin(res, teamId, "servers"))) return;
+
+        // Last gate before the write: second factor, if the caller has one on.
+        if (!(await StepUpService.require(req, res, codeOf(req), "add this server"))) return;
 
         const server = (await Server.create({
             name: input.name,
@@ -278,7 +294,10 @@ export class ServerController {
         return res.json(toPublic(fresh));
     }
 
-    /** Admin only. Another team's server answers 404 before the role is checked. */
+    /**
+     * Admin only. Another team's server answers 404 before the role is checked.
+     * With two-factor on, a valid code (body.code) is required.
+     */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const server = await findOwned(req, res);
         if (!server) return;
@@ -327,6 +346,9 @@ export class ServerController {
                         : `This server still has ${siteCount} sites. Delete them first, then delete the server.`,
             });
         }
+
+        // Last gate before the irreversible step: second factor, if the caller has one on.
+        if (!(await StepUpService.require(req, res, codeOf(req), "delete this server"))) return;
 
         // Databases, DB users, SSH keys, workers, cron jobs, backups, firewall
         // rules, tasks and the server's log all go with it.

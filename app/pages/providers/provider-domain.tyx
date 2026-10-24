@@ -33,6 +33,14 @@ state
   editingRecord: null
   removing: ""
   removeBusy: false
+  removeCode: ""
+  removeCodeError: ""
+  twoFactorOn: false
+  tfTotp: false
+  tfSms: false
+  smsHint: ""
+  smsSending: false
+  smsNotice: ""
   settingsOpen: false
   sEmail: ""
   sTtl: 0
@@ -48,6 +56,47 @@ action
       return errors[field][0]
     }
     return ""
+  }
+
+  // Which second factors this account has on. Used to decide whether to ask for a code.
+  async loadTwoFactor() {
+    const result = await useApi("/api/account")
+    if result.ok and result.data and result.data.two_factor {
+      const tf = result.data.two_factor
+      const sms = tf.sms
+      this.tfTotp = Boolean(tf.enabled)
+      this.tfSms = Boolean(sms and sms.enabled)
+      this.smsHint = (sms and sms.phone_hint) or ""
+      this.twoFactorOn = this.tfTotp or this.tfSms
+    }
+  }
+
+  clearRemoveState() {
+    this.removeCode = ""
+    this.removeCodeError = ""
+    this.smsNotice = ""
+  }
+
+  async sendRemoveCode() {
+    if this.smsSending {
+      return null
+    }
+
+    this.smsSending = true
+    this.removeCodeError = ""
+    this.smsNotice = ""
+
+    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
+
+    this.smsSending = false
+
+    if result.ok {
+      this.smsNotice = "Code sent to " + this.smsHint + "."
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.removeCodeError = result.data?.error or "Couldn't send the code."
+    }
   }
 
   ttlLabel(n) {
@@ -187,17 +236,24 @@ action
     await this.loadRecords()
   }
 
-  askRemove(id) {
+  async askRemove(id) {
     if Billing.locked {
       return null
     }
 
     this.error = ""
+    this.clearRemoveState()
     this.removing = id
+
+    // SMS is the only method: text the code right away.
+    if this.tfSms and not this.tfTotp {
+      await this.sendRemoveCode()
+    }
   }
 
   cancelRemove() {
     this.removing = ""
+    this.clearRemoveState()
   }
 
   async confirmRemove(id) {
@@ -209,16 +265,45 @@ action
       return null
     }
 
-    this.removeBusy = true
-    const result = await useApi("/api/providers/" + this.providerId + "/domains/" + this.domainId + "/records/" + id, { method: "DELETE" })
-    this.removeBusy = false
-    this.removing = ""
+    this.removeCodeError = ""
 
-    if not result.ok {
-      this.error = result.data?.error or "Couldn't delete that record."
+    const code = this.removeCode.trim()
+
+    if this.twoFactorOn and code is "" {
+      this.removeCodeError = "Enter a verification code to delete this record."
+      return null
     }
 
-    await this.loadRecords()
+    let url = "/api/providers/" + this.providerId + "/domains/" + this.domainId + "/records/" + id
+    if code is not "" {
+      url = url + "?code=" + encodeURIComponent(code)
+    }
+
+    this.removeBusy = true
+    const result = await useApi(url, { method: "DELETE" })
+    this.removeBusy = false
+
+    if result.ok {
+      this.removing = ""
+      this.clearRemoveState()
+      await this.loadRecords()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 and result.data and result.data.two_factor_required {
+      // The status call failed or was stale: the server says a code is needed.
+      const methods = result.data.methods or []
+      this.twoFactorOn = true
+      this.tfTotp = methods.includes("totp")
+      this.tfSms = methods.includes("sms")
+      this.removeCodeError = result.data.error or "Enter a verification code to delete this record."
+    } else if result.status is 422 and result.data and result.data.errors and result.data.errors.code {
+      this.removeCodeError = result.data.errors.code[0]
+    } else {
+      this.removing = ""
+      this.clearRemoveState()
+      this.error = result.data?.error or "Couldn't delete that record."
+      await this.loadRecords()
+    }
   }
 
   openSettings() {
@@ -307,6 +392,7 @@ onMount
     }
     this.kind = p.data.kind
 
+    await this.loadTwoFactor()
     await this.loadRecords()
 
     // Quick-fill chips for A records: the IPs of servers created through this connection.
@@ -508,6 +594,41 @@ template
 {{/if}}
 {{#if not Billing.locked}}
 {{#if removing is r.id}}
+{{#if twoFactorOn}}
+            <div class="w-full basis-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-4">
+              <label for="remove-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
+              <input
+                id="remove-code"
+                type="text"
+                inputmode="text"
+                autocomplete="one-time-code"
+                maxlength="12"
+                value="{{ removeCode }}"
+                oninput="{{ removeCode = $event.target.value }}"
+                class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+              />
+{{#if tfTotp}}
+              <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
+{{/if}}
+{{#if not tfTotp}}
+              <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
+{{/if}}
+{{#if smsNotice}}
+              <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+{{/if}}
+{{#if removeCodeError}}
+              <p role="alert" class="text-rose-500 text-xs mt-2">{{ removeCodeError }}</p>
+{{/if}}
+{{#if tfSms}}
+{{#if smsSending}}
+              <button disabled class="mt-3 text-xs text-slate-500 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 opacity-50">Sending…</button>
+{{/if}}
+{{#if not smsSending}}
+              <button onclick="{{ sendRemoveCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Text me a code</button>
+{{/if}}
+{{/if}}
+            </div>
+{{/if}}
             <button onclick="{{ confirmRemove(r.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-1.5 transition">Yes, delete</button>
             <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-1.5 transition-colors">Cancel</button>
 {{/if}}

@@ -3,11 +3,11 @@
  *
  * GET    /api/providers/:id/domains
  * POST   /api/providers/:id/domains                          { name, email }
- * DELETE /api/providers/:id/domains/:domainId
+ * DELETE /api/providers/:id/domains/:domainId                (needs a code when 2FA is on)
  * GET    /api/providers/:id/domains/:domainId/records        -> { domain, records }
  * POST   /api/providers/:id/domains/:domainId/records        { type, name, value, ttl, priority }
  * PUT    /api/providers/:id/domains/:domainId/records/:recordId
- * DELETE /api/providers/:id/domains/:domainId/records/:recordId
+ * DELETE /api/providers/:id/domains/:domainId/records/:recordId   (needs a code when 2FA is on)
  * GET    /api/providers/:id/billing
  *
  * Same rules as everywhere else: the connection must be on the caller's team (404
@@ -15,6 +15,15 @@
  * token that lacks the Domains/Account access answers 403 with code
  * "missing_access" and a message saying how to fix it.
  * Writes answer 402 while the team is view only (withBillingLock).
+ *
+ * Two-factor: when the caller has authenticator or SMS two-factor on, deleting
+ * a domain or a record also needs a valid code (StepUpService). The code comes
+ * from the body or the query string (`code`). The check runs inside run(),
+ * after the connection lookup and adapter build and right before the provider
+ * call, so a request that was going to be refused never spends a code. Its
+ * answers are 403 { two_factor_required, methods } (no code) and
+ * 422 { errors: { code } } (wrong code), which cannot be confused with the
+ * "missing_access" 403.
  *
  * ASSUMPTION: Router exposes put() and delete() like get() and post().
  */
@@ -40,6 +49,7 @@ import {
 
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 import { withBillingLock } from "../services/BillingLock.js";
+import { StepUpService } from "../services/StepUpService.js";
 type Handler = Parameters<Router["get"]>[1];
 
 interface ProviderRow {
@@ -51,12 +61,25 @@ interface ProviderRow {
     credentials: string;
 }
 
-/** Loads the caller's connection, builds the adapter, runs the job and maps every failure. */
+/** The second-factor code the client sent: body first, then query string (DELETE requests). */
+function codeOf(req: TylixRequest): unknown {
+    const fromBody = (req.body as { code?: unknown } | undefined)?.code;
+    if (fromBody !== undefined && fromBody !== null && String(fromBody).trim() !== "") return fromBody;
+    return req.query?.code;
+}
+
+/**
+ * Loads the caller's connection, builds the adapter, runs the job and maps every failure.
+ *
+ * `stepUpAction` (e.g. "delete this domain") turns on the second-factor gate. It
+ * runs after every check that can refuse the request and right before the job.
+ */
 async function run(
     req: TylixRequest,
     res: TylixResponse,
     job: (adapter: ManageAdapter, kind: string) => Promise<unknown>,
     success = 200,
+    stepUpAction?: string,
 ): Promise<void> {
     const teamId = requireTeam(req, res);
     if (!teamId) return;
@@ -86,6 +109,9 @@ async function run(
         res.json({ error: `This ${name} connection can't be used. Edit it and paste the credentials again.` });
         return;
     }
+
+    // Last gate before the irreversible step: second factor, if the caller has one on.
+    if (stepUpAction && !(await StepUpService.require(req, res, codeOf(req), stepUpAction))) return;
 
     try {
         const result = await job(adapter, row.kind);
@@ -191,7 +217,13 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
     router.delete(
         "/api/providers/:id/domains/:domainId",
         write(async (req, res) => {
-            await run(req, res, (adapter) => adapter.removeDomain(String(req.params.domainId)), 204);
+            await run(
+                req,
+                res,
+                (adapter) => adapter.removeDomain(String(req.params.domainId)),
+                204,
+                "delete this domain",
+            );
         }),
     );
 
@@ -253,6 +285,7 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
                 res,
                 (adapter) => adapter.removeRecord(String(req.params.domainId), String(req.params.recordId)),
                 204,
+                "delete this record",
             );
         }),
     );

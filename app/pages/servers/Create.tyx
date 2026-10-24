@@ -50,6 +50,15 @@ state
   portError: ""
   userError: ""
   keyError: ""
+  twoFactorOn: false
+  tfTotp: false
+  tfSms: false
+  smsHint: ""
+  codeOpen: false
+  code: ""
+  codeError: ""
+  smsSending: false
+  smsNotice: ""
 
 action
   firstError(errors, field) {
@@ -71,6 +80,83 @@ action
     this.portError = ""
     this.userError = ""
     this.keyError = ""
+    this.codeError = ""
+  }
+
+  // Which second factors this account has on. Used to decide whether to ask for a code.
+  async loadTwoFactor() {
+    const result = await useApi("/api/account")
+    if result.ok and result.data and result.data.two_factor {
+      const tf = result.data.two_factor
+      const sms = tf.sms
+      this.tfTotp = Boolean(tf.enabled)
+      this.tfSms = Boolean(sms and sms.enabled)
+      this.smsHint = (sms and sms.phone_hint) or ""
+      this.twoFactorOn = this.tfTotp or this.tfSms
+    }
+  }
+
+  async sendCode() {
+    if this.smsSending {
+      return null
+    }
+
+    this.smsSending = true
+    this.codeError = ""
+    this.smsNotice = ""
+
+    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
+
+    this.smsSending = false
+
+    if result.ok {
+      this.smsNotice = "Code sent to " + this.smsHint + "."
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.codeError = result.data?.error or "Couldn't send the code."
+    }
+  }
+
+  // Shows the code box. When SMS is the only method, the code is texted right away.
+  async openCodeStep() {
+    this.codeOpen = true
+    this.codeError = ""
+    this.smsNotice = ""
+
+    if this.tfSms and not this.tfTotp {
+      await this.sendCode()
+    }
+  }
+
+  // Returns true when the form must NOT be sent yet (the code box was just opened,
+  // or the code is still empty).
+  async needsCode() {
+    if not this.twoFactorOn {
+      return false
+    }
+
+    if not this.codeOpen {
+      await this.openCodeStep()
+      return true
+    }
+
+    if this.code.trim() is "" {
+      this.codeError = "Enter a verification code to continue."
+      return true
+    }
+
+    return false
+  }
+
+  // The server says a code is needed (status call failed or was stale).
+  applyTwoFactorRequired(data) {
+    const methods = data.methods or []
+    this.twoFactorOn = true
+    this.tfTotp = methods.includes("totp")
+    this.tfSms = methods.includes("sms")
+    this.codeOpen = true
+    this.codeError = data.error or "Enter a verification code to continue."
   }
 
   // Adds the display name for a connection's provider.
@@ -255,6 +341,12 @@ action
     }
 
     this.clearErrors()
+
+    const stop = await this.needsCode()
+    if stop {
+      return null
+    }
+
     this.saving = true
 
     const payload = {
@@ -263,7 +355,8 @@ action
       region: this.region,
       plan: this.plan,
       image: this.image,
-      "template": this.tpl
+      "template": this.tpl,
+      code: this.code.trim()
     }
 
     const result = await useApi("/api/provisions", { method: "POST", body: payload })
@@ -272,6 +365,9 @@ action
       window.location.href = "/servers"
     } else if result.status is 401 {
       window.location.href = "/login"
+    } else if result.status is 403 and result.data and result.data.two_factor_required {
+      this.applyTwoFactorRequired(result.data)
+      this.saving = false
     } else {
       const errors = result.data?.errors
       this.providerError = this.firstError(errors, "provider_id")
@@ -280,6 +376,7 @@ action
       this.imageError = this.firstError(errors, "image")
       this.nameError = this.firstError(errors, "name")
       this.tplError = this.firstError(errors, "template")
+      this.codeError = this.firstError(errors, "code")
       this.error = result.data?.error or result.error or ""
       if this.error is "" and not errors {
         this.error = "Couldn't create the server. Check the form and try again."
@@ -295,6 +392,12 @@ action
     }
 
     this.clearErrors()
+
+    const stop = await this.needsCode()
+    if stop {
+      return null
+    }
+
     this.saving = true
 
     const payload = {
@@ -302,7 +405,8 @@ action
       host: this.host,
       port: this.port,
       ssh_user: this.sshUser,
-      ssh_key: this.sshKey
+      ssh_key: this.sshKey,
+      code: this.code.trim()
     }
 
     const result = await useApi("/api/servers", { method: "POST", body: payload })
@@ -311,6 +415,9 @@ action
       window.location.href = "/servers"
     } else if result.status is 401 {
       window.location.href = "/login"
+    } else if result.status is 403 and result.data and result.data.two_factor_required {
+      this.applyTwoFactorRequired(result.data)
+      this.saving = false
     } else {
       const errors = result.data?.errors
       this.nameError = this.firstError(errors, "name")
@@ -318,6 +425,7 @@ action
       this.portError = this.firstError(errors, "port")
       this.userError = this.firstError(errors, "ssh_user")
       this.keyError = this.firstError(errors, "ssh_key")
+      this.codeError = this.firstError(errors, "code")
       this.error = result.data?.error or result.error or ""
       if this.error is "" and not errors {
         this.error = "Couldn't add the server. Check the form and try again."
@@ -334,6 +442,7 @@ onMount
     }
 
     await Providers.load()
+    await this.loadTwoFactor()
     this.providerCards = Providers.data.map((p) => this.decorateProvider(p))
 
     const params = new URLSearchParams(window.location.search)
@@ -617,6 +726,42 @@ template
 {{#if nameError}}
       <p class="text-rose-500 text-xs mb-2">{{ nameError }}</p>
 {{/if}}
+{{/if}}
+
+{{#if codeOpen}}
+      <div class="mt-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 p-4">
+        <label for="create-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
+        <input
+          id="create-code"
+          type="text"
+          inputmode="text"
+          autocomplete="one-time-code"
+          maxlength="12"
+          value="{{ code }}"
+          oninput="{{ code = $event.target.value }}"
+          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        />
+{{#if tfTotp}}
+        <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
+{{/if}}
+{{#if not tfTotp}}
+        <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
+{{/if}}
+{{#if smsNotice}}
+        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+{{/if}}
+{{#if codeError}}
+        <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
+{{/if}}
+{{#if tfSms}}
+{{#if smsSending}}
+        <button disabled class="mt-3 text-xs text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 opacity-50">Sending…</button>
+{{/if}}
+{{#if not smsSending}}
+        <button onclick="{{ sendCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Text me a code</button>
+{{/if}}
+{{/if}}
+      </div>
 {{/if}}
 
 {{#if error}}
