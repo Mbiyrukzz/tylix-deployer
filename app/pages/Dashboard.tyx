@@ -140,7 +140,7 @@ action
     return []
   }
 
-  // Flips the live test card between 3 rows and all rows.
+  // Flips the domain list between 5 rows and all rows.
   toggleDomains() {
     this.showAllDomains = this.showAllDomains ? false : true
   }
@@ -338,7 +338,7 @@ action
     }
   }
 
-  // The registrar list now comes from the Registrars capability.
+  // The registrar list comes from the Registrars capability.
   // Only the per-registrar domain lookups still call the API directly.
   async loadDomains() {
     await Registrars.load()
@@ -676,7 +676,7 @@ template
 {{/if}}
       </div>
 
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
 
         <a href="/providers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
           <div class="flex items-center justify-between mb-1">
@@ -748,62 +748,46 @@ template
         </a>
       </div>
 
-{{#if domainsReady}}
-{{#if registrarCount is not 0}}
-      <div class="rounded-2xl border border-dashed border-emerald-500/40 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-8">
-        <div class="flex items-center justify-between gap-4 mb-4">
-          <div class="min-w-0">
-            <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Live expression test</p>
-            <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ (domainCount is 0) ? "No domains loaded" : domainCount + " domains across " + registrarCount + " registrars" }}</h2>
-          </div>
-          <button onclick="{{ toggleDomains() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-            {{ showAllDomains ? "Show fewer" : "Show all" }}
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-4">
-          <p class="text-slate-500">Registrars capability, map + ternary: <span class="font-mono text-slate-900 dark:text-slate-100">{{ Registrars.data.map((r) => r.label ? r.label : r.kind).join(" | ") }}</span></p>
-          <p class="text-slate-500">Arrow + filter + ternary: <span class="font-mono text-slate-900 dark:text-slate-100">{{ (domainsShown.filter((d) => d.label is "Expiring").length is 0) ? "Nothing expiring soon" : domainsShown.filter((d) => d.label is "Expiring").map((d) => d.name).join(", ") + " expiring soon" }}</span></p>
-          <p class="text-slate-500">Template literal: <span class="font-mono text-slate-900 dark:text-slate-100">{{ `${Registrars.data.length} registrars, ${domainsShown.filter((d) => d.label is "Active").length} active domains shown` }}</span></p>
-          <p class="text-slate-500">Rows shown: <span class="font-mono text-slate-900 dark:text-slate-100">{{ showAllDomains ? domainsShown.length : domainsShown.slice(0, 3).length }} of {{ domainsShown.length }}</span></p>
-        </div>
-
-        <div class="space-y-1">
-{{#each d in (showAllDomains ? domainsShown : domainsShown.slice(0, 3))}}
-          <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-2.5">
-            <p class="text-slate-900 dark:text-slate-100 text-sm font-medium font-mono truncate">{{ d.name }}</p>
-            <p class="text-slate-500 text-xs shrink-0">{{ d.registrar }} · {{ d.label is "Expired" ? "Expired" : d.dayText }}</p>
-          </div>
-{{/each}}
-        </div>
-      </div>
-{{/if}}
-{{/if}}
-
 {{#if Insights.loaded}}
-      <div class="rounded-2xl border border-dashed border-emerald-500/40 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-8">
-        <div class="flex items-center justify-between gap-4 mb-4">
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden mb-8">
+        <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <div class="min-w-0">
-            <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Insights capability test</p>
-            <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ Insights.headline }}</h2>
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Fleet insights</h2>
+            <p class="text-slate-500 text-xs mt-0.5 truncate">{{ Insights.headline }}</p>
           </div>
-          <button onclick="{{ Insights.toggle() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-            {{ Insights.showAll ? "Show fewer" : "Show all" }}
+{{#if Insights.rows.length > 2}}
+          <button onclick="{{ Insights.toggle() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            {{ Insights.showAll ? "Show fewer" : "Show all " + Insights.rows.length }}
           </button>
+{{/if}}
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-4">
-          <p class="text-slate-500">Capability state: <span class="font-mono text-slate-900 dark:text-slate-100">{{ Insights.healthPct }}% healthy, run #{{ Insights.runs }}</span></p>
-          <p class="text-slate-500">Busiest server: <span class="font-mono text-slate-900 dark:text-slate-100">{{ Insights.busiest }}</span></p>
-          <p class="text-slate-500">map + join (script): <span class="font-mono text-slate-900 dark:text-slate-100">{{ Insights.topNames }}</span></p>
-          <p class="text-slate-500">map + join (template): <span class="font-mono text-slate-900 dark:text-slate-100">{{ Insights.rows.map((r) => r.name).join(" | ") }}</span></p>
-          <p class="text-slate-500">Arrow + ternary: <span class="font-mono text-slate-900 dark:text-slate-100">{{ (Insights.rows.filter((r) => r.count is 0).length is 0) ? "Every server hosts a site" : Insights.rows.filter((r) => r.count is 0).map((r) => r.name).join(", ") + " have no sites" }}</span></p>
-          <p class="text-slate-500">Template literal: <span class="font-mono text-slate-900 dark:text-slate-100">{{ `${Insights.rows.length} servers analysed, ${Insights.rows.filter((r) => r.label is "Online").length} online` }}</span></p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800">
+          <div class="bg-white dark:bg-slate-900 p-5">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Fleet health</p>
+            <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ Insights.healthPct }}%</p>
+            <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 mt-3 overflow-hidden">
+              <div class="h-full rounded-full bg-emerald-500 transition-all" style="{{ 'width: ' + Insights.healthPct + '%' }}"></div>
+            </div>
+            <p class="text-slate-500 text-xs mt-2">{{ `${Insights.rows.filter((r) => r.label is "Online").length} of ${Insights.rows.length} servers online` }}</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-5">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Busiest server</p>
+            <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100 truncate">{{ Insights.busiest }}</p>
+            <p class="text-slate-500 text-xs mt-3">Hosting the most sites</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-5">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Idle servers</p>
+            <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ Insights.rows.filter((r) => r.count is 0).length }}</p>
+            <p class="text-slate-500 text-xs mt-3 truncate">{{ (Insights.rows.filter((r) => r.count is 0).length is 0) ? "Every server hosts a site" : Insights.rows.filter((r) => r.count is 0).map((r) => r.name).join(", ") + " have no sites" }}</p>
+          </div>
         </div>
 
-        <div class="space-y-1">
+        <div>
 {{#each r in (Insights.showAll ? Insights.rows : Insights.rows.slice(0, 2))}}
-          <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-2.5">
+          <div class="flex items-center justify-between gap-4 px-6 py-3.5 border-t border-slate-100 dark:border-slate-800/70">
             <div class="flex items-center gap-3 min-w-0">
               <span class="w-2 h-2 shrink-0 rounded-full {{ r.dot }}"></span>
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ r.name }}</p>
@@ -915,10 +899,31 @@ template
       <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 mb-8">
 
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-            <h3 class="text-slate-900 dark:text-slate-100 font-semibold">Domains by expiry</h3>
-            <span class="text-slate-500 text-xs">{{ domainCount }} total</span>
+          <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+            <div class="min-w-0">
+              <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Domains by expiry</h3>
+              <p class="text-slate-500 text-xs mt-0.5 truncate">{{ (domainCount is 0) ? "No domains loaded" : domainCount + " domains across " + registrarCount + (registrarCount is 1 ? " registrar" : " registrars") }}</p>
+            </div>
+{{#if domainsShown.length > 5}}
+            <button onclick="{{ toggleDomains() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              {{ showAllDomains ? "Show fewer" : "Show all " + domainsShown.length }}
+            </button>
+{{/if}}
           </div>
+
+{{#if domainCount is not 0}}
+          <div class="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-slate-100 dark:border-slate-800/70">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> {{ expiredCount }} expired
+            </span>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> {{ expiringCount }} expiring
+            </span>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ domainCount - expiredCount - expiringCount }} healthy
+            </span>
+          </div>
+{{/if}}
 
 {{#if domainCount is 0}}
           <div class="p-10 text-center">
@@ -927,7 +932,7 @@ template
           </div>
 {{/if}}
 
-{{#each d in domainsShown}}
+{{#each d in (showAllDomains ? domainsShown : domainsShown.slice(0, 5))}}
           <a href="{{ d.href }}" class="flex items-center justify-between gap-4 px-6 py-3.5 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
             <div class="min-w-0">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium font-mono truncate">{{ d.name }}</p>
