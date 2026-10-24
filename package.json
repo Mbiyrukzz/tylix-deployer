@@ -13,15 +13,15 @@
   },
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.1152.0",
-    "@tylix/auth": "^0.4.0",
-    "@tylix/cli": "^0.4.5",
-    "@tylix/compiler": "^0.4.2",
-    "@tylix/core": "^0.4.2",
-    "@tylix/generator": "^0.4.0",
-    "@tylix/mail": "^0.4.0",
-    "@tylix/orm": "^0.4.1",
-    "@tylix/shared": "^0.4.3",
-    "tylix-icons": "^0.4.0"
+    "@tylix/auth": "^0.5.0",
+    "@tylix/cli": "^0.5.0",
+    "@tylix/compiler": "^0.5.0",
+    "@tylix/core": "^0.5.0",
+    "@tylix/generator": "^0.5.0",
+    "@tylix/mail": "^0.5.0",
+    "@tylix/orm": "^0.5.0",
+    "@tylix/shared": "^0.5.0",
+    "tylix-icons": "^0.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

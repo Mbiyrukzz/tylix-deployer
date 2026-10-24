@@ -1,0 +1,49 @@
+capability Insights
+
+state
+  loaded: false
+  headline: ""
+  healthPct: 0
+  rows: []
+  busiest: ""
+  topNames: ""
+  showAll: false
+  runs: 0
+
+action
+  // Ternary inside a return, nested ternary in the else branch.
+  statusLabel(status) {
+    return status is "online" ? "Online" : (status is "offline" ? "Offline" : "Untested")
+  }
+
+  analyze(servers, sites) {
+    const total = servers.length
+    const online = servers.filter((s) => s.status is "online").length
+
+    // Block-bodied arrow inside map, with a ternary in the object literal.
+    const rows = servers.map((s) => {
+      const count = sites.filter((x) => x.server_id is s.id).length
+      return {
+        id: s.id,
+        name: s.name,
+        label: this.statusLabel(s.status),
+        count: count,
+        dot: s.status is "online" ? "bg-emerald-500" : "bg-rose-500"
+      }
+    })
+
+    // reduce with an arrow whose body is a ternary.
+    const top = rows.reduce((best, r) => (r.count > best.count ? r : best), { name: "", count: 0 })
+
+    this.rows = rows
+    this.healthPct = (total is 0) ? 0 : Math.round(online / total * 100)
+    this.headline = (total is 0) ? "No servers yet" : (this.healthPct is 100 ? "Everything is online" : online + " of " + total + " online")
+    this.busiest = top.count > 0 ? top.name + " (" + top.count + " sites)" : "None yet"
+    this.topNames = rows.map((r) => r.name).join(", ")
+    this.runs = this.runs + 1
+    this.loaded = true
+  }
+
+  toggle() {
+    this.showAll = this.showAll ? false : true
+  }

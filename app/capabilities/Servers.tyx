@@ -8,14 +8,28 @@ action
   async load() {
     this.loading = true
     const result = await useApi("/api/servers")
-    if result.ok {
+    if result.ok and Array.isArray(result.data) {
       this.data = result.data
+    } else {
+      this.data = []
     }
     this.loading = false
   }
 
   add(server) {
     this.data = [server, ...this.data]
+  }
+
+  async replace(server) {
+    await this.load()
+  }
+
+  async remove(id) {
+    const result = await useApi("/api/servers/" + id, { method: "DELETE" })
+    if result.ok {
+      await this.load()
+    }
+    return result
   }
 
 init
