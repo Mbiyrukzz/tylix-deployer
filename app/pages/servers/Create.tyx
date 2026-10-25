@@ -362,7 +362,9 @@ action
     const result = await useApi("/api/provisions", { method: "POST", body: payload })
 
     if result.ok {
-      window.location.href = "/servers"
+      // Straight to the progress view. Falls back to the list if no id came back.
+      const created = result.data?.id or result.data?.provision?.id
+      window.location.href = created ? "/servers/server-detail?provision=" + created : "/servers"
     } else if result.status is 401 {
       window.location.href = "/login"
     } else if result.status is 403 and result.data and result.data.two_factor_required {

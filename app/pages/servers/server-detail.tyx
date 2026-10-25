@@ -9,6 +9,7 @@ needs
 
 uses
   Billing
+  Provisioning
 
 background
   Billing
@@ -21,6 +22,7 @@ state
   plan: ""
   loading: true
   notFound: false
+  provisioning: false
   confirmDelete: false
   deleting: false
   error: ""
@@ -383,9 +385,21 @@ onMount
 
     const params = new URLSearchParams(window.location.search)
     const serverId = params.get("id")
+    const provisionParam = params.get("provision")
     this.serverId = serverId or ""
 
-    if not serverId {
+    if provisionParam {
+      // A server that is still being created: show its steps and percentage.
+      this.provisioning = true
+      this.loading = false
+
+      await Provisioning.connect(Number(provisionParam))
+
+      if Provisioning.missing {
+        this.provisioning = false
+        this.notFound = true
+      }
+    } else if not serverId {
       this.notFound = true
       this.loading = false
     } else {
@@ -429,6 +443,9 @@ template
     {{#if serverId}}
     <ServerSidebar active="server" serverId="{{ serverId }}" />
 {{/if}}
+{{#if provisioning}}
+    <div></div>
+{{/if}}
     <div class="min-w-0">
     <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
 
@@ -442,6 +459,120 @@ template
         <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
         <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
+{{/if}}
+
+{{#if provisioning}}
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Servers
+      </a>
+
+      <div class="mb-6">
+        <div class="flex items-center gap-3 mb-2">
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ Provisioning.name }}</h1>
+{{#if Provisioning.failed}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+          </span>
+{{/if}}
+{{#if Provisioning.finished}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
+          </span>
+{{/if}}
+{{#if not Provisioning.failed}}
+{{#if not Provisioning.finished}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span> Setting up
+          </span>
+{{/if}}
+{{/if}}
+        </div>
+{{#if Provisioning.ip}}
+        <p class="text-slate-500 text-sm font-mono">{{ Provisioning.ip }}</p>
+{{/if}}
+{{#if not Provisioning.ip}}
+        <p class="text-slate-500 text-sm">Creating your server. This page updates by itself.</p>
+{{/if}}
+      </div>
+
+{{#if Provisioning.error}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ Provisioning.error }}</p>
+{{/if}}
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-2">
+        <div class="flex items-center justify-between gap-4 mb-3">
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ Provisioning.headline }}</p>
+          <p class="text-emerald-600 dark:text-emerald-400 text-xs font-mono tabular-nums shrink-0">{{ Provisioning.shown }}%</p>
+        </div>
+
+        <div class="flex items-center gap-[2px] mb-6">
+{{#each seg in Provisioning.segments}}
+{{#if seg.k is 0}}
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-slate-500/20"></span>
+{{/if}}
+{{#if seg.k is 1}}
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-500"></span>
+{{/if}}
+{{#if seg.k is 2}}
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-100"></span>
+{{/if}}
+{{#if seg.k is 3}}
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-200"></span>
+{{/if}}
+{{#if seg.k is 4}}
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-300"></span>
+{{/if}}
+{{#if seg.k is 5}}
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-400"></span>
+{{/if}}
+{{#if seg.k is 6}}
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-rose-500"></span>
+{{/if}}
+{{/each}}
+        </div>
+
+{{#each s in Provisioning.steps}}
+        <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+          <div class="flex items-center gap-3 min-w-0">
+{{#if s.state is "done"}}
+            <span class="w-2 h-2 shrink-0 rounded-full bg-emerald-500"></span>
+{{/if}}
+{{#if s.state is "running"}}
+            <span class="w-2 h-2 shrink-0 rounded-full bg-sky-500 animate-pulse"></span>
+{{/if}}
+{{#if s.state is "failed"}}
+            <span class="w-2 h-2 shrink-0 rounded-full bg-rose-500"></span>
+{{/if}}
+{{#if s.state is "pending"}}
+            <span class="w-2 h-2 shrink-0 rounded-full bg-slate-500"></span>
+            <p class="text-sm font-medium truncate text-slate-900 dark:text-slate-100 opacity-60">{{ s.label }}</p>
+{{/if}}
+{{#if s.state is not "pending"}}
+            <p class="text-sm font-medium truncate text-slate-900 dark:text-slate-100">{{ s.label }}</p>
+{{/if}}
+          </div>
+          <p class="text-slate-500 text-xs shrink-0">{{ s.stateText }}</p>
+        </div>
+{{/each}}
+      </div>
+
+{{#if Provisioning.finished}}
+      <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mb-6">Your server is ready. Opening it…</p>
+{{/if}}
+{{#if not Provisioning.finished}}
+{{#if Provisioning.live}}
+      <p class="flex items-center gap-1.5 text-slate-400 text-xs mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Live
+      </p>
+{{/if}}
+{{#if not Provisioning.live}}
+      <p class="flex items-center gap-1.5 text-slate-400 text-xs mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        Reconnecting…
+      </p>
+{{/if}}
+{{/if}}
 {{/if}}
 
 {{#if server}}

@@ -1,0 +1,266 @@
+capability Provisioning
+
+state
+  active: false
+  provisionId: 0
+  name: ""
+  status: ""
+  percent: 0
+  shown: 0
+  sweep: 0
+  total: 80
+  segments: []
+  headline: ""
+  steps: []
+  error: ""
+  ip: ""
+  serverId: 0
+  failed: false
+  finished: false
+  missing: false
+  live: false
+  streaming: false
+  redirecting: false
+  reconnectTimer: null
+  ticker: null
+
+action
+  global(name) {
+    return Reflect.get(window, name)
+  }
+
+  setGlobal(name, value) {
+    Reflect.set(window, name, value)
+  }
+
+  // Dot colour and label fade for one step row.
+  decorateStep(s) {
+    const tones = [
+      ["done", "#10b981", "1", "Done"],
+      ["running", "#0ea5e9", "1", "In progress"],
+      ["failed", "#f43f5e", "1", "Failed"],
+      ["pending", "#64748b", "0.55", "Waiting"]
+    ]
+    const hit = tones.find((t) => t[0] is s.state)
+    const tone = hit ? hit : tones[3]
+    return Object.assign({}, s, { color: tone[1], fade: tone[2], stateText: tone[3] })
+  }
+
+  // Returns a tone number, not a colour:
+  // 0 off, 1 emerald, 2-5 shimmer (2 is brightest), 6 rose (failed)
+  segmentTone(i, filled, running) {
+    if filled is 0 {
+      if not running {
+        return 0
+      }
+      const d = this.sweep - i
+      if d >= 0 and d < 10 {
+        return 2 + Math.min(3, Math.floor(d / 3))
+      }
+      return 0
+    }
+
+    if i >= filled {
+      return 0
+    }
+    if this.failed {
+      return 6
+    }
+    if not running {
+      return 1
+    }
+
+    const gap = Math.abs(i - this.sweep)
+    return gap < 4 ? 2 + gap : 1
+  }
+
+  // One animation frame: the number and the ticks catch up with the real percentage.
+  tick() {
+    const diff = this.percent - this.shown
+    if diff > 0 {
+      this.shown = this.shown + Math.max(1, Math.round(diff * 0.2))
+    } else if diff < 0 {
+      this.shown = this.percent
+    }
+
+    const filled = Math.round(this.shown * this.total / 100)
+    const running = not this.failed and not this.finished
+
+    if filled is 0 {
+      this.sweep = (this.sweep + 2) % (this.total + 10)
+    } else {
+      this.sweep = (this.sweep + 1) % (filled + 6)
+    }
+
+    this.segments = new Array(this.total).fill(0).map((x, i) => ({ k: this.segmentTone(i, filled, running) }))
+
+    if this.finished and this.shown is 100 and not this.redirecting and this.serverId {
+      this.redirecting = true
+      window.setTimeout(() => this.goToServer(), 1200)
+    }
+
+    if not running and this.shown is this.percent {
+      this.stopTicker()
+    }
+  }
+
+  startTicker() {
+    if this.ticker {
+      return null
+    }
+    this.ticker = window.setInterval(() => this.tick(), 60)
+    this.tick()
+  }
+
+  stopTicker() {
+    if this.ticker {
+      window.clearInterval(this.ticker)
+      this.ticker = null
+    }
+  }
+
+  apply(p) {
+    this.name = p.name
+    this.status = p.status
+    this.percent = p.percent
+    this.steps = p.steps.map((s) => this.decorateStep(s))
+    this.error = p.error or ""
+    this.ip = p.ip or ""
+    this.serverId = p.server_id or 0
+    this.failed = p.status is "failed"
+    this.finished = p.status is "done"
+
+    const current = p.steps.find((s) => s.state is "running" or s.state is "failed")
+    this.headline = this.finished ? "Server ready" : (current ? current.label : "Starting")
+
+    this.startTicker()
+  }
+
+  goToServer() {
+    window.location.href = "/servers/server-detail?id=" + this.serverId
+  }
+
+  // One plain read: first paint, and the fallback while the socket is down.
+  async load() {
+    const result = await useApi("/api/provisions/" + this.provisionId + "/progress")
+
+    if result.ok {
+      this.apply(result.data)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 404 {
+      this.missing = true
+    }
+  }
+
+  async connect(id) {
+    this.disconnect()
+    this.provisionId = id
+    this.active = true
+    this.missing = false
+    this.redirecting = false
+    this.shown = 0
+    this.sweep = 0
+
+    await this.load()
+
+    if this.missing or this.finished {
+      return null
+    }
+
+    await this.openStream()
+  }
+
+  disconnect() {
+    this.stopTicker()
+
+    if this.reconnectTimer {
+      window.clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+
+    const ws = this.global("tylixProvisionSocket")
+    if ws {
+      ws.onopen = null
+      ws.onmessage = null
+      ws.onclose = null
+      ws.close()
+      this.setGlobal("tylixProvisionSocket", null)
+    }
+
+    this.streaming = false
+    this.live = false
+  }
+
+  scheduleReconnect() {
+    if this.reconnectTimer or this.finished or this.missing {
+      return null
+    }
+    this.reconnectTimer = window.setTimeout(() => this.reconnectNow(), 4000)
+  }
+
+  async reconnectNow() {
+    this.reconnectTimer = null
+    await this.load()
+
+    if this.finished or this.missing {
+      return null
+    }
+
+    await this.openStream()
+  }
+
+  onStreamMessage(raw) {
+    const msg = JSON.parse(raw)
+
+    if msg.t is "ready" {
+      this.live = true
+    } else if msg.t is "progress" {
+      this.apply(msg.d)
+    }
+  }
+
+  onStreamClosed() {
+    this.setGlobal("tylixProvisionSocket", null)
+    this.streaming = false
+    this.live = false
+    this.scheduleReconnect()
+  }
+
+  async openStream() {
+    if this.streaming {
+      return null
+    }
+
+    this.streaming = true
+    const result = await useApi("/api/provisions/" + this.provisionId + "/progress-ticket", { method: "POST" })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if not result.ok {
+      this.streaming = false
+      this.scheduleReconnect()
+      return null
+    }
+
+    let url = result.data.url
+    if not url {
+      const hostname = window.location.hostname
+      if hostname is "localhost" or hostname is "127.0.0.1" {
+        const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
+        url = "ws://" + hostname + ":" + port + "/provisionprogress"
+      } else {
+        url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.host + "/channels/provisionprogress"
+      }
+    }
+
+    const ticket = result.data.ticket
+    const ws = new WebSocket(url)
+    ws.onopen = () => ws.send(JSON.stringify({ t: "auth", ticket: ticket }))
+    ws.onmessage = (e) => this.onStreamMessage(e.data)
+    ws.onclose = () => this.onStreamClosed()
+    this.setGlobal("tylixProvisionSocket", ws)
+  }
