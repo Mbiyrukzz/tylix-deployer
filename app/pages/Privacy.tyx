@@ -1,0 +1,156 @@
+page Privacy
+
+title "Privacy Policy"
+
+state
+  effective: "26 October 2026"
+
+template
+  <div class="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-950 transition-colors px-4 sm:px-6 py-8 sm:py-12">
+    <div class="max-w-6xl mx-auto">
+
+      <a href="/" class="inline-flex items-center gap-2.5 mb-8">
+        <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
+        <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
+      </a>
+
+      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Privacy Policy</h1>
+      <p class="text-slate-500 text-sm mb-10">Effective {{ effective }}</p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
+
+        <nav class="hidden lg:block">
+          <div class="sticky top-24 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">On this page</p>
+            <ul class="space-y-1.5 text-sm">
+              <li><a href="#who" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">1. Who we are</a></li>
+              <li><a href="#collect" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">2. What we collect</a></li>
+              <li><a href="#use" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">3. How we use it</a></li>
+              <li><a href="#basis" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">4. Legal basis</a></li>
+              <li><a href="#sharing" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">5. Who we share with</a></li>
+              <li><a href="#security" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">6. Security</a></li>
+              <li><a href="#cookies" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">7. Cookies</a></li>
+              <li><a href="#retention" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">8. Retention</a></li>
+              <li><a href="#transfers" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">9. International transfers</a></li>
+              <li><a href="#rights" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">10. Your rights</a></li>
+              <li><a href="#children" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">11. Children</a></li>
+              <li><a href="#changes" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">12. Changes</a></li>
+              <li><a href="#contact" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">13. Contact</a></li>
+            </ul>
+          </div>
+        </nav>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-8 shadow-sm dark:shadow-none min-w-0 break-words">
+
+          <section id="who" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">1. Who we are</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Ashmif Office Solutions Ltd, based in Mombasa, Kenya, runs Tylix Deploy and is the data controller for personal data processed through it. This policy explains what we collect, why, who we share it with, and the choices you have. We process personal data in line with the Kenya Data Protection Act, 2019. It sits alongside our <a href="/terms" class="text-emerald-700 dark:text-emerald-400 hover:underline">Terms of Service</a>.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Content you deploy or store on your own servers (for example, your customers' data in your databases) is yours. For that content you are the controller and we only act on your instructions to provide the Service.</p>
+          </section>
+
+          <section id="collect" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">2. What we collect</h2>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li><strong>Account data:</strong> your name, email address and password (stored only as a hash), your email verification status, and your team memberships, roles and invitations.</li>
+              <li><strong>Billing data:</strong> your plan, subscription status, payment history and the identifiers Paystack gives us for your customer and subscription. Card and mobile money details are entered with Paystack and are not stored by us.</li>
+              <li><strong>Infrastructure data you give us:</strong> server hostnames, IP addresses, ports and SSH usernames; SSH private keys; cloud provider and registrar API tokens; repository and branch details; database user names and generated passwords; environment variables and deployment scripts.</li>
+              <li><strong>Operational data:</strong> server statistics (CPU, memory, disk, load, uptime), deployment and provisioning logs, server event logs, and the commands and actions taken through the Service, with who took them and when.</li>
+              <li><strong>Technical data:</strong> IP address, browser and device information, and request logs created when you use the Service, used for security and troubleshooting.</li>
+              <li><strong>Messages:</strong> anything you send us for support.</li>
+            </ul>
+          </section>
+
+          <section id="use" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">3. How we use it</h2>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li>to create and secure your account, and to authenticate you;</li>
+              <li>to provide the Service: provisioning and managing servers, deploying sites, issuing certificates, showing statistics and logs;</li>
+              <li>to take payment, manage your subscription and apply plan limits;</li>
+              <li>to send service emails such as verification, password reset, team invitations, receipts and billing or security notices;</li>
+              <li>to detect, prevent and investigate abuse, fraud and security incidents;</li>
+              <li>to fix bugs, support you, and improve the Service;</li>
+              <li>to meet legal, tax and accounting obligations.</li>
+            </ul>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We do not sell your personal data, and we do not use your stored credentials or server contents for advertising.</p>
+          </section>
+
+          <section id="basis" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">4. Legal basis</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We process personal data where it is necessary to perform our contract with you (providing the Service), where we have a legitimate interest that is not outweighed by your rights (security, fraud prevention, product improvement), where we must comply with the law, and where you have given consent, for example to optional communications. You can withdraw consent at any time, and that does not affect processing that already happened.</p>
+          </section>
+
+          <section id="sharing" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">5. Who we share it with</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We share personal data only where needed to run the Service:</p>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li><strong>Paystack</strong>, to process payments and manage subscriptions.</li>
+              <li><strong>Cloud providers, registrars and Git hosts you connect</strong> (such as Linode, Hetzner, DigitalOcean, Vultr, UpCloud, Porkbun, Cloudflare, GoDaddy and GitHub). We send them the requests, tokens and details needed to do what you ask, under your own account with them.</li>
+              <li><strong>Your own servers</strong>, over SSH, to carry out your instructions.</li>
+              <li><strong>Let's Encrypt</strong>, when you request a certificate (domain names are sent to it).</li>
+              <li><strong>Infrastructure and email providers</strong> that host the Service and deliver our emails, under contracts that require them to protect the data.</li>
+              <li><strong>Your team.</strong> Other members of your team can see the resources, activity and logs of that team, according to their roles.</li>
+              <li><strong>Authorities and advisers</strong>, where the law requires it, to enforce our terms, or to protect rights and safety, and to professional advisers under confidentiality. If the business is sold or restructured, data may transfer to the new owner under this policy.</li>
+            </ul>
+          </section>
+
+          <section id="security" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">6. Security</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We take steps to protect your data. SSH keys, provider tokens and database passwords are encrypted before they are stored. Passwords are hashed. Access is scoped by team and role, traffic uses HTTPS, and sign-in is rate limited. No system is perfectly secure, so we cannot guarantee absolute security. Please use strong, unique passwords, give team members only the roles they need, and use provider tokens with the narrowest permissions that work. If a breach affects your personal data, we will notify you and the Data Commissioner where the law requires, and without undue delay.</p>
+          </section>
+
+          <section id="cookies" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">7. Cookies and similar technologies</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We use a small number of cookies and browser storage items that the Service needs to work: authentication cookies (access and refresh tokens) that keep you signed in, and a setting that remembers your light or dark theme. We do not use advertising cookies. You can block cookies in your browser, but you will not be able to sign in.</p>
+          </section>
+
+          <section id="retention" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">8. Retention</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We keep personal data while your account is active and as long as needed to provide the Service. When you delete a server, connection or site, we remove its stored credentials and configuration. After you close your account, we delete or anonymise your data within a reasonable period, normally within 90 days, except what we must keep to meet legal, tax, accounting or dispute-resolution requirements (for example, payment records, which we keep for the period the law requires). Backups and logs may take a little longer to age out.</p>
+          </section>
+
+          <section id="transfers" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">9. International transfers</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Our providers, and the cloud and registrar services you connect, may process data outside Kenya. Where we transfer personal data out of Kenya, we do so as the Data Protection Act allows, with appropriate safeguards such as contractual protections or your consent.</p>
+          </section>
+
+          <section id="rights" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">10. Your rights</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Under the Data Protection Act, 2019, you have the right to:</p>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li>be informed about how we use your data (this policy);</li>
+              <li>access the personal data we hold about you;</li>
+              <li>object to certain processing, and withdraw consent you have given;</li>
+              <li>have inaccurate data corrected;</li>
+              <li>have data deleted where we no longer need it, subject to legal duties to keep it;</li>
+              <li>receive a copy of data you provided in a portable format, where applicable.</li>
+            </ul>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">To use these rights, email <a href="mailto:privacy@tylix.dev" class="text-emerald-700 dark:text-emerald-400 hover:underline">privacy@tylix.dev</a>. We may need to verify your identity first and we will respond within the time the law sets. You also have the right to complain to the Office of the Data Protection Commissioner of Kenya (odpc.go.ke), though we would appreciate the chance to fix the problem first.</p>
+          </section>
+
+          <section id="children" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">11. Children</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">The Service is for people aged 18 and over. We do not knowingly collect personal data from children. If you believe a child has given us data, contact us and we will delete it.</p>
+          </section>
+
+          <section id="changes" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">12. Changes to this policy</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We may update this policy as the Service or the law changes. We will update the effective date above and, for material changes, tell you by email or in the dashboard before they take effect.</p>
+          </section>
+
+          <section id="contact" class="scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">13. Contact</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Ashmif Office Solutions Ltd, Mombasa, Kenya</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Website: <a href="https://ashmif.com" target="_blank" rel="noopener" class="text-emerald-700 dark:text-emerald-400 hover:underline">ashmif.com</a></p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Privacy questions and requests: <a href="mailto:privacy@tylix.dev" class="text-emerald-700 dark:text-emerald-400 hover:underline">privacy@tylix.dev</a></p>
+          </section>
+
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-8 text-sm">
+        <a href="/terms" class="text-emerald-700 dark:text-emerald-400 hover:underline">&larr; Terms of Service</a>
+        <p class="text-slate-500">© 2026 Tylix by <a href="https://ashmif.com" target="_blank" rel="noopener" class="hover:underline">Ashmif</a></p>
+      </div>
+    </div>
+  </div>

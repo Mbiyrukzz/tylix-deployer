@@ -1,0 +1,211 @@
+page Terms
+
+title "Terms of Service"
+
+state
+  effective: "26 October 2026"
+
+template
+  <div class="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-950 transition-colors px-4 sm:px-6 py-8 sm:py-12">
+    <div class="max-w-6xl mx-auto">
+
+      <a href="/" class="inline-flex items-center gap-2.5 mb-8">
+        <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
+        <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
+      </a>
+
+      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Terms of Service</h1>
+      <p class="text-slate-500 text-sm mb-10">Effective {{ effective }}</p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
+
+        <nav class="hidden lg:block">
+          <div class="sticky top-24 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">On this page</p>
+            <ul class="space-y-1.5 text-sm">
+              <li><a href="#agreement" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">1. Agreement</a></li>
+              <li><a href="#service" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">2. The service</a></li>
+              <li><a href="#accounts" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">3. Accounts</a></li>
+              <li><a href="#teams" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">4. Teams and roles</a></li>
+              <li><a href="#billing" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">5. Plans and billing</a></li>
+              <li><a href="#viewonly" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">6. View only mode</a></li>
+              <li><a href="#infrastructure" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">7. Your infrastructure</a></li>
+              <li><a href="#content" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">8. Your content</a></li>
+              <li><a href="#acceptable" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">9. Acceptable use</a></li>
+              <li><a href="#backups" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">10. Backups</a></li>
+              <li><a href="#availability" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">11. Availability</a></li>
+              <li><a href="#thirdparty" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">12. Third parties</a></li>
+              <li><a href="#ip" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">13. Intellectual property</a></li>
+              <li><a href="#termination" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">14. Suspension and termination</a></li>
+              <li><a href="#disclaimer" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">15. Disclaimers</a></li>
+              <li><a href="#liability" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">16. Liability</a></li>
+              <li><a href="#indemnity" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">17. Indemnity</a></li>
+              <li><a href="#changes" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">18. Changes</a></li>
+              <li><a href="#law" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">19. Governing law</a></li>
+              <li><a href="#contact" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">20. Contact</a></li>
+            </ul>
+          </div>
+        </nav>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-8 shadow-sm dark:shadow-none min-w-0 break-words">
+
+          <section id="agreement" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">1. Agreement</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">These Terms of Service ("Terms") are a contract between you and Ashmif Office Solutions Ltd, a company registered in Kenya ("we", "us", "Tylix"). They govern your access to and use of Tylix Deploy, including the website, dashboard, APIs and everything we provide through them (the "Service").</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">By creating an account, ticking the agreement box, or using the Service, you accept these Terms and our <a href="/privacy" class="text-emerald-700 dark:text-emerald-400 hover:underline">Privacy Policy</a>. If you use the Service for a company or team, you confirm you have authority to bind it, and "you" includes that organisation. You must be at least 18 years old.</p>
+          </section>
+
+          <section id="service" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">2. The service</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Tylix Deploy is a server management and deployment platform. Depending on your plan, you can:</p>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li>provision servers at connected cloud providers, or connect your own servers over SSH;</li>
+              <li>create sites (Tylix, Laravel, PHP, Node.js, WordPress, MERN, Angular and others), connect Git repositories, and deploy them with editable scripts and environment variables;</li>
+              <li>manage databases and database users, issue SSL certificates, view server statistics and logs, reboot servers and open a web terminal;</li>
+              <li>connect domain registrar accounts, and invite team members to work alongside you.</li>
+            </ul>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">The Service acts on your servers and accounts with the access you give it. It does what you or your team members tell it to do.</p>
+          </section>
+
+          <section id="accounts" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">3. Accounts</h2>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li>Give us accurate information and keep it up to date. You must verify your email address before you can log in.</li>
+              <li>Keep your password confidential. You are responsible for everything done through your account until you tell us it has been compromised.</li>
+              <li>Tell us promptly at the address in section 20 if you suspect unauthorised access.</li>
+              <li>One person per login. Do not share credentials; invite teammates instead.</li>
+            </ul>
+          </section>
+
+          <section id="teams" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">4. Teams and roles</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Servers, sites, databases and connections belong to a team, not to an individual. Team members with the admin role can create, change and delete resources, and can view database passwords. Members with the member role can view. The team owner and admins are responsible for who they invite and what roles they assign, and for everything their team members do in the Service. When someone leaves a team, they lose access to its resources, but anything they already did remains in effect.</p>
+          </section>
+
+          <section id="billing" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">5. Plans, billing and renewal</h2>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li><strong>Plans.</strong> We offer paid plans (currently Personal, Pro and Business) with limits on team members, servers, sites and connections. Current prices and limits are on the <a href="/pricing" class="text-emerald-700 dark:text-emerald-400 hover:underline">pricing page</a>.</li>
+              <li><strong>Currency.</strong> Prices are shown in US dollars and charged in Kenyan shillings (KES) at checkout. The amount in KES may vary with exchange rates, and your bank or card issuer may add its own fees.</li>
+              <li><strong>Payment processing.</strong> Payments are handled by Paystack. We do not see or store your full card details.</li>
+              <li><strong>Renewal.</strong> Subscriptions renew automatically each month until you cancel. By subscribing you authorise us and Paystack to charge you each period.</li>
+              <li><strong>Cancelling.</strong> You can cancel at any time from your billing page. Cancellation takes effect at the end of the period you have paid for. We do not refund partial periods, except where the law requires it or where we say otherwise in writing.</li>
+              <li><strong>Price changes.</strong> We may change prices or plan limits. We will give you at least 30 days' notice before a change applies to your subscription, and you may cancel before it does.</li>
+              <li><strong>Failed payments.</strong> If a payment fails we may retry it, and your subscription may end if it keeps failing. Section 6 explains what happens then.</li>
+              <li><strong>Taxes.</strong> Prices exclude any taxes that apply, which are added where required.</li>
+            </ul>
+          </section>
+
+          <section id="viewonly" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">6. View only mode</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">When a team's subscription ends or lapses, the team becomes view only. While view only, nothing can be created, edited, deployed, rebooted or deleted through the Service, and deletion is blocked as well. You can still log in, read your data, and use the billing pages to pay and restore full access.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">View only mode does not switch off your servers or sites. They keep running at your cloud provider, and you remain responsible for any charges that provider makes. If a team stays unpaid for a long time, we may delete its data from the Service after giving notice (see section 14).</p>
+          </section>
+
+          <section id="infrastructure" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">7. Your infrastructure and connected accounts</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">The Service works through accounts and machines that you control. You acknowledge and agree that:</p>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li><strong>Provider accounts are yours.</strong> You connect cloud providers (for example Linode, Hetzner, DigitalOcean, Vultr or UpCloud), domain registrars and source control accounts by giving us API tokens or authorising access. You must have the right to do so, and you agree to the provider's own terms.</li>
+              <li><strong>Provider costs are yours.</strong> Servers, snapshots, bandwidth, domains and anything else created at a provider are billed by that provider to you. Our subscription fee does not include them. A server created through the Service continues to cost money until it is deleted at the provider.</li>
+              <li><strong>Server access.</strong> To manage a server we store its SSH credentials, encrypted, and connect to it over SSH. We run commands on it only to do what you or your team ask (such as setting up software, deploying, creating databases, issuing certificates or rebooting).</li>
+              <li><strong>Actions can be destructive.</strong> Deleting a server, site or database, resetting a password, running a deployment script or rebooting can cause downtime or permanent data loss. Deployment scripts and terminal commands run with the privileges of the SSH user you provide. You are responsible for what you run and what your team members run.</li>
+              <li><strong>Keep access working.</strong> Provisioning and management can fail if tokens expire, a provider has an outage, a firewall blocks us, or the SSH user lacks the needed permissions. We are not responsible for failures caused by your configuration or by a provider.</li>
+              <li><strong>Revoking access.</strong> You can remove a connection or server at any time. Revoking tokens at the provider also stops our access.</li>
+            </ul>
+          </section>
+
+          <section id="content" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">8. Your content</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">"Your content" means your code, repositories, environment variables, deployment scripts, databases, files, domains and anything else you deploy, store or process through the Service. You keep all rights in it. You give us a limited licence to host, copy, transmit and process it only as needed to run the Service for you and to meet our legal obligations. You are responsible for your content, for having the rights to it, and for the lawfulness of the sites and applications you run.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Do not put secrets in places where they should not be. Environment variables and database passwords that you save in the Service are stored encrypted, but anyone with the right role on your team can use or view them.</p>
+          </section>
+
+          <section id="acceptable" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">9. Acceptable use</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">You agree not to use the Service, or let anyone else use it, to:</p>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li>break any law, or host content that is unlawful, infringing, fraudulent, defamatory or that exploits children;</li>
+              <li>distribute malware, run phishing sites, send spam, or attack, scan or probe systems you do not own or have permission to test;</li>
+              <li>mine cryptocurrency, run open proxies or botnets, or launch denial of service attacks;</li>
+              <li>access servers or accounts you are not authorised to use, or use credentials that are not yours;</li>
+              <li>interfere with, overload or reverse engineer the Service, bypass plan limits, or circumvent view only mode or security controls;</li>
+              <li>resell or white-label the Service without our written agreement;</li>
+              <li>use automated means to create accounts or flood our systems or other people's inboxes.</li>
+            </ul>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Your cloud provider's acceptable use rules also apply to anything you run on its infrastructure.</p>
+          </section>
+
+          <section id="backups" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">10. Backups and your data</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Tylix Deploy is not a backup service. Unless we expressly state otherwise for a specific feature, we do not back up the contents of your servers, sites or databases. Keep your own backups of anything you cannot afford to lose. Deleting a server or database through the Service is permanent.</p>
+          </section>
+
+          <section id="availability" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">11. Availability and changes to the service</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We work to keep the Service available, but we do not promise it will be uninterrupted or error free. We may carry out maintenance, and the Service may be affected by providers, networks and other things outside our control. We continue to develop the Service and may add, change or remove features, supported frameworks or providers. If we remove a feature you pay for in a way that materially harms you, we will tell you in advance where we reasonably can. Server statistics and status shown in the dashboard are informational and may be delayed or inaccurate.</p>
+          </section>
+
+          <section id="thirdparty" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">12. Third-party services</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">The Service connects to third-party services such as Paystack, cloud providers, domain registrars, Git hosting providers and Let's Encrypt. They are not under our control, and your use of them is governed by their own terms and privacy policies. We are not responsible for their availability, pricing, conduct or changes to their APIs.</p>
+          </section>
+
+          <section id="ip" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">13. Intellectual property</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We and our licensors own the Service, including its software, design, names and logos. Subject to these Terms, we grant you a limited, non-exclusive, non-transferable, revocable right to use the Service for your own business or personal purposes while you have an account. Nothing in these Terms transfers any of our intellectual property to you. If you send us feedback or suggestions, we may use them without obligation to you. The open source frameworks and packages that the Service builds on stay under their own licences.</p>
+          </section>
+
+          <section id="termination" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">14. Suspension and termination</h2>
+            <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
+              <li><strong>By you.</strong> You can stop using the Service and close your account at any time. Remove your servers and connections first if you want us to stop accessing them. Closing your account does not delete anything at your cloud providers.</li>
+              <li><strong>By us.</strong> We may suspend or terminate access, with or without notice, if you breach these Terms, if your use puts the Service or other people at risk, if we are required to by law or a provider, or if payment fails and stays unpaid. Where it is reasonable and lawful to do so, we will tell you why and give you a chance to fix the problem.</li>
+              <li><strong>Data after termination.</strong> After termination or a long period of non-payment, we may delete your account data, including stored connections, keys and logs, on 30 days' notice to your account email. Some information may be kept longer where the law requires it, as described in the Privacy Policy.</li>
+              <li><strong>What survives.</strong> Sections that by their nature should continue (including payment obligations, intellectual property, disclaimers, liability, indemnity and governing law) survive termination.</li>
+            </ul>
+          </section>
+
+          <section id="disclaimer" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">15. Disclaimers</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">To the fullest extent the law allows, the Service is provided "as is" and "as available", without warranties of any kind, whether express or implied, including warranties of merchantability, fitness for a particular purpose, accuracy and non-infringement. We do not warrant that deployments, provisioning, SSL issuance or other operations will always succeed, that the Service will meet your requirements, or that it will be secure or free of errors or harmful components. Nothing in these Terms limits rights you have under consumer protection law that cannot be excluded.</p>
+          </section>
+
+          <section id="liability" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">16. Limitation of liability</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">To the fullest extent the law allows, we are not liable for any indirect, incidental, special, consequential or punitive damages, or for loss of profits, revenue, data, goodwill or business, arising from or related to the Service, even if we were told they were possible. This includes losses from downtime, failed or partial deployments, deleted servers or databases, provider charges, expired certificates, or actions taken by your team members.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Our total liability for all claims relating to the Service in any 12 month period is limited to the amount you paid us for the Service in the 12 months before the event that gave rise to the claim. Nothing in these Terms limits liability that cannot be limited by law, such as liability for fraud or for death or personal injury caused by negligence.</p>
+          </section>
+
+          <section id="indemnity" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">17. Indemnity</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">You agree to defend and indemnify us, our directors, employees and contractors against claims, losses and costs (including reasonable legal fees) arising from your content, the sites and applications you run, your breach of these Terms or the law, or your infringement of anyone's rights.</p>
+          </section>
+
+          <section id="changes" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">18. Changes to these Terms</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">We may update these Terms from time to time. When we make a material change we will update the effective date above and notify you by email or in the dashboard at least 14 days before it takes effect, unless the change is needed sooner for legal or security reasons. If you keep using the Service after a change takes effect, you accept the updated Terms. If you do not agree, you should stop using the Service and cancel your subscription.</p>
+          </section>
+
+          <section id="law" class="mb-8 sm:mb-10 scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">19. Governing law and disputes</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">These Terms are governed by the laws of Kenya. Please contact us first so we can try to resolve any dispute informally. If we cannot, the courts of Kenya, sitting in Mombasa have exclusive jurisdiction, except that either of us may seek urgent relief from any competent court. If any part of these Terms is found unenforceable, the rest stays in effect. Our failure to enforce a provision is not a waiver. You may not transfer your rights under these Terms without our consent; we may transfer ours as part of a merger, acquisition or sale of the business. These Terms and the Privacy Policy are the whole agreement between us about the Service.</p>
+          </section>
+
+          <section id="contact" class="scroll-mt-24">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">20. Contact</h2>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Ashmif Office Solutions Ltd, Mombasa, Kenya</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Website: <a href="https://ashmif.com" target="_blank" rel="noopener" class="text-emerald-700 dark:text-emerald-400 hover:underline">ashmif.com</a></p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Questions about these Terms: <a href="mailto:legal@tylix.dev" class="text-emerald-700 dark:text-emerald-400 hover:underline">legal@tylix.dev</a></p>
+          </section>
+
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-8 text-sm">
+        <a href="/privacy" class="text-emerald-700 dark:text-emerald-400 hover:underline">Privacy Policy &rarr;</a>
+        <p class="text-slate-500">© 2026 Tylix by <a href="https://ashmif.com" target="_blank" rel="noopener" class="hover:underline">Ashmif</a></p>
+      </div>
+    </div>
+  </div>

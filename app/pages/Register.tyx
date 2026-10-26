@@ -239,11 +239,11 @@ template
 {{#if not agreedToTerms}}
             <input type="checkbox" onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
 {{/if}}
-            <span>
+                        <span>
               I agree to the
-              <a href="https://tylix.dev/terms" class="text-emerald-700 dark:text-emerald-400 hover:underline">Terms of Service</a>
+              <a href="/terms" target="_blank" class="text-emerald-700 dark:text-emerald-400 hover:underline">Terms of Service</a>
               and
-              <a href="https://tylix.dev/privacy" class="text-emerald-700 dark:text-emerald-400 hover:underline">Privacy Policy</a>.
+              <a href="/privacy" target="_blank" class="text-emerald-700 dark:text-emerald-400 hover:underline">Privacy Policy</a>.
             </span>
           </label>
 
