@@ -4,7 +4,8 @@
  *   pull     git pull --ff-only (token passed through git's env config)
  *   env      writes the saved env to the site's .env (mode 600)
  *   script   runs the deployment script as the isolated user
- *   restart  restarts the app service (node, mern, python, java), or reloads php-fpm
+ *   restart  restarts the app service (node, mern, python, java, go, ruby,
+ *            dotnet, rust), or reloads php-fpm
  *
  * run() never throws; failures are saved on the row.
  */
@@ -15,7 +16,7 @@ import { SitePlugin } from "../models/SitePlugin.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
-import { getType } from "./SiteTypes.js";
+import { getType, isAppRuntime } from "./SiteTypes.js";
 import { shellScript, serverTarget } from "./Shell.js";
 import { teamIdOfRow } from "./TeamScope.js";
 
@@ -66,7 +67,16 @@ function envDirFor(site: DeployRow): string | null {
     if (runtime === "php") return "";
     if (runtime === "node") return s(site.app_directory);
     if (runtime === "mern") return s(site.backend_directory);
-    if (runtime === "python" || runtime === "java") return s(site.app_directory);
+    if (
+        runtime === "python" ||
+        runtime === "java" ||
+        runtime === "go" ||
+        runtime === "ruby" ||
+        runtime === "dotnet" ||
+        runtime === "rust"
+    ) {
+        return s(site.app_directory);
+    }
     return null;
 }
 
@@ -80,7 +90,8 @@ export function envPathFor(site: DeployRow): string {
 
 /**
  * Wraps deploy steps so a failure rolls the code back to the previous commit
- * and re-runs the same steps there. (Node, static, python and java deploys.)
+ * and re-runs the same steps there. (Node, static, python, java, go, ruby,
+ * dotnet and rust deploys.)
  */
 function guarded(steps: string[]): string {
     const body = steps.join("\n");
@@ -202,6 +213,45 @@ echo "Deployment completed."`;
             cd(s(site.app_directory)),
             `command -v java >/dev/null && command -v javac >/dev/null || { echo "The JDK is not installed on this server. Install Java from the server's Packages page, then deploy again." >&2; exit 1; }`,
             build || autodetect,
+        ]);
+    }
+
+    if (runtime === "go") {
+        return guarded([
+            cd(s(site.app_directory)),
+            `command -v go >/dev/null || { echo "Go is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }`,
+            build || "go build -o app .",
+        ]);
+    }
+
+    if (runtime === "ruby") {
+        // Gems go in vendor/bundle inside the site, so nothing is installed system-wide.
+        // A build command (assets, migrations) is optional and left empty by default.
+        const lines = [
+            cd(s(site.app_directory)),
+            `command -v ruby >/dev/null && command -v bundle >/dev/null || { echo "Ruby is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }`,
+            `bundle config set --local path vendor/bundle`,
+            `bundle config set --local without 'development test'`,
+            `bundle install`,
+        ];
+        if (build) lines.push(build);
+        return guarded(lines);
+    }
+
+    if (runtime === "dotnet") {
+        return guarded([
+            cd(s(site.app_directory)),
+            `command -v dotnet >/dev/null || { echo "The .NET SDK is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }`,
+            `export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1`,
+            build || "dotnet publish -c Release -o publish",
+        ]);
+    }
+
+    if (runtime === "rust") {
+        return guarded([
+            cd(s(site.app_directory)),
+            `command -v cargo >/dev/null || { echo "Rust is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }`,
+            build || "cargo build --release",
         ]);
     }
 
@@ -407,7 +457,7 @@ echo "Deployment script finished"`,
     });
 
     // ---- restart ----
-    const appRuntime = runtime === "node" || runtime === "mern" || runtime === "python" || runtime === "java";
+    const appRuntime = isAppRuntime(runtime);
 
     if (appRuntime && s(site.start_command) !== "") {
         phases.push({

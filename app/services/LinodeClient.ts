@@ -5,6 +5,10 @@
  * Catalog endpoints (regions, plans, images) are public and need no token.
  * Everything that touches an account needs a personal access token with
  * the "Linodes: Read/Write" scope.
+ *
+ * Billing (getAccount, listInvoices, listPaymentMethods, makePayment) also needs
+ * the "Account" scope: Read Only to look, Read/Write to make a payment.
+ * Paying with a credit card also needs the card's CVV; Google Pay and PayPal don't.
  */
 
 import { randomBytes } from "node:crypto";
@@ -61,6 +65,38 @@ export interface CreateInstanceInput {
     tags?: string[];
 }
 
+// ---- Billing types ----
+
+export interface LinodeAccount {
+    /** USD. Positive means money is owed, negative means credit on the account. */
+    balance: number;
+    /** USD charged so far this month that is not on an invoice yet. */
+    balanceUninvoiced: number;
+    billingSource: string;
+}
+
+export interface LinodeInvoice {
+    id: number;
+    date: string;
+    label: string;
+    total: number;
+}
+
+export interface LinodePaymentMethod {
+    id: number;
+    /** "credit_card", "google_pay" or "paypal". */
+    type: string;
+    isDefault: boolean;
+    cardType: string;
+    lastFour: string;
+}
+
+export interface LinodePayment {
+    id: number;
+    date: string;
+    usd: number;
+}
+
 export class LinodeError extends Error {
     status: number;
     reasons: { field?: string; reason: string }[];
@@ -81,6 +117,20 @@ interface RawInstance {
     type: string;
     ipv4: string[];
     tags: string[];
+}
+
+interface RawInvoice {
+    id: number;
+    date?: string;
+    label?: string;
+    total?: number | string;
+}
+
+interface RawPaymentMethod {
+    id: number;
+    type?: string;
+    is_default?: boolean;
+    data?: { card_type?: string; last_four?: string };
 }
 
 function toInstance(raw: RawInstance): LinodeInstance {
@@ -115,7 +165,7 @@ async function request<T>(
             signal: AbortSignal.timeout(TIMEOUT_MS),
         });
     } catch {
-        // Never include the request details here: they carry the token.
+        // Never include the request details here: they carry the token (and, for a payment, the CVV).
         throw new LinodeError("Could not reach the Linode API.", 0);
     }
 
@@ -188,6 +238,83 @@ export class LinodeClient {
         await request("DELETE", `/linode/instances/${id}`, this.token);
     }
 
+    // ---- Billing (token needs the "Account" scope) ----
+
+    async getAccount(): Promise<LinodeAccount> {
+        const raw = await request<{
+            balance?: number | string;
+            balance_uninvoiced?: number | string;
+            billing_source?: string;
+        }>("GET", "/account", this.token);
+
+        return {
+            balance: Number(raw.balance ?? 0),
+            balanceUninvoiced: Number(raw.balance_uninvoiced ?? 0),
+            billingSource: String(raw.billing_source ?? ""),
+        };
+    }
+
+    /** The 25 newest invoices, newest first. */
+    async listInvoices(): Promise<LinodeInvoice[]> {
+        const res = await request<{ data: RawInvoice[] }>(
+            "GET",
+            "/account/invoices?page_size=25",
+            this.token,
+            undefined,
+            { "X-Filter": JSON.stringify({ "+order_by": "date", "+order": "desc" }) },
+        );
+
+        return (res.data ?? []).map((i) => ({
+            id: Number(i.id),
+            date: String(i.date ?? ""),
+            label: String(i.label ?? ""),
+            total: Number(i.total ?? 0),
+        }));
+    }
+
+    async listPaymentMethods(): Promise<LinodePaymentMethod[]> {
+        const res = await request<{ data: RawPaymentMethod[] }>(
+            "GET",
+            "/account/payment-methods?page_size=25",
+            this.token,
+        );
+
+        return (res.data ?? []).map((m) => ({
+            id: Number(m.id),
+            type: String(m.type ?? ""),
+            isDefault: Boolean(m.is_default),
+            cardType: String(m.data?.card_type ?? ""),
+            lastFour: String(m.data?.last_four ?? ""),
+        }));
+    }
+
+    /**
+     * Charges a saved payment method. `cvv` is required by Linode for credit
+     * cards only. This is NEVER retried: if the request times out the outcome is
+     * unknown, and a second attempt could charge twice. The CVV is used for this
+     * one request and is not kept anywhere.
+     */
+    async makePayment(amountUsd: number, paymentMethodId: number, cvv?: string): Promise<LinodePayment> {
+        const body: Record<string, unknown> = {
+            usd: amountUsd.toFixed(2),
+            payment_method_id: paymentMethodId,
+        };
+        if (cvv) body.cvv = cvv;
+
+        const raw = await request<{ id: number; date?: string; usd?: number | string }>(
+            "POST",
+            "/account/payments",
+            this.token,
+            body,
+        );
+
+        return {
+            id: Number(raw.id),
+            date: String(raw.date ?? ""),
+            usd: Number(raw.usd ?? amountUsd),
+        };
+    }
+
     // ---- Public catalog (no token needed) ----
 
     static async regions(): Promise<LinodeRegion[]> {
@@ -201,47 +328,47 @@ export class LinodeClient {
             .sort((a, b) => a.label.localeCompare(b.label));
     }
 
-   static async plans(region?: string): Promise<LinodePlan[]> {
-    const res = await request<{
-        data: {
-            id: string;
-            label: string;
-            class: string;
-            memory: number;
-            vcpus: number;
-            disk: number;
-            price: { hourly: number | null; monthly: number | null };
-            region_prices?: { id: string; hourly: number; monthly: number }[];
-        }[];
-    }>("GET", "/linode/types?page_size=500", null);
+    static async plans(region?: string): Promise<LinodePlan[]> {
+        const res = await request<{
+            data: {
+                id: string;
+                label: string;
+                class: string;
+                memory: number;
+                vcpus: number;
+                disk: number;
+                price: { hourly: number | null; monthly: number | null };
+                region_prices?: { id: string; hourly: number; monthly: number }[];
+            }[];
+        }>("GET", "/linode/types?page_size=500", null);
 
-    const allowed = new Set(["nanode", "standard", "dedicated"]);
-    const plans: LinodePlan[] = [];
+        const allowed = new Set(["nanode", "standard", "dedicated"]);
+        const plans: LinodePlan[] = [];
 
-    for (const t of res.data) {
-        if (!allowed.has(t.class)) continue;
+        for (const t of res.data) {
+            if (!allowed.has(t.class)) continue;
 
-        const regional = region ? t.region_prices?.find((p) => p.id === region) : undefined;
-        const monthly = regional?.monthly ?? t.price.monthly;
-        const hourly = regional?.hourly ?? t.price.hourly;
+            const regional = region ? t.region_prices?.find((p) => p.id === region) : undefined;
+            const monthly = regional?.monthly ?? t.price.monthly;
+            const hourly = regional?.hourly ?? t.price.hourly;
 
-        // No usable price for this region means the plan isn't offered there.
-        if (monthly == null || hourly == null) continue;
+            // No usable price for this region means the plan isn't offered there.
+            if (monthly == null || hourly == null) continue;
 
-        plans.push({
-            id: t.id,
-            label: t.label,
-            class: t.class,
-            memory_mb: t.memory,
-            vcpus: t.vcpus,
-            disk_gb: Math.round(t.disk / 1024),
-            monthly,
-            hourly,
-        });
+            plans.push({
+                id: t.id,
+                label: t.label,
+                class: t.class,
+                memory_mb: t.memory,
+                vcpus: t.vcpus,
+                disk_gb: Math.round(t.disk / 1024),
+                monthly,
+                hourly,
+            });
+        }
+
+        return plans.sort((a, b) => a.monthly - b.monthly);
     }
-
-    return plans.sort((a, b) => a.monthly - b.monthly);
-}
 
     static async images(): Promise<LinodeImage[]> {
         const res = await request<{

@@ -9,9 +9,13 @@
  *   static  files served by nginx, optionally built first (angular, static)
  *   python  virtualenv + gunicorn/uvicorn on a port behind an nginx proxy (fastapi, django)
  *   java    a built jar (Maven or Gradle) on a port behind an nginx proxy (java)
+ *   go      a binary built with go build, on a port behind an nginx proxy (go)
+ *   ruby    Bundler gems + puma (or any Rack server) on a port behind an nginx proxy (ruby)
+ *   dotnet  dotnet publish output on a port behind an nginx proxy (dotnet)
+ *   rust    a binary built with cargo build --release, on a port behind an nginx proxy (rust)
  */
 
-export type Runtime = "php" | "node" | "mern" | "static" | "python" | "java";
+export type Runtime = "php" | "node" | "mern" | "static" | "python" | "java" | "go" | "ruby" | "dotnet" | "rust";
 
 export interface SiteTypeDefaults {
     web_directory: string;
@@ -114,6 +118,49 @@ export const SITE_TYPES: SiteTypeInfo[] = [
         }),
     },
     {
+        id: "go",
+        label: "Go",
+        description: "A Go app built on the server with go build and run as a service behind nginx. Listen on $PORT.",
+        runtime: "go",
+        usesRepository: true,
+        defaults: defaults({
+            build_command: "go build -o app .",
+            start_command: "./app",
+        }),
+    },
+    {
+        id: "ruby",
+        label: "Ruby (Rails / Rack)",
+        description: "A Ruby app with gems installed by Bundler, run by puma as a service behind nginx.",
+        runtime: "ruby",
+        usesRepository: true,
+        defaults: defaults({
+            start_command: "bundle exec puma -b tcp://127.0.0.1:$PORT -e production",
+        }),
+    },
+    {
+        id: "dotnet",
+        label: ".NET (ASP.NET Core)",
+        description: "An ASP.NET Core app published with dotnet publish and run as a service behind nginx.",
+        runtime: "dotnet",
+        usesRepository: true,
+        defaults: defaults({
+            build_command: "dotnet publish -c Release -o publish",
+            start_command: "dotnet publish/YourApp.dll --urls http://127.0.0.1:$PORT",
+        }),
+    },
+    {
+        id: "rust",
+        label: "Rust",
+        description: "A Rust app built with cargo build --release and run as a service behind nginx. Listen on $PORT.",
+        runtime: "rust",
+        usesRepository: true,
+        defaults: defaults({
+            build_command: "cargo build --release",
+            start_command: "./target/release/your-app",
+        }),
+    },
+    {
         id: "wordpress",
         label: "WordPress",
         description: "Downloads the latest WordPress and creates its database.",
@@ -152,7 +199,10 @@ export const SITE_TYPES: SiteTypeInfo[] = [
     },
 ];
 
-export const PHP_VERSIONS = ["8.1", "8.2", "8.3", "8.4"];
+export const PHP_VERSIONS = ["8.1", "8.2", "8.3", "8.4", "8.5"];
+
+/** Runtimes that run a process on a port behind an nginx proxy (mern's API included). */
+const APP_RUNTIMES: Runtime[] = ["node", "mern", "python", "java", "go", "ruby", "dotnet", "rust"];
 
 export function getType(id: string): SiteTypeInfo | undefined {
     return SITE_TYPES.find((t) => t.id === id);
@@ -164,8 +214,10 @@ export const isPython = (id: string) => getType(id)?.runtime === "python";
 
 export const isJava = (id: string) => getType(id)?.runtime === "java";
 
-/** Types that run a process on a port (node, mern API, python, java). */
+export const isAppRuntime = (runtime: Runtime) => APP_RUNTIMES.includes(runtime);
+
+/** Types that run a process on a port (node, mern API, python, java, go, ruby, dotnet, rust). */
 export const needsPort = (id: string) => {
     const runtime = getType(id)?.runtime;
-    return runtime === "node" || runtime === "mern" || runtime === "python" || runtime === "java";
+    return runtime !== undefined && isAppRuntime(runtime);
 };

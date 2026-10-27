@@ -6,11 +6,12 @@
  *   clone      git clone from GitHub or GitLab
  *   wordpress  download WordPress (wordpress type only)
  *   database   MySQL database + wp-config.php (wordpress type only)
- *   install    composer install / npm install (python and java: runtime check only)
+ *   install    composer install / npm install (python, java, go, ruby, dotnet
+ *              and rust: toolchain check only)
  *   build      npm build (angular, mern client, tylix, nextjs)
- *   service    systemd unit running the app (node, mern, python and java types).
- *              Node apps are started now; python and java apps are built and
- *              started by the first deploy.
+ *   service    systemd unit running the app (node, mern, python, java, go, ruby,
+ *              dotnet and rust types). Node apps are started now; the others are
+ *              built and started by the first deploy.
  *   webserver  php-fpm pool (php types) + nginx vhost, tested before reload
  *
  * Every script is idempotent, so a failed site can be re-run later.
@@ -28,7 +29,7 @@ import { Server } from "../models/Server.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
-import { getType, isPhp } from "./SiteTypes.js";
+import { getType, isPhp, isAppRuntime } from "./SiteTypes.js";
 import { serverTarget } from "./Shell.js";
 import { teamIdOfRow } from "./TeamScope.js";
 
@@ -190,7 +191,8 @@ function vhost(site: SiteRow, aliases: string[]): string {
         );
     }
 
-    if (runtime === "node" || runtime === "python" || runtime === "java") {
+    // Every runtime that runs one process on a port (mern is handled below: its API lives under /api/).
+    if (isAppRuntime(runtime) && runtime !== "mern") {
         // Django collects static files into web_directory (STATIC_ROOT); nginx serves them directly.
         const statics =
             site.type === "django" && s(site.web_directory) !== ""
@@ -252,6 +254,31 @@ pm = ondemand
 pm.max_children = 10
 pm.process_idle_timeout = 10s`;
 }
+
+/** Toolchains checked at creation time for runtimes that are built by the first deploy. */
+const TOOLCHAINS: Record<string, { label: string; check: string; show: string }> = {
+    go: { label: "Go", check: "command -v go", show: "go version" },
+    ruby: { label: "Ruby and Bundler", check: "command -v ruby && command -v bundle", show: "ruby --version" },
+    dotnet: { label: "the .NET SDK", check: "command -v dotnet", show: "dotnet --list-sdks | head -n 1" },
+    rust: { label: "Rust", check: "command -v cargo && command -v rustc", show: "cargo --version" },
+};
+
+/**
+ * Extra lines for the app's systemd [Service] section.
+ * go, rust, ruby and dotnet have no dotenv convention, so systemd loads the
+ * site's .env for them (the leading "-" makes a missing file harmless; the
+ * first deploy writes it).
+ */
+const UNIT_ENV: Record<string, string> = {
+    node: "Environment=NODE_ENV=production",
+    mern: "Environment=NODE_ENV=production",
+    python: "Environment=PYTHONUNBUFFERED=1",
+    java: "SuccessExitStatus=143",
+    go: "EnvironmentFile=-$WORK/.env",
+    rust: "EnvironmentFile=-$WORK/.env",
+    ruby: "EnvironmentFile=-$WORK/.env\nEnvironment=RAILS_ENV=production\nEnvironment=RACK_ENV=production",
+    dotnet: "EnvironmentFile=-$WORK/.env\nEnvironment=DOTNET_ENVIRONMENT=Production\nEnvironment=ASPNETCORE_ENVIRONMENT=Production",
+};
 
 // ---- phases ----
 
@@ -380,8 +407,9 @@ echo "Database $DB_NAME ready and wp-config.php written"`,
         });
     }
 
-    // ---- python / java: only check the runtime here. The first deploy does the
-    // virtualenv, pip and build work, because that needs the .env to exist. ----
+    // ---- python / java / go / ruby / dotnet / rust: only check the runtime here.
+    // The first deploy does the virtualenv, pip, bundle and build work, because
+    // that needs the .env to exist. ----
 
     if (runtime === "python" && hasRepo) {
         phases.push({
@@ -405,6 +433,24 @@ echo "$(python3 --version) is available"`,
                 `
 command -v java >/dev/null 2>&1 && command -v javac >/dev/null 2>&1 || { echo "The JDK isn't installed on this server. Install Java from the Packages page, then create the site again." >&2; exit 1; }
 java -version 2>&1 | head -n 1`,
+            ),
+        });
+    }
+
+    const tool = TOOLCHAINS[runtime];
+
+    if (tool && hasRepo) {
+        phases.push({
+            step: "install",
+            title: `Checking ${tool.label}`,
+            script: script(
+                base,
+                `
+if ! ( ${tool.check} ) >/dev/null 2>&1; then
+  echo "${tool.label} isn't installed on this server. Install it from the Packages page, then create the site again." >&2
+  exit 1
+fi
+${tool.show}`,
             ),
         });
     }
@@ -466,21 +512,17 @@ fi`,
         });
     }
 
-    // ---- app service (node, mern, python, java) ----
+    // ---- app service (node, mern, python, java, go, ruby, dotnet, rust) ----
 
-    const appRuntime = runtime === "node" || runtime === "mern" || runtime === "python" || runtime === "java";
+    const appRuntime = isAppRuntime(runtime);
 
     if (appRuntime && hasRepo && s(site.start_command) !== "") {
         const workSnippet = runtime === "mern" ? BACKEND_WORK : APP_WORK;
-        // Python and java apps aren't built yet, so the unit is enabled but not
-        // started. The first deploy builds the app and starts it.
+        // Only node and mern apps are ready to run now. The others aren't built yet,
+        // so the unit is enabled but not started; the first deploy builds the app
+        // and starts it.
         const startNow = runtime === "node" || runtime === "mern";
-        const extraUnit =
-            runtime === "python"
-                ? "Environment=PYTHONUNBUFFERED=1"
-                : runtime === "java"
-                  ? "SuccessExitStatus=143"
-                  : "Environment=NODE_ENV=production";
+        const extraUnit = UNIT_ENV[runtime] ?? "";
 
         const afterEnable = startNow
             ? `$SUDO systemctl restart "$UNIT"

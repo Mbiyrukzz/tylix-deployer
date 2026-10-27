@@ -962,3 +962,6 @@ template
     </div>
     </div>
   </div>
+  {{#if not checkedAuth}}
+<PageLoader label="Loading server" />
+{{/if}}

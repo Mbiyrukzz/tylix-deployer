@@ -24,8 +24,10 @@ state
   rows: []
   selected: []
   task: null
+  taskText: ""
   busy: false
   installing: false
+  confirmUpgrade: false
   installedCount: 0
   totalCount: 0
 
@@ -45,6 +47,14 @@ action
 
   setTask(t) {
     this.task = t
+    this.taskText = ""
+    if t {
+      if t.packages.indexOf("upgrade") >= 0 {
+        this.taskText = "Update of installed packages"
+      } else {
+        this.taskText = t.packages.join(", ")
+      }
+    }
     if t and (t.status is "running" or t.status is "pending") {
       this.busy = true
     } else {
@@ -64,6 +74,15 @@ action
   clearSelection() {
     this.selected = []
     this.rebuild()
+  }
+
+  askUpgrade() {
+    this.actionError = ""
+    this.confirmUpgrade = true
+  }
+
+  cancelUpgrade() {
+    this.confirmUpgrade = false
   }
 
   async loadCatalog() {
@@ -124,11 +143,43 @@ action
     this.rebuild()
   }
 
+  // Updates everything already installed on the server to the latest version.
+  async upgrade() {
+    if Billing.locked {
+      return null
+    }
+    if this.installing or this.busy {
+      return null
+    }
+
+    this.installing = true
+    this.confirmUpgrade = false
+    this.actionError = ""
+
+    const result = await useApi("/api/servers/" + this.serverId + "/packages/upgrade", { method: "POST", body: {} })
+
+    if result.ok {
+      this.setTask(result.data.task)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.actionError = result.data?.error or "Couldn't start the update."
+    }
+
+    this.installing = false
+  }
+
   async retryTask() {
     if Billing.locked {
       return null
     }
     if not this.task {
+      return null
+    }
+
+    // A failed update is retried as an update, not as a list of packages.
+    if this.task.packages.indexOf("upgrade") >= 0 {
+      await this.upgrade()
       return null
     }
 
@@ -195,12 +246,50 @@ template
         </div>
 {{/if}}
 
+{{#if not loading}}
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div class="min-w-0">
+              <p class="text-slate-800 dark:text-slate-200 text-sm font-medium">Update packages</p>
+              <p class="text-slate-500 text-xs mt-1">Brings everything installed on this server up to the latest version. Services restart briefly while they update.</p>
+            </div>
+
+{{#if busy}}
+            <button disabled class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Working…</button>
+{{/if}}
+
+{{#if not busy}}
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="shrink-0 inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Update packages
+            </button>
+{{/if}}
+{{#if not Billing.locked}}
+{{#if confirmUpgrade}}
+            <div class="shrink-0 flex items-center gap-2">
+              <button onclick="{{ upgrade() }}" class="text-sm text-white bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-full px-4 py-2 transition">Yes, update now</button>
+              <button onclick="{{ cancelUpgrade() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+            </div>
+{{/if}}
+{{#if not confirmUpgrade}}
+            <button onclick="{{ askUpgrade() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Update packages</button>
+{{/if}}
+{{/if}}
+{{/if}}
+          </div>
+        </div>
+{{/if}}
+
 {{#if task}}
         <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
               <p class="text-slate-800 dark:text-slate-200 text-sm font-medium">Last install</p>
-              <p class="text-slate-500 text-xs font-mono mt-1 break-words">{{ task.packages.join(", ") }}</p>
+              <p class="text-slate-500 text-xs font-mono mt-1 break-words">{{ taskText }}</p>
             </div>
             <div class="text-right shrink-0">
 {{#if task.status is "done"}}
@@ -330,4 +419,8 @@ template
       </div>
     </div>
   </div>
+{{/if}}
+
+{{#if not checkedAuth}}
+<PageLoader label="Loading packages..." />
 {{/if}}

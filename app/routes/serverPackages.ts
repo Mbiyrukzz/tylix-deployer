@@ -1,11 +1,11 @@
 /**
- * GET  /api/servers/:id/packages        catalog + what is installed (asks the server over SSH)
- * GET  /api/servers/:id/packages/task   latest install task (cheap, used for polling)
- * POST /api/servers/:id/packages        queue an install { packages: string[] }
-
+ * GET  /api/servers/:id/packages          catalog + what is installed (asks the server over SSH)
+ * GET  /api/servers/:id/packages/task     latest install task (cheap, used for polling)
+ * POST /api/servers/:id/packages          queue an install { packages: string[] }
+ * POST /api/servers/:id/packages/upgrade  queue an update of everything already installed
  *
- * Team-scoped. Any member can look; installing packages needs the admin role.
- * Installing answers 402 while the team is view only (withBillingLock).
+ * Team-scoped. Any member can look; installing or updating needs the admin role.
+ * Installing and updating answer 402 while the team is view only (withBillingLock).
  */
 
 import type { Router } from "@tylix/core";
@@ -13,7 +13,7 @@ import { dispatch } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { ServerTask } from "../models/ServerTask.js";
 import { CryptoService } from "../services/CryptoService.js";
-import { PACKAGES, detectInstalled } from "../services/Installers.js";
+import { PACKAGES, UPGRADE_ID, detectInstalled } from "../services/Installers.js";
 
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { withBillingLock } from "../services/BillingLock.js";
@@ -77,6 +77,36 @@ function present(t: TaskRow | null) {
         packages = [];
     }
     return { id: t.id, status: t.status, step: t.step, error: t.error, packages };
+}
+
+/**
+ * Queues one task for the server and answers 202. Shared by the install and the
+ * update routes: one install or update at a time per server (409 otherwise).
+ */
+async function queueTask(req: any, res: any, server: ServerRow, ids: string[]) {
+    if (isActive(await latestTask(server.id))) {
+        res.status(409);
+        return res.json({ error: "An install is already running on this server. Wait for it to finish." });
+    }
+
+    const task = (await ServerTask.create({
+        user_id: req.user?.userId,
+        server_id: server.id,
+        packages: JSON.stringify(ids),
+        step: "",
+        status: "pending",
+        error: "",
+    })) as { id: number } | null;
+
+    if (!task) {
+        res.status(500);
+        return res.json({ error: "Couldn't queue the install." });
+    }
+
+    await dispatch("InstallPackages", { taskId: task.id });
+
+    res.status(202);
+    return res.json({ task: present((await ServerTask.find(task.id)) as TaskRow | null) });
 }
 
 export async function routes(router: Router, { auth: baseAuth }: { auth: (handler: Handler) => Handler }) {
@@ -164,29 +194,24 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
                 return res.json({ error: "Choose at least one package from the list." });
             }
 
-            if (isActive(await latestTask(server.id))) {
-                res.status(409);
-                return res.json({ error: "An install is already running on this server. Wait for it to finish." });
+            return queueTask(req, res, server, ids as string[]);
+        }),
+    );
+
+    // Update everything already on the server to the latest version. No body needed.
+    router.post(
+        "/api/servers/:id/packages/upgrade",
+        write(async (req, res) => {
+            const teamId = requireTeam(req as any, res as any);
+            if (!teamId) return;
+
+            const server = await ownServer(req.params.id, teamId);
+            if (!server) {
+                res.status(404);
+                return res.json({ error: "Server not found." });
             }
 
-            const task = (await ServerTask.create({
-                user_id: req.user?.userId,
-                server_id: server.id,
-                packages: JSON.stringify(ids),
-                step: "",
-                status: "pending",
-                error: "",
-            })) as { id: number } | null;
-
-            if (!task) {
-                res.status(500);
-                return res.json({ error: "Couldn't queue the install." });
-            }
-
-            await dispatch("InstallPackages", { taskId: task.id });
-
-            res.status(202);
-            return res.json({ task: present((await ServerTask.find(task.id)) as TaskRow | null) });
+            return queueTask(req, res, server, [UPGRADE_ID]);
         }),
     );
 }

@@ -93,6 +93,13 @@ action
       ["wordpress", "WordPress"],
       ["mern", "MERN"],
       ["angular", "Angular"],
+      ["fastapi", "FastAPI"],
+      ["django", "Django"],
+      ["java", "Java"],
+      ["go", "Go"],
+      ["ruby", "Ruby"],
+      ["dotnet", ".NET"],
+      ["rust", "Rust"],
       ["static", "Static"]
     ]
     const hit = labels.find((l) => l[0] is t)

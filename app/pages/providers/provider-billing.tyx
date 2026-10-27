@@ -36,10 +36,74 @@ state
   invoiceItems: []
   itemsBusy: false
   itemsError: ""
+  optionsReady: false
+  optionsError: ""
+  mode: ""
+  consoleUrl: ""
+  providerLabel: ""
+  maxPayment: 0
+  amountDue: 0
+  amountDueText: ""
+  hasCredit: false
+  creditText: ""
+  methods: []
+  methodRows: []
+  hasPayable: false
+  methodId: 0
+  needsCvv: false
+  needsCode: false
+  confirming: false
+  confirmText: ""
+  paying: false
+  payError: ""
+  payOk: ""
+  payUnknown: false
+  paymentLog: []
 
 action
   money(currency, n) {
     return currency + " " + Number(n).toFixed(2)
+  }
+
+  statusText(s) {
+    if s is "paid" {
+      return "Paid"
+    }
+    if s is "failed" {
+      return "Failed"
+    }
+    return "Unconfirmed"
+  }
+
+  // Typed lookup: querySelectorAll("input") is NodeListOf<HTMLInputElement>.
+  field(id) {
+    return Array.from(document.querySelectorAll("input")).find((i) => i.id is id)
+  }
+
+  readField(id) {
+    const el = this.field(id)
+    return el ? String(el.value).trim() : ""
+  }
+
+  writeField(id, v) {
+    const el = this.field(id)
+    if el {
+      el.value = v
+    }
+  }
+
+  kindLabel(kind) {
+    const names = [
+      ["linode", "Linode"],
+      ["hetzner", "Hetzner"],
+      ["digitalocean", "DigitalOcean"],
+      ["vultr", "Vultr"],
+      ["aws", "AWS"],
+      ["upcloud", "UpCloud"],
+      ["contabo", "Contabo"]
+    ]
+    const hit = names.find((n) => n[0] is kind)
+    return hit ? hit[1] : "Provider"
   }
 
   async load() {
@@ -77,6 +141,190 @@ action
       this.error = result.data?.error or ""
     } else {
       this.error = result.data?.error or "Couldn't load billing. Try again."
+    }
+  }
+
+  // What can be done about payment for this provider: a Pay card, or a link to its billing page.
+  async loadOptions() {
+    const result = await useApi("/api/providers/" + this.providerId + "/billing/payment-options")
+
+    if result.ok {
+      const o = result.data
+
+      this.mode = o.mode
+      this.consoleUrl = o.consoleUrl
+      this.providerLabel = o.provider
+      this.optionsError = ""
+
+      if o.mode is "pay" {
+        this.maxPayment = o.maxPaymentUsd
+        this.amountDue = o.summary.amountDue
+        this.amountDueText = this.money("USD", o.summary.amountDue)
+        this.hasCredit = o.summary.credit > 0
+        this.creditText = this.money("USD", o.summary.credit)
+        this.methods = o.methods
+
+        const payable = o.methods.filter((m) => m.payable)
+        const preferred = payable.find((m) => m.isDefault)
+        this.hasPayable = payable.length > 0
+
+        if this.methodId is 0 {
+          if preferred {
+            this.methodId = preferred.id
+          } else if payable.length > 0 {
+            this.methodId = payable[0].id
+          }
+        }
+        this.rebuildMethods()
+      }
+
+      this.optionsReady = true
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.optionsError = result.data?.error or ""
+      this.optionsReady = true
+    }
+  }
+
+  async loadLog() {
+    const result = await useApi("/api/providers/" + this.providerId + "/billing/payment-log")
+
+    if result.ok and Array.isArray(result.data) {
+      this.paymentLog = result.data.map((p) => ({
+        id: p.id,
+        date: String(p.started_at).slice(0, 16).replace("T", " "),
+        amountText: this.money("USD", p.amount_cents / 100),
+        method: p.method_label,
+        status: p.status,
+        statusText: this.statusText(p.status),
+        message: p.message
+      }))
+    }
+  }
+
+  rebuildMethods() {
+    const chosen = this.methods.find((m) => m.id is this.methodId)
+    this.needsCvv = chosen ? chosen.needsCvv : false
+    this.methodRows = this.methods.map((m) => ({
+      id: m.id,
+      label: m.label,
+      isDefault: m.isDefault,
+      payable: m.payable,
+      selected: m.id is this.methodId
+    }))
+  }
+
+  pickMethod(id) {
+    this.methodId = id
+    this.confirming = false
+    this.rebuildMethods()
+  }
+
+  fillDue() {
+    this.writeField("pay-amount", Math.min(Number(this.amountDue), Number(this.maxPayment)).toFixed(2))
+  }
+
+  clearCvv() {
+    this.writeField("pay-cvv", "")
+  }
+
+  clearCode() {
+    this.writeField("pay-code", "")
+  }
+
+  // First click: check the form and ask "are you sure?". Nothing is sent yet.
+  askPay() {
+    if Billing.locked {
+      return null
+    }
+
+    this.payError = ""
+    this.payOk = ""
+    this.payUnknown = false
+
+    const chosen = this.methods.find((m) => m.id is this.methodId)
+    const amount = Number(this.readField("pay-amount"))
+
+    if not chosen {
+      this.payError = "Choose a payment method."
+      return null
+    }
+    if not (amount > 0) {
+      this.payError = "Enter an amount greater than zero."
+      return null
+    }
+    if amount > this.maxPayment {
+      this.payError = "The most you can pay at once from here is USD " + this.maxPayment + "."
+      return null
+    }
+
+    this.confirmText = "Pay " + this.money("USD", amount) + " with " + chosen.label + "?"
+    this.confirming = true
+  }
+
+  cancelPay() {
+    this.confirming = false
+  }
+
+  // Second click: send it. The CVV and the code are read from the form now and cleared afterwards.
+  async pay() {
+    if Billing.locked {
+      return null
+    }
+    if this.paying {
+      return null
+    }
+
+    const cvv = this.readField("pay-cvv")
+    const code = this.readField("pay-code")
+
+    const body = Object.assign(
+      { amount: this.readField("pay-amount"), methodId: this.methodId },
+      cvv is not "" ? { cvv: cvv } : {},
+      code is not "" ? { code: code } : {}
+    )
+
+    this.confirming = false
+    this.paying = true
+    this.payError = ""
+    this.payOk = ""
+    this.payUnknown = false
+
+    const result = await useApi("/api/providers/" + this.providerId + "/billing/payments", { method: "POST", body: body })
+
+    this.paying = false
+
+    if result.ok {
+      this.payOk = "Payment submitted: " + this.money("USD", result.data.payment.amount) + " with " + result.data.method + "."
+      this.needsCode = false
+      this.clearCvv()
+      this.clearCode()
+      this.writeField("pay-amount", "")
+      await this.loadOptions()
+      await this.load()
+      await this.loadLog()
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 and result.data?.two_factor_required {
+      // Nothing was charged. Keep the CVV in the form and ask for the code.
+      this.needsCode = true
+      this.payError = "Enter your two-factor code, then press Pay again."
+    } else if result.status is 422 and result.data?.errors?.code {
+      this.needsCode = true
+      this.clearCode()
+      this.payError = "That two-factor code didn't work. Try again."
+    } else if result.status is 502 and result.data?.code is "outcome_unknown" {
+      this.payUnknown = true
+      this.payError = result.data.error
+      this.clearCvv()
+      this.clearCode()
+      await this.loadLog()
+    } else {
+      this.payError = result.data?.error or "Couldn't make the payment."
+      this.clearCvv()
+      this.clearCode()
+      await this.loadLog()
     }
   }
 
@@ -134,9 +382,12 @@ onMount
       window.location.href = "/providers"
       return null
     }
-    this.kindName = p.data.kind is "hetzner" ? "Hetzner" : "Linode"
+
+    this.kindName = this.kindLabel(p.data.kind)
 
     await this.load()
+    await this.loadOptions()
+    await this.loadLog()
     this.checkedAuth = true
   }
 
@@ -167,6 +418,188 @@ template
 {{#if error}}
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
 {{/if}}
+{{/if}}
+
+{{#if optionsReady}}
+
+{{#if optionsError}}
+{{#if not locked}}
+      <p role="alert" class="text-rose-500 text-sm mb-4">{{ optionsError }}</p>
+{{/if}}
+{{/if}}
+
+{{#if mode is "link"}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none mb-8">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Pay your {{ providerLabel }} bill</h2>
+        <p class="text-slate-500 text-sm mb-4">Payments for {{ providerLabel }} are made on its own billing page.</p>
+        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Open {{ providerLabel }} billing</a>
+      </div>
+{{/if}}
+
+{{#if mode is "pay"}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none mb-8">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Make a payment</h2>
+        <p class="text-slate-500 text-sm mb-5">Charges a payment method saved on your {{ providerLabel }} account.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+            <p class="text-slate-500 text-xs mb-1">Amount due</p>
+            <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold">{{ amountDueText }}</p>
+          </div>
+{{#if hasCredit}}
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+            <p class="text-slate-500 text-xs mb-1">Credit on the account</p>
+            <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold">{{ creditText }}</p>
+          </div>
+{{/if}}
+        </div>
+
+{{#if not hasPayable}}
+        <p class="text-slate-500 text-sm mb-2">No saved payment method can be charged from here. Add or use one on {{ providerLabel }}'s billing page.</p>
+        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">Open {{ providerLabel }} billing</a>
+{{/if}}
+
+{{#if hasPayable}}
+        <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Pay with</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+{{#each m in methodRows}}
+{{#if m.payable}}
+{{#if m.selected}}
+          <button onclick="{{ pickMethod(m.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-900 dark:text-slate-100">
+            <span>{{ m.label }}</span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Selected</span>
+          </button>
+{{/if}}
+{{#if not m.selected}}
+          <button onclick="{{ pickMethod(m.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+            <span>{{ m.label }}</span>
+{{#if m.isDefault}}
+            <span class="text-[11px] uppercase tracking-wider text-slate-500">Default</span>
+{{/if}}
+          </button>
+{{/if}}
+{{/if}}
+{{#if not m.payable}}
+          <div class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-400 dark:text-slate-600 cursor-not-allowed select-none">
+            <span>{{ m.label }}</span>
+            <span class="text-[11px] uppercase tracking-wider">Pay on {{ providerLabel }}</span>
+          </div>
+{{/if}}
+{{/each}}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <div>
+            <label for="pay-amount" class="block text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Amount (USD)</label>
+            <div class="flex items-center gap-2">
+              <input id="pay-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+              <button onclick="{{ fillDue() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Amount due</button>
+            </div>
+          </div>
+
+{{#if needsCvv}}
+          <div>
+            <label for="pay-cvv" class="block text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Card security code (CVV)</label>
+            <input id="pay-cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="CVV" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+            <p class="text-slate-500 text-[11px] mt-1.5">Sent to {{ providerLabel }} with this payment only. It isn't saved.</p>
+          </div>
+{{/if}}
+
+{{#if needsCode}}
+          <div>
+            <label for="pay-code" class="block text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Two-factor code</label>
+            <input id="pay-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+          </div>
+{{/if}}
+        </div>
+
+{{#if payError}}
+        <p role="alert" class="text-rose-500 text-sm mb-4">{{ payError }}</p>
+{{/if}}
+
+{{#if payUnknown}}
+        <div role="alert" class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 mb-4">
+          <p class="text-amber-800 dark:text-amber-400 text-sm mb-2">Don't pay again yet. Check whether this payment appears in your {{ providerLabel }} payment history first.</p>
+          <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="text-amber-800 dark:text-amber-400 text-sm underline font-medium">Open {{ providerLabel }} billing</a>
+        </div>
+{{/if}}
+
+{{#if payOk}}
+        <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ payOk }}</p>
+{{/if}}
+
+{{#if paying}}
+        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Paying…</button>
+{{/if}}
+
+{{#if not paying}}
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Review payment
+        </button>
+{{/if}}
+
+{{#if not Billing.locked}}
+{{#if confirming}}
+        <div class="flex items-center gap-3 flex-wrap">
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ confirmText }}</p>
+          <button onclick="{{ pay() }}" class="text-sm text-white bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-full px-4 py-2 transition">Yes, pay now</button>
+          <button onclick="{{ cancelPay() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+        </div>
+{{/if}}
+{{#if not confirming}}
+        <button onclick="{{ askPay() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Review payment</button>
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+      </div>
+
+{{#if paymentLog.length is not 0}}
+      <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Payments started here</h2>
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
+{{#each l in paymentLog}}
+        <div class="px-5 py-3">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ l.amountText }} <span class="text-slate-500 font-normal">with {{ l.method }}</span></p>
+              <p class="text-slate-500 text-xs">{{ l.date }}</p>
+            </div>
+{{#if l.status is "paid"}}
+            <span class="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ l.statusText }}
+            </span>
+{{/if}}
+{{#if l.status is "failed"}}
+            <span class="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> {{ l.statusText }}
+            </span>
+{{/if}}
+{{#if l.status is not "paid"}}
+{{#if l.status is not "failed"}}
+            <span class="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> {{ l.statusText }}
+            </span>
+{{/if}}
+{{/if}}
+          </div>
+{{#if l.message}}
+          <p class="text-slate-500 text-xs mt-1 break-words">{{ l.message }}</p>
+{{/if}}
+{{#if l.status is not "paid"}}
+{{#if l.status is not "failed"}}
+          <p class="text-amber-600 dark:text-amber-500 text-xs mt-1">The result wasn't confirmed. Check the provider's payment history.</p>
+{{/if}}
+{{/if}}
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
 {{/if}}
 
 {{#if loaded}}
@@ -256,4 +689,7 @@ template
     </div>
   </div>
 </div>
+{{/if}}
+{{#if not checkedAuth}}
+<PageLoader label="Loading bills" />
 {{/if}}

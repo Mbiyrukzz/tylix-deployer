@@ -124,6 +124,21 @@ action
       this.usesApp = true
       this.usesJava = true
       this.startCommand = "java -Xmx512m -jar target/*.jar --server.port=$PORT"
+    } else if value is "go" {
+      this.usesApp = true
+      this.buildCommand = "go build -o app ."
+      this.startCommand = "./app"
+    } else if value is "ruby" {
+      this.usesApp = true
+      this.startCommand = "bundle exec puma -b tcp://127.0.0.1:$PORT -e production"
+    } else if value is "dotnet" {
+      this.usesApp = true
+      this.buildCommand = "dotnet publish -c Release -o publish"
+      this.startCommand = "dotnet publish/YourApp.dll --urls http://127.0.0.1:$PORT"
+    } else if value is "rust" {
+      this.usesApp = true
+      this.buildCommand = "cargo build --release"
+      this.startCommand = "./target/release/your-app"
     } else if value is "mern" {
       this.usesNode = true
       this.usesApp = true
@@ -358,6 +373,10 @@ template
             <option value="fastapi">FastAPI</option>
             <option value="django">Django</option>
             <option value="java">Java API (Spring Boot)</option>
+            <option value="go">Go</option>
+            <option value="ruby">Ruby (Rails / Rack)</option>
+            <option value="dotnet">.NET (ASP.NET Core)</option>
+            <option value="rust">Rust</option>
             <option value="wordpress">WordPress</option>
             <option value="mern">MERN (React + Node API)</option>
             <option value="angular">Angular</option>
@@ -380,6 +399,18 @@ template
 {{/if}}
 {{#if usesJava}}
           <p class="text-slate-500 text-xs mt-2">Built with Maven or Gradle on the server and run as a jar. Needs Java from the Packages page.</p>
+{{/if}}
+{{#if type is "go"}}
+          <p class="text-slate-500 text-xs mt-2">Built on the server with go build and run as a binary. Your app must listen on $PORT. Needs Go from the Packages page.</p>
+{{/if}}
+{{#if type is "ruby"}}
+          <p class="text-slate-500 text-xs mt-2">Gems install with Bundler into vendor/bundle. Needs Ruby from the Packages page. For Rails, add SECRET_KEY_BASE to the env on the Deployment tab.</p>
+{{/if}}
+{{#if type is "dotnet"}}
+          <p class="text-slate-500 text-xs mt-2">Published with dotnet publish. Replace YourApp.dll in the start command with your project's DLL. Needs the .NET SDK from the Packages page.</p>
+{{/if}}
+{{#if type is "rust"}}
+          <p class="text-slate-500 text-xs mt-2">Built with cargo build --release. Replace your-app in the start command with your binary's name. The first build can take several minutes. Needs Rust from the Packages page.</p>
 {{/if}}
         </div>
 
@@ -404,7 +435,8 @@ template
         <div>
           <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">PHP version</label>
           <select onchange="{{ phpVersion = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
-            <option value="8.4">8.4</option>
+            <option value="8.5">8.5</option>
+            <option value="8.4" selected>8.4</option>
             <option value="8.3">8.3</option>
             <option value="8.2">8.2</option>
             <option value="8.1">8.1</option>
@@ -558,6 +590,9 @@ template
 {{/if}}
 {{#if usesPython}}
           <p class="text-slate-500 text-xs mt-2">Runs after pip install on every deploy, inside the site folder (use .venv/bin/python).</p>
+{{/if}}
+{{#if type is "ruby"}}
+          <p class="text-slate-500 text-xs mt-2">Optional, runs after bundle install on every deploy. For Rails, e.g. RAILS_ENV=production bundle exec rails assets:precompile db:migrate. Leave empty for Rack and Sinatra apps.</p>
 {{/if}}
         </div>
 
