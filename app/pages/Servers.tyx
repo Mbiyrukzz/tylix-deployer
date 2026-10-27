@@ -11,38 +11,40 @@ uses
   Servers
   Provisions
   Billing
+  TwoFactor
+  ProvisionActions
 
 background
   Billing
 
 state
   checkedAuth: false
-  confirmId: 0
-  confirmText: ""
-  confirmCode: ""
-  confirmCodeError: ""
-  twoFactorOn: false
-  tfTotp: false
-  tfSms: false
-  smsHint: ""
-  smsSending: false
-  smsNotice: ""
-  actionError: ""
   doneCount: 0
+  actionError: ""
   rows: []
+  setupRows: []
   cards: []
   tabs: []
-  siteServerIds: []
+  stats: []
   query: ""
   filter: "all"
-  onlineCount: 0
   busyCount: 0
-  pwOpen: false
-  pwName: ""
-  pwIp: ""
+  copiedId: 0
+  modal: ""
+  targetId: 0
+  targetName: ""
+  targetIp: ""
+  targetHasInstance: false
+  deleteBlocked: false
+  askCode: false
+  code: ""
+  codeError: ""
+  modalError: ""
+  confirmText: ""
   pwValue: ""
+  pwShown: false
   pwCopied: false
-  pwBusy: false
+  hideTimer: 0
 
 action
   addServer(server) {
@@ -55,122 +57,136 @@ action
     this.buildCards()
   }
 
+  clearQuery() {
+    this.query = ""
+    this.buildCards()
+  }
+
   setFilter(key) {
     this.filter = key
     this.buildCards()
   }
 
-  clearDeleteState() {
-    this.confirmText = ""
-    this.confirmCode = ""
-    this.confirmCodeError = ""
-    this.smsNotice = ""
+  resetFilters() {
+    this.query = ""
+    this.filter = "all"
+    this.buildCards()
   }
 
-  async loadTwoFactor() {
-    const result = await useApi("/api/account")
-    if result.ok and result.data and result.data.two_factor {
-      const tf = result.data.two_factor
-      const sms = tf.sms
-      this.tfTotp = Boolean(tf.enabled)
-      this.tfSms = Boolean(sms and sms.enabled)
-      this.smsHint = (sms and sms.phone_hint) or ""
-      this.twoFactorOn = this.tfTotp or this.tfSms
-    }
+  async copySsh(id, text) {
+    await navigator.clipboard.writeText(text)
+    this.copiedId = id
+    window.setTimeout(() => this.clearCopied(), 1600)
   }
 
-  async sendDeleteCode() {
-    if this.smsSending {
-      return null
-    }
-
-    this.smsSending = true
-    this.confirmCodeError = ""
-    this.smsNotice = ""
-
-    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
-
-    this.smsSending = false
-
-    if result.ok {
-      this.smsNotice = "Code sent to " + this.smsHint + "."
-    } else if result.status is 401 {
-      window.location.href = "/login"
-    } else {
-      this.confirmCodeError = result.data?.error or "Couldn't send the code."
-    }
+  clearCopied() {
+    this.copiedId = 0
   }
 
-  async askDelete(id) {
-    if Billing.locked {
-      return null
-    }
-    this.actionError = ""
-    this.clearDeleteState()
-    this.confirmId = id
+  // ---------- display helpers ----------
 
-    if this.tfSms and not this.tfTotp {
-      await this.sendDeleteCode()
+  tone(status) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium "
+    const tones = {
+      online: {
+        label: "Online",
+        pill: base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-emerald-500",
+        solid: "bg-emerald-500"
+      },
+      offline: {
+        label: "Offline",
+        pill: base + "bg-rose-500/10 text-rose-600 dark:text-rose-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-rose-500",
+        solid: "bg-rose-500"
+      },
+      pending: {
+        label: "Not tested",
+        pill: base + "bg-slate-500/10 text-slate-600 dark:text-slate-400",
+        dot: "w-1.5 h-1.5 rounded-full bg-slate-400",
+        solid: "bg-slate-400"
+      }
     }
+
+    const found = Object.entries(tones).find((e) => e[0] is status)
+    return found ? found[1] : tones.pending
   }
 
-  cancelDelete() {
-    this.confirmId = 0
-    this.clearDeleteState()
+  provisionTone(status) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium "
+    const tones = {
+      done: {
+        label: "Ready",
+        pill: base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-emerald-500",
+        bar: "h-1.5 rounded-full bg-emerald-500"
+      },
+      failed: {
+        label: "Failed",
+        pill: base + "bg-rose-500/10 text-rose-600 dark:text-rose-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-rose-500",
+        bar: "h-1.5 rounded-full bg-rose-500"
+      },
+      running: {
+        label: "Setting up",
+        pill: base + "bg-amber-500/10 text-amber-600 dark:text-amber-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse",
+        bar: "h-1.5 rounded-full bg-emerald-500 transition-all duration-500"
+      },
+      pending: {
+        label: "Queued",
+        pill: base + "bg-amber-500/10 text-amber-600 dark:text-amber-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse",
+        bar: "h-1.5 rounded-full bg-emerald-500 transition-all duration-500"
+      }
+    }
+
+    const found = Object.entries(tones).find((e) => e[0] is status)
+    return found ? found[1] : tones.pending
   }
 
-  decorate(p) {
-    const keys = ["pending", "creating", "booting", "waiting_ssh", "installing", "install_base", "install_nginx", "install_mysql", "install_redis", "install_supervisor", "install_postgres", "install_mongo", "install_node", "install_tools", "install_ufw", "install_verify", "provisioned"]
-    const pcts = [5, 20, 40, 65, 85, 72, 75, 79, 82, 85, 88, 91, 93, 95, 97, 99, 100]
-    const labels = ["Queued", "Creating machine", "Booting", "Waiting for SSH", "Installing", "Installing base packages", "Installing nginx", "Installing MySQL 8.4", "Installing Redis", "Installing Supervisor", "Installing PostgreSQL", "Installing MongoDB", "Installing Node.js 22", "Installing git and build tools", "Configuring firewall", "Checking services", "Provisioned"]
-    const i = keys.indexOf(p.step)
+  decorateProvision(p) {
+    const steps = {
+      pending: [5, "Queued"],
+      creating: [20, "Creating machine"],
+      booting: [40, "Booting"],
+      waiting_ssh: [65, "Waiting for SSH"],
+      installing: [85, "Installing"],
+      install_base: [72, "Installing base packages"],
+      install_nginx: [75, "Installing nginx"],
+      install_mysql: [79, "Installing MySQL 8.4"],
+      install_redis: [82, "Installing Redis"],
+      install_supervisor: [85, "Installing Supervisor"],
+      install_postgres: [88, "Installing PostgreSQL"],
+      install_mongo: [91, "Installing MongoDB"],
+      install_node: [93, "Installing Node.js 22"],
+      install_tools: [95, "Installing git and build tools"],
+      install_ufw: [97, "Configuring firewall"],
+      install_verify: [99, "Checking services"],
+      provisioned: [100, "Provisioned"]
+    }
 
+    const found = Object.entries(steps).find((e) => e[0] is p.step)
+    const step = found ? found[1] : null
+    const tone = this.provisionTone(p.status)
+
+    // has_instance is true for numeric ids and UUIDs alike (Vultr's old instance_id was 0).
+    // has_root_password is only true on Linode and Hetzner.
     return {
-      id: p.id,
-      name: p.name,
-      region: p.region,
-      plan: p.plan,
-      "template": p.template,
-      ip: p.ip,
-      status: p.status,
-      step: p.step,
-      error: p.error,
-      server_id: p.server_id,
-      // REF: has_instance (from /api/provisions) is true for numeric ids and UUIDs alike.
-      // The old instance_id is 0 for Vultr, which would have skipped the
-      // type-the-name confirmation on delete.
-      has_instance: p.has_instance,
-      // REF: root passwords only exist on Linode and Hetzner, so the button is hidden
-      // for DigitalOcean and Vultr servers. Needs has_root_password in ProvisionController.toPublic().
-      has_root_password: p.has_root_password,
-      pct: pcts[i] or 5,
-      label: labels[i] or p.step
+      ...p,
+      pct: step ? step[0] : 5,
+      label: step ? step[1] : p.step,
+      statusLabel: tone.label,
+      pillCls: tone.pill,
+      dotCls: tone.dot,
+      barCls: tone.bar
     }
   }
 
   decorateServer(s) {
     const prov = Provisions.data.find((p) => p.server_id is s.id)
-    const sites = this.siteServerIds.filter((x) => x is s.id).length
-
-    let label = "Not tested"
-    let pillCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
-    let dotCls = "w-1.5 h-1.5 rounded-full bg-amber-500"
-
-    if s.status is "online" {
-      label = "Online"
-      pillCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500"
-      dotCls = "w-1.5 h-1.5 rounded-full bg-emerald-500"
-    }
-    if s.status is "offline" {
-      label = "Offline"
-      pillCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500"
-      dotCls = "w-1.5 h-1.5 rounded-full bg-rose-500"
-    }
-
-    let ssh = s.ssh_user + "@" + s.host
-    if s.port is not 22 {
-      ssh = ssh + " -p " + s.port
-    }
+    const tone = this.tone(s.status)
+    const ssh = s.ssh_user + "@" + s.host + (s.port is 22 ? "" : " -p " + s.port)
 
     return {
       id: s.id,
@@ -181,10 +197,16 @@ action
       ssh: "ssh " + ssh,
       region: prov?.region or "Custom",
       plan: prov?.plan or "—",
-      sites: sites,
-      label: label,
-      pillCls: pillCls,
-      dotCls: dotCls,
+      sites: Servers.siteServerIds.filter((x) => x is s.id).length,
+      managed: Boolean(prov),
+      provId: prov ? prov.id : 0,
+      hasInstance: prov ? Boolean(prov.has_instance) : false,
+      hasRootPassword: prov ? Boolean(prov.has_root_password) : false,
+      ip: prov?.ip or s.host,
+      label: tone.label,
+      pillCls: tone.pill,
+      dotCls: tone.dot,
+      solidCls: tone.solid,
       search: (s.name + " " + s.host + " " + s.ssh_user).toLowerCase()
     }
   }
@@ -195,8 +217,8 @@ action
 
     this.cards = all.filter((c) => (this.filter is "all" or c.status is this.filter) and (q is "" or c.search.includes(q)))
 
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-emerald-500 text-white dark:text-slate-950 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
-    const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-emerald-500/50 transition-all"
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
+    const idleCls = "inline-flex items-center gap-2 rounded-full text-slate-500 dark:text-slate-400 text-sm font-medium px-4 py-1.5 hover:text-slate-900 dark:hover:text-slate-200 transition-all"
 
     const defs = [["all", "All"], ["online", "Online"], ["pending", "Not tested"], ["offline", "Offline"]]
     this.tabs = defs.map((d) => ({
@@ -208,19 +230,30 @@ action
   }
 
   summarize() {
-    this.onlineCount = Servers.data.filter((s) => s.status is "online").length
-    this.busyCount = this.rows.filter((r) => r.status is "running").length + this.rows.filter((r) => r.status is "pending").length
+    const online = Servers.data.filter((s) => s.status is "online").length
+    this.busyCount = this.rows.filter((r) => r.status is "running" or r.status is "pending").length
+
+    this.stats = [
+      { label: "Servers", value: Servers.data.length, cls: "text-slate-900 dark:text-slate-100" },
+      { label: "Online", value: online, cls: "text-emerald-700 dark:text-emerald-500" },
+      { label: "Setting up", value: this.busyCount, cls: this.busyCount is 0 ? "text-slate-900 dark:text-slate-100" : "text-amber-600 dark:text-amber-500" },
+      { label: "Sites", value: Servers.siteServerIds.length, cls: "text-slate-900 dark:text-slate-100" }
+    ]
+
     this.buildCards()
   }
 
+  // ---------- loading ----------
+
   async reload() {
     await Provisions.load()
-    this.rows = Provisions.data.map((p) => this.decorate(p))
+    this.rows = Provisions.data.map((p) => this.decorateProvision(p))
+    this.setupRows = this.rows.filter((r) => r.status is not "done" or r.server_id is 0)
     this.summarize()
   }
 
   async refresh() {
-    if this.confirmId is not 0 {
+    if this.modal is not "" {
       return null
     }
 
@@ -241,83 +274,155 @@ action
 
     this.actionError = ""
     const result = await Provisions.retry(id)
-    if not result.ok {
-      this.actionError = result.data?.error or "Couldn't retry that server."
-    }
+    this.actionError = result.ok ? "" : (result.data?.error or "Couldn't retry that server.")
     await this.reload()
   }
 
-  async deleteProvision(id) {
-    if Billing.locked {
+  // ---------- popup (delete and root password) ----------
+
+  closeModal() {
+    window.clearTimeout(this.hideTimer)
+    this.hideTimer = 0
+    this.modal = ""
+    this.askCode = false
+    this.code = ""
+    this.codeError = ""
+    this.modalError = ""
+    this.confirmText = ""
+    this.deleteBlocked = false
+    this.pwValue = ""
+    this.pwShown = false
+    this.pwCopied = false
+    TwoFactor.reset()
+  }
+
+  setConfirm(value) {
+    this.confirmText = value
+    this.deleteBlocked = this.targetHasInstance and (value is not this.targetName)
+  }
+
+  togglePassword() {
+    this.pwShown = this.pwShown ? false : true
+  }
+
+  async openDelete(id, name, hasInstance) {
+    if Billing.locked or ProvisionActions.busy {
       return null
     }
 
+    this.closeModal()
     this.actionError = ""
-    this.confirmCodeError = ""
+    this.targetId = id
+    this.targetName = name
+    this.targetHasInstance = Boolean(hasInstance)
+    this.deleteBlocked = Boolean(hasInstance)
+    this.askCode = TwoFactor.enabled
+    this.modal = "delete"
 
-    const code = this.confirmCode.trim()
-
-    if this.twoFactorOn and code is "" {
-      this.confirmCodeError = "Enter a verification code to delete this server."
-      return null
-    }
-
-    // The store's destroy() only forwards the confirm name, so call the API directly.
-    // ProvisionController.destroy reads both `confirm` and `code` from the query string.
-    let url = "/api/provisions/" + id + "?confirm=" + encodeURIComponent(this.confirmText)
-    if code is not "" {
-      url = url + "&code=" + encodeURIComponent(code)
-    }
-
-    const result = await useApi(url, { method: "DELETE" })
-
-    if result.ok {
-      this.confirmId = 0
-      this.clearDeleteState()
-      await Servers.load()
-      await this.reload()
-    } else if result.status is 401 {
-      window.location.href = "/login"
-    } else if result.status is 403 and result.data and result.data.two_factor_required {
-      const methods = result.data.methods or []
-      this.twoFactorOn = true
-      this.tfTotp = methods.includes("totp")
-      this.tfSms = methods.includes("sms")
-      this.confirmCodeError = result.data.error or "Enter a verification code to delete this server."
-    } else if result.status is 422 and result.data and result.data.errors and result.data.errors.code {
-      this.confirmCodeError = result.data.errors.code[0]
-    } else {
-      this.actionError = result.data?.error or "Couldn't delete that server."
+    if TwoFactor.sms and not TwoFactor.totp {
+      await this.sendCode()
     }
   }
 
-  async showRootPassword(id, name, ip) {
-    if this.pwBusy {
+  async openPassword(id, name, ip) {
+    if ProvisionActions.busy {
       return null
     }
 
-    this.pwBusy = true
+    this.closeModal()
     this.actionError = ""
-    this.pwCopied = false
-    this.pwName = name
-    this.pwIp = ip
+    this.targetId = id
+    this.targetName = name
+    this.targetIp = ip
+    this.askCode = TwoFactor.enabled
+    this.modal = "password"
 
-    const result = await useApi("/api/provisions/" + id + "/root-password")
-    this.pwBusy = false
+    if not TwoFactor.enabled {
+      await this.revealPassword()
+    } else if TwoFactor.sms and not TwoFactor.totp {
+      await this.sendCode()
+    }
+  }
+
+  async sendCode() {
+    this.codeError = ""
+    const result = await TwoFactor.sendCode()
+
+    if result.status is 401 {
+      window.location.href = "/login"
+    } else if not result.ok {
+      this.codeError = result.data?.error or "Couldn't send the code."
+    }
+  }
+
+  // One place for the errors both guarded calls can return.
+  showFailure(result, fallback) {
+    const data = result.data
+
+    if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 and data?.two_factor_required {
+      TwoFactor.apply(data.methods or [])
+      this.askCode = true
+      this.codeError = data.error or "Enter a verification code to continue."
+    } else if result.status is 422 and data?.errors?.code {
+      this.askCode = true
+      this.codeError = data.errors.code[0]
+    } else {
+      this.modalError = data?.error or fallback
+    }
+  }
+
+  async confirmDelete() {
+    if Billing.locked or ProvisionActions.busy {
+      return null
+    }
+
+    const code = this.code.trim()
+    this.codeError = ""
+    this.modalError = ""
+
+    if this.askCode and code is "" {
+      this.codeError = "Enter a verification code to delete this server."
+      return null
+    }
+
+    const result = await ProvisionActions.destroy(this.targetId, this.confirmText, code)
+
+    if result.ok {
+      this.closeModal()
+      await Servers.load()
+      await this.reload()
+    } else {
+      this.showFailure(result, "Couldn't delete that server.")
+    }
+  }
+
+  async revealPassword() {
+    if ProvisionActions.busy {
+      return null
+    }
+
+    const code = this.code.trim()
+    this.codeError = ""
+    this.modalError = ""
+
+    if this.askCode and code is "" {
+      this.codeError = "Enter a verification code to see the password."
+      return null
+    }
+
+    const result = await ProvisionActions.rootPassword(this.targetId, code)
 
     if result.ok {
       this.pwValue = result.data.password
-      this.pwOpen = true
-    } else if result.status is 401 {
-      window.location.href = "/login"
+      this.pwShown = false
+      this.askCode = false
+      this.code = ""
+      this.hideTimer = window.setTimeout(() => this.closeModal(), 60000)
     } else {
-      this.actionError = result.data?.error or "Couldn't load the root password."
+      this.showFailure(result, "Couldn't load the root password.")
     }
-  }
-
-  closePassword() {
-    this.pwOpen = false
-    this.pwValue = ""
   }
 
   async copyPassword() {
@@ -332,15 +437,9 @@ onMount
       return null
     }
 
-    await Servers.load()
-    await this.loadTwoFactor()
-
-    const siteRes = await useApi("/api/sites")
-    if siteRes.ok and Array.isArray(siteRes.data) {
-      this.siteServerIds = siteRes.data.map((x) => x.server_id)
-    }
-
+    await Promise.all([Servers.load(), Servers.loadSites(), TwoFactor.load()])
     await this.reload()
+
     this.doneCount = Provisions.data.filter((p) => p.status is "done").length
     this.checkedAuth = true
     window.setInterval(() => this.refresh(), 5000)
@@ -359,10 +458,10 @@ template
 
       <LockedBanner />
 
-      <div class="flex items-start justify-between gap-4 mb-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8">
         <div>
           <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Servers</h1>
-          <p class="text-slate-500 text-sm mt-1">The machines you deploy to</p>
+          <p class="text-slate-500 text-sm mt-1.5">The machines your sites deploy to.</p>
         </div>
         <div class="flex items-center gap-3">
 {{#if Billing.locked}}
@@ -382,59 +481,162 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <a href="/servers/create" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</a>
           <ServerForm onSaved="{{ addServer }}" />
+          <a href="/servers/create" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</a>
 {{/if}}
         </div>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Servers</p>
-          <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ Servers.data.length }}</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800 overflow-hidden shadow-sm dark:shadow-none mb-8">
+{{#each st in stats}}
+        <div class="bg-white dark:bg-slate-900 px-5 py-4">
+          <p class="text-2xl font-semibold tabular-nums {{ st.cls }}">{{ st.value }}</p>
+          <p class="text-slate-500 text-sm mt-0.5">{{ st.label }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Online</p>
-          <p class="text-2xl font-semibold text-emerald-700 dark:text-emerald-500">{{ onlineCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Provisioning</p>
-          <p class="text-2xl font-semibold text-amber-600 dark:text-amber-500">{{ busyCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Sites</p>
-          <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ siteServerIds.length }}</p>
-        </div>
+{{/each}}
       </div>
 
+{{#if actionError}}
+      <p role="alert" class="rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-sm px-4 py-3 mb-6">{{ actionError }}</p>
+{{/if}}
+
+{{#if setupRows.length is not 0}}
+      <div class="mb-10">
+        <div class="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Setting up</h2>
+            <p class="text-slate-500 text-sm mt-0.5">This page updates on its own while servers are created.</p>
+          </div>
+{{#if busyCount is not 0}}
+          <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Live
+          </span>
+{{/if}}
+        </div>
+
+        <div class="space-y-3">
+{{#each pr in setupRows}}
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+{{#if pr.server_id is not 0}}
+                <a href="{{ '/servers/server-detail?id=' + pr.server_id }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 hover:underline transition-colors">{{ pr.name }}</a>
+{{/if}}
+{{#if pr.server_id is 0}}
+                <h3 class="text-slate-900 dark:text-slate-100 font-semibold">{{ pr.name }}</h3>
+{{/if}}
+                <p class="text-slate-500 text-xs font-mono mt-1 truncate">{{ pr.region }} / {{ pr.plan }} / {{ pr.template }}</p>
+{{#if pr.ip}}
+                <p class="text-slate-500 text-xs font-mono">{{ pr.ip }}</p>
+{{/if}}
+              </div>
+              <span class="{{ pr.pillCls }}">
+                <span class="{{ pr.dotCls }}"></span> {{ pr.statusLabel }}
+              </span>
+            </div>
+
+{{#if pr.status is not "done"}}
+            <div class="mt-4">
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <span class="text-slate-600 dark:text-slate-300">{{ pr.label }}</span>
+                <span class="text-slate-500 tabular-nums">{{ pr.pct }}%</span>
+              </div>
+              <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div class="{{ pr.barCls }}" style="width: {{ pr.pct }}%"></div>
+              </div>
+            </div>
+{{/if}}
+
+{{#if pr.error}}
+            <p class="rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs px-3 py-2 mt-4">{{ pr.error }}</p>
+{{/if}}
+
+{{#if pr.status is not "running"}}
+            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
+{{#if pr.status is "failed"}}
+              <button disabled="{{ Billing.locked }}" title="{{ Billing.locked ? 'Pay to continue' : '' }}" onclick="{{ retryProvision(pr.id) }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Retry</button>
+{{/if}}
+{{#if pr.has_root_password}}
+              <button onclick="{{ openPassword(pr.id, pr.name, pr.ip) }}" class="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                  <circle cx="8" cy="15" r="4" />
+                  <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
+                </svg>
+                Root password
+              </button>
+{{/if}}
+              <button disabled="{{ Billing.locked }}" title="{{ Billing.locked ? 'Pay to continue' : '' }}" onclick="{{ openDelete(pr.id, pr.name, pr.has_instance) }}" class="ml-auto text-sm text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-50 disabled:cursor-not-allowed">Delete</button>
+            </div>
+{{/if}}
+
+{{#if pr.status is "running"}}
+{{#if pr.has_root_password}}
+            <div class="mt-4">
+              <button onclick="{{ openPassword(pr.id, pr.name, pr.ip) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Root password</button>
+            </div>
+{{/if}}
+{{/if}}
+          </div>
+{{/each}}
+        </div>
+      </div>
+{{/if}}
+
 {{#if Servers.loading}}
-      <p class="text-slate-500 text-sm">Loading servers…</p>
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+        <div class="flex items-center gap-4 px-5 py-5 animate-pulse">
+          <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-3 w-40 rounded bg-slate-200 dark:bg-slate-800"></div>
+            <div class="h-3 w-28 rounded bg-slate-100 dark:bg-slate-800/60"></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 px-5 py-5 animate-pulse">
+          <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-3 w-48 rounded bg-slate-200 dark:bg-slate-800"></div>
+            <div class="h-3 w-24 rounded bg-slate-100 dark:bg-slate-800/60"></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 px-5 py-5 animate-pulse">
+          <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-3 w-32 rounded bg-slate-200 dark:bg-slate-800"></div>
+            <div class="h-3 w-36 rounded bg-slate-100 dark:bg-slate-800/60"></div>
+          </div>
+        </div>
+      </div>
 {{/if}}
 
 {{#if not Servers.loading}}
 {{#if Servers.data.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center">
+{{#if setupRows.length is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-12 text-center">
         <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center mx-auto mb-4">
           <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
         </div>
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No servers yet</h3>
-        <p class="text-slate-500 text-sm max-w-sm mx-auto">
-          Create one at your cloud provider, or add an existing server with its SSH details.
+        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-6">
+          Create a machine at your cloud provider, or add an existing server with its SSH details.
         </p>
+{{#if not Billing.locked}}
+        <a href="/servers/create" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create your first server</a>
+{{/if}}
       </div>
+{{/if}}
 {{/if}}
 
 {{#if Servers.data.length is not 0}}
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-5">
-        <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <div class="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-200/70 dark:bg-slate-900 p-1 self-start">
 {{#each t in tabs}}
           <button onclick="{{ setFilter(t.key) }}" class="{{ t.cls }}">
             {{ t.label }}
-            <span class="text-xs opacity-70">{{ t.count }}</span>
+            <span class="text-xs opacity-60 tabular-nums">{{ t.count }}</span>
           </button>
 {{/each}}
         </div>
-        <div class="relative sm:w-64">
+        <div class="relative sm:w-72">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400">
             <circle cx="11" cy="11" r="7" />
             <path d="M21 21l-4.3-4.3" />
@@ -443,252 +645,245 @@ template
             type="text"
             value="{{ query }}"
             oninput="{{ setQuery($event.target.value) }}"
-            placeholder="Search servers"
-            class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            placeholder="Search by name, host or user"
+            aria-label="Search servers"
+            class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm pl-9 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
           />
+{{#if query}}
+          <button onclick="{{ clearQuery() }}" aria-label="Clear search" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <IconX class="w-3.5 h-3.5" />
+          </button>
+{{/if}}
         </div>
       </div>
 
 {{#if cards.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
-        <p class="text-slate-500 text-sm">No servers match that filter.</p>
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center">
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No servers match</p>
+        <p class="text-slate-500 text-sm mb-4">Try a different search or filter.</p>
+        <button onclick="{{ resetFilters() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Clear filters</button>
       </div>
 {{/if}}
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+{{#if cards.length is not 0}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+
+        <div class="hidden md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] gap-4 px-5 py-3 bg-slate-50 dark:bg-slate-950/40 text-xs text-slate-500">
+          <span>Server</span>
+          <span>Status</span>
+          <span>Location</span>
+          <span>Sites</span>
+          <span></span>
+        </div>
+
 {{#each s in cards}}
-        <a href="{{ s.href }}" class="group block rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 hover:-translate-y-0.5 hover:shadow-lg dark:hover:shadow-emerald-500/5 transition-all">
-          <div class="flex items-start justify-between gap-3 mb-4">
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
+        <div class="relative flex flex-col gap-3 px-5 py-4 md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] md:items-center md:gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+
+          <div class="flex items-center justify-between gap-3 min-w-0">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="relative w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 flex items-center justify-center">
                 <IconDatabase class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 {{ s.solidCls }}"></span>
               </div>
               <div class="min-w-0">
-                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ s.name }}</h3>
+                <a href="{{ s.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 transition-colors after:absolute after:inset-0">{{ s.name }}</a>
                 <p class="text-slate-500 text-xs font-mono truncate">{{ s.host }}</p>
               </div>
             </div>
+            <span class="md:hidden {{ s.pillCls }}">
+              <span class="{{ s.dotCls }}"></span> {{ s.label }}
+            </span>
+          </div>
+
+          <div class="hidden md:block">
             <span class="{{ s.pillCls }}">
               <span class="{{ s.dotCls }}"></span> {{ s.label }}
             </span>
           </div>
 
-          <div class="rounded-xl bg-slate-950 px-3 py-2 mb-4">
-            <code class="block text-emerald-400 text-xs font-mono truncate">{{ s.ssh }}</code>
+          <div class="min-w-0 text-sm">
+            <p class="text-slate-900 dark:text-slate-100 font-mono truncate">{{ s.region }}</p>
+            <p class="text-slate-500 text-xs font-mono truncate">{{ s.plan }}</p>
           </div>
 
-          <div class="grid grid-cols-3 gap-3">
-            <div class="min-w-0">
-              <p class="text-slate-500 text-xs mb-0.5">Region</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ s.region }}</p>
-            </div>
-            <div class="min-w-0">
-              <p class="text-slate-500 text-xs mb-0.5">Plan</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ s.plan }}</p>
-            </div>
-            <div class="min-w-0">
-              <p class="text-slate-500 text-xs mb-0.5">Sites</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ s.sites }}</p>
-            </div>
-          </div>
-        </a>
-{{/each}}
-      </div>
-{{/if}}
-{{/if}}
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-mono tabular-nums">
+            {{ s.sites }}<span class="md:hidden text-slate-500 font-sans"> {{ s.sites is 1 ? "site" : "sites" }}</span>
+          </p>
 
-{{#if rows.length is not 0}}
-      <div class="flex items-end justify-between mt-12 mb-4">
-        <div>
-          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Provisioned servers</h2>
-          <p class="text-slate-500 text-sm mt-1">Machines created from this app. Deleting one here destroys it at your cloud provider too.</p>
-        </div>
-      </div>
-
-{{#if actionError}}
-      <p role="alert" class="text-rose-500 text-sm mb-4">{{ actionError }}</p>
-{{/if}}
-
-      <div class="space-y-3">
-{{#each pr in rows}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-{{#if pr.server_id is not 0}}
-              <a href="{{ '/servers/server-detail?id=' + pr.server_id }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 hover:underline transition-colors">{{ pr.name }}</a>
-{{/if}}
-{{#if pr.server_id is 0}}
-              <h3 class="text-slate-900 dark:text-slate-100 font-semibold">{{ pr.name }}</h3>
-{{/if}}
-              <p class="text-slate-500 text-xs font-mono mt-1">{{ pr.region }} / {{ pr.plan }} / {{ pr.template }}</p>
-{{#if pr.ip}}
-              <p class="text-slate-500 text-xs font-mono">{{ pr.ip }}</p>
-{{/if}}
-            </div>
-            <div class="text-right shrink-0">
-{{#if pr.status is "done"}}
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
-              </span>
-{{/if}}
-{{#if pr.status is "failed"}}
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-              </span>
-{{/if}}
-{{#if pr.status is "running"}}
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
-              </span>
-{{/if}}
-{{#if pr.status is "pending"}}
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
-              </span>
-{{/if}}
-              <p class="text-slate-500 text-xs mt-1.5">{{ pr.label }}</p>
-{{#if pr.has_root_password}}
-              <button onclick="{{ showRootPassword(pr.id, pr.name, pr.ip) }}" class="mt-2 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Root password</button>
-{{/if}}
-            </div>
-          </div>
-
-{{#if pr.status is not "done"}}
-          <div class="mt-4 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-{{#if pr.status is "failed"}}
-            <div class="h-1.5 rounded-full bg-rose-500" style="width: {{ pr.pct }}%"></div>
-{{/if}}
-{{#if pr.status is not "failed"}}
-            <div class="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style="width: {{ pr.pct }}%"></div>
-{{/if}}
-          </div>
-{{/if}}
-
-{{#if pr.error}}
-          <p class="text-rose-500 text-xs mt-3">{{ pr.error }}</p>
-{{/if}}
-
-{{#if pr.status is not "running"}}
-{{#if Billing.locked}}
-          <div class="mt-4 flex flex-wrap items-center gap-3">
-{{#if pr.status is "failed"}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          <div class="relative z-10 flex items-center gap-1 md:justify-end">
+            <button onclick="{{ copySsh(s.id, s.ssh) }}" title="{{ s.ssh }}" aria-label="Copy SSH command" class="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+{{#if copiedId is s.id}}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-emerald-600 dark:text-emerald-500">
+                <path d="M5 12l5 5L20 7" />
               </svg>
-              Retry
+              <span class="text-emerald-700 dark:text-emerald-500">Copied</span>
+{{/if}}
+{{#if copiedId is not s.id}}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                <rect x="9" y="9" width="11" height="11" rx="2" />
+                <path d="M5 15V6a2 2 0 012-2h9" />
+              </svg>
+              <span>SSH</span>
+{{/if}}
+            </button>
+{{#if s.hasRootPassword}}
+            <button onclick="{{ openPassword(s.provId, s.name, s.ip) }}" title="Root password" aria-label="Show root password" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                <circle cx="8" cy="15" r="4" />
+                <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
+              </svg>
             </button>
 {{/if}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+{{#if s.managed}}
+            <button disabled="{{ Billing.locked }}" onclick="{{ openDelete(s.provId, s.name, s.hasInstance) }}" title="{{ Billing.locked ? 'Pay to continue' : 'Delete server' }}" aria-label="Delete server" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
               </svg>
-              Delete
             </button>
-          </div>
-{{/if}}
-
-{{#if not Billing.locked}}
-          <div class="mt-4 flex flex-wrap items-center gap-3">
-{{#if pr.status is "failed"}}
-            <button onclick="{{ retryProvision(pr.id) }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Retry</button>
-{{/if}}
-
-{{#if confirmId is pr.id}}
-{{#if pr.has_instance}}
-            <input
-              type="text"
-              value="{{ confirmText }}"
-              oninput="{{ confirmText = $event.target.value }}"
-              class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
-              placeholder="Type {{ pr.name }} to confirm"
-            />
-{{/if}}
-{{#if twoFactorOn}}
-            <div class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-4">
-              <label for="delete-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
-              <input
-                id="delete-code"
-                type="text"
-                inputmode="text"
-                autocomplete="one-time-code"
-                maxlength="12"
-                value="{{ confirmCode }}"
-                oninput="{{ confirmCode = $event.target.value }}"
-                class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
-              />
-{{#if tfTotp}}
-              <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
-{{/if}}
-{{#if not tfTotp}}
-              <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
-{{/if}}
-{{#if smsNotice}}
-              <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
-{{/if}}
-{{#if confirmCodeError}}
-              <p role="alert" class="text-rose-500 text-xs mt-2">{{ confirmCodeError }}</p>
-{{/if}}
-{{#if tfSms}}
-{{#if smsSending}}
-              <button disabled class="mt-3 text-xs text-slate-500 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 opacity-50">Sending…</button>
-{{/if}}
-{{#if not smsSending}}
-              <button onclick="{{ sendDeleteCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Text me a code</button>
-{{/if}}
-{{/if}}
-            </div>
-{{/if}}
-            <button onclick="{{ deleteProvision(pr.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition">Delete for good</button>
-            <button onclick="{{ cancelDelete() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
-{{/if}}
-{{#if confirmId is not pr.id}}
-            <button onclick="{{ askDelete(pr.id) }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Delete</button>
 {{/if}}
           </div>
-{{/if}}
-{{/if}}
         </div>
 {{/each}}
       </div>
 {{/if}}
+{{/if}}
+{{/if}}
 
     </div>
     </div>
-    {{#if pwOpen}}
-      <div role="dialog" aria-modal="true" aria-labelledby="pw-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-        <div class="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 id="pw-title" class="text-slate-900 dark:text-slate-100 font-medium">Root password for {{ pwName }}</h3>
-            <button onclick="{{ closePassword() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <IconX class="w-4 h-4" />
-            </button>
+
+{{#if modal is not ""}}
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4 py-6">
+      <div class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
+
+        <div class="flex items-start justify-between gap-4 p-6 pb-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center {{ modal is 'delete' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-500' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-500' }}">
+{{#if modal is "delete"}}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
+              </svg>
+{{/if}}
+{{#if modal is "password"}}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                <circle cx="8" cy="15" r="4" />
+                <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
+              </svg>
+{{/if}}
+            </div>
+            <div class="min-w-0">
+              <h3 id="modal-title" class="text-slate-900 dark:text-slate-100 font-semibold">{{ modal is "delete" ? "Delete server" : "Root password" }}</h3>
+              <p class="text-slate-500 text-xs font-mono truncate">{{ targetName }}</p>
+            </div>
           </div>
-{{#if pwIp}}
-          <p class="text-slate-500 text-xs mb-1">Connect with</p>
+          <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <IconX class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="px-6 pb-6">
+
+{{#if modal is "delete"}}
+{{#if targetHasInstance}}
+          <div class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 mb-4">
+            <p class="text-rose-600 dark:text-rose-400 text-sm font-medium mb-0.5">This can't be undone</p>
+            <p class="text-slate-600 dark:text-slate-300 text-sm">The machine is destroyed at your cloud provider, along with everything on it.</p>
+          </div>
+          <label for="delete-confirm" class="block text-slate-500 text-xs mb-1.5">Type <span class="font-mono text-slate-700 dark:text-slate-300">{{ targetName }}</span> to confirm</label>
+          <input
+            id="delete-confirm"
+            type="text"
+            value="{{ confirmText }}"
+            oninput="{{ setConfirm($event.target.value) }}"
+            placeholder="{{ targetName }}"
+            autocomplete="off"
+            class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 mb-4 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+          />
+{{/if}}
+{{#if not targetHasInstance}}
+          <p class="text-slate-600 dark:text-slate-300 text-sm mb-4">This removes the record from the deployer. Nothing is destroyed at a provider.</p>
+{{/if}}
+{{/if}}
+
+{{#if modal is "password"}}
+{{#if pwValue}}
+{{#if targetIp}}
+          <p class="text-slate-500 text-xs mb-1.5">Connect with</p>
           <div class="rounded-xl bg-slate-950 px-4 py-3 mb-4">
-            <code class="block text-emerald-400 text-sm font-mono break-all">ssh root@{{ pwIp }}</code>
+            <code class="block text-emerald-400 text-sm font-mono break-all"><span class="text-slate-600 select-none">$ </span>ssh root@{{ targetIp }}</code>
           </div>
 {{/if}}
-{{#if not pwIp}}
-          <p class="text-slate-500 text-xs mb-4">The IP address appears once the machine has booted.</p>
-{{/if}}
-          <p class="text-slate-500 text-xs mb-1">Password</p>
-          <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all mb-4">{{ pwValue }}</p>
-          <p class="text-slate-500 text-xs mb-4">Anyone with this password and the server's IP can log in as root. Keep it private. Prefer an SSH key where you can.</p>
-          <div class="flex items-center justify-between gap-3">
-{{#if pwCopied}}
-            <span class="text-emerald-700 dark:text-emerald-500 text-sm">Copied.</span>
-{{/if}}
-{{#if not pwCopied}}
-            <span></span>
-{{/if}}
-            <button onclick="{{ copyPassword() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Copy password</button>
+          <p class="text-slate-500 text-xs mb-1.5">Password</p>
+          <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-3 mb-4">
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ pwShown ? pwValue : "••••••••••••••••" }}</p>
+            <button onclick="{{ togglePassword() }}" class="shrink-0 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">{{ pwShown ? "Hide" : "Show" }}</button>
           </div>
+          <p class="text-slate-500 text-xs">Anyone with this password and the server's IP can log in as root. Keep it private. This window closes by itself after a minute.</p>
+{{/if}}
+{{#if not pwValue}}
+{{#if askCode}}
+          <p class="text-slate-600 dark:text-slate-300 text-sm mb-4">For your security, confirm it's you before the password is shown.</p>
+{{/if}}
+{{#if not askCode}}
+{{#if ProvisionActions.busy}}
+          <p class="text-slate-500 text-sm mb-2">Fetching the password…</p>
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
+
+{{#if askCode}}
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-4">
+            <label for="modal-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-2">Verification code</label>
+            <input
+              id="modal-code"
+              type="text"
+              inputmode="text"
+              autocomplete="one-time-code"
+              maxlength="12"
+              value="{{ code }}"
+              oninput="{{ code = $event.target.value }}"
+              class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+            />
+            <p class="text-slate-500 text-xs mt-2">{{ TwoFactor.totp ? "Enter a code from your authenticator app, or a recovery code." : "Enter the code texted to " + TwoFactor.smsHint + "." }}</p>
+{{#if TwoFactor.notice}}
+            <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
+{{/if}}
+{{#if codeError}}
+            <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
+{{/if}}
+{{#if TwoFactor.sms}}
+            <button disabled="{{ TwoFactor.sending }}" onclick="{{ sendCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">{{ TwoFactor.sending ? "Sending…" : "Text me a code" }}</button>
+{{/if}}
+          </div>
+{{/if}}
+
+{{#if modalError}}
+          <p role="alert" class="text-rose-500 text-sm mt-4">{{ modalError }}</p>
+{{/if}}
         </div>
+
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
+{{#if modal is "delete"}}
+          <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+          <button disabled="{{ deleteBlocked }}" onclick="{{ confirmDelete() }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed">{{ ProvisionActions.busy ? "Deleting…" : "Delete server" }}</button>
+{{/if}}
+{{#if modal is "password"}}
+{{#if pwValue}}
+          <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Close</button>
+          <button onclick="{{ copyPassword() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">{{ pwCopied ? "Copied" : "Copy password" }}</button>
+{{/if}}
+{{#if not pwValue}}
+          <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{#if askCode}}
+          <button disabled="{{ ProvisionActions.busy }}" onclick="{{ revealPassword() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all disabled:opacity-50">{{ ProvisionActions.busy ? "Verifying…" : "Verify and show" }}</button>
+{{/if}}
+{{/if}}
+{{/if}}
+        </div>
+
       </div>
+    </div>
 {{/if}}
   </div>
 {{/if}}

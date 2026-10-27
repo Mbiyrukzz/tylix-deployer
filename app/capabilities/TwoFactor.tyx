@@ -1,0 +1,51 @@
+capability TwoFactor
+
+state
+  loaded: false
+  enabled: false
+  totp: false
+  sms: false
+  smsHint: ""
+  sending: false
+  notice: ""
+
+action
+  async load() {
+    const result = await useApi("/api/account")
+    const tf = result.ok ? result.data?.two_factor : null
+
+    if tf {
+      this.totp = Boolean(tf.enabled)
+      this.sms = Boolean(tf.sms?.enabled)
+      this.smsHint = tf.sms?.phone_hint or ""
+      this.enabled = this.totp or this.sms
+    }
+
+    this.loaded = true
+  }
+
+  // The server said a code is required: trust its list of methods.
+  apply(methods) {
+    this.totp = methods.includes("totp")
+    this.sms = methods.includes("sms")
+    this.enabled = true
+  }
+
+  async sendCode() {
+    if this.sending {
+      return { ok: true, skipped: true }
+    }
+
+    this.sending = true
+    this.notice = ""
+
+    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
+
+    this.sending = false
+    this.notice = result.ok ? "Code sent to " + this.smsHint + "." : ""
+    return result
+  }
+
+  reset() {
+    this.notice = ""
+  }

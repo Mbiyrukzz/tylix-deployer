@@ -5,7 +5,10 @@
  *                                         from the saved step and adopts an instance it
  *                                         already created (tag or label tylix-provision-<id>),
  *                                         so a retry never creates a second billable machine.
- * GET  /api/provisions/:id/root-password  returns the decrypted root password
+ * POST /api/provisions/:id/root-password  returns the decrypted root password. Needs a
+ *                                         second-factor code in the body when the caller
+ *                                         has two-factor on (StepUpService). POST, not GET,
+ *                                         so the code never appears in a URL or access log.
  * POST /api/servers/:id/reboot            reboots a server over SSH (admin only)
  *
  * Retry and reboot answer 402 when the team's subscription has ended (view only).
@@ -23,6 +26,7 @@ import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerRebootService } from "../services/ServerRebootService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
+import { StepUpService } from "../services/StepUpService.js";
 import { requireActive } from "../services/EntitlementService.js";
 
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
@@ -87,7 +91,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         }),
     );
 
-    router.get(
+    // POST (not GET): the second-factor code travels in the body.
+    router.post(
         "/api/provisions/:id/root-password",
         write(async (req, res) => {
             const teamId = requireTeam(req as any, res as any);
@@ -111,6 +116,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                     error: "No root password is stored for this server. Some providers never issue one, and servers created before passwords were saved don't have one. Log in with the deploy key, or reset the password from your provider's dashboard.",
                 });
             }
+
+            // Last gate before the secret leaves the server: second factor, if the caller
+            // has one on. Runs after every check that can refuse, so a refused request
+            // never spends a code. StepUpService answers the 403/422 itself.
+            const code = (req.body as { code?: unknown } | undefined)?.code;
+            if (!(await StepUpService.require(req as any, res as any, code, "view this root password"))) return;
 
             await ServerLogService.record({
                 userId: Number(req.user?.userId),

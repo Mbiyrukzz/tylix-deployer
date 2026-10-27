@@ -1,0 +1,28 @@
+capability ProvisionActions
+
+state
+  busy: false
+
+action
+  async destroy(id, confirm, code) {
+    this.busy = true
+
+    const url = "/api/provisions/" + id + "?confirm=" + encodeURIComponent(confirm) + (code is "" ? "" : "&code=" + encodeURIComponent(code))
+    const result = await useApi(url, { method: "DELETE" })
+
+    this.busy = false
+    return result
+  }
+
+  // POST so the code travels in the body, not in a URL that gets logged.
+  async rootPassword(id, code) {
+    this.busy = true
+
+    const result = await useApi("/api/provisions/" + id + "/root-password", {
+      method: "POST",
+      body: { code: code }
+    })
+
+    this.busy = false
+    return result
+  }

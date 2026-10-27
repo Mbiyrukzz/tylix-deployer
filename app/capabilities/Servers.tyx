@@ -3,17 +3,19 @@ capability Servers
 state
   data: []
   loading: false
+  siteServerIds: []
 
 action
   async load() {
     this.loading = true
     const result = await useApi("/api/servers")
-    if result.ok and Array.isArray(result.data) {
-      this.data = result.data
-    } else {
-      this.data = []
-    }
+    this.data = result.ok and Array.isArray(result.data) ? result.data : []
     this.loading = false
+  }
+
+  async loadSites() {
+    const result = await useApi("/api/sites")
+    this.siteServerIds = result.ok and Array.isArray(result.data) ? result.data.map((x) => x.server_id) : []
   }
 
   add(server) {
