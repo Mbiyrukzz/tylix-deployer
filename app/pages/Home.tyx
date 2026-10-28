@@ -7,5 +7,4 @@ template
     <PricingTeaser />
     <HowItWorks />
     <CTASection />
-    <SiteFooter />
   </div>

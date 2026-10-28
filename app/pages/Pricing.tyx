@@ -1,0 +1,315 @@
+page Pricing
+
+title "Pricing"
+
+state
+  loading: true
+  failed: false
+  plans: []
+  compareRows: []
+  faqs: []
+  included: []
+  providers: []
+  openId: "cancel"
+  featuredId: "pro"
+
+action
+  describe(limit) {
+    if limit is null {
+      return "Unlimited"
+    }
+    return String(limit)
+  }
+
+  tagline(id) {
+    const lines = [
+      ["personal", "For solo developers and side projects."],
+      ["pro", "For freelancers and growing teams."],
+      ["business", "For agencies and busy production fleets."]
+    ]
+    const hit = lines.find((l) => l[0] is id)
+    return hit ? hit[1] : ""
+  }
+
+  buildFaqs() {
+    return [
+      { id: "cancel", q: "Can I cancel any time?", a: "Yes. Cancel from your billing page and your plan stays active until the end of the period you've paid for. We don't refund partial periods." },
+      { id: "ends", q: "What happens if my plan ends?", a: "Your team becomes view only. Your servers and sites keep running at your provider and you can read everything, but you can't create, change or delete anything until you renew." },
+      { id: "costs", q: "Does the price include my cloud servers?", a: "No. Servers, snapshots, bandwidth and domains are billed to you directly by your cloud provider or registrar." },
+      { id: "switch", q: "Can I change plans later?", a: "Yes. You can switch plans at any time from Settings, then Billing." },
+      { id: "currency", q: "Why USD prices but KES charges?", a: "Plans are priced in US dollars. At checkout Paystack charges the equivalent in Kenyan shillings, so the KES amount can move with the exchange rate." },
+      { id: "backups", q: "Do you back up my servers?", a: "No. Tylix Deploy is not a backup service, so keep your own backups of anything you can't afford to lose." }
+    ]
+  }
+
+  toggleFaq(id) {
+    if this.openId is id {
+      this.openId = ""
+    } else {
+      this.openId = id
+    }
+  }
+
+  decoratePlan(p) {
+    const f = p.id is this.featuredId
+    const lim = p.limits
+    return {
+      id: p.id,
+      name: p.name,
+      price: "$" + p.price_usd,
+      tagline: this.tagline(p.id),
+      featured: f,
+      cardClass: f
+        ? "relative flex flex-col rounded-3xl bg-slate-900 ring-1 ring-emerald-500/40 p-7 sm:p-8 shadow-2xl shadow-emerald-500/20 md:-my-3"
+        : "relative flex flex-col rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 sm:p-8 shadow-sm dark:shadow-none",
+      nameClass: f ? "text-white text-lg font-semibold" : "text-slate-900 dark:text-slate-100 text-lg font-semibold",
+      mutedClass: f ? "text-slate-400" : "text-slate-500",
+      priceClass: f ? "text-5xl font-bold tracking-tight text-white" : "text-5xl font-bold tracking-tight text-slate-900 dark:text-slate-100",
+      dividerClass: f ? "border-slate-800" : "border-slate-100 dark:border-slate-800/70",
+      labelClass: f ? "text-slate-300" : "text-slate-600 dark:text-slate-400",
+      valueClass: f ? "font-semibold text-white" : "font-semibold text-slate-900 dark:text-slate-100",
+      btnClass: f
+        ? "block w-full text-center text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-5 py-3 hover:bg-emerald-400 transition-all"
+        : "block w-full text-center text-sm font-semibold text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors",
+      thClass: f
+        ? "text-center font-semibold text-emerald-700 dark:text-emerald-400 px-5 py-4 bg-emerald-500/5"
+        : "text-center font-semibold text-slate-900 dark:text-slate-100 px-5 py-4",
+      features: [
+        { label: "Team members", value: this.describe(lim.members) },
+        { label: "Servers", value: this.describe(lim.servers) },
+        { label: "Sites", value: this.describe(lim.sites) },
+        { label: "Provider connections", value: this.describe(lim.providers) }
+      ]
+    }
+  }
+
+  buildCompare(list) {
+    const keys = [
+      ["Team members", "members"],
+      ["Servers", "servers"],
+      ["Sites", "sites"],
+      ["Provider connections", "providers"]
+    ]
+    return keys.map((k) => ({
+      label: k[0],
+      cells: list.map((p) => ({
+        id: p.id,
+        value: this.describe(p.limits[k[1]]),
+        cls: p.id is this.featuredId
+          ? "text-center font-semibold text-slate-900 dark:text-slate-100 px-5 py-3.5 bg-emerald-500/5"
+          : "text-center font-medium text-slate-900 dark:text-slate-100 px-5 py-3.5"
+      }))
+    }))
+  }
+
+  async load() {
+    const res = await useApi("/api/pricing")
+    if res.ok and res.data and Array.isArray(res.data.plans) {
+      const list = res.data.plans
+      this.plans = list.map((p) => this.decoratePlan(p))
+      this.compareRows = this.buildCompare(list)
+    } else {
+      this.failed = true
+    }
+    this.loading = false
+  }
+
+onMount
+  async {
+    this.faqs = this.buildFaqs()
+    this.providers = ["Linode", "Hetzner", "DigitalOcean", "Vultr", "UpCloud"]
+    this.included = [
+      { title: "Server provisioning", text: "Create servers at your cloud providers or connect your own over SSH." },
+      { title: "Git deployments", text: "Connect a repository and deploy with editable scripts and environment variables." },
+      { title: "Free SSL", text: "Issue and renew Let's Encrypt certificates in a click." },
+      { title: "Databases", text: "Create databases and database users right from the dashboard." },
+      { title: "Web terminal", text: "Open a terminal on any server without leaving the browser." },
+      { title: "Stats and logs", text: "Watch server statistics and read logs in one place." }
+    ]
+    await this.load()
+  }
+
+template
+  <div class="bg-slate-100 dark:bg-slate-950 transition-colors">
+
+    <section class="relative overflow-hidden px-4 sm:px-6 pt-14 sm:pt-24 pb-16 sm:pb-24">
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.18),transparent_60%)]"></div>
+      <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"></div>
+
+      <div class="relative max-w-3xl mx-auto text-center">
+        <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-6">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Simple monthly pricing
+        </span>
+        <h1 class="text-4xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-5">
+          Deploy more.<br class="hidden sm:block" /> <span class="text-emerald-600 dark:text-emerald-500">Pay for what you run.</span>
+        </h1>
+        <p class="text-slate-600 dark:text-slate-400 text-base sm:text-lg leading-relaxed max-w-xl mx-auto mb-8">
+          One dashboard for your servers, sites and domains. Pick a plan, cancel any time.
+        </p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <a href="/register" class="w-full sm:w-auto text-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-7 py-3 shadow-sm hover:bg-emerald-400 transition-all">Start free</a>
+          <a href="#compare" class="w-full sm:w-auto text-center text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-7 py-3 hover:bg-white dark:hover:bg-slate-900 transition-colors">Compare plans</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="px-4 sm:px-6 pb-16 sm:pb-24">
+      <div class="max-w-6xl mx-auto">
+
+{{#if loading}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="h-[26rem] rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-[26rem] rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-[26rem] rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        </div>
+{{/if}}
+
+{{#if not loading}}
+{{#if failed}}
+        <div class="max-w-xl mx-auto rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+          <p class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">Couldn't load pricing</p>
+          <p class="text-slate-500 text-sm">Please refresh the page or try again in a moment.</p>
+        </div>
+{{/if}}
+
+{{#if not failed}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch pt-3">
+{{#each p in plans}}
+          <div class="{{ p.cardClass }}">
+{{#if p.featured}}
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex rounded-full bg-emerald-500 px-3.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-950 whitespace-nowrap">Most popular</span>
+{{/if}}
+            <h2 class="{{ p.nameClass }}">{{ p.name }}</h2>
+            <p class="{{ p.mutedClass }} text-sm mt-1.5 min-h-[2.5rem]">{{ p.tagline }}</p>
+
+            <p class="mt-5 mb-6 flex items-end gap-1.5">
+              <span class="{{ p.priceClass }}">{{ p.price }}</span>
+              <span class="{{ p.mutedClass }} text-sm pb-2">/ month</span>
+            </p>
+
+            <a href="/register" class="{{ p.btnClass }}">Get started</a>
+
+            <ul class="mt-7 pt-6 border-t {{ p.dividerClass }} space-y-4 flex-1">
+{{#each f in p.features}}
+              <li class="flex items-center gap-3 text-sm">
+                <span class="w-5 h-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" class="w-3 h-3"><path d="M4.5 10.5l3.5 3.5 7.5-8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </span>
+                <span class="{{ p.labelClass }} flex-1">{{ f.label }}</span>
+                <span class="{{ p.valueClass }}">{{ f.value }}</span>
+              </li>
+{{/each}}
+            </ul>
+          </div>
+{{/each}}
+        </div>
+
+        <p class="text-slate-500 text-xs sm:text-sm text-center max-w-2xl mx-auto mt-10 leading-relaxed">
+          Prices are in USD and charged in Kenyan shillings (KES) at checkout. Payments are processed by Paystack and plans renew monthly until cancelled. Cloud provider costs are billed separately by your provider.
+        </p>
+{{/if}}
+{{/if}}
+      </div>
+    </section>
+
+    <section class="px-4 sm:px-6 pb-16 sm:pb-24">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center max-w-xl mx-auto mb-10">
+          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Included in every plan</h2>
+          <p class="text-slate-500 text-sm sm:text-base">Plans differ only by limits. Every feature is on from day one.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+{{#each i in included}}
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+            <span class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" class="w-4 h-4"><path d="M4.5 10.5l3.5 3.5 7.5-8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+            <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1">{{ i.title }}</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">{{ i.text }}</p>
+          </div>
+{{/each}}
+        </div>
+
+        <div class="mt-10 flex flex-col items-center gap-4">
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Works with your cloud</p>
+          <div class="flex flex-wrap items-center justify-center gap-2.5">
+{{#each name in providers}}
+            <span class="rounded-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-1.5 text-sm text-slate-700 dark:text-slate-300">{{ name }}</span>
+{{/each}}
+          </div>
+        </div>
+      </div>
+    </section>
+
+{{#if not loading}}
+{{#if not failed}}
+    <section id="compare" class="px-4 sm:px-6 pb-16 sm:pb-24 scroll-mt-24">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Compare plans</h2>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-x-auto">
+          <table class="w-full min-w-[480px] text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 dark:border-slate-800">
+                <th class="sticky left-0 bg-white dark:bg-slate-900 text-left font-medium text-slate-500 text-xs uppercase tracking-wider px-5 py-4">Limits</th>
+{{#each p in plans}}
+                <th class="{{ p.thClass }}">{{ p.name }}</th>
+{{/each}}
+              </tr>
+            </thead>
+            <tbody>
+{{#each row in compareRows}}
+              <tr class="border-b border-slate-100 dark:border-slate-800/70 last:border-b-0">
+                <td class="sticky left-0 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 px-5 py-3.5">{{ row.label }}</td>
+{{#each c in row.cells}}
+                <td class="{{ c.cls }}">{{ c.value }}</td>
+{{/each}}
+              </tr>
+{{/each}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+{{/if}}
+{{/if}}
+
+    <section class="px-4 sm:px-6 pb-16 sm:pb-24">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Frequently asked questions</h2>
+        <div class="space-y-3">
+{{#each f in faqs}}
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+            <button onclick="{{ toggleFaq(f.id) }}" aria-expanded="{{ openId is f.id }}" class="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              <span class="text-slate-900 dark:text-slate-100 text-sm sm:text-base font-medium">{{ f.q }}</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform duration-200 {{ openId is f.id ? 'rotate-180' : '' }}">
+                  <path d="M5 8l5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </button>
+            <div class="grid transition-all duration-300 ease-out {{ openId is f.id ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]' }}">
+              <div class="overflow-hidden">
+                <p class="px-5 sm:px-6 pb-5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{{ f.a }}</p>
+              </div>
+            </div>
+          </div>
+{{/each}}
+        </div>
+      </div>
+    </section>
+
+    <section class="px-4 sm:px-6 pb-16 sm:pb-24">
+      <div class="relative overflow-hidden max-w-5xl mx-auto rounded-3xl bg-slate-900 px-6 sm:px-12 py-12 sm:py-16 text-center">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.25),transparent_65%)]"></div>
+        <div class="relative">
+          <h2 class="text-2xl sm:text-4xl font-bold tracking-tight text-white mb-3">Ready to ship your next site?</h2>
+          <p class="text-slate-400 text-sm sm:text-base max-w-md mx-auto mb-8">Connect a server, create a site and go live in minutes.</p>
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a href="/register" class="w-full sm:w-auto text-center text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-7 py-3 hover:bg-emerald-400 transition-all">Create your account</a>
+            <a href="/login" class="w-full sm:w-auto text-center text-sm text-slate-200 border border-slate-700 rounded-full px-7 py-3 hover:bg-slate-800 transition-colors">Sign in</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
