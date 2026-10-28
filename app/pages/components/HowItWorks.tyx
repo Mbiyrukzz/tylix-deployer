@@ -1,34 +1,74 @@
 component HowItWorks
 
 template
-  <section class="px-6 py-20 bg-slate-200 dark:bg-slate-950 transition-colors">
-    <div class="max-w-5xl mx-auto">
+  <section class="relative overflow-hidden px-6 py-24 bg-slate-200 dark:bg-slate-950 transition-colors">
+    <div class="pointer-events-none absolute -bottom-32 right-0 w-[520px] h-[280px] rounded-full bg-emerald-500/10 blur-3xl" aria-hidden="true"></div>
+
+    <div class="relative max-w-5xl mx-auto">
       <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-2">How it works</p>
-      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-10">From a bare server to live in three steps</h2>
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">From a bare server to live in three steps</h2>
+      <p class="text-slate-500 max-w-2xl mb-12">No SSH sessions and no copy-pasted scripts. Bring a server, pick a stack, and press deploy.</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="relative">
+        <div class="hidden md:block absolute top-[22px] left-[16%] right-[16%] border-t border-dashed border-slate-400 dark:border-slate-700" aria-hidden="true"></div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <p class="text-emerald-700 dark:text-emerald-500 font-mono text-sm mb-4">01</p>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Connect your server</h3>
-          <p class="text-slate-500 text-sm leading-relaxed mb-4">Add the host, SSH port and user. Your key is stored encrypted and never leaves the platform.</p>
-          <p class="text-slate-500 text-xs font-mono">deploy@203.0.113.24:22</p>
+        <div class="relative grid grid-cols-1 md:grid-cols-3 gap-5">
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none flex flex-col">
+            <div class="w-11 h-11 rounded-full border border-emerald-500/40 bg-slate-200 dark:bg-slate-950 text-emerald-700 dark:text-emerald-400 font-mono text-sm font-semibold flex items-center justify-center mb-5">01</div>
+            <h3 class="text-slate-800 dark:text-slate-200 font-semibold mb-2">Connect your server</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-5">Provision one at Linode, Hetzner, DigitalOcean or Vultr, or add the host, SSH port and user of your own. Your key is stored encrypted and never leaves the platform.</p>
+
+            <div class="mt-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 p-3 font-mono text-[11px] space-y-1.5" aria-hidden="true">
+              <div class="flex items-center justify-between"><span class="text-slate-500">host</span><span class="text-slate-700 dark:text-slate-300">203.0.113.24</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-500">port</span><span class="text-slate-700 dark:text-slate-300">22</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-500">user</span><span class="text-slate-700 dark:text-slate-300">deploy</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-500">key</span><span class="text-slate-700 dark:text-slate-300">encrypted</span></div>
+              <div class="flex items-center gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> connected</div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none flex flex-col">
+            <div class="w-11 h-11 rounded-full border border-emerald-500/40 bg-slate-200 dark:bg-slate-950 text-emerald-700 dark:text-emerald-400 font-mono text-sm font-semibold flex items-center justify-center mb-5">02</div>
+            <h3 class="text-slate-800 dark:text-slate-200 font-semibold mb-2">Choose your stack</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-5">Sixteen site types: Tylix, Laravel, PHP, WordPress, Node.js, Next.js, MERN, Angular, FastAPI, Django, Java, Go, Ruby, .NET, Rust and static. Then point it at your repository.</p>
+
+            <div class="mt-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 p-3 font-mono text-[11px]" aria-hidden="true">
+              <div class="flex flex-wrap gap-1.5 mb-3">
+                <span class="rounded-full border border-emerald-500/50 bg-emerald-500/10 px-2 py-0.5 text-emerald-700 dark:text-emerald-400">laravel</span>
+                <span class="rounded-full border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-500">django</span>
+                <span class="rounded-full border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-500">go</span>
+                <span class="rounded-full border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-500">rust</span>
+                <span class="rounded-full border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-500">+12</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800"><span class="text-slate-500">repo</span><span class="text-slate-700 dark:text-slate-300">acme/shop</span></div>
+              <div class="flex items-center justify-between mt-1.5"><span class="text-slate-500">branch</span><span class="text-slate-700 dark:text-slate-300">main</span></div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none flex flex-col">
+            <div class="w-11 h-11 rounded-full border border-emerald-500/40 bg-slate-200 dark:bg-slate-950 text-emerald-700 dark:text-emerald-400 font-mono text-sm font-semibold flex items-center justify-center mb-5">03</div>
+            <h3 class="text-slate-800 dark:text-slate-200 font-semibold mb-2">Deploy and watch</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-5">Follow the release step by step, then keep an eye on CPU, memory, disk and uptime from the server page.</p>
+
+            <div class="mt-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-950 p-3 font-mono text-[11px] leading-relaxed" aria-hidden="true">
+              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">pulled main</span></p>
+              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">installed dependencies</span></p>
+              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">built and restarted</span></p>
+              <div class="h-1 w-full rounded-full bg-slate-800 overflow-hidden my-2"><div class="h-full w-full rounded-full bg-emerald-500"></div></div>
+              <p class="text-emerald-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> live in 38s</p>
+            </div>
+          </div>
+
         </div>
+      </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <p class="text-emerald-700 dark:text-emerald-500 font-mono text-sm mb-4">02</p>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Choose your stack</h3>
-          <p class="text-slate-500 text-sm leading-relaxed mb-4">Pick Tylix, Laravel, PHP, MERN, Angular or your own commands, then point it at your repository.</p>
-          <p class="text-slate-500 text-xs font-mono">stack: laravel / branch: main</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <p class="text-emerald-700 dark:text-emerald-500 font-mono text-sm mb-4">03</p>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Deploy and watch</h3>
-          <p class="text-slate-500 text-sm leading-relaxed mb-4">Follow the release step by step, then keep an eye on CPU, memory, disk and uptime from the server page.</p>
-          <p class="text-slate-500 text-xs font-mono flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> live in 38s</p>
-        </div>
-
+      <div class="mt-8 rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <p class="text-slate-800 dark:text-slate-200 text-sm font-medium">Once it's live</p>
+        <span class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Free SSL in one click</span>
+        <span class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Editable env and deploy script</span>
+        <span class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Web terminal</span>
+        <span class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live server stats</span>
       </div>
     </div>
   </section>

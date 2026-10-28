@@ -56,6 +56,13 @@ export interface TeamMemberView {
     joined_at: string;
 }
 
+export interface TeamChoice {
+    id: number;
+    name: string;
+    role: TeamRole;
+    current: boolean;
+}
+
 interface OwnedRow {
     id: number;
     team_id?: number | null;
@@ -120,7 +127,7 @@ export class TeamService {
 
     static async membership(teamId: number, userId: number): Promise<TeamMemberAttributes | null> {
         const rows = (await TeamMember.query().where("team_id", teamId).get()) as TeamMemberAttributes[];
-        return rows.find((row) => row.user_id === userId) ?? null;
+        return rows.find((row) => Number(row.user_id) === Number(userId)) ?? null;
     }
 
     static async createTeam(user: { id: number; name: string }, name: string): Promise<TeamContext> {
@@ -157,32 +164,50 @@ export class TeamService {
     }
 
     /**
-     * The team this user is currently working in. For now that is their first
-     * membership (their personal team). A team switcher comes later.
+     * The team this user is currently working in. The one they switched to
+     * (users.current_team_id) wins, as long as they are still a member of it.
+     * Otherwise: a team they were invited into, then their personal team.
      */
-    static async ensureTeam(user: { id: number; name: string; created_at?: string | Date }): Promise<TeamContext> {
+    static async ensureTeam(user: {
+        id: number;
+        name: string;
+        current_team_id?: number | null;
+        created_at?: string | Date;
+    }): Promise<TeamContext> {
         const memberships = await this.membershipsFor(user.id);
 
-let context: TeamContext | null = null;
+        let context: TeamContext | null = null;
 
-if (memberships.length > 0) {
-    // Prefer a team the user was invited into over one they own (their personal team).
-    let chosen: { team: TeamAttributes; role: TeamRole } | null = null;
-
-    for (const m of memberships) {
-        const team = await Team.find(m.team_id);
-        if (!team) continue;
-        const joined = Number(team.owner_id) !== user.id;
-        if (joined) {
-            chosen = { team, role: m.role as TeamRole };
-            break;
+        // 1. The team they picked. Membership is re-checked every time, so being
+        //    removed from a team can never leave them stuck inside it.
+        const preferredId = Number(user.current_team_id);
+        if (Number.isInteger(preferredId) && preferredId > 0) {
+            const m = memberships.find((row) => Number(row.team_id) === preferredId);
+            if (m) {
+                const team = await Team.find(m.team_id);
+                if (team) context = { team, role: m.role as TeamRole };
+            }
         }
-        if (!chosen) chosen = { team, role: m.role as TeamRole };
-    }
 
-    if (chosen) context = chosen;
-}
+        // 2. No valid pick: prefer a team they were invited into over their personal one.
+        if (!context && memberships.length > 0) {
+            let chosen: TeamContext | null = null;
 
+            for (const m of memberships) {
+                const team = await Team.find(m.team_id);
+                if (!team) continue;
+                const joined = Number(team.owner_id) !== user.id;
+                if (joined) {
+                    chosen = { team, role: m.role as TeamRole };
+                    break;
+                }
+                if (!chosen) chosen = { team, role: m.role as TeamRole };
+            }
+
+            if (chosen) context = chosen;
+        }
+
+        // 3. No team at all: create their personal team.
         if (!context) {
             const label = user.name?.trim() ? `${user.name.trim()}'s team` : "My team";
             context = await this.createTeam(user, label);
@@ -210,7 +235,43 @@ if (memberships.length > 0) {
         return this.ensureTeam(user);
     }
 
-        /** Row counts per table for everything a team owns (the invite consent screen shows these). */
+    /** Every team the user belongs to, for the switcher. `current` marks the active one. */
+    static async teamsFor(userId: number): Promise<TeamChoice[]> {
+        const ctx = await this.contextFor(userId);
+        const memberships = await this.membershipsFor(userId);
+        const out: TeamChoice[] = [];
+
+        for (const m of memberships) {
+            const team = await Team.find(m.team_id);
+            if (!team) continue;
+            out.push({
+                id: team.id,
+                name: team.name,
+                role: m.role as TeamRole,
+                current: ctx ? team.id === ctx.team.id : false,
+            });
+        }
+
+        return out;
+    }
+
+    /**
+     * Makes `teamId` the user's current team. Returns null, and changes nothing,
+     * if they aren't a member of it. The membership check is what stops someone
+     * from pointing current_team_id at a team that isn't theirs.
+     */
+    static async switchTeam(userId: number, teamId: number): Promise<TeamContext | null> {
+        const m = await this.membership(teamId, userId);
+        if (!m) return null;
+
+        const team = await Team.find(teamId);
+        if (!team) return null;
+
+        await User.update(userId, { current_team_id: teamId });
+        return { team, role: m.role as TeamRole };
+    }
+
+    /** Row counts per table for everything a team owns (the invite consent screen shows these). */
     static async ownedCounts(teamId: number): Promise<Record<string, number>> {
         const out: Record<string, number> = {};
         for (const model of OWNED_MODELS) {

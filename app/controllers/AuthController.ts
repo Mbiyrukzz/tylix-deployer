@@ -8,16 +8,20 @@
  * Do not edit this section.
  *
  * NOTE: hand-edited after generation (register mail failure handling,
- * reset-password rate limit, CAPTCHA, honeypot, breached-password check and
- * progressive login CAPTCHA). Re-running the generator overwrites these edits.
+ * reset-password rate limit, CAPTCHA, honeypot, breached-password check,
+ * progressive login CAPTCHA, purpose-bound verification tokens, constant-time
+ * unknown-email login, password rehash on login). Re-running the generator
+ * overwrites these edits.
  */
 
+import { createHmac, randomBytes } from "node:crypto";
 import { createRateLimiter } from "@tylix/core";
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { User } from "../models/User.js";
 import { RefreshToken } from "../models/RefreshToken.js";
 import { PasswordReset } from "../models/PasswordReset.js";
 import {
+    hashPassword,
     verifyPassword,
     signToken,
     verifyToken,
@@ -118,6 +122,25 @@ function clientIp(req: TylixRequest): string {
     return (req as unknown as { ip?: string }).ip ?? "unknown";
 }
 
+// One-purpose signing keys. A token signed for "email-verify" can never pass
+// as an access token (or the other way round) because the keys differ, even
+// if a route forgets to check the token's purpose.
+function purposeSecret(secret: string, purpose: string): string {
+    return createHmac("sha256", secret).update(`tylix:purpose:${purpose}`).digest("hex");
+}
+
+// A hash with the same cost as a real one, verified against when the email is
+// unknown, so a wrong email and a wrong password take the same time.
+let dummyHash: Promise<string> | null = null;
+function getDummyHash(): Promise<string> {
+    if (!dummyHash) dummyHash = hashPassword(randomBytes(16).toString("hex"));
+    return dummyHash;
+}
+
+// Hashes in the current format start with this. Anything else is the old
+// salt:key format and gets upgraded after the next successful login.
+const CURRENT_HASH_PREFIX = "scrypt$";
+
 interface AuthControllerOptions {
     secret: string;
     tokenExpiresInSeconds?: number;
@@ -188,7 +211,7 @@ export class AuthController {
 
         const verificationToken = signToken(
             { userId: user.id, purpose: "email-verify" },
-            this.secret,
+            purposeSecret(this.secret, "email-verify"),
             { expiresInSeconds: 60 * 60 * 24 },
         );
 
@@ -250,6 +273,9 @@ export class AuthController {
         const user = await User.findByEmail(email);
 
         if (!user) {
+            // Do the same amount of hashing work as a real attempt, so response
+            // time doesn't reveal which emails are registered.
+            await verifyPassword(req.body.password as string, await getDummyHash());
             return res.status(401).json({
                 error: "Invalid email or password.",
                 captcha_required: failedLogin(email, ip),
@@ -294,6 +320,16 @@ export class AuthController {
 
         clearLoginAttempts(email);
         failures.delete(`e:${email}`);
+
+        // Upgrade an old-format hash to the current cost now that we hold the
+        // plaintext. A failure here must never block a valid login.
+        if (!String(user.password).startsWith(CURRENT_HASH_PREFIX)) {
+            try {
+                await User.updatePassword(user.id, req.body.password as string);
+            } catch (err) {
+                console.error("Password rehash failed:", err);
+            }
+        }
 
         const accessToken = signToken({ userId: user.id }, this.secret, {
             expiresInSeconds: this.accessTokenTtlSeconds,
@@ -354,7 +390,14 @@ export class AuthController {
             return sendHtml(res, 400, renderVerifyPage("invalid"));
         }
 
-        const { valid, payload } = verifyToken(token, this.secret);
+        let check = verifyToken(token, purposeSecret(this.secret, "email-verify"));
+        // TRANSITION: links emailed before this change were signed with the
+        // main secret. Remove this fallback 24 hours after deploying.
+        if (!check.valid) {
+            check = verifyToken(token, this.secret);
+        }
+
+        const { valid, payload } = check;
         if (!valid || !payload || payload.purpose !== "email-verify") {
             return sendHtml(res, 400, renderVerifyPage("invalid"));
         }

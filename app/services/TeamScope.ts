@@ -66,3 +66,17 @@ export async function teamIdOfRow(row: { team_id?: unknown; user_id: unknown }):
     const ctx = await TeamService.contextFor(Number(row.user_id));
     return ctx ? ctx.team.id : 0;
 }
+
+/**
+ * True only when both rows resolve to the same real team. Two rows that both
+ * resolve to 0 (for example because their creator was deleted) are NOT the
+ * same team, which a plain `!==` comparison would wrongly treat as a match.
+ */
+export async function sameTeam(
+    a: { team_id?: unknown; user_id: unknown },
+    b: { team_id?: unknown; user_id: unknown },
+): Promise<boolean> {
+    const x = await teamIdOfRow(a);
+    if (x <= 0) return false;
+    return x === (await teamIdOfRow(b));
+}

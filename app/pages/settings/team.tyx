@@ -13,6 +13,8 @@ state
   canLeave: false
   members: []
   invites: []
+  teams: []
+  hasManyTeams: false
   busy: false
   error: ""
   notice: ""
@@ -46,6 +48,33 @@ action
     }
   }
 
+  async loadTeams() {
+    const result = await useApi("/api/teams")
+    if result.ok and Array.isArray(result.data) {
+      this.teams = result.data
+      this.hasManyTeams = result.data.length > 1
+    }
+  }
+
+  async switchTo(id) {
+    this.error = ""
+    this.notice = ""
+    this.link = ""
+
+    const result = await useApi("/api/team/switch", { method: "POST", body: { team_id: id } })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      window.location.href = "/settings/team"
+    } else {
+      this.error = result.data?.error or "Couldn't switch teams."
+    }
+  }
+
   async load() {
     const result = await useApi("/api/team")
 
@@ -58,6 +87,8 @@ action
       this.teamName = result.data.team.name
       this.role = result.data.role
       this.canManage = result.data.role is "owner" or result.data.role is "admin"
+
+      await this.loadTeams()
 
       const list = await useApi("/api/team/members")
       if list.ok {
@@ -213,6 +244,28 @@ template
 {{#if not loading}}
 {{#if error}}
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+
+{{#if hasManyTeams}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your teams</h2>
+        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each t in teams}}
+          <div class="flex items-center justify-between gap-4 py-3">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ t.name }}</p>
+              <p class="text-slate-500 text-xs">{{ t.role }}</p>
+            </div>
+{{#if t.current}}
+            <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 shrink-0">Current</span>
+{{/if}}
+{{#if not t.current}}
+            <button onclick="{{ switchTo(t.id) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition shrink-0">Switch</button>
+{{/if}}
+          </div>
+{{/each}}
+        </div>
+      </div>
 {{/if}}
 
       <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
