@@ -22,8 +22,11 @@
  * (EntitlementService). Editing and deleting are never limited.
  *
  * Two-factor: when the caller has two-factor turned on (authenticator or
- * SMS), adding and deleting a server also need a valid code (StepUpService).
- * That check runs last, after every check that can refuse the request.
+ * SMS), adding and deleting a server also need a valid code (requireStepUp:
+ * wrong codes are counted and lock the user out). That check runs last,
+ * after every check that can refuse the request.
+ *
+ * Rate limit: adding servers is limited per team.
  *
  * Deleting a server is refused while it still has sites, so no site record
  * is ever left pointing at a server that is gone. The records that hang off
@@ -32,6 +35,8 @@
  * Every state change is written to the server log (ServerLogService). Log
  * entries never contain the key itself, only the fact that it changed.
  * Log entries record who acted (the caller), not who added the server.
+ * Deleting removes the server's own log with it, so the deletion is logged
+ * without a server id and stays in the team's history.
  *
  * All routes sit behind requireAuth ("auth": true in feature.json), so
  * req.user.userId is always present here. req.user.teamId comes from the
@@ -45,7 +50,7 @@ import { validateServer, normalizeServer } from "../validators/ServerValidator.j
 import { CryptoService } from "../services/CryptoService.js";
 import { ServerLogService } from "../services/ServerLogService.js";
 import { ServerRecords } from "../services/ServerRecords.js";
-import { StepUpService } from "../services/StepUpService.js";
+import { createGuard, audit, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { requireWithin, requireActive } from "../services/EntitlementService.js";
 
@@ -64,15 +69,12 @@ interface ServerRow {
     [key: string]: unknown;
 }
 
+const addGuard = createGuard({ max: 10, windowMs: 15 * 60_000, scope: "team", what: "server additions" });
+
 /** Strips the encrypted key from anything that leaves the API. */
 function toPublic(row: ServerRow) {
     const { ssh_key, ...rest } = row;
     return { ...rest, has_ssh_key: Boolean(ssh_key) };
-}
-
-/** The second-factor code the client sent, if any. */
-function codeOf(req: TylixRequest): unknown {
-    return (req.body as { code?: unknown } | undefined)?.code;
 }
 
 /** Loads a server and answers 404 itself if it is missing or not on the caller's team. */
@@ -140,6 +142,7 @@ export class ServerController {
         if (!teamId) return;
         if (!requireRole(req, res, "admin")) return;
         if (!(await requireActive(res, teamId))) return;
+        if (!addGuard(req, res)) return;
 
         const result = validateServer(req.body);
         if (!result.valid) {
@@ -157,7 +160,7 @@ export class ServerController {
         if (!(await requireWithin(res, teamId, "servers"))) return;
 
         // Last gate before the write: second factor, if the caller has one on.
-        if (!(await StepUpService.require(req, res, codeOf(req), "add this server"))) return;
+        if (!(await requireStepUp(req, res, "add this server"))) return;
 
         const server = (await Server.create({
             name: input.name,
@@ -296,7 +299,7 @@ export class ServerController {
 
     /**
      * Admin only. Another team's server answers 404 before the role is checked.
-     * With two-factor on, a valid code (body.code) is required.
+     * With two-factor on, a valid code (body or query `code`) is required.
      */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const server = await findOwned(req, res);
@@ -348,11 +351,22 @@ export class ServerController {
         }
 
         // Last gate before the irreversible step: second factor, if the caller has one on.
-        if (!(await StepUpService.require(req, res, codeOf(req), "delete this server"))) return;
+        if (!(await requireStepUp(req, res, "delete this server"))) return;
 
         // Databases, DB users, SSH keys, workers, cron jobs, backups, firewall
         // rules, tasks and the server's log all go with it.
         await ServerRecords.removeAll(server.id);
+
+        // The server's own log is gone now, so this entry carries no server id.
+        await audit({
+            userId: actor,
+            teamId,
+            serverId: null,
+            event: "server.deleted",
+            level: "warning",
+            message: `Server "${server.name}" was deleted.`,
+            meta: { host: server.host, port: Number(server.port), ssh_user: server.ssh_user },
+        });
 
         res.status(204);
         return res.end();

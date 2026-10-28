@@ -12,12 +12,25 @@
  *   - a connection on another team answers 404, not 403
  *   - responses carry `features`, so the UI knows which sections to show
  *
+ * Two-factor: replacing the credentials needs a valid code when the caller
+ * has two-factor on (requireStepUp: wrong codes are counted and lock the
+ * user out). It runs last, after the registrar accepted the new credentials,
+ * so a rejected paste never spends a code. A rename without new credentials
+ * never asks for a code.
+ *
+ * Hardening (same as ProviderController):
+ *   - checking credentials is rate limited per user (it calls the registrar)
+ *   - rejected credentials are counted per user; too many in a row lock the
+ *     user out for a while
+ *   - adding, replacing credentials on and removing a connection are logged
+ *
  * All routes sit behind requireAuth ("auth": true in feature.json).
  *
  * Save flow (store / update):
  *   validateRegistrar()   shape checks, answers 422 with { errors: { field: [msg] } }
  *   credentialSecret()    packs the credential fields into one JSON string
- *   checkSecret()         builds the adapter and calls verify() against the real API
+ *   verifyOrRefuse()      throttle + lockout, then checkSecret() calls the real API
+ *   requireStepUp()       update only, when credentials are being replaced
  *   sealed()              encrypts it and picks the column (credentials or api_token)
  *   Registrar.create/update
  */
@@ -32,6 +45,7 @@ import {
 } from "../validators/RegistrarValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { registrarFor, registrarName, featuresOf } from "../services/RegistrarAdapter.js";
+import { createGuard, createFailureGate, userKey, audit, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 import { requireActive } from "../services/EntitlementService.js";
 
@@ -48,6 +62,14 @@ interface RegistrarRow {
     updated_at: string;
     [key: string]: unknown;
 }
+
+const FIFTEEN_MINUTES = 15 * 60_000;
+
+// Every credential check calls the registrar's API.
+const verifyGuard = createGuard({ max: 20, windowMs: FIFTEEN_MINUTES, scope: "user", what: "credential checks" });
+
+// Only counts checks the registrar REJECTED, not ones it couldn't answer.
+const rejectGate = createFailureGate({ max: 5, windowMs: FIFTEEN_MINUTES, what: "rejected credentials" });
 
 /**
  * Shown under the credential fields when the registrar rejects them (422).
@@ -155,6 +177,34 @@ function problemBody(kind: string, problem: { status: number; message: string })
     return { errors: { [AUTH_FIELD[kind] ?? "api_token"]: [problem.message] } };
 }
 
+/**
+ * Throttle, lockout and the real check in one place. Answers the HTTP error
+ * itself; true means the credentials are good and the caller can save them.
+ */
+async function verifyOrRefuse(
+    req: TylixRequest,
+    res: TylixResponse,
+    kind: string,
+    secret: string,
+): Promise<boolean> {
+    const key = userKey(req);
+
+    if (!verifyGuard(req, res)) return false;
+    if (!rejectGate.check(key, res)) return false;
+
+    const problem = await checkSecret(kind, secret);
+
+    if (problem) {
+        if (problem.status === 422) rejectGate.fail(key);
+        res.status(problem.status);
+        res.json(problemBody(kind, problem));
+        return false;
+    }
+
+    rejectGate.clear(key);
+    return true;
+}
+
 export class RegistrarController {
     /** GET /api/registrars: the team's connections, newest first. */
     async index(req: TylixRequest, res: TylixResponse) {
@@ -199,11 +249,7 @@ export class RegistrarController {
         }
 
         // Nothing is saved unless the registrar accepts the credentials.
-        const problem = await checkSecret(input.kind, secret);
-        if (problem) {
-            res.status(problem.status);
-            return res.json(problemBody(input.kind, problem));
-        }
+        if (!(await verifyOrRefuse(req, res, input.kind, secret))) return;
 
         const row = (await Registrar.create({
             kind: input.kind,
@@ -219,6 +265,16 @@ export class RegistrarController {
             return res.json({ error: "Could not save the connection." });
         }
 
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId,
+            serverId: null,
+            event: "registrar.connected",
+            level: "success",
+            message: `${registrarName(row.kind)} connection "${row.label}" was added.`,
+            meta: { registrar_id: row.id, kind: row.kind },
+        });
+
         res.status(201);
         return res.json(toPublic(row));
     }
@@ -226,7 +282,8 @@ export class RegistrarController {
     /**
      * PUT /api/registrars/:id
      * Always allows a rename. Credentials are replaced only when the request
-     * carries a full set (credentialSecret() returns "" otherwise).
+     * carries a full set (credentialSecret() returns "" otherwise), and that
+     * needs a second-factor code (body.code) when the caller has one on.
      */
     async update(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
@@ -242,23 +299,28 @@ export class RegistrarController {
         }
 
         const input = normalizeRegistrar(req.body);
+        const teamId = await teamIdOfRow(row);
 
-        if (await isDuplicateLabel(await teamIdOfRow(row), input.label, row.id)) {
+        if (await isDuplicateLabel(teamId, input.label, row.id)) {
             res.status(409);
             return res.json({ error: "Your team already has a connection with that name." });
         }
 
         // Stamp older rows with their team the first time they are saved.
-        const patch: Record<string, unknown> = { label: input.label, team_id: await teamIdOfRow(row) };
+        const patch: Record<string, unknown> = { label: input.label, team_id: teamId };
 
         // Empty means "keep the stored credentials".
         const secret = credentialSecret(row.kind, input);
-        if (secret) {
-            const problem = await checkSecret(row.kind, secret);
-            if (problem) {
-                res.status(problem.status);
-                return res.json(problemBody(row.kind, problem));
-            }
+        const replaced = Boolean(secret);
+
+        if (replaced) {
+            if (!(await verifyOrRefuse(req, res, row.kind, secret))) return;
+
+            // Last gate before the write: second factor, if the caller has one on.
+            // Runs after the registrar accepted the credentials, so a rejected
+            // paste never spends a code.
+            if (!(await requireStepUp(req, res, "replace this connection's credentials"))) return;
+
             Object.assign(patch, sealed(row.kind, secret));
             patch.status = "connected";
         }
@@ -270,6 +332,19 @@ export class RegistrarController {
             res.status(500);
             return res.json({ error: "Could not reload the connection after saving." });
         }
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId,
+            serverId: null,
+            event: replaced ? "registrar.credentials_replaced" : "registrar.updated",
+            level: replaced ? "warning" : undefined,
+            message: replaced
+                ? `The credentials of ${registrarName(row.kind)} connection "${fresh.label}" were replaced.`
+                : `${registrarName(row.kind)} connection "${fresh.label}" was updated.`,
+            meta: { registrar_id: row.id, kind: row.kind, credentials_replaced: replaced },
+        });
+
         return res.json(toPublic(fresh));
     }
 
@@ -282,6 +357,17 @@ export class RegistrarController {
 
         // Nothing depends on a registrar connection: removing it only forgets the key.
         await Registrar.delete(row.id);
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: await teamIdOfRow(row),
+            serverId: null,
+            event: "registrar.deleted",
+            level: "warning",
+            message: `${registrarName(row.kind)} connection "${row.label}" was removed.`,
+            meta: { registrar_id: row.id, kind: row.kind },
+        });
+
         res.status(204);
         return res.end();
     }

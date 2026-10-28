@@ -28,6 +28,15 @@
  * Deleting: destroy() needs ?confirm=<domain> (the API enforces the typed
  * confirmation, not just the UI), marks the site "deleting" and starts
  * SiteDestroyer in the background. ?force=1 skips server cleanup.
+ * With two-factor on, a valid code (body or query `code`) is also required
+ * (requireStepUp: wrong codes are counted and lock the user out). That check
+ * runs last, after every check that can refuse the request.
+ *
+ * Hardening:
+ *   - creating is rate limited per team; deleting, deploying and saving the
+ *     deployment are rate limited per user
+ *   - creating, deleting, deploying and changing the script or env are
+ *     written to the server log (never the script or env contents)
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -42,6 +51,7 @@ import { SiteDeployer, canDeploy, defaultDeployScript, envPathFor } from "../ser
 import { SiteDestroyer } from "../services/SiteDestroyer.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { needsPort } from "../services/SiteTypes.js";
+import { createGuard, audit, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole, hasRole } from "../services/TeamScope.js";
 import { requireActive, requireWithin } from "../services/EntitlementService.js";
 
@@ -92,6 +102,12 @@ interface DeploymentRow {
     created_at: string;
     [key: string]: unknown;
 }
+
+const FIFTEEN_MINUTES = 15 * 60_000;
+const createGuardPerTeam = createGuard({ max: 20, windowMs: 60 * 60_000, scope: "team", what: "site creations" });
+const deleteGuard = createGuard({ max: 10, windowMs: FIFTEEN_MINUTES, scope: "user", what: "site deletions" });
+const deployGuard = createGuard({ max: 15, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployments" });
+const saveGuard = createGuard({ max: 30, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployment changes" });
 
 async function deploymentsFor(siteId: number): Promise<DeploymentRow[]> {
     const all = (await Deployment.all()) as DeploymentRow[];
@@ -290,6 +306,9 @@ export class SiteController {
             return res.json({ error: conflict });
         }
 
+        // After every cheap refusal, before the row is created.
+        if (!createGuardPerTeam(req, res)) return;
+
         // Last check before the row is created. The site row exists straight away
         // (status "pending"), so two quick requests can't both slip under the limit.
         if (!(await requireWithin(res, teamId, "sites"))) return;
@@ -331,6 +350,16 @@ export class SiteController {
 
         SiteProvisioner.start(site.id);
 
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId,
+            serverId: site.server_id,
+            event: "site.created",
+            level: "success",
+            message: `Site ${site.domain} was created.`,
+            meta: { site_id: site.id, type: site.type, repository: site.repository || null },
+        });
+
         res.status(201);
         return res.json(toPublic(site));
     }
@@ -343,17 +372,19 @@ export class SiteController {
     }
 
     /**
-     * DELETE /api/sites/:id?confirm=<domain>[&force=1]
+     * DELETE /api/sites/:id?confirm=<domain>[&force=1][&code=<2fa code>]
      *
      * Marks the site "deleting" and cleans up in the background. The page polls
      * GET /api/sites/:id until it answers 404 (gone) or status "delete_failed".
-     * Refused while the team is view only.
+     * Refused while the team is view only. With two-factor on, a valid code is
+     * required.
      */
     async destroy(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
         if (!(await requireActive(res, Number(site.team_id)))) return;
+        if (!deleteGuard(req, res)) return;
 
         const query = (req as { query?: Record<string, unknown> }).query ?? {};
         const confirm = String(query.confirm ?? "");
@@ -383,8 +414,23 @@ export class SiteController {
             return res.json({ error: "This site is already being deleted." });
         }
 
+        // Last gate before the irreversible step: second factor, if the caller has one on.
+        if (!(await requireStepUp(req, res, "delete this site"))) return;
+
         await Site.update(site.id, { status: "deleting", step: "del_services", error: "" });
         SiteDestroyer.start(site.id, force);
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: Number(site.team_id),
+            serverId: site.server_id,
+            event: "site.delete_started",
+            level: "warning",
+            message: force
+                ? `Deleting ${site.domain} (server cleanup skipped).`
+                : `Deleting ${site.domain}.`,
+            meta: { site_id: site.id, force },
+        });
 
         res.status(202);
         return res.json({ status: "deleting" });
@@ -450,6 +496,7 @@ export class SiteController {
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
         if (!(await requireActive(res, Number(site.team_id)))) return;
+        if (!saveGuard(req, res)) return;
 
         const body = (req.body ?? {}) as Record<string, unknown>;
         const errors: Record<string, string[]> = {};
@@ -492,6 +539,22 @@ export class SiteController {
 
         if (Object.keys(patch).length > 0) {
             await Site.update(site.id, patch);
+
+            // Only that something changed is logged, never the script or env itself.
+            const changed = [
+                ...(script !== null ? ["deploy_script"] : []),
+                ...(env !== null ? ["env"] : []),
+            ];
+
+            await audit({
+                userId: Number(req.user?.userId),
+                teamId: Number(site.team_id),
+                serverId: site.server_id,
+                event: "site.deployment_saved",
+                level: "warning",
+                message: `The ${changed.join(" and ")} of ${site.domain} ${changed.length === 1 ? "was" : "were"} changed.`,
+                meta: { site_id: site.id, fields: changed },
+            });
         }
 
         res.status(204);
@@ -520,6 +583,8 @@ export class SiteController {
             return res.json({ error: "A deployment is already running." });
         }
 
+        if (!deployGuard(req, res)) return;
+
         await Site.update(site.id, { deploy_status: "deploying", deploy_log: "" });
         await Deployment.create({
             site_id: site.id,
@@ -533,6 +598,15 @@ export class SiteController {
             finished_at: "",
         });
         SiteDeployer.start(site.id);
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: Number(site.team_id),
+            serverId: site.server_id,
+            event: "site.deploy_started",
+            message: `A deployment of ${site.domain} was started.`,
+            meta: { site_id: site.id, branch: String(site.branch ?? "") },
+        });
 
         res.status(202);
         return res.json({ deploy_status: "deploying" });

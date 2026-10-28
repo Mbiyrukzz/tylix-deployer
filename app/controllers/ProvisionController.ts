@@ -18,11 +18,15 @@
  *   - deleting also removes the server's records (ServerRecords), and is
  *     refused while the server still has sites
  *   - two-factor: when the caller has authenticator or SMS two-factor on,
- *     creating and deleting also need a valid code (StepUpService). The check
- *     runs last, after every check that can refuse the request, so a refused
- *     request never spends a code. The code comes from the body (store) or
- *     from the body or query string (destroy, which already reads `confirm`
- *     from the query).
+ *     creating and deleting also need a valid code (requireStepUp: wrong
+ *     codes are counted and lock the user out). The check runs last, after
+ *     every check that can refuse the request, so a refused request never
+ *     spends a code. The code comes from the body (store) or from the body
+ *     or query string (destroy, which already reads `confirm` from the query).
+ *   - rate limits: creating is limited per team and deleting per user, since
+ *     both call the provider and one costs money
+ *   - creating and deleting are written to the log (deleting without a server
+ *     id, because the server's own log goes with it)
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -33,10 +37,14 @@ import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js"
 import { requireWithin, requireActive } from "../services/EntitlementService.js";
 import { adapterFor, instanceRefOf, providerName, providerSecret } from "../services/ProviderAdapter.js";
 import { ServerRecords } from "../services/ServerRecords.js";
-import { StepUpService } from "../services/StepUpService.js";
+import { createGuard, audit, requireStepUp } from "../services/RouteGuard.js";
 import { dispatch } from "@tylix/core";
 
 const TYLIX_MIN_MEMORY_MB = 4096;
+
+// Each create calls the provider's catalog (up to 3 tries x 3 requests) and then costs money.
+const createGuardPerTeam = createGuard({ max: 10, windowMs: 60 * 60_000, scope: "team", what: "server creations" });
+const deleteGuard = createGuard({ max: 10, windowMs: 15 * 60_000, scope: "user", what: "server deletions" });
 
 interface ProvisionRow {
     id: number;
@@ -70,13 +78,6 @@ function toPublic(row: ProvisionRow) {
         has_instance: instanceRefOf(row) !== "",
         has_root_password: Boolean(root_password),
     };
-}
-
-/** The second-factor code the client sent: body first, then query string (DELETE requests). */
-function codeOf(req: TylixRequest): unknown {
-    const fromBody = (req.body as { code?: unknown } | undefined)?.code;
-    if (fromBody !== undefined && fromBody !== null && String(fromBody).trim() !== "") return fromBody;
-    return req.query?.code;
 }
 
 /** Loads a provision and answers 404 itself if it is missing or not on the caller's team. */
@@ -158,6 +159,9 @@ export class ProvisionController {
         ).length;
 
         if (!(await requireWithin(res, teamId, "servers", 1 + inFlight))) return;
+
+        // After every cheap refusal and before the provider's API is called.
+        if (!createGuardPerTeam(req, res)) return;
 
         const name = providerName(provider.kind);
 
@@ -242,7 +246,7 @@ export class ProvisionController {
         }
 
         // Last gate before the billable step: second factor, if the caller has one on.
-        if (!(await StepUpService.require(req, res, codeOf(req), "create this server"))) return;
+        if (!(await requireStepUp(req, res, "create this server"))) return;
 
         const row = (await Provision.create({
             user_id: req.user?.userId,
@@ -267,6 +271,22 @@ export class ProvisionController {
             res.status(500);
             return res.json({ error: "Could not save the request." });
         }
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId,
+            provisionId: row.id,
+            serverId: null,
+            event: "provision.created",
+            message: `Server "${row.name}" was requested at ${name}.`,
+            meta: {
+                provider_id: input.provider_id,
+                kind: provider.kind,
+                region: input.region,
+                plan: input.plan,
+                template: input.template,
+            },
+        });
 
         let current: ProvisionRow = row;
 
@@ -303,6 +323,7 @@ export class ProvisionController {
         if (!row) return;
         if (!requireRole(req, res, "admin")) return;
         if (!(await requireActive(res, Number(req.user?.teamId)))) return;
+        if (!deleteGuard(req, res)) return;
 
         if (row.status === "running") {
             res.status(409);
@@ -354,7 +375,7 @@ export class ProvisionController {
         }
 
         // Last gate before anything is destroyed: second factor, if the caller has one on.
-        if (!(await StepUpService.require(req, res, codeOf(req), "delete this server"))) return;
+        if (!(await requireStepUp(req, res, "delete this server"))) return;
 
         if (ref && provider) {
             const name = providerName(provider.kind);
@@ -393,6 +414,22 @@ export class ProvisionController {
         }
 
         await Provision.update(row.id, { status: "deleted", step: "deleted", ssh_key: "", error: "" });
+
+        // The server's own log is gone with removeAll, so this carries no server id.
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: await teamIdOfRow(row),
+            provisionId: row.id,
+            serverId: null,
+            event: "provision.deleted",
+            level: "warning",
+            message:
+                ref && provider
+                    ? `Server "${row.name}" was deleted at ${providerName(provider.kind)}.`
+                    : `Server "${row.name}" was deleted.`,
+            meta: { had_instance: Boolean(ref) },
+        });
+
         res.status(204);
         return res.end();
     }

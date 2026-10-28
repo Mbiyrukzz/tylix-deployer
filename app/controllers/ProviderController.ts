@@ -15,6 +15,19 @@
  *   - the credentials are verified against the provider's API before they are saved
  *   - a connection on another team answers 404, not 403 (checked before the role)
  *
+ * Two-factor: replacing the credentials of a connection needs a valid code
+ * when the caller has two-factor on (requireStepUp: wrong codes are counted
+ * and lock the user out). It runs last, after the provider has accepted the
+ * new credentials, so a refused request never spends a code. A rename without
+ * new credentials never asks for a code.
+ *
+ * Hardening:
+ *   - checking credentials is rate limited per user (it calls the provider)
+ *   - rejected credentials are counted per user; too many in a row lock the
+ *     user out for a while, so this can't be used to test stolen tokens
+ *   - adding, replacing credentials on and deleting a connection are written
+ *     to the log (never the credentials themselves)
+ *
  * All routes sit behind requireAuth ("auth": true in feature.json).
  */
 
@@ -29,6 +42,7 @@ import {
 } from "../validators/ProviderValidator.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { adapterFor, instanceRefOf, providerName } from "../services/ProviderAdapter.js";
+import { createGuard, createFailureGate, userKey, audit, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { requireWithin, requireActive } from "../services/EntitlementService.js";
 
@@ -45,6 +59,14 @@ interface ProviderRow {
     team_id: number | null;
     [key: string]: unknown;
 }
+
+const FIFTEEN_MINUTES = 15 * 60_000;
+
+// Every credential check calls the provider's API.
+const verifyGuard = createGuard({ max: 20, windowMs: FIFTEEN_MINUTES, scope: "user", what: "credential checks" });
+
+// Only counts checks the provider REJECTED, not ones it couldn't answer.
+const rejectGate = createFailureGate({ max: 5, windowMs: FIFTEEN_MINUTES, what: "rejected credentials" });
 
 const TOKEN_HELP: Record<string, string> = {
     linode: "Create a personal access token with Linodes: Read/Write and try again.",
@@ -143,6 +165,34 @@ function tokenProblemBody(kind: string, problem: { status: number; message: stri
     return { errors: { [field]: [problem.message] } };
 }
 
+/**
+ * Throttle, lockout and the real check in one place. Answers the HTTP error
+ * itself; true means the credentials are good and the caller can save them.
+ */
+async function verifyOrRefuse(
+    req: TylixRequest,
+    res: TylixResponse,
+    kind: string,
+    secret: string,
+): Promise<boolean> {
+    const key = userKey(req);
+
+    if (!verifyGuard(req, res)) return false;
+    if (!rejectGate.check(key, res)) return false;
+
+    const problem = await checkToken(kind, secret);
+
+    if (problem) {
+        if (problem.status === 422) rejectGate.fail(key);
+        res.status(problem.status);
+        res.json(tokenProblemBody(kind, problem));
+        return false;
+    }
+
+    rejectGate.clear(key);
+    return true;
+}
+
 export class ProviderController {
     /** Any team member. */
     async index(req: TylixRequest, res: TylixResponse) {
@@ -186,14 +236,10 @@ export class ProviderController {
             return res.json({ error: "Your team already has a connection with that name." });
         }
 
-        // Before checkToken, so a team over its limit doesn't wait on the provider's API.
+        // Before the credential check, so a team over its limit doesn't wait on the provider's API.
         if (!(await requireWithin(res, teamId, "providers"))) return;
 
-        const problem = await checkToken(input.kind, secret);
-        if (problem) {
-            res.status(problem.status);
-            return res.json(tokenProblemBody(input.kind, problem));
-        }
+        if (!(await verifyOrRefuse(req, res, input.kind, secret))) return;
 
         const provider = (await Provider.create({
             kind: input.kind,
@@ -209,11 +255,24 @@ export class ProviderController {
             return res.json({ error: "Could not save the connection." });
         }
 
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId,
+            serverId: null,
+            event: "provider.connected",
+            level: "success",
+            message: `${providerName(provider.kind)} connection "${provider.label}" was added.`,
+            meta: { provider_id: provider.id, kind: provider.kind },
+        });
+
         res.status(201);
         return res.json(toPublic(provider));
     }
 
-    /** Admin only. A connection on another team answers 404 before the role is checked. */
+    /**
+     * Admin only. A connection on another team answers 404 before the role is checked.
+     * Replacing the credentials needs a second-factor code (body.code) when the caller has one on.
+     */
     async update(req: TylixRequest, res: TylixResponse) {
         const provider = await findOwned(req, res);
         if (!provider) return;
@@ -238,12 +297,15 @@ export class ProviderController {
 
         // Empty means "keep the stored credentials".
         const secret = credentialSecret(provider.kind, input);
-        if (secret) {
-            const problem = await checkToken(provider.kind, secret);
-            if (problem) {
-                res.status(problem.status);
-                return res.json(tokenProblemBody(provider.kind, problem));
-            }
+        const replaced = Boolean(secret);
+
+        if (replaced) {
+            if (!(await verifyOrRefuse(req, res, provider.kind, secret))) return;
+
+            // Last gate before the write: second factor, if the caller has one on.
+            // Runs after the provider accepted the credentials, so a rejected
+            // paste never spends a code.
+            if (!(await requireStepUp(req, res, "replace this connection's credentials"))) return;
 
             Object.assign(patch, sealed(provider.kind, secret));
             patch.status = "connected";
@@ -257,6 +319,18 @@ export class ProviderController {
             res.status(500);
             return res.json({ error: "Could not reload the connection after saving." });
         }
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: Number(provider.team_id),
+            serverId: null,
+            event: replaced ? "provider.credentials_replaced" : "provider.updated",
+            level: replaced ? "warning" : undefined,
+            message: replaced
+                ? `The credentials of ${providerName(provider.kind)} connection "${fresh.label}" were replaced.`
+                : `${providerName(provider.kind)} connection "${fresh.label}" was updated.`,
+            meta: { provider_id: provider.id, kind: provider.kind, credentials_replaced: replaced },
+        });
 
         return res.json(toPublic(fresh));
     }
@@ -290,6 +364,17 @@ export class ProviderController {
         }
 
         await Provider.delete(provider.id);
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: Number(provider.team_id),
+            serverId: null,
+            event: "provider.deleted",
+            level: "warning",
+            message: `${providerName(provider.kind)} connection "${provider.label}" was removed.`,
+            meta: { provider_id: provider.id, kind: provider.kind },
+        });
+
         res.status(204);
         return res.end();
     }

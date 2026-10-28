@@ -20,6 +20,7 @@ state
   providerCards: []
   providerId: 0
   providerKind: "linode"
+  providerLabel: ""
   region: ""
   plan: ""
   regionLabel: ""
@@ -81,6 +82,17 @@ action
     this.userError = ""
     this.keyError = ""
     this.codeError = ""
+  }
+
+  // Name of the chosen connection, shown in the summary card.
+  syncProviderLabel() {
+    if this.custom {
+      this.providerLabel = "Custom server"
+      return null
+    }
+
+    const hit = this.providerCards.find((p) => p.id is this.providerId)
+    this.providerLabel = hit ? hit.label + " (" + hit.kindName + ")" : ""
   }
 
   // Which second factors this account has on. Used to decide whether to ask for a code.
@@ -176,8 +188,7 @@ action
     if p.kind is "aws" {
       kindName = "Amazon Web Services"
     }
-
-        // UPCLOUD
+    // UPCLOUD
     if p.kind is "upcloud" {
       kindName = "UpCloud"
     }
@@ -273,6 +284,7 @@ action
     this.providerId = id
     this.providerKind = kind
     this.providerError = ""
+    this.syncProviderLabel()
     this.resetCatalog()
 
     await this.loadCatalog()
@@ -287,6 +299,7 @@ action
     this.custom = true
     this.providerId = 0
     this.providerKind = "linode"
+    this.syncProviderLabel()
     this.resetCatalog()
   }
 
@@ -459,351 +472,473 @@ onMount
       this.providerKind = Providers.data[0].kind or "linode"
     }
 
+    this.syncProviderLabel()
     await this.loadCatalog()
     this.checkedAuth = true
   }
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
     <div class="min-w-0">
-    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
 
-      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-5">
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
       <LockedBanner />
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Create server</h1>
-      <p class="text-slate-500 text-sm mb-8">Provision a new machine at your cloud provider, or add one you already have.</p>
+      <div class="mb-6 sm:mb-8">
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Create server</h1>
+        <p class="text-slate-500 text-sm">Provision a new machine at your cloud provider, or add one you already have.</p>
+      </div>
 
 {{#if catalogError}}
-      <p role="alert" class="text-rose-500 text-sm mb-6">{{ catalogError }}</p>
-{{/if}}
-
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-3">1. Where is the server?</h2>
-{{#if Providers.data.length is 0}}
-      <div class="rounded-xl border border-dashed border-slate-400 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 mb-3 text-sm text-slate-500">
-        No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect a provider</a> to create a machine from here, or add a server you already have below.
+      <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 mb-6">
+        <p class="text-rose-600 dark:text-rose-400 text-sm">{{ catalogError }}</p>
       </div>
 {{/if}}
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
+
+        <div class="min-w-0 space-y-4 sm:space-y-5">
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">1</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Where is the server?</h2>
+            </div>
+
+{{#if Providers.data.length is 0}}
+            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 mb-3 text-sm text-slate-500">
+              No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect a provider</a> to create a machine from here, or add a server you already have below.
+            </div>
+{{/if}}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 {{#each p in providerCards}}
 {{#if providerId is p.id}}
-        <button onclick="{{ pickProvider(p.id, p.kind) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
-          <span class="block font-medium">{{ p.label }}</span>
-          <span class="block text-xs text-slate-500">{{ p.kindName }}</span>
-        </button>
+              <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="true" class="min-h-[56px] text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
+                <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
+              </button>
 {{/if}}
 {{#if providerId is not p.id}}
-        <button onclick="{{ pickProvider(p.id, p.kind) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
-          <span class="block font-medium">{{ p.label }}</span>
-          <span class="block text-xs text-slate-500">{{ p.kindName }}</span>
-        </button>
+              <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="false" class="min-h-[56px] text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
+                <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
+              </button>
 {{/if}}
 {{/each}}
 {{#if custom}}
-        <button onclick="{{ pickCustom() }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
-          <span class="block font-medium">Custom server</span>
-          <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
-        </button>
+              <button onclick="{{ pickCustom() }}" aria-pressed="true" class="min-h-[56px] text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Custom server</span>
+                <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
+              </button>
 {{/if}}
 {{#if not custom}}
-        <button onclick="{{ pickCustom() }}" class="text-left rounded-xl border border-dashed px-4 py-3 text-sm transition-colors border-slate-400 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
-          <span class="block font-medium">Custom server</span>
-          <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
-        </button>
+              <button onclick="{{ pickCustom() }}" aria-pressed="false" class="min-h-[56px] text-left rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Custom server</span>
+                <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
+              </button>
 {{/if}}
-      </div>
+            </div>
 {{#if providerError}}
-      <p class="text-rose-500 text-xs mb-2">{{ providerError }}</p>
+            <p class="text-rose-500 text-xs mt-2">{{ providerError }}</p>
 {{/if}}
+          </section>
 
 {{#if custom}}
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">2. Connection details</h2>
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">2</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Connection details</h2>
+            </div>
 
-      <label for="custom-name" class="block text-slate-500 text-xs mb-1.5">Name</label>
-      <input
-        id="custom-name"
-        type="text"
-        value="{{ name }}"
-        oninput="{{ name = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
-        placeholder="e.g. production-web"
-      />
+            <label for="custom-name" class="block text-slate-500 text-xs font-medium mb-1.5">Name</label>
+            <input
+              id="custom-name"
+              type="text"
+              value="{{ name }}"
+              oninput="{{ name = $event.target.value }}"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              placeholder="e.g. production-web"
+            />
 {{#if nameError}}
-      <p class="text-rose-500 text-xs mb-2">{{ nameError }}</p>
+            <p class="text-rose-500 text-xs mt-1.5">{{ nameError }}</p>
 {{/if}}
 
-      <div class="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-3 mt-4">
-        <div>
-          <label for="custom-host" class="block text-slate-500 text-xs mb-1.5">Host or IP address</label>
-          <input
-            id="custom-host"
-            type="text"
-            value="{{ host }}"
-            oninput="{{ host = $event.target.value }}"
-            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
-            placeholder="203.0.113.10"
-          />
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-4 mt-4">
+              <div>
+                <label for="custom-host" class="block text-slate-500 text-xs font-medium mb-1.5">Host or IP address</label>
+                <input
+                  id="custom-host"
+                  type="text"
+                  inputmode="url"
+                  autocapitalize="off"
+                  value="{{ host }}"
+                  oninput="{{ host = $event.target.value }}"
+                  class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+                  placeholder="203.0.113.10"
+                />
 {{#if hostError}}
-          <p class="text-rose-500 text-xs mb-2">{{ hostError }}</p>
+                <p class="text-rose-500 text-xs mt-1.5">{{ hostError }}</p>
 {{/if}}
-        </div>
-        <div>
-          <label for="custom-port" class="block text-slate-500 text-xs mb-1.5">SSH port</label>
-          <input
-            id="custom-port"
-            type="text"
-            inputmode="numeric"
-            value="{{ port }}"
-            oninput="{{ port = $event.target.value }}"
-            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
-          />
+              </div>
+              <div>
+                <label for="custom-port" class="block text-slate-500 text-xs font-medium mb-1.5">SSH port</label>
+                <input
+                  id="custom-port"
+                  type="text"
+                  inputmode="numeric"
+                  value="{{ port }}"
+                  oninput="{{ port = $event.target.value }}"
+                  class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+                />
 {{#if portError}}
-          <p class="text-rose-500 text-xs mb-2">{{ portError }}</p>
+                <p class="text-rose-500 text-xs mt-1.5">{{ portError }}</p>
 {{/if}}
-        </div>
-      </div>
+              </div>
+            </div>
 
-      <label for="custom-user" class="block text-slate-500 text-xs mb-1.5 mt-4">SSH user</label>
-      <input
-        id="custom-user"
-        type="text"
-        value="{{ sshUser }}"
-        oninput="{{ sshUser = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
-        placeholder="root"
-      />
+            <label for="custom-user" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">SSH user</label>
+            <input
+              id="custom-user"
+              type="text"
+              autocapitalize="off"
+              value="{{ sshUser }}"
+              oninput="{{ sshUser = $event.target.value }}"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              placeholder="root"
+            />
 {{#if userError}}
-      <p class="text-rose-500 text-xs mb-2">{{ userError }}</p>
+            <p class="text-rose-500 text-xs mt-1.5">{{ userError }}</p>
 {{/if}}
 
-      <label for="custom-key" class="block text-slate-500 text-xs mb-1.5 mt-4">SSH private key</label>
-      <textarea
-        id="custom-key"
-        rows="8"
-        value="{{ sshKey }}"
-        oninput="{{ sshKey = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
-        placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-      ></textarea>
-      <p class="text-slate-500 text-xs mb-2">Use a dedicated key without a passphrase. It is stored encrypted and never shown again.</p>
+            <label for="custom-key" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">SSH private key</label>
+            <textarea
+              id="custom-key"
+              rows="8"
+              spellcheck="false"
+              value="{{ sshKey }}"
+              oninput="{{ sshKey = $event.target.value }}"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+            ></textarea>
+            <p class="text-slate-500 text-xs mt-1.5">Use a dedicated key without a passphrase. It is stored encrypted and never shown again.</p>
 {{#if keyError}}
-      <p class="text-rose-500 text-xs mb-2">{{ keyError }}</p>
+            <p class="text-rose-500 text-xs mt-1.5">{{ keyError }}</p>
 {{/if}}
+          </section>
 {{/if}}
 
 {{#if not custom}}
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">2. Region</h2>
-      <div class="relative mb-1">
-        <button onclick="{{ toggleRegion() }}" class="w-full flex items-center justify-between text-left rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">2</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Region</h2>
+            </div>
+
+            <button onclick="{{ toggleRegion() }}" aria-expanded="{{ regionOpen }}" class="w-full min-h-[48px] flex items-center justify-between gap-3 text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
 {{#if regionLabel}}
-          <span>{{ regionLabel }}</span>
+              <span class="truncate">{{ regionLabel }}</span>
 {{/if}}
 {{#if not regionLabel}}
-          <span class="text-slate-500">Select a region</span>
+              <span class="text-slate-500">Select a region</span>
 {{/if}}
-          <span class="text-slate-500 text-xs">&#9662;</span>
-        </button>
+              <span class="text-slate-500 text-xs shrink-0">&#9662;</span>
+            </button>
 {{#if regionOpen}}
-        <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-lg">
+            <div class="mt-2 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#each r in regions}}
-          <button onclick="{{ pickRegion(r.id, r.label) }}" class="block w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
-            {{ r.label }} <span class="text-xs text-slate-500 font-mono">{{ r.id }}</span>
-          </button>
+              <button onclick="{{ pickRegion(r.id, r.label) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+                {{ r.label }} <span class="text-xs text-slate-500 font-mono break-all">{{ r.id }}</span>
+              </button>
 {{/each}}
-        </div>
+            </div>
 {{/if}}
-      </div>
 {{#if regionError}}
-      <p class="text-rose-500 text-xs mb-2">{{ regionError }}</p>
+            <p class="text-rose-500 text-xs mt-2">{{ regionError }}</p>
 {{/if}}
+          </section>
 
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">3. Template</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">3</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Template</h2>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 {{#if tpl is "tylix"}}
-        <button onclick="{{ pickTpl('tylix') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
-          <span class="block font-medium">Tylix</span>
-          <span class="block text-xs text-slate-500">Everything Standard has, plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
-        </button>
+              <button onclick="{{ pickTpl('tylix') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Tylix</span>
+                <span class="block text-xs text-slate-500 mt-1">Standard plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
+              </button>
 {{/if}}
 {{#if tpl is not "tylix"}}
-        <button onclick="{{ pickTpl('tylix') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
-          <span class="block font-medium">Tylix</span>
-          <span class="block text-xs text-slate-500">Everything Standard has, plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
-        </button>
+              <button onclick="{{ pickTpl('tylix') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Tylix</span>
+                <span class="block text-xs text-slate-500 mt-1">Standard plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
+              </button>
 {{/if}}
 {{#if tpl is "standard"}}
-        <button onclick="{{ pickTpl('standard') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
-          <span class="block font-medium">Standard</span>
-          <span class="block text-xs text-slate-500">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
-        </button>
+              <button onclick="{{ pickTpl('standard') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Standard</span>
+                <span class="block text-xs text-slate-500 mt-1">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
+              </button>
 {{/if}}
 {{#if tpl is not "standard"}}
-        <button onclick="{{ pickTpl('standard') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
-          <span class="block font-medium">Standard</span>
-          <span class="block text-xs text-slate-500">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
-        </button>
+              <button onclick="{{ pickTpl('standard') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Standard</span>
+                <span class="block text-xs text-slate-500 mt-1">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
+              </button>
 {{/if}}
 {{#if tpl is "bare"}}
-        <button onclick="{{ pickTpl('bare') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
-          <span class="block font-medium">Bare</span>
-          <span class="block text-xs text-slate-500">Just the OS and SSH access. Nothing installed. Add packages later from the server's Packages page.</span>
-        </button>
+              <button onclick="{{ pickTpl('bare') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Bare</span>
+                <span class="block text-xs text-slate-500 mt-1">Just the OS and SSH access. Add packages later from the server's Packages page.</span>
+              </button>
 {{/if}}
 {{#if tpl is not "bare"}}
-        <button onclick="{{ pickTpl('bare') }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
-          <span class="block font-medium">Bare</span>
-          <span class="block text-xs text-slate-500">Just the OS and SSH access. Nothing installed. Add packages later from the server's Packages page.</span>
-        </button>
+              <button onclick="{{ pickTpl('bare') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">Bare</span>
+                <span class="block text-xs text-slate-500 mt-1">Just the OS and SSH access. Add packages later from the server's Packages page.</span>
+              </button>
 {{/if}}
-      </div>
+            </div>
 {{#if tplError}}
-      <p class="text-rose-500 text-xs mb-2">{{ tplError }}</p>
+            <p class="text-rose-500 text-xs mt-2">{{ tplError }}</p>
 {{/if}}
+          </section>
 
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">4. Plan</h2>
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">4</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Plan</h2>
+            </div>
+
 {{#if not region}}
-      <p class="text-slate-500 text-sm mb-2">Choose a region first. Prices depend on the region.</p>
+            <p class="text-slate-500 text-sm">Choose a region first. Prices depend on the region.</p>
 {{/if}}
 {{#if region}}
-      <div class="relative mb-1">
-        <button onclick="{{ togglePlan() }}" class="w-full flex items-center justify-between text-left rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+            <button onclick="{{ togglePlan() }}" aria-expanded="{{ planOpen }}" class="w-full min-h-[48px] flex items-center justify-between gap-3 text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
 {{#if planLabel}}
-          <span>{{ planLabel }}</span>
+              <span class="truncate">{{ planLabel }}</span>
 {{/if}}
 {{#if not planLabel}}
-          <span class="text-slate-500">Select a plan</span>
+              <span class="text-slate-500">Select a plan</span>
 {{/if}}
-          <span class="text-slate-500 text-xs">&#9662;</span>
-        </button>
+              <span class="text-slate-500 text-xs shrink-0">&#9662;</span>
+            </button>
 {{#if planOpen}}
-        <div class="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-lg">
+            <div class="mt-2 max-h-80 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#each p in shownPlans}}
-          <button onclick="{{ pickPlan(p.id, p.label) }}" class="block w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
-            <span class="block font-medium">{{ p.label }}</span>
-            <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / {{ p.priceText }}</span>
-          </button>
+              <button onclick="{{ pickPlan(p.id, p.label) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+                <span class="block font-medium">{{ p.label }}</span>
+                <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / {{ p.priceText }}</span>
+              </button>
 {{/each}}
-        </div>
+            </div>
 {{/if}}
-      </div>
 {{/if}}
 {{#if planError}}
-      <p class="text-rose-500 text-xs mb-2">{{ planError }}</p>
+            <p class="text-rose-500 text-xs mt-2">{{ planError }}</p>
 {{/if}}
+          </section>
 
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">5. Operating system</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">5</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Operating system</h2>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 {{#each i in images}}
 {{#if image is i.id}}
-        <button onclick="{{ pickImage(i.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
-          <span class="block font-medium">{{ i.label }}</span>
-        </button>
+              <button onclick="{{ pickImage(i.id) }}" aria-pressed="true" class="min-h-[48px] text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">{{ i.label }}</span>
+              </button>
 {{/if}}
 {{#if image is not i.id}}
-        <button onclick="{{ pickImage(i.id) }}" class="text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
-          <span class="block font-medium">{{ i.label }}</span>
-        </button>
+              <button onclick="{{ pickImage(i.id) }}" aria-pressed="false" class="min-h-[48px] text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+                <span class="block font-semibold text-slate-900 dark:text-slate-100">{{ i.label }}</span>
+              </button>
 {{/if}}
 {{/each}}
-      </div>
+            </div>
 {{#if imageError}}
-      <p class="text-rose-500 text-xs mb-2">{{ imageError }}</p>
+            <p class="text-rose-500 text-xs mt-2">{{ imageError }}</p>
 {{/if}}
+          </section>
 
-      <h2 class="text-slate-800 dark:text-slate-200 font-medium mt-8 mb-3">6. Server name</h2>
-      <label for="server-name" class="block text-slate-500 text-xs mb-1.5">Lowercase letters, numbers and hyphens</label>
-      <input
-        id="server-name"
-        type="text"
-        value="{{ name }}"
-        oninput="{{ name = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
-        placeholder="e.g. web-1"
-      />
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">6</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Server name</h2>
+            </div>
+
+            <label for="server-name" class="block text-slate-500 text-xs font-medium mb-1.5">Lowercase letters, numbers and hyphens</label>
+            <input
+              id="server-name"
+              type="text"
+              autocapitalize="off"
+              value="{{ name }}"
+              oninput="{{ name = $event.target.value }}"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              placeholder="e.g. web-1"
+            />
 {{#if nameError}}
-      <p class="text-rose-500 text-xs mb-2">{{ nameError }}</p>
+            <p class="text-rose-500 text-xs mt-1.5">{{ nameError }}</p>
 {{/if}}
+          </section>
 {{/if}}
 
 {{#if codeOpen}}
-      <div class="mt-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 p-4">
-        <label for="create-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
-        <input
-          id="create-code"
-          type="text"
-          inputmode="text"
-          autocomplete="one-time-code"
-          maxlength="12"
-          value="{{ code }}"
-          oninput="{{ code = $event.target.value }}"
-          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
-        />
+          <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:p-6">
+            <label for="create-code" class="block text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1.5">Verification code</label>
+            <input
+              id="create-code"
+              type="text"
+              inputmode="text"
+              autocomplete="one-time-code"
+              maxlength="12"
+              value="{{ code }}"
+              oninput="{{ code = $event.target.value }}"
+              class="w-full sm:w-64 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            />
 {{#if tfTotp}}
-        <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
+            <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
 {{/if}}
 {{#if not tfTotp}}
-        <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
+            <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
 {{/if}}
 {{#if smsNotice}}
-        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+            <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
 {{/if}}
 {{#if codeError}}
-        <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
+            <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
 {{/if}}
 {{#if tfSms}}
 {{#if smsSending}}
-        <button disabled class="mt-3 text-xs text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 opacity-50">Sending…</button>
+            <button disabled class="mt-3 min-h-[36px] text-xs text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 opacity-50">Sending…</button>
 {{/if}}
 {{#if not smsSending}}
-        <button onclick="{{ sendCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Text me a code</button>
+            <button onclick="{{ sendCode() }}" class="mt-3 min-h-[36px] text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Text me a code</button>
 {{/if}}
 {{/if}}
-      </div>
+          </section>
 {{/if}}
 
 {{#if error}}
-      <p role="alert" class="text-rose-500 text-sm mt-6">{{ error }}</p>
+          <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3">
+            <p class="text-rose-600 dark:text-rose-400 text-sm">{{ error }}</p>
+          </div>
 {{/if}}
 
-      <div class="flex items-center justify-end gap-3 mt-8">
-        <a href="/servers" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</a>
+          <div class="sticky bottom-0 z-30 -mx-4 sm:-mx-6 lg:mx-0 px-4 sm:px-6 lg:px-0 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-slate-200 dark:border-slate-800 lg:border-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+            <a href="/servers" class="text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
 {{#if Billing.locked}}
-        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-            <rect x="4" y="9" width="12" height="8" rx="2" />
-            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-          </svg>
+            <button disabled title="Pay to continue" class="inline-flex items-center justify-center gap-1.5 min-h-[48px] text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
 {{#if custom}}
-          Add server
+              Add server
 {{/if}}
 {{#if not custom}}
-          Create server
+              Create server
 {{/if}}
-        </button>
+            </button>
 {{/if}}
 {{#if not Billing.locked}}
 {{#if custom}}
 {{#if saving}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Adding…</button>
+            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Adding…</button>
 {{/if}}
 {{#if not saving}}
-        <button onclick="{{ submitCustom() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Add server</button>
+            <button onclick="{{ submitCustom() }}" class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Add server</button>
 {{/if}}
 {{/if}}
 {{#if not custom}}
 {{#if saving}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Creating…</button>
+            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
 {{/if}}
 {{#if not saving}}
-        <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</button>
+            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</button>
 {{/if}}
 {{/if}}
 {{/if}}
+          </div>
+
+        </div>
+
+        <aside class="hidden lg:block lg:sticky lg:top-6">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your server</h2>
+            <dl class="space-y-3 text-sm">
+              <div>
+                <dt class="text-slate-500 text-xs">Provider</dt>
+{{#if providerLabel}}
+                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ providerLabel }}</dd>
+{{/if}}
+{{#if not providerLabel}}
+                <dd class="text-slate-400">Not chosen</dd>
+{{/if}}
+              </div>
+{{#if custom}}
+              <div>
+                <dt class="text-slate-500 text-xs">Host</dt>
+{{#if host}}
+                <dd class="text-slate-900 dark:text-slate-100 font-mono break-all">{{ sshUser }}@{{ host }}:{{ port }}</dd>
+{{/if}}
+{{#if not host}}
+                <dd class="text-slate-400">Not entered</dd>
+{{/if}}
+              </div>
+{{/if}}
+{{#if not custom}}
+              <div>
+                <dt class="text-slate-500 text-xs">Region</dt>
+{{#if regionLabel}}
+                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ regionLabel }}</dd>
+{{/if}}
+{{#if not regionLabel}}
+                <dd class="text-slate-400">Not chosen</dd>
+{{/if}}
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Template</dt>
+                <dd class="text-slate-900 dark:text-slate-100 capitalize">{{ tpl }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Plan</dt>
+{{#if planLabel}}
+                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ planLabel }}</dd>
+{{/if}}
+{{#if not planLabel}}
+                <dd class="text-slate-400">Not chosen</dd>
+{{/if}}
+              </div>
+{{/if}}
+              <div>
+                <dt class="text-slate-500 text-xs">Name</dt>
+{{#if name}}
+                <dd class="text-slate-900 dark:text-slate-100 font-mono break-all">{{ name }}</dd>
+{{/if}}
+{{#if not name}}
+                <dd class="text-slate-400">Not entered</dd>
+{{/if}}
+              </div>
+            </dl>
+{{#if twoFactorOn}}
+            <p class="text-slate-500 text-xs mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">You'll be asked for a verification code before this is created.</p>
+{{/if}}
+          </div>
+        </aside>
+
       </div>
 
     </div>

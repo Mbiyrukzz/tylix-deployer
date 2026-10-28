@@ -7,11 +7,15 @@
  * The saved token is decrypted here, used against GitHub/GitLab, and never
  * returned. A connection on another team answers 404, not 403.
  * Any team member can browse repositories (the saved token stays server-side).
+ *
+ * Hardening: each lookup can fan out into up to 10 provider requests using
+ * the team's token, so lookups are rate limited per user.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "../services/CryptoService.js";
+import { createGuard } from "../services/RouteGuard.js";
 import { requireTeam, teamIdOfRow } from "../services/TeamScope.js";
 
 interface Row {
@@ -34,6 +38,8 @@ interface Repo {
 const PER_PAGE = 100;
 const MAX_PAGES = 10;
 const REPO = /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+){1,5}$/;
+
+const lookupGuard = createGuard({ max: 30, windowMs: 60_000, scope: "user", what: "repository lookups" });
 
 class ProviderError extends Error {
     constructor(
@@ -181,6 +187,7 @@ export class SourceRepositoryController {
     async repositories(req: TylixRequest, res: TylixResponse) {
         const row = await findOwned(req, res);
         if (!row) return;
+        if (!lookupGuard(req, res)) return;
 
         try {
             const repos = await listRepositories(row.kind, CryptoService.decrypt(row.token));
@@ -201,6 +208,8 @@ export class SourceRepositoryController {
             res.status(422);
             return res.json({ errors: { repo: ["Pick a repository."] } });
         }
+
+        if (!lookupGuard(req, res)) return;
 
         try {
             const branches = await listBranches(row.kind, CryptoService.decrypt(row.token), repo);

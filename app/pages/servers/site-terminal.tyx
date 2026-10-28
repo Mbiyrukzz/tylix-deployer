@@ -23,6 +23,11 @@ state
   phase: "idle"
   live: false
   error: ""
+  pendingCode: ""
+  codeError: ""
+  smsNote: ""
+  smsBusy: false
+  hasSms: false
   connectedAt: 0
   lastInputAt: 0
   ticker: null
@@ -214,6 +219,13 @@ action
     }
   }
 
+  focusCode() {
+    const el = document.getElementById("terminal-code")
+    if el {
+      el.focus()
+    }
+  }
+
   setExpanded(value) {
     this.expanded = value
     this.applyLayout()
@@ -243,6 +255,13 @@ action
   onKey(e) {
     if e.key is "Escape" {
       this.collapse()
+    }
+
+    if e.key is "Enter" and this.phase is "code" {
+      const target = e.target
+      if target and target.id is "terminal-code" {
+        this.submitCode()
+      }
     }
   }
 
@@ -347,6 +366,66 @@ action
     this.phase = "closed"
   }
 
+  askForCode(methods, message) {
+    this.clearTerminal()
+
+    if methods {
+      this.hasSms = methods.some((m) => ("" + m).toLowerCase().includes("sms"))
+    }
+
+    this.smsNote = ""
+    this.codeError = message
+    this.phase = "code"
+    window.setTimeout(() => this.focusCode(), 80)
+  }
+
+  submitCode() {
+    const el = document.getElementById("terminal-code")
+    const value = el ? ("" + Reflect.get(el, "value")).trim() : ""
+
+    if not value {
+      this.codeError = "Enter your verification code."
+      return null
+    }
+
+    this.pendingCode = value
+    this.codeError = ""
+    this.phase = "idle"
+    this.connect()
+  }
+
+  cancelCode() {
+    this.pendingCode = ""
+    this.codeError = ""
+    this.smsNote = ""
+    this.phase = "idle"
+  }
+
+  async sendSms() {
+    if this.smsBusy {
+      return null
+    }
+
+    this.smsBusy = true
+    this.codeError = ""
+    this.smsNote = ""
+
+    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
+    this.smsBusy = false
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      const hint = result.data?.phone_hint
+      this.smsNote = hint ? "Code sent to " + hint + "." : "Code sent."
+    } else {
+      this.codeError = result.data?.error or "Couldn't send the code."
+    }
+  }
+
   async connect() {
     if Billing.locked {
       return null
@@ -360,6 +439,7 @@ action
 
     const ready = await this.ensureXterm()
     if not ready {
+      this.pendingCode = ""
       this.phase = "idle"
       return null
     }
@@ -370,6 +450,7 @@ action
     const el = document.getElementById("terminal-host")
     if not el {
       this.error = "The terminal area isn't on the page yet. Reload and try again."
+      this.pendingCode = ""
       this.phase = "idle"
       return null
     }
@@ -416,9 +497,18 @@ action
     this.setGlobal("tylixTerm", term)
     this.setGlobal("tylixFit", fit)
 
+    // The code is used once: it is cleared before the request goes out.
+    const code = this.pendingCode
+    this.pendingCode = ""
+
+    const body = { cols: term.cols, rows: term.rows }
+    if code {
+      body.code = code
+    }
+
     const result = await useApi("/api/sites/" + this.siteId + "/terminal", {
       method: "POST",
-      body: { cols: term.cols, rows: term.rows }
+      body: body
     })
 
     if result.status is 401 {
@@ -426,7 +516,22 @@ action
       return null
     }
 
+    // Two-factor is on: ask for a code, then connect() runs again with it.
+    if result.status is 403 and result.data?.two_factor_required {
+      this.askForCode(result.data.methods, "")
+      return null
+    }
+
     if not result.ok {
+      const fieldErrors = result.data?.errors?.code
+      const fieldMessage = fieldErrors ? fieldErrors[0] : ""
+
+      // A wrong code or a lockout stays on the code prompt.
+      if code and (fieldMessage or result.status is 429) {
+        this.askForCode(null, fieldMessage or result.data?.error or "That code didn't work.")
+        return null
+      }
+
       this.error = result.data?.error or "Couldn't open a terminal."
       this.clearTerminal()
       this.phase = "idle"
@@ -579,6 +684,9 @@ template
 {{#if phase is "connecting"}}
                   <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
 {{/if}}
+{{#if phase is "code"}}
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+{{/if}}
 {{#if phase is "idle"}}
                   <span class="w-2.5 h-2.5 rounded-full bg-slate-600 shrink-0"></span>
 {{/if}}
@@ -591,6 +699,9 @@ template
 {{/if}}
 {{#if phase is "connecting"}}
                   <span class="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">Connecting</span>
+{{/if}}
+{{#if phase is "code"}}
+                  <span class="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">Verification needed</span>
 {{/if}}
 {{#if phase is "closed"}}
                   <span class="hidden sm:inline-flex items-center rounded-full bg-rose-500/10 text-rose-400 text-xs font-medium px-2.5 py-0.5">Disconnected</span>
@@ -677,6 +788,35 @@ template
                 </div>
 {{/if}}
 
+{{#if phase is "code"}}
+                <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
+                  <div class="w-full max-w-sm text-center">
+                    <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-amber-400">
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-6 h-6">
+                        <rect x="4" y="9" width="12" height="8" rx="2" />
+                        <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                      </svg>
+                    </div>
+                    <p class="text-slate-200 font-medium mb-1">Confirm it's you</p>
+                    <p class="text-slate-500 text-sm mb-5">Opening a shell for {{ site.domain }} needs a verification code from your authenticator app, a recovery code, or a text message.</p>
+                    <input id="terminal-code" type="text" autocomplete="one-time-code" maxlength="32" placeholder="Verification code" class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 text-center font-mono tracking-widest px-4 py-2.5 focus:outline-none focus:border-emerald-500/60" />
+{{#if codeError}}
+                    <p role="alert" class="text-rose-400 text-xs mt-2 break-words">{{ codeError }}</p>
+{{/if}}
+{{#if smsNote}}
+                    <p class="text-emerald-400 text-xs mt-2">{{ smsNote }}</p>
+{{/if}}
+                    <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
+                      <button onclick="{{ submitCode() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-emerald-400 transition-all">Verify and connect</button>
+                      <button onclick="{{ cancelCode() }}" class="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-full px-4 py-2 transition-colors">Cancel</button>
+                    </div>
+{{#if hasSms}}
+                    <button onclick="{{ sendSms() }}" class="text-xs text-emerald-400 hover:underline mt-4">Text me a code</button>
+{{/if}}
+                  </div>
+                </div>
+{{/if}}
+
 {{#if phase is "connecting"}}
                 <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
                   <div class="flex items-center gap-3">
@@ -717,6 +857,9 @@ template
 {{/if}}
 {{#if phase is "connecting"}}
                 <p class="text-slate-500 text-xs">Connecting…</p>
+{{/if}}
+{{#if phase is "code"}}
+                <p class="text-slate-500 text-xs">Waiting for your verification code</p>
 {{/if}}
 {{#if phase is "idle"}}
                 <p class="text-slate-500 text-xs">Not connected</p>

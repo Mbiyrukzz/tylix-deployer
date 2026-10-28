@@ -1,16 +1,26 @@
 /**
- * POST /api/sites/:id/terminal   body { cols, rows }
+ * POST /api/sites/:id/terminal   body { cols, rows, code? }
  *
  * Team-scoped and admin only (a site on another team answers 404; a plain
  * member answers 403). Returns a signed 30-second ticket; the shell itself
  * is opened by the "terminal" channel (services/Terminal.ts) when the
  * browser presents that ticket.
+ *
+ * Same gates as the server terminal:
+ *   - rate limited per user
+ *   - two-factor: with authenticator or SMS two-factor on, a valid code
+ *     (body.code) is required. Wrong codes are counted and lock the user
+ *     out (requireStepUp). It runs last, after every check that can refuse
+ *     the request, so a refused request never spends a code.
+ *   - every ticket issued is written to the server log
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { signTicket } from "../services/TerminalTicket.js";
+import { ServerLogService } from "../services/ServerLogService.js";
+import { createGuard, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { requireActive } from "../services/EntitlementService.js";
 
@@ -19,9 +29,12 @@ interface SiteRow {
     user_id: number;
     team_id: number | null;
     server_id: number;
+    domain?: string;
     status: string;
     [key: string]: unknown;
 }
+
+const terminalGuard = createGuard({ max: 20, windowMs: 60_000, scope: "user", what: "terminal requests" });
 
 const clamp = (value: unknown, min: number, max: number, fallback: number) => {
     const n = Number(value);
@@ -32,6 +45,7 @@ export class SiteTerminalController {
     async ticket(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
+        if (!terminalGuard(req, res)) return;
         if (!(await requireActive(res, teamId))) return;
 
         const site = (await Site.find(req.params.id)) as SiteRow | null;
@@ -58,6 +72,8 @@ export class SiteTerminalController {
         const cols = clamp(body.cols, 20, 300, 100);
         const rows = clamp(body.rows, 5, 100, 28);
 
+        // Signed before the second factor, so a misconfigured terminal (503)
+        // never spends a code.
         let ticket: string;
         try {
             ticket = signTicket(Number(req.user?.userId), site.id, cols, rows);
@@ -65,6 +81,18 @@ export class SiteTerminalController {
             res.status(503);
             return res.json({ error: "The terminal isn't configured. Set TERMINAL_SECRET in the deployer's .env." });
         }
+
+        // Last gate before the shell: second factor, if the caller has one on.
+        if (!(await requireStepUp(req, res, "open a terminal on this site"))) return;
+
+        await ServerLogService.record({
+            userId: Number(req.user?.userId),
+            teamId,
+            serverId: site.server_id,
+            event: "site.terminal_opened",
+            message: `A terminal was opened for ${site.domain ?? "a site"}.`,
+            meta: { site_id: site.id },
+        });
 
         // TERMINAL_URL: full ws(s) URL of the channel when it sits behind a proxy
         // (e.g. wss://deploy.example.com/channels/terminal). Empty in development.

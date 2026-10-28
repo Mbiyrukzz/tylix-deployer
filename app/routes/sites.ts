@@ -10,6 +10,10 @@
  *
  * Writes are refused with 402 while the team is view only (see write()),
  * and creating a site is checked against the team's plan limit.
+ *
+ * Hardening: creating a site is rate limited per team (it queues a job that
+ * runs commands on the server) and every created site is written to the
+ * server log.
  */
 
 import type { Router } from "@tylix/core";
@@ -17,6 +21,7 @@ import { dispatch } from "@tylix/core";
 import { Server } from "../models/Server.js";
 import { Site } from "../models/Site.js";
 import { SourceProvider } from "../models/SourceProvider.js";
+import { createGuard, audit } from "../services/RouteGuard.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 import { requireActive, requireWithin } from "../services/EntitlementService.js";
 
@@ -55,6 +60,8 @@ const USER = /^[a-z][a-z0-9_-]{0,31}$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const BRANCH = /^[A-Za-z0-9._\/-]{1,100}$/;
 const RESERVED_USERS = ["root", "www-data", "nginx", "ubuntu", "admin", "tylix", "mysql", "postgres", "redis"];
+
+const createGuardPerTeam = createGuard({ max: 20, windowMs: 60 * 60_000, scope: "team", what: "site creations" });
 
 function present(row: SiteRow) {
     let aliases: string[] = [];
@@ -226,6 +233,9 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 return res.json({ errors });
             }
 
+            // After every cheap refusal, before the row is created.
+            if (!createGuardPerTeam(req as any, res as any)) return;
+
             // Last check before the row is created. The row exists straight away
             // (status "pending"), so two quick requests can't both slip under the limit.
             if (!(await requireWithin(res as any, teamId, "sites"))) return;
@@ -252,6 +262,16 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             })) as SiteRow;
 
             await dispatch("CreateSite", { siteId: row.id });
+
+            await audit({
+                userId: Number(req.user?.userId),
+                teamId,
+                serverId: server.id,
+                event: "site.created",
+                level: "success",
+                message: `Site ${row.domain} was created.`,
+                meta: { site_id: row.id, type: row.type, repository: row.repository || null },
+            });
 
             res.status(202);
             return res.json(present(row));

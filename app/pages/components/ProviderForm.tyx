@@ -34,6 +34,15 @@ state
   clientSecretError: ""
   apiUserError: ""
   apiPasswordError: ""
+  twoFactorOn: false
+  tfTotp: false
+  tfSms: false
+  smsHint: ""
+  codeOpen: false
+  code: ""
+  codeError: ""
+  smsSending: false
+  smsNotice: ""
 
 action
   firstError(errors, field) {
@@ -69,6 +78,7 @@ action
     this.clientSecretError = ""
     this.apiUserError = ""
     this.apiPasswordError = ""
+    this.codeError = ""
   }
 
   reset() {
@@ -86,7 +96,93 @@ action
     this.apiPassword = ""
     this.tokenPlaceholder = ""
     this.saving = false
+    this.codeOpen = false
+    this.code = ""
+    this.codeError = ""
+    this.smsNotice = ""
+    this.smsSending = false
     this.clearErrors()
+  }
+
+  // True when any credential input has something typed in. Only then is a code needed.
+  hasCredentials() {
+    return this.apiToken.trim() is not "" or this.accessKeyId.trim() is not "" or this.secretKey.trim() is not "" or this.username.trim() is not "" or this.password.trim() is not "" or this.clientId.trim() is not "" or this.clientSecret.trim() is not "" or this.apiUser.trim() is not "" or this.apiPassword.trim() is not ""
+  }
+
+  // Which second factors this account has on.
+  async loadTwoFactor() {
+    const result = await useApi("/api/account")
+    if result.ok and result.data and result.data.two_factor {
+      const tf = result.data.two_factor
+      const sms = tf.sms
+      this.tfTotp = Boolean(tf.enabled)
+      this.tfSms = Boolean(sms and sms.enabled)
+      this.smsHint = (sms and sms.phone_hint) or ""
+      this.twoFactorOn = this.tfTotp or this.tfSms
+    }
+  }
+
+  async sendCode() {
+    if this.smsSending {
+      return null
+    }
+
+    this.smsSending = true
+    this.codeError = ""
+    this.smsNotice = ""
+
+    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
+
+    this.smsSending = false
+
+    if result.ok {
+      this.smsNotice = "Code sent to " + this.smsHint + "."
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else {
+      this.codeError = result.data?.error or "Couldn't send the code."
+    }
+  }
+
+  // Shows the code box. When SMS is the only method, the code is texted right away.
+  async openCodeStep() {
+    this.codeOpen = true
+    this.codeError = ""
+    this.smsNotice = ""
+
+    if this.tfSms and not this.tfTotp {
+      await this.sendCode()
+    }
+  }
+
+  // True when the form must NOT be sent yet (the code box was just opened,
+  // or the code is still empty).
+  async needsCode() {
+    if not this.provider or not this.hasCredentials() or not this.twoFactorOn {
+      return false
+    }
+
+    if not this.codeOpen {
+      await this.openCodeStep()
+      return true
+    }
+
+    if this.code.trim() is "" {
+      this.codeError = "Enter a verification code to continue."
+      return true
+    }
+
+    return false
+  }
+
+  // The server says a code is needed (status call failed or was stale).
+  applyTwoFactorRequired(data) {
+    const methods = data.methods or []
+    this.twoFactorOn = true
+    this.tfTotp = methods.includes("totp")
+    this.tfSms = methods.includes("sms")
+    this.codeOpen = true
+    this.codeError = data.error or "Enter a verification code to continue."
   }
 
   // The provider choices shown in create mode. Adding a provider = one more entry here.
@@ -153,7 +249,7 @@ action
     this.labelError = label
   }
 
-  open() {
+  async open() {
     this.reset()
     this.buildKinds()
     if this.provider {
@@ -172,6 +268,10 @@ action
     }
     this.syncMode()
     this.showModal = true
+
+    if this.provider {
+      await this.loadTwoFactor()
+    }
   }
 
   close() {
@@ -185,6 +285,12 @@ action
     }
 
     this.clearErrors()
+
+    const stop = await this.needsCode()
+    if stop {
+      return null
+    }
+
     this.saving = true
 
     // When editing, the existing connection's kind is sent. The server ignores
@@ -201,7 +307,8 @@ action
       client_id: this.clientId,
       client_secret: this.clientSecret,
       api_user: this.apiUser,
-      api_password: this.apiPassword
+      api_password: this.apiPassword,
+      code: this.code.trim()
     }
     const url = this.provider ? "/api/providers/" + this.provider.id : "/api/providers"
     const method = this.provider ? "PUT" : "POST"
@@ -213,6 +320,9 @@ action
       this.close()
     } else if result.status is 401 {
       window.location.href = "/login"
+    } else if result.status is 403 and result.data and result.data.two_factor_required {
+      this.applyTwoFactorRequired(result.data)
+      this.saving = false
     } else {
       const errors = result.data?.errors
       this.labelError = this.firstError(errors, "label")
@@ -225,8 +335,9 @@ action
       this.clientSecretError = this.firstError(errors, "client_secret")
       this.apiUserError = this.firstError(errors, "api_user")
       this.apiPasswordError = this.firstError(errors, "api_password")
+      this.codeError = this.firstError(errors, "code")
       this.error = result.data?.error or result.error or ""
-      if not this.labelError and not this.tokenError and not this.accessKeyError and not this.secretKeyError and not this.usernameError and not this.passwordError and not this.clientIdError and not this.clientSecretError and not this.apiUserError and not this.apiPasswordError and not this.error {
+      if not this.labelError and not this.tokenError and not this.accessKeyError and not this.secretKeyError and not this.usernameError and not this.passwordError and not this.clientIdError and not this.clientSecretError and not this.apiUserError and not this.apiPasswordError and not this.codeError and not this.error {
         this.error = "Couldn't save the connection. Try again."
       }
       this.saving = false
@@ -524,6 +635,43 @@ template
 
 {{#if provider}}
       <p class="text-slate-400 text-xs mt-3">The current credentials are stored encrypted and are never shown.</p>
+{{/if}}
+
+{{#if codeOpen}}
+      <div class="mt-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4">
+        <label for="step-up-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
+        <p class="text-slate-500 text-xs mb-2">Replacing credentials needs a second-factor code.</p>
+        <input
+          id="step-up-code"
+          type="text"
+          inputmode="text"
+          autocomplete="one-time-code"
+          maxlength="12"
+          value="{{ code }}"
+          oninput="{{ code = $event.target.value }}"
+          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        />
+{{#if tfTotp}}
+        <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
+{{/if}}
+{{#if not tfTotp}}
+        <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
+{{/if}}
+{{#if smsNotice}}
+        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+{{/if}}
+{{#if codeError}}
+        <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
+{{/if}}
+{{#if tfSms}}
+{{#if smsSending}}
+        <button disabled class="mt-3 text-xs text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 opacity-50">Sending…</button>
+{{/if}}
+{{#if not smsSending}}
+        <button onclick="{{ sendCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Text me a code</button>
+{{/if}}
+{{/if}}
+      </div>
 {{/if}}
 
 {{#if error}}
