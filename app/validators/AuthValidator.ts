@@ -6,12 +6,13 @@
  * Feature: Auth
  *
  * Do not edit this section.
+ *
+ * NOTE: hand-edited after generation (password rules moved to PasswordPolicy).
+ * Re-running the generator overwrites these edits.
  */
 
 import { validate, required, isString, isEmail } from "@tylix/shared";
-
-const MIN_PASSWORD_LENGTH = 8;
-const MAX_PASSWORD_LENGTH = 128;
+import { passwordProblem } from "./PasswordPolicy.js";
 
 type ValidationResult = ReturnType<typeof validate>;
 
@@ -37,8 +38,8 @@ const resetPasswordSchema = {
 };
 
 // Only for passwords being set (register, reset). Login must not enforce
-// it, so people with older, shorter passwords can still sign in.
-function enforcePasswordLength(
+// it, so people with older, weaker passwords can still sign in.
+function enforcePasswordPolicy(
     data: Record<string, unknown>,
     result: ValidationResult,
 ): ValidationResult {
@@ -49,12 +50,7 @@ function enforcePasswordLength(
         (result as unknown as { errors?: Record<string, string[]> }).errors ?? {};
     if (existing.password?.length) return result;
 
-    let message: string | null = null;
-    if (password.length < MIN_PASSWORD_LENGTH) {
-        message = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-    } else if (password.length > MAX_PASSWORD_LENGTH) {
-        message = `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`;
-    }
+    const message = passwordProblem(password, { email: data.email, name: data.name });
     if (!message) return result;
 
     return {
@@ -65,7 +61,7 @@ function enforcePasswordLength(
 }
 
 export function validateRegister(data: Record<string, unknown>) {
-    return enforcePasswordLength(data, validate(data, registerSchema));
+    return enforcePasswordPolicy(data, validate(data, registerSchema));
 }
 
 export function validateLogin(data: Record<string, unknown>) {
@@ -77,5 +73,5 @@ export function validateForgotPassword(data: Record<string, unknown>) {
 }
 
 export function validateResetPassword(data: Record<string, unknown>) {
-    return enforcePasswordLength(data, validate(data, resetPasswordSchema));
+    return enforcePasswordPolicy(data, validate(data, resetPasswordSchema));
 }

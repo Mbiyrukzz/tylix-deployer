@@ -9,6 +9,8 @@ state
   email: ""
   password: ""
   code: ""
+  showPassword: false
+  passwordType: "password"
   needsCode: false
   error: ""
   submitting: false
@@ -18,20 +20,73 @@ state
   smsNotice: ""
   codeHelp: ""
   sending: false
+  needsCaptcha: false
+  captchaToken: ""
 
 action
   setField(field, value) {
     this[field] = value
   }
 
+  setCode(value) {
+    this.code = value.trim()
+  }
+
+  setCaptchaToken(token) {
+    this.captchaToken = token
+  }
+
+  togglePassword() {
+    this.showPassword = not this.showPassword
+    if this.showPassword {
+      this.passwordType = "text"
+    } else {
+      this.passwordType = "password"
+    }
+  }
+
+   onKey(event) {
+    if event.key is "Enter" and event.target.tagName is "INPUT" {
+      this.submit()
+    }
+  }
+
+  requireCaptcha() {
+    if not this.needsCaptcha {
+      this.needsCaptcha = true
+      this.captchaToken = ""
+      authUi.mountCaptcha("login-captcha", (token) => this.setCaptchaToken(token), () => this.setCaptchaToken(""))
+    }
+  }
+
+  afterAttempt(result) {
+    const data = result?.data
+    if data?.captcha_required or data?.code is "CAPTCHA_REQUIRED" or data?.code is "CAPTCHA_INVALID" {
+      this.requireCaptcha()
+    }
+    if this.needsCaptcha {
+      this.captchaToken = ""
+      authUi.resetCaptcha("login-captcha")
+    }
+  }
+
   async callLogin(sendSms) {
     const code = sendSms ? "" : this.code
-    return Auth.login(this.email, this.password, code, sendSms)
+    return useApi("/api/login", {
+      method: "POST",
+      body: {
+        email: this.email,
+        password: this.password,
+        code: code,
+        send_sms: sendSms,
+        captcha_token: this.captchaToken
+      }
+    })
   }
 
   loginFailed(err) {
     console.error("login failed:", err)
-    return { ok: false, error: "Something went wrong. Please try again." }
+    return { ok: false, status: 0, data: null, error: "Something went wrong. Please try again." }
   }
 
   applyChallenge(data) {
@@ -71,12 +126,19 @@ action
       return null
     }
 
+    if this.needsCaptcha and not this.captchaToken {
+      this.error = "Please complete the verification challenge first."
+      return null
+    }
+
     this.sending = true
     this.error = ""
     this.smsNotice = ""
 
     const result = await this.callLogin(true).catch((err) => this.loginFailed(err))
-    const failCode = result?.data?.code or result?.code
+    const failCode = result?.data?.code
+
+    this.afterAttempt(result)
 
     if failCode is "TWO_FACTOR_REQUIRED" {
       this.applyChallenge(result.data)
@@ -97,6 +159,16 @@ action
       return null
     }
 
+    if not this.needsCode and (not this.email or not this.password) {
+      this.error = "Enter your email and password."
+      return null
+    }
+
+    if this.needsCaptcha and not this.captchaToken {
+      this.error = "Please complete the verification challenge."
+      return null
+    }
+
     this.submitting = true
     this.error = ""
 
@@ -107,7 +179,9 @@ action
       return null
     }
 
-    const failCode = result?.data?.code or result?.code
+    this.afterAttempt(result)
+
+    const failCode = result?.data?.code
 
     if failCode is "TWO_FACTOR_REQUIRED" {
       this.applyChallenge(result.data)
@@ -123,6 +197,11 @@ action
     }
 
     this.submitting = false
+  }
+
+onMount
+  async {
+    document.addEventListener("keydown", (event) => this.onKey(event))
   }
 
 template
@@ -188,7 +267,8 @@ template
 {{/if}}
 
 {{#if error}}
-          <div role="alert" aria-live="polite" class="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-6">
+          <div role="alert" aria-live="polite" class="flex items-start gap-3 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-6">
+            <span class="mt-0.5 text-rose-600 dark:text-rose-400 text-sm font-bold" aria-hidden="true">!</span>
             <p class="text-rose-700 dark:text-rose-400 text-sm">{{ error }}</p>
           </div>
 {{/if}}
@@ -218,16 +298,21 @@ template
             <label for="password" class="block text-slate-600 dark:text-slate-400 text-xs font-medium">Password</label>
             <a href="/forgot-password" class="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">Forgot password?</a>
           </div>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="••••••••"
-            value="{{ password }}"
-            oninput="{{ setField('password', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-6 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
-          />
+          <div class="relative mb-6">
+            <input
+              id="password"
+              name="password"
+              type="{{ passwordType }}"
+              autocomplete="current-password"
+              placeholder="••••••••"
+              value="{{ password }}"
+              oninput="{{ setField('password', event.target.value) }}"
+              class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl pl-4 pr-16 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            />
+            <button type="button" onclick="{{ togglePassword() }}" class="absolute inset-y-0 right-0 px-4 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+              {{#if showPassword}}Hide{{/if}}{{#if not showPassword}}Show{{/if}}
+            </button>
+          </div>
 {{/if}}
 
 {{#if needsCode}}
@@ -242,9 +327,14 @@ template
             maxlength="12"
             placeholder="123456"
             value="{{ code }}"
-            oninput="{{ setField('code', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-mono tracking-widest rounded-xl px-4 py-2.5 mb-6 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            oninput="{{ setCode(event.target.value) }}"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-mono text-center text-lg tracking-[0.4em] rounded-xl px-4 py-3 mb-6 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
           />
+{{/if}}
+
+{{#if needsCaptcha}}
+          <p class="text-slate-500 text-xs mb-2">A few failed attempts. Please confirm you're human.</p>
+          <div id="login-captcha" class="mb-6 min-h-[78px]"></div>
 {{/if}}
 
 {{#if submitting}}

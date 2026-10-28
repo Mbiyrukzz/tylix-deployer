@@ -15,7 +15,7 @@
     "@aws-sdk/client-ec2": "^3.1152.0",
     "@tylix/auth": "^0.5.0",
     "@tylix/cli": "^0.5.0",
-    "@tylix/compiler": "^0.5.0",
+    "@tylix/compiler": "^0.5.2",
     "@tylix/core": "^0.5.0",
     "@tylix/generator": "^0.5.0",
     "@tylix/mail": "^0.5.0",

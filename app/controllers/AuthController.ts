@@ -7,8 +7,9 @@
  *
  * Do not edit this section.
  *
- * NOTE: hand-edited after generation (register mail failure handling and a
- * reset-password rate limit). Re-running the generator overwrites these edits.
+ * NOTE: hand-edited after generation (register mail failure handling,
+ * reset-password rate limit, CAPTCHA, honeypot, breached-password check and
+ * progressive login CAPTCHA). Re-running the generator overwrites these edits.
  */
 
 import { createRateLimiter } from "@tylix/core";
@@ -35,6 +36,8 @@ import {
     validateResetPassword,
 } from "../validators/AuthValidator.js";
 import { TwoFactorService } from "../services/TwoFactorService.js";
+import { CaptchaService } from "../services/CaptchaService.js";
+import { PasswordBreachService } from "../services/PasswordBreachService.js";
 import { renderVerifyPage } from "../services/VerifyPage.js";
 
 // Taken from the mailer's own signature so it always matches.
@@ -57,6 +60,54 @@ const registerLimiter = createRateLimiter({ max: 20, windowMs: 60 * 60 * 1000 })
 const forgotIpLimiter = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
 const forgotEmailLimiter = createRateLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
 const resetIpLimiter = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
+
+// Progressive CAPTCHA on login: nothing is asked of honest users until an
+// email has 3 failures, or an IP has 10, inside the window.
+const CAPTCHA_AFTER_EMAIL_FAILURES = 3;
+const CAPTCHA_AFTER_IP_FAILURES = 10;
+const FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const failures = new Map<string, { count: number; resetAt: number }>();
+
+function failureCount(key: string): number {
+    const entry = failures.get(key);
+    if (!entry) return 0;
+    if (entry.resetAt <= Date.now()) {
+        failures.delete(key);
+        return 0;
+    }
+    return entry.count;
+}
+
+function bumpFailure(key: string): void {
+    if (failures.size > 5000) {
+        const now = Date.now();
+        for (const [k, v] of failures) if (v.resetAt <= now) failures.delete(k);
+    }
+    const entry = failures.get(key);
+    if (entry && entry.resetAt > Date.now()) {
+        entry.count += 1;
+    } else {
+        failures.set(key, { count: 1, resetAt: Date.now() + FAILURE_WINDOW_MS });
+    }
+}
+
+function loginNeedsCaptcha(email: string, ip: string): boolean {
+    return (
+        failureCount(`e:${email}`) >= CAPTCHA_AFTER_EMAIL_FAILURES ||
+        failureCount(`i:${ip}`) >= CAPTCHA_AFTER_IP_FAILURES
+    );
+}
+
+/** Records a failed login and tells the caller whether the next try needs a CAPTCHA. */
+function failedLogin(email: string, ip: string): boolean {
+    recordFailedLogin(email);
+    bumpFailure(`e:${email}`);
+    bumpFailure(`i:${ip}`);
+    return CaptchaService.enabled() && loginNeedsCaptcha(email, ip);
+}
+
+const BREACH_MESSAGE =
+    "That password has appeared in a known data breach. Please choose a different one.";
 
 // Emails are case-insensitive: always compare and store them trimmed and lowercased.
 function normalizeEmail(value: unknown): string {
@@ -85,10 +136,22 @@ export class AuthController {
     }
 
     async register(req: TylixRequest, res: TylixResponse) {
-        const limit = registerLimiter(clientIp(req));
+        const ip = clientIp(req);
+        const limit = registerLimiter(ip);
         if (!limit.allowed) {
             return res.status(429).json({
                 error: `Too many sign-ups from this address. Try again in ${limit.retryAfterSeconds} seconds.`,
+            });
+        }
+
+        // Honeypot: real people never see or fill this field. Bots that do get
+        // a normal-looking success and nothing is created.
+        const honeypot = req.body?.website;
+        if (typeof honeypot === "string" && honeypot.trim() !== "") {
+            return res.status(201).json({
+                user: null,
+                email_sent: true,
+                message: "Registration successful. Check your email to verify your account before logging in.",
             });
         }
 
@@ -97,9 +160,19 @@ export class AuthController {
             return res.status(422).json({ errors: result.errors });
         }
 
+        if (!(await CaptchaService.verify(req.body.captcha_token, ip))) {
+            return res.status(422).json({
+                errors: { captcha: ["Please complete the verification challenge and try again."] },
+            });
+        }
+
         const email = normalizeEmail(req.body.email);
         if (await User.findByEmail(email)) {
             return res.status(422).json({ errors: { email: ["This email is already registered."] } });
+        }
+
+        if (await PasswordBreachService.isBreached(req.body.password as string)) {
+            return res.status(422).json({ errors: { password: [BREACH_MESSAGE] } });
         }
 
         // Only these fields are accepted from the request. Passing req.body
@@ -145,6 +218,7 @@ export class AuthController {
             return res.status(422).json({ errors: result.errors });
         }
 
+        const ip = clientIp(req);
         const email = normalizeEmail(req.body.email);
         const { allowed, retryAfterSeconds } = checkLoginAllowed(email);
         if (!allowed) {
@@ -153,17 +227,41 @@ export class AuthController {
             });
         }
 
+        // The CAPTCHA gate sits BEFORE the password check, so it can't be
+        // skipped by guessing passwords while ignoring the challenge.
+        if (CaptchaService.enabled() && loginNeedsCaptcha(email, ip)) {
+            const token = req.body.captcha_token;
+            if (!token) {
+                return res.status(401).json({
+                    error: "Please complete the verification challenge.",
+                    code: "CAPTCHA_REQUIRED",
+                    captcha_required: true,
+                });
+            }
+            if (!(await CaptchaService.verify(token, ip))) {
+                return res.status(401).json({
+                    error: "Verification failed. Please try again.",
+                    code: "CAPTCHA_INVALID",
+                    captcha_required: true,
+                });
+            }
+        }
+
         const user = await User.findByEmail(email);
 
         if (!user) {
-            recordFailedLogin(email);
-            return res.status(401).json({ error: "Invalid email or password." });
+            return res.status(401).json({
+                error: "Invalid email or password.",
+                captcha_required: failedLogin(email, ip),
+            });
         }
 
         const passwordMatches = await verifyPassword(req.body.password as string, user.password);
         if (!passwordMatches) {
-            recordFailedLogin(email);
-            return res.status(401).json({ error: "Invalid email or password." });
+            return res.status(401).json({
+                error: "Invalid email or password.",
+                captcha_required: failedLogin(email, ip),
+            });
         }
 
         if (!User.isEmailVerified(user)) {
@@ -187,11 +285,15 @@ export class AuthController {
             });
         }
         if (tf.result === "invalid") {
-            recordFailedLogin(email);
-            return res.status(401).json({ error: "That code is incorrect.", code: "TWO_FACTOR_INVALID" });
+            return res.status(401).json({
+                error: "That code is incorrect.",
+                code: "TWO_FACTOR_INVALID",
+                captcha_required: failedLogin(email, ip),
+            });
         }
 
         clearLoginAttempts(email);
+        failures.delete(`e:${email}`);
 
         const accessToken = signToken({ userId: user.id }, this.secret, {
             expiresInSeconds: this.accessTokenTtlSeconds,
@@ -330,6 +432,10 @@ export class AuthController {
         const record = await PasswordReset.findValid(req.body.token as string, user.email);
         if (!record) {
             return res.status(400).json({ error: "Invalid or expired reset link." });
+        }
+
+        if (await PasswordBreachService.isBreached(req.body.password as string)) {
+            return res.status(422).json({ errors: { password: [BREACH_MESSAGE] } });
         }
 
         await User.updatePassword(user.id, req.body.password as string);
