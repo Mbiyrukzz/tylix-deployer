@@ -5,6 +5,13 @@
  * SSH through shellScript(), so $SUDO, as_user and `set -eu` are available.
  * Every script is idempotent, so a failed install can simply be retried.
  *
+ * Plugins never run Composer or npm and never edit a file that is tracked in
+ * the site's repository (composer.json, composer.lock, config/*, .gitignore),
+ * so a later git pull from the deployer can't conflict with them. A plugin
+ * that needs a PHP package expects it to be in the repository already, and
+ * stops with a clear message when it isn't. Plugins only write .env keys,
+ * systemd units, nginx snippets and untracked helper files.
+ *
  * Vars the installer provides: SITE_USER, SITE_ROOT, DOMAIN, PHP_VERSION,
  * APP_DIR, PORT, RPC_PORT, PLUGIN.
  *
@@ -47,42 +54,38 @@ export interface PluginDef {
     uninstall: (c: PluginContext) => string;
 }
 
+// Every site type the deployer can create (see SiteTypes.ts).
 const ALL = [
-    "tylix", "laravel", "php", "nodejs", "nextjs", "wordpress", "mern", "angular", "react", "static",
-    "fastapi", "django", "java",
+    "tylix", "laravel", "php", "nodejs", "nextjs", "nuxt", "wordpress",
+    "fastapi", "django", "java", "go", "ruby", "dotnet", "rust",
+    "mern", "angular", "vue", "static",
 ];
-const NGINX_SERVED = ["angular", "react", "static", "mern"];
+
+// Types whose files nginx serves itself (so asset caching rules are safe).
+const NGINX_SERVED = ["angular", "vue", "static", "mern"];
+
+// Every type that runs an app-<user> systemd service on a port.
+const NODE_TYPES = [
+    "tylix", "nodejs", "nextjs", "nuxt", "mern",
+    "fastapi", "django", "java", "go", "ruby", "dotnet", "rust",
+];
 
 // ---------------------------------------------------------------- helpers
 
-// composer_run: runs Composer as the site user with --no-scripts (Laravel's
-// post-update scripts like vendor:publish are not needed here and hide the real
-// error), hides the PHP deprecation spam from the distro Composer, and on
-// failure prints the last 40 meaningful lines to stderr.
+// LARAVEL_PREP: checks the checkout is a deployed Laravel app and defines
+// artisan(). It does not use Composer at all.
 const LARAVEL_PREP = `
 cd "$SITE_ROOT"
 [ -f artisan ] || { echo "There is no artisan file in $SITE_ROOT. Is this a Laravel app?" >&2; exit 1; }
 [ -f .env ] || { echo "There is no .env file yet. Deploy the site once (Deployment tab) so .env exists, then install the plugin." >&2; exit 1; }
+[ -d vendor ] || { echo "There is no vendor folder in $SITE_ROOT. Deploy the site once with dependencies installed, then install the plugin." >&2; exit 1; }
 PHP_BIN="$(command -v "php$PHP_VERSION")" || { echo "PHP $PHP_VERSION is not installed on this server." >&2; exit 1; }
-COMPOSER_BIN="$(command -v composer)" || { echo "Composer is not installed on this server." >&2; exit 1; }
-composer_run() {
-  CLOG="$(mktemp)"
-  if as_user "$PHP_BIN" -d error_reporting=22527 "$COMPOSER_BIN" "$@" --no-scripts >"$CLOG" 2>&1; then
-    grep -v '^Deprecation Notice:' "$CLOG" || true
-    rm -f "$CLOG"
-  else
-    grep -v '^Deprecation Notice:' "$CLOG" | tail -n 40 >&2 || true
-    rm -f "$CLOG"
-    return 1
-  fi
-}
 artisan() {
-  if [ "$1" = "package:discover" ]; then
-    as_user rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
-  fi
   as_user "$PHP_BIN" artisan "$@"
 }`;
 
+// set_env always writes the value; set_env_default only when the key is missing
+// (used for generated secrets, so a reinstall never rotates them).
 const SET_ENV = `
 set_env() {
   if grep -q "^$1=" .env; then
@@ -90,6 +93,11 @@ set_env() {
   else
     if [ -n "$(tail -c1 .env)" ]; then printf '\\n' | as_user tee -a .env >/dev/null; fi
     printf '%s=%s\\n' "$1" "$2" | as_user tee -a .env >/dev/null
+  fi
+}
+set_env_default() {
+  if ! grep -q "^$1=" .env; then
+    set_env "$1" "$2"
   fi
 }`;
 
@@ -193,36 +201,53 @@ const isHttps = (site: PluginSite) =>
 
 // --------------------------------------------------------------- Laravel
 
-const OCTANE_TRY = `'s#try_files $uri $uri/ /index.php?$query_string;#try_files $uri $uri/ @octane;#'`;
+// Older versions of this plugin rewrote the vhost's try_files line to point at
+// @octane. This puts the standard line back, so a site that was installed that
+// way is cleaned up on reinstall or removal.
 const OCTANE_UNDO = `'s#try_files $uri $uri/ @octane;#try_files $uri $uri/ /index.php?$query_string;#'`;
+
+const OCTANE_LEGACY_CLEANUP = `
+LEGACY_CONF="/etc/nginx/sites-available/$DOMAIN.conf"
+if [ -f "$LEGACY_CONF" ] && grep -qF '@octane' "$LEGACY_CONF"; then
+  $SUDO sed -i ${OCTANE_UNDO} "$LEGACY_CONF"
+  echo "Restored the standard try_files line left by an older Octane install"
+fi`;
 
 const octane: PluginDef = {
     id: "octane",
     name: "Laravel Octane",
     group: "Laravel",
-    description: "Keeps the app in memory with RoadRunner for much faster responses. nginx proxies to it instead of PHP-FPM.",
+    description: "Keeps the app in memory with RoadRunner for much faster responses. nginx proxies PHP requests to it instead of PHP-FPM.",
     types: ["laravel"],
     needsRepo: true,
     port: { start: 8000 },
     envKeys: "^OCTANE_",
     notes: [
-        "Adds laravel/octane and RoadRunner to composer.json and composer.lock on the server. Commit those to your repository, or the next git pull may conflict.",
+        "Needs laravel/octane, spiral/roadrunner-http and spiral/roadrunner-cli in your repository. Add them with composer require, commit, deploy the site, then install this plugin.",
+        "This plugin does not run Composer and does not change composer.json, composer.lock, config/ or .gitignore, so deploys from GitHub stay clean.",
+        "It sets OCTANE_SERVER in .env, downloads the RoadRunner binary (rr) into the site folder and hides rr and .rr.yaml from git.",
+        "nginx sends /index.php (where Laravel's try_files falls back to) to Octane through a snippet. The site's nginx config is not rewritten.",
         "The deployer reloads the Octane service after every deploy.",
     ],
     install: ({ port }) => `${LARAVEL_PREP}
-if ! grep -q '"laravel/octane"' composer.json || ! grep -q '"spiral/roadrunner-cli"' composer.json; then
-  echo "--- composer require laravel/octane (roadrunner-http ^3, roadrunner-cli ^2)"
-  composer_run require laravel/octane "spiral/roadrunner-http:^3.3" "spiral/roadrunner-cli:^2.6" --no-interaction --with-all-dependencies
-  echo "NOTE: composer.json and composer.lock changed on the server. Commit them to your repository."
-fi
-echo "--- package:discover"
-artisan package:discover
-echo "--- octane:install"
-artisan octane:install --server=roadrunner --no-interaction
+${SET_ENV}
+for PKG in laravel/octane spiral/roadrunner-http spiral/roadrunner-cli; do
+  [ -d "vendor/$PKG" ] || { echo "$PKG is not in this site's vendor folder. Add laravel/octane, spiral/roadrunner-http and spiral/roadrunner-cli to your repository (composer require), commit them, deploy the site, then install this plugin." >&2; exit 1; }
+done
+echo "--- .env"
+set_env OCTANE_SERVER roadrunner
+echo "--- RoadRunner binary"
 if [ ! -x ./rr ]; then
   as_user ./vendor/bin/rr get-binary --no-interaction || true
 fi
 [ -x ./rr ] || { echo "The RoadRunner binary (./rr) was not downloaded. Run ./vendor/bin/rr get-binary in the site folder, then retry." >&2; exit 1; }
+if [ -d .git ]; then
+  EXCL=".git/info/exclude"
+  for F in /rr /.rr.yaml; do
+    grep -qxF "$F" "$EXCL" 2>/dev/null || printf '%s\\n' "$F" | as_user tee -a "$EXCL" >/dev/null
+  done
+fi
+[ ! -f bootstrap/cache/config.php ] || artisan config:clear
 echo "--- service"
 ${unitScript({
     unit: "octane-$SITE_USER",
@@ -232,34 +257,18 @@ ${unitScript({
     reload: "$PHP_BIN artisan octane:reload",
 })}
 echo "--- nginx"
+${OCTANE_LEGACY_CLEANUP}
 ${NGINX_GUARD}
-if grep -qF 'try_files $uri $uri/ /index.php?$query_string;' "$CONF"; then
-  $SUDO sed -i ${OCTANE_TRY} "$CONF"
-elif ! grep -qF '@octane' "$CONF"; then
-  echo "The nginx config doesn't contain the standard Laravel try_files line, so it was not changed." >&2
-  exit 1
-fi
 ${writeSnippet(`location = /index.php {
-    try_files /not_exists @octane;
-}
-
-location @octane {
-    set $suffix "";
-    if ($uri = /index.php) {
-        set $suffix ?$query_string;
-    }
     ${WS_HEADERS}
-    proxy_pass http://127.0.0.1:${port}$suffix;
+    proxy_pass http://127.0.0.1:${port}$request_uri;
 }`)}
-${testReload(`  $SUDO sed -i ${OCTANE_UNDO} "$CONF"`)}`,
+${testReload()}`,
     uninstall: () => `
-CONF="/etc/nginx/sites-available/$DOMAIN.conf"
-if [ -f "$CONF" ]; then
-  $SUDO sed -i ${OCTANE_UNDO} "$CONF"
-fi
+${OCTANE_LEGACY_CLEANUP}
 ${removeSnippet()}
 ${removeUnit("octane-$SITE_USER")}
-echo "Octane removed. The laravel/octane package is still in composer.json; remove it from your repository if you no longer want it."`,
+echo "Octane removed. The OCTANE_SERVER key in .env and the packages in your repository are untouched."`,
 };
 
 const reverb: PluginDef = {
@@ -272,27 +281,31 @@ const reverb: PluginDef = {
     port: { start: 8080 },
     envKeys: "^(BROADCAST_CONNECTION|REVERB_|VITE_REVERB_)",
     notes: [
-        "Needs Laravel 11 or newer. Adds laravel/reverb to composer.json and composer.lock on the server (and may touch package.json). Commit those changes.",
-        "The REVERB_* values are written to the server .env and copied into the saved Deployment env, so a redeploy does not wipe them.",
+        "Needs Laravel 11 or newer and laravel/reverb in your repository. Add it with composer require laravel/reverb, commit, deploy the site, then install this plugin.",
+        "This plugin does not run Composer and does not change any file in your repository. It only writes the REVERB_* keys to .env, a systemd service and an nginx location, so deploys from GitHub stay clean.",
+        "The app id, key and secret are generated once and kept on reinstall. The REVERB_* values are copied into the saved Deployment env, so a redeploy does not wipe them.",
+        "nginx sends /app/ and /apps/ to Reverb. A route in your own app that starts with /app/ or /apps/ would stop working.",
         "Your front end still needs laravel-echo and pusher-js, and a rebuild after the keys exist.",
     ],
     install: ({ site, port }) => `${LARAVEL_PREP}
 ${SET_ENV}
-if ! grep -q '"laravel/reverb"' composer.json; then
-  echo "--- composer require laravel/reverb"
-  composer_run require laravel/reverb --no-interaction --with-all-dependencies
-  echo "NOTE: composer.json and composer.lock changed on the server. Commit them to your repository."
-fi
-echo "--- package:discover"
-artisan package:discover
-echo "--- reverb:install"
-artisan reverb:install --no-interaction
+[ -d vendor/laravel/reverb ] || { echo "laravel/reverb is not in this site's vendor folder. Add it to your repository (composer require laravel/reverb), commit it, deploy the site, then install this plugin." >&2; exit 1; }
+command -v openssl >/dev/null 2>&1 || { echo "openssl is not installed on this server." >&2; exit 1; }
+echo "--- .env"
 set_env BROADCAST_CONNECTION reverb
+set_env_default REVERB_APP_ID "$(shuf -i 100000-999999 -n 1)"
+set_env_default REVERB_APP_KEY "$(openssl rand -hex 10)"
+set_env_default REVERB_APP_SECRET "$(openssl rand -hex 16)"
 set_env REVERB_HOST "$DOMAIN"
 set_env REVERB_PORT ${isHttps(site) ? "443" : "80"}
 set_env REVERB_SCHEME ${isHttps(site) ? "https" : "http"}
 set_env REVERB_SERVER_HOST 127.0.0.1
 set_env REVERB_SERVER_PORT "$PORT"
+set_env VITE_REVERB_APP_KEY '"\${REVERB_APP_KEY}"'
+set_env VITE_REVERB_HOST '"\${REVERB_HOST}"'
+set_env VITE_REVERB_PORT '"\${REVERB_PORT}"'
+set_env VITE_REVERB_SCHEME '"\${REVERB_SCHEME}"'
+[ ! -f bootstrap/cache/config.php ] || artisan config:clear
 echo "--- service"
 ${unitScript({
     unit: "reverb-$SITE_USER",
@@ -317,7 +330,7 @@ ${testReload()}`,
     uninstall: () => `
 ${removeSnippet()}
 ${removeUnit("reverb-$SITE_USER")}
-echo "Reverb removed. The laravel/reverb package and the REVERB_* env values are still there; remove them if you no longer want them."`,
+echo "Reverb removed. The REVERB_* keys in .env and the laravel/reverb package in your repository are untouched."`,
 };
 
 // ----------------------------------------------------------------- Tylix
@@ -384,7 +397,10 @@ const securityHeaders: PluginDef = {
     description: "Adds X-Content-Type-Options, X-Frame-Options and Referrer-Policy to every response.",
     types: ALL,
     needsRepo: false,
-    notes: ["HSTS is not included. Turn it on separately once HTTPS is working and you are sure you want it."],
+    notes: [
+        "HSTS is not included. Turn it on separately once HTTPS is working and you are sure you want it.",
+        "nginx drops these headers on any location that sets its own add_header (for example the Asset caching plugin). If your app already sends the same headers, visitors get them twice.",
+    ],
     install: () => `${NGINX_GUARD}
 ${writeSnippet(`add_header X-Content-Type-Options "nosniff" always;
 add_header X-Frame-Options "SAMEORIGIN" always;
@@ -419,7 +435,10 @@ const assetCache: PluginDef = {
     description: "Tells browsers to cache CSS, JS, fonts and images for 30 days.",
     types: NGINX_SERVED,
     needsRepo: false,
-    notes: ["Only enable this if your build output uses hashed file names, otherwise visitors can see stale files after a deploy."],
+    notes: [
+        "Only enable this if your build output uses hashed file names, otherwise visitors can see stale files after a deploy.",
+        "Cached files do not get the Security headers plugin's headers (nginx does not inherit them into a location that has its own add_header).",
+    ],
     install: () => `${NGINX_GUARD}
 ${writeSnippet(`location ~* ^/(?!api/).+\\.(?:css|js|mjs|map|woff2?|ttf|otf|svg|png|jpe?g|gif|webp|avif|ico)$ {
     try_files $uri =404;
@@ -432,9 +451,6 @@ ${testReload()}`,
 };
 
 // ---------------------------------------------------------------- more plugins
-
-// Every type that runs an app-<user> service on a port.
-const NODE_TYPES = ["nodejs", "nextjs", "tylix", "mern", "fastapi", "django", "java"];
 
 const scheduler: PluginDef = {
     id: "scheduler",
@@ -521,6 +537,29 @@ ${testReload()}`,
     uninstall: () => removeSnippet(),
 };
 
+const nuxtStatic: PluginDef = {
+    id: "nuxt-static",
+    name: "Static asset caching",
+    group: "Nuxt",
+    description: "Serves /_nuxt/ with a one-year immutable cache header. Nuxt hashes these file names, so it is safe.",
+    types: ["nuxt"],
+    needsRepo: false,
+    notes: [],
+    install: ({ site }) => `${NGINX_GUARD}
+${writeSnippet(`location ^~ /_nuxt/ {
+    proxy_pass http://127.0.0.1:${Number(site.port)};
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    expires 365d;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}`)}
+${testReload()}`,
+    uninstall: () => removeSnippet(),
+};
+
 const wwwRedirect: PluginDef = {
     id: "www-redirect",
     name: "Redirect www to non-www",
@@ -563,7 +602,7 @@ ${testReload()}`,
 export const CATALOG: PluginDef[] = [
     octane, reverb, scheduler,
     tylixQueue,
-    resourceLimits, nextStatic,
+    resourceLimits, nextStatic, nuxtStatic,
     compression, securityHeaders, rateLimit, assetCache, wwwRedirect, maintenance,
 ];
 

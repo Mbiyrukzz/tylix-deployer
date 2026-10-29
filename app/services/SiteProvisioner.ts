@@ -29,7 +29,7 @@ import { Server } from "../models/Server.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
-import { getType, isPhp, isAppRuntime } from "./SiteTypes.js";
+import { getType, isPhp, isAppRuntime, isSpa } from "./SiteTypes.js";
 import { serverTarget } from "./Shell.js";
 import { teamIdOfRow } from "./TeamScope.js";
 
@@ -232,7 +232,7 @@ function vhost(site: SiteRow, aliases: string[]): string {
     }
 
     // static: angular is a single-page app, so unknown paths fall back to index.html
-    const fallback = site.type === "angular" ? "/index.html" : "=404";
+    const fallback = isSpa(site.type) ? "/index.html" : "=404";
     return (
         head +
         `
@@ -522,7 +522,9 @@ fi`,
         // so the unit is enabled but not started; the first deploy builds the app
         // and starts it.
         const startNow = runtime === "node" || runtime === "mern";
-        const extraUnit = UNIT_ENV[runtime] ?? "";
+        const extraUnit = [UNIT_ENV[runtime] ?? "", site.type === "nuxt" ? "EnvironmentFile=-$WORK/.env" : ""]
+            .filter(Boolean)
+            .join("\n");
 
         const afterEnable = startNow
             ? `$SUDO systemctl restart "$UNIT"

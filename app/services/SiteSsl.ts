@@ -23,7 +23,7 @@
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { sshExec } from "./Ssh.js";
-import { getType } from "./SiteTypes.js";
+import { getType, isSpa, isAppRuntime } from "./SiteTypes.js";
 import { shellScript, serverTarget } from "./Shell.js";
 import { SitePlugin } from "../models/SitePlugin.js";
 import { teamIdOfRow } from "./TeamScope.js";
@@ -89,6 +89,10 @@ const PROXY_HEADERS = (port: number) => `proxy_pass http://127.0.0.1:${port};
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;`;
 
+/**
+ * The location blocks must match what SiteProvisioner writes for the same
+ * type, otherwise turning HTTPS on changes how the site is served.
+ */
 function locations(site: SslRow): string {
     const runtime = getType(site.type)?.runtime ?? "static";
 
@@ -105,13 +109,6 @@ function locations(site: SslRow): string {
     }`;
     }
 
-    if (runtime === "node") {
-        return `
-    location / {
-        ${PROXY_HEADERS(Number(site.port))}
-    }`;
-    }
-
     if (runtime === "mern") {
         return `
     location /api/ {
@@ -123,7 +120,29 @@ function locations(site: SslRow): string {
     }`;
     }
 
-    const fallback = site.type === "angular" ? "/index.html" : "=404";
+    // Every other runtime that runs one process on a port: node, python, java,
+    // go, ruby, dotnet, rust.
+    if (isAppRuntime(runtime)) {
+        // Django collects static files into web_directory (STATIC_ROOT); nginx serves them directly.
+        const statics =
+            site.type === "django" && s(site.web_directory) !== ""
+                ? `
+    location /static/ {
+        alias __DOC_ROOT__/;
+        expires 30d;
+        access_log off;
+    }
+`
+                : "";
+
+        return `${statics}
+    location / {
+        ${PROXY_HEADERS(Number(site.port))}
+    }`;
+    }
+
+    // static: angular and vue are single-page apps, so unknown paths fall back to index.html
+    const fallback = isSpa(site.type) ? "/index.html" : "=404";
     return `
     location / {
         try_files $uri $uri/ ${fallback};

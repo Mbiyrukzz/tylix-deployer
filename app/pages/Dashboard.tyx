@@ -527,53 +527,122 @@ template
 
     <Sidebar active="overview" />
 
-    <div class="min-w-0 px-6 lg:px-10 py-10">
+    <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
     <div class="max-w-7xl mx-auto">
 
       <LockedBanner />
 
-      <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
-        <div class="min-w-0">
-          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">{{ todayText }}</p>
-          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ greeting }}, {{ Auth.user.name }}</h1>
-        </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <a href="/registrars" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
-            My domains
-          </a>
-          <a href="/providers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
-            Cloud providers
-          </a>
+      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-8 sm:py-10 mb-6">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
+
+        <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 lg:items-center">
+
+          <div class="min-w-0">
+            <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
+              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="truncate">{{ todayText }}</span>
+            </span>
+
+            <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900 dark:text-slate-100 mb-4 break-words">
+              {{ greeting }},
+              <br class="hidden sm:block" />
+              <span class="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">{{ Auth.user.name }}</span>
+            </h1>
+
+            <div class="inline-flex items-center gap-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 backdrop-blur px-3.5 py-1.5 mb-6">
+{{#if healthState is "ok"}}
+              <span class="w-2 h-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
+{{/if}}
+{{#if healthState is "warn"}}
+              <span class="w-2 h-2 shrink-0 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"></span>
+{{/if}}
+{{#if healthState is "empty"}}
+              <span class="w-2 h-2 shrink-0 rounded-full bg-slate-400 shadow-[0_0_0_4px_rgba(148,163,184,0.15)]"></span>
+{{/if}}
+              <span class="text-slate-700 dark:text-slate-300 text-sm font-medium">{{ healthText }}</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <a href="/registrars" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
+                My domains
+              </a>
+              <a href="/providers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
+                Cloud providers
+              </a>
 {{#if Billing.locked}}
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            New server
-          </button>
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            New site
-          </button>
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                New server
+              </button>
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                New site
+              </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <a href="/servers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
-            New server
-          </a>
-          <a href="{{ newSiteHref }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
-            New site
-          </a>
+              <a href="/servers" class="inline-flex text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
+                New server
+              </a>
+              <a href="{{ newSiteHref }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+                New site
+              </a>
 {{/if}}
+            </div>
+          </div>
+
+          <div class="min-w-0 lg:w-80 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/70 backdrop-blur overflow-hidden shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 dark:border-slate-800">
+              <span class="w-2 h-2 rounded-full bg-rose-400/80"></span>
+              <span class="w-2 h-2 rounded-full bg-amber-400/80"></span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400/80"></span>
+            </div>
+            <div class="px-4 py-4">
+              <p class="text-sm font-mono text-slate-800 dark:text-slate-200 truncate mb-4">$ fleet --status</p>
+              <div class="flex items-center gap-5">
+                <div class="relative w-28 h-28 shrink-0">
+                  <svg viewBox="0 0 100 100" class="w-28 h-28">
+                    <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
+                    <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="{{ sOnDash }}" stroke-dashoffset="{{ sOnOff }}" transform="rotate(-90 50 50)" />
+                    <circle cx="50" cy="50" r="36" fill="none" stroke="#f43f5e" stroke-width="10" stroke-dasharray="{{ sOffDash }}" stroke-dashoffset="{{ sOffOff }}" transform="rotate(-90 50 50)" />
+                    <circle cx="50" cy="50" r="36" fill="none" stroke="#f59e0b" stroke-width="10" stroke-dasharray="{{ sPenDash }}" stroke-dashoffset="{{ sPenOff }}" transform="rotate(-90 50 50)" />
+                  </svg>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ totalServers }}</span>
+                    <span class="text-[10px] font-medium uppercase tracking-wider text-slate-500">servers</span>
+                  </div>
+                </div>
+
+                <div class="min-w-0 flex-1 space-y-2">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Online</span>
+                    <span class="font-mono text-slate-900 dark:text-slate-100">{{ onlineCount }}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Offline</span>
+                    <span class="font-mono text-slate-900 dark:text-slate-100">{{ offlineCount }}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Untested</span>
+                    <span class="font-mono text-slate-900 dark:text-slate-100">{{ pendingCount }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
 {{#if hasAttention}}
-      <div class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-5 mb-6">
-        <div class="flex items-center justify-between mb-3">
+      <div class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-4 sm:p-5 mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 class="inline-flex items-center gap-2 text-amber-800 dark:text-amber-400 font-semibold">
             <IconExclamationTriangle class="w-4 h-4" /> Needs attention
           </h2>
@@ -590,408 +659,169 @@ template
       </div>
 {{/if}}
 
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
 
-        <div class="md:col-span-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <div class="flex items-center gap-6">
-            <div class="relative w-28 h-28 shrink-0">
-              <svg viewBox="0 0 100 100" class="w-28 h-28">
-                <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
-                <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="{{ sOnDash }}" stroke-dashoffset="{{ sOnOff }}" transform="rotate(-90 50 50)" />
-                <circle cx="50" cy="50" r="36" fill="none" stroke="#f43f5e" stroke-width="10" stroke-dasharray="{{ sOffDash }}" stroke-dashoffset="{{ sOffOff }}" transform="rotate(-90 50 50)" />
-                <circle cx="50" cy="50" r="36" fill="none" stroke="#f59e0b" stroke-width="10" stroke-dasharray="{{ sPenDash }}" stroke-dashoffset="{{ sPenOff }}" transform="rotate(-90 50 50)" />
-              </svg>
-              <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ totalServers }}</span>
-                <span class="text-[10px] font-medium uppercase tracking-wider text-slate-500">servers</span>
-              </div>
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2.5 mb-3">
-{{#if healthState is "ok"}}
-                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
-{{/if}}
-{{#if healthState is "warn"}}
-                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"></span>
-{{/if}}
-{{#if healthState is "empty"}}
-                <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-slate-400 shadow-[0_0_0_4px_rgba(148,163,184,0.15)]"></span>
-{{/if}}
-                <p class="text-slate-900 dark:text-slate-100 font-semibold leading-tight truncate">{{ healthText }}</p>
-              </div>
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between text-xs">
-                  <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Online</span>
-                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ onlineCount }}</span>
-                </div>
-                <div class="flex items-center justify-between text-xs">
-                  <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Offline</span>
-                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ offlineCount }}</span>
-                </div>
-                <div class="flex items-center justify-between text-xs">
-                  <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Untested</span>
-                  <span class="font-mono text-slate-900 dark:text-slate-100">{{ pendingCount }}</span>
-                </div>
-              </div>
-            </div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+              <IconFolder class="w-4 h-4" />
+            </span>
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Sites</p>
           </div>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Sites</p>
-            <IconFolder class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+          <div class="flex items-baseline gap-2">
+            <p class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ siteCount }}</p>
+            <p class="text-slate-500 text-xs">{{ readyCount }} live</p>
           </div>
-          <p class="text-4xl font-bold text-slate-900 dark:text-slate-100">{{ siteCount }}</p>
-          <p class="text-slate-500 text-xs mt-1 mb-4">{{ readyCount }} live</p>
 {{#if siteCount is not 0}}
-          <div class="flex h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mb-3">
+          <div class="flex h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mt-4 mb-3">
             <div class="h-full bg-emerald-500 transition-all" style="{{ readyStyle }}"></div>
             <div class="h-full bg-amber-500 transition-all" style="{{ buildStyle }}"></div>
             <div class="h-full bg-rose-500 transition-all" style="{{ failStyle }}"></div>
           </div>
 {{/if}}
 {{#if siteCount is 0}}
-          <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800 mb-3"></div>
+          <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800 mt-4 mb-3"></div>
 {{/if}}
-          <div class="space-y-1 text-xs text-slate-500">
-            <p><span class="text-amber-600 dark:text-amber-500 font-medium">{{ buildingCount }}</span> building</p>
-            <p><span class="text-rose-600 dark:text-rose-500 font-medium">{{ failedCount }}</span> failed</p>
+          <div class="flex items-center gap-4 text-xs text-slate-500">
+            <p><span class="text-amber-600 dark:text-amber-500 font-semibold">{{ buildingCount }}</span> building</p>
+            <p><span class="text-rose-600 dark:text-rose-500 font-semibold">{{ failedCount }}</span> failed</p>
           </div>
         </div>
 
-{{#if Mail.available}}
-        <a href="/dashboard/mail" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Mail</p>
-            <IconMail class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
-          </div>
-          <p class="text-4xl font-bold text-slate-900 dark:text-slate-100">{{ Mail.unread }}</p>
-          <p class="text-slate-500 text-xs mt-3">Unread messages</p>
-        </a>
-{{/if}}
-{{#if not Mail.available}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Account</p>
-            <IconUser class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
-          </div>
-          <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ Auth.user.email }}</p>
-          <p class="text-slate-500 text-xs mt-3">Signed in</p>
-        </div>
-{{/if}}
-      </div>
-
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-
-        <a href="/providers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="flex items-center justify-between mb-1">
-            <p class="text-slate-500 text-xs">Cloud providers</p>
-            <IconCloud class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
-          </div>
-{{#if cloudReady}}
-          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ providerCount }}</p>
-{{/if}}
-{{#if not cloudReady}}
-          <p class="text-slate-400 text-2xl font-semibold">-</p>
-{{/if}}
-          <p class="text-slate-500 text-xs mt-0.5">{{ totalServers }} servers connected</p>
-        </a>
-
-        <a href="/registrars" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="flex items-center justify-between mb-1">
-            <p class="text-slate-500 text-xs">Registrars</p>
-            <IconCube class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+        <a href="/registrars" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <circle cx="10" cy="10" r="7.5" />
+                  <path d="M2.5 10h15M10 2.5c2.2 2.2 3.2 4.7 3.2 7.5S12.2 15.3 10 17.5C7.8 15.3 6.8 12.8 6.8 10S7.8 4.7 10 2.5z" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">My domains</p>
+            </div>
+            <span class="text-slate-300 dark:text-slate-700 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
           </div>
 {{#if domainsReady}}
-          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ registrarCount }}</p>
+          <p class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ domainCount }}</p>
 {{/if}}
 {{#if not domainsReady}}
-          <p class="text-slate-400 text-2xl font-semibold">-</p>
-{{/if}}
-          <p class="text-slate-500 text-xs mt-0.5">Domain providers connected</p>
-        </a>
-
-        <a href="/registrars" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="flex items-center justify-between mb-1">
-            <p class="text-slate-500 text-xs">My domains</p>
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-              <circle cx="10" cy="10" r="7.5" />
-              <path d="M2.5 10h15M10 2.5c2.2 2.2 3.2 4.7 3.2 7.5S12.2 15.3 10 17.5C7.8 15.3 6.8 12.8 6.8 10S7.8 4.7 10 2.5z" stroke-linejoin="round" />
-            </svg>
-          </div>
-{{#if domainsReady}}
-          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ domainCount }}</p>
-{{/if}}
-{{#if not domainsReady}}
-          <p class="text-slate-400 text-2xl font-semibold">-</p>
+          <p class="text-4xl font-bold tracking-tight text-slate-300 dark:text-slate-700">-</p>
 {{/if}}
 {{#if expiredCount is not 0}}
-          <p class="text-rose-600 dark:text-rose-500 text-xs mt-0.5">{{ expiredCount }} expired · {{ expiringCount }} expiring soon</p>
+          <p class="text-rose-600 dark:text-rose-500 text-xs mt-4">{{ expiredCount }} expired · {{ expiringCount }} expiring soon</p>
 {{/if}}
 {{#if expiredCount is 0}}
 {{#if expiringCount is not 0}}
-          <p class="text-amber-600 dark:text-amber-500 text-xs mt-0.5">{{ expiringCount }} expiring within 30 days</p>
+          <p class="text-amber-600 dark:text-amber-500 text-xs mt-4">{{ expiringCount }} expiring within 30 days</p>
 {{/if}}
 {{#if expiringCount is 0}}
-          <p class="text-slate-500 text-xs mt-0.5">None expiring within 30 days</p>
+          <p class="text-slate-500 text-xs mt-4">None expiring within 30 days</p>
 {{/if}}
 {{/if}}
         </a>
 
-        <a href="/team" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="flex items-center justify-between mb-1">
-            <p class="text-slate-500 text-xs">Team members</p>
-            <IconUser class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+{{#if Mail.available}}
+        <a href="/dashboard/mail" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+                <IconMail class="w-4 h-4" />
+              </span>
+              <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Mail</p>
+            </div>
+            <span class="text-slate-300 dark:text-slate-700 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
+          </div>
+          <p class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ Mail.unread }}</p>
+          <p class="text-slate-500 text-xs mt-4">Unread messages</p>
+        </a>
+{{/if}}
+{{#if not Mail.available}}
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+              <IconUser class="w-4 h-4" />
+            </span>
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Account</p>
+          </div>
+          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold truncate">{{ Auth.user.email }}</p>
+          <p class="text-slate-500 text-xs mt-4">Signed in</p>
+        </div>
+{{/if}}
+
+        <a href="/providers" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+                <IconCloud class="w-4 h-4" />
+              </span>
+              <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Cloud providers</p>
+            </div>
+            <span class="text-slate-300 dark:text-slate-700 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
+          </div>
+{{#if cloudReady}}
+          <p class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ providerCount }}</p>
+{{/if}}
+{{#if not cloudReady}}
+          <p class="text-4xl font-bold tracking-tight text-slate-300 dark:text-slate-700">-</p>
+{{/if}}
+          <p class="text-slate-500 text-xs mt-4">{{ totalServers }} servers connected</p>
+        </a>
+
+        <a href="/registrars" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+                <IconCube class="w-4 h-4" />
+              </span>
+              <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Registrars</p>
+            </div>
+            <span class="text-slate-300 dark:text-slate-700 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
+          </div>
+{{#if domainsReady}}
+          <p class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ registrarCount }}</p>
+{{/if}}
+{{#if not domainsReady}}
+          <p class="text-4xl font-bold tracking-tight text-slate-300 dark:text-slate-700">-</p>
+{{/if}}
+          <p class="text-slate-500 text-xs mt-4">Domain providers connected</p>
+        </a>
+
+        <a href="/team" class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+                <IconUser class="w-4 h-4" />
+              </span>
+              <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Team members</p>
+            </div>
+            <span class="text-slate-300 dark:text-slate-700 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
           </div>
 {{#if teamReady}}
-          <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ teamCount }}</p>
+          <p class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ teamCount }}</p>
 {{/if}}
 {{#if not teamReady}}
-          <p class="text-slate-400 text-2xl font-semibold">-</p>
+          <p class="text-4xl font-bold tracking-tight text-slate-300 dark:text-slate-700">-</p>
 {{/if}}
-          <p class="text-slate-500 text-xs mt-0.5">{{ teamStaff }} owner or admin</p>
+          <p class="text-slate-500 text-xs mt-4">{{ teamStaff }} owner or admin</p>
         </a>
       </div>
 
-{{#if Insights.loaded}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden mb-8">
-        <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-          <div class="min-w-0">
-            <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Fleet insights</h2>
-            <p class="text-slate-500 text-xs mt-0.5 truncate">{{ Insights.headline }}</p>
-          </div>
-{{#if Insights.rows.length > 2}}
-          <button onclick="{{ Insights.toggle() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-            {{ Insights.showAll ? "Show fewer" : "Show all " + Insights.rows.length }}
-          </button>
-{{/if}}
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800">
-          <div class="bg-white dark:bg-slate-900 p-5">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Fleet health</p>
-            <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ Insights.healthPct }}%</p>
-            <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 mt-3 overflow-hidden">
-              <div class="h-full rounded-full bg-emerald-500 transition-all" style="{{ 'width: ' + Insights.healthPct + '%' }}"></div>
-            </div>
-            <p class="text-slate-500 text-xs mt-2">{{ `${Insights.rows.filter((r) => r.label is "Online").length} of ${Insights.rows.length} servers online` }}</p>
-          </div>
-
-          <div class="bg-white dark:bg-slate-900 p-5">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Busiest server</p>
-            <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100 truncate">{{ Insights.busiest }}</p>
-            <p class="text-slate-500 text-xs mt-3">Hosting the most sites</p>
-          </div>
-
-          <div class="bg-white dark:bg-slate-900 p-5">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Idle servers</p>
-            <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ Insights.rows.filter((r) => r.count is 0).length }}</p>
-            <p class="text-slate-500 text-xs mt-3 truncate">{{ (Insights.rows.filter((r) => r.count is 0).length is 0) ? "Every server hosts a site" : Insights.rows.filter((r) => r.count is 0).map((r) => r.name).join(", ") + " have no sites" }}</p>
-          </div>
-        </div>
-
-        <div>
-{{#each r in (Insights.showAll ? Insights.rows : Insights.rows.slice(0, 2))}}
-          <div class="flex items-center justify-between gap-4 px-6 py-3.5 border-t border-slate-100 dark:border-slate-800/70">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="w-2 h-2 shrink-0 rounded-full {{ r.dot }}"></span>
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ r.name }}</p>
-            </div>
-            <p class="text-slate-500 text-xs shrink-0">{{ r.label }} · {{ r.count is 1 ? "1 site" : r.count + " sites" }}</p>
-          </div>
-{{/each}}
-        </div>
-      </div>
-{{/if}}
-
-      <div class="flex items-end justify-between mb-4">
-        <div>
-          <h2 class="inline-flex items-center gap-2 text-slate-900 dark:text-slate-100 text-lg font-semibold">
-            <IconCloud class="w-5 h-5 text-emerald-700 dark:text-emerald-500" /> Cloud providers
-          </h2>
-          <p class="text-slate-500 text-sm mt-0.5">Open a provider to see its machines, volumes, IP addresses and spend.</p>
-        </div>
-        <a href="/providers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium shrink-0">Manage all</a>
-      </div>
-
-{{#if not cloudReady}}
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
-        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
-        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
-      </div>
-{{/if}}
-
-{{#if cloudReady}}
-{{#if providerCount is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center mb-8">
-        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No cloud providers connected</h3>
-        <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr or UpCloud account to create servers from here.</p>
-{{#if Billing.locked}}
-        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-            <rect x="4" y="9" width="12" height="8" rx="2" />
-            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-          </svg>
-          Connect a provider
-        </button>
-{{/if}}
-{{#if not Billing.locked}}
-        <a href="/providers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect a provider</a>
-{{/if}}
-      </div>
-{{/if}}
-{{#if providerCount is not 0}}
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
-{{#each c in providerCards}}
-        <a href="{{ c.href }}" class="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="{{ c.tileClass }}">{{ c.tileLetter }}</span>
-            <div class="min-w-0">
-              <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ c.label }}</h3>
-              <p class="text-slate-500 text-xs truncate">{{ c.kindName }} · {{ c.createdText }}</p>
-            </div>
-          </div>
-          <span class="text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
-        </a>
-{{/each}}
-      </div>
-{{/if}}
-{{/if}}
-
-      <div class="flex items-end justify-between mb-4">
-        <div>
-          <h2 class="inline-flex items-center gap-2 text-slate-900 dark:text-slate-100 text-lg font-semibold">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-5 h-5 text-emerald-700 dark:text-emerald-500">
-              <circle cx="10" cy="10" r="7.5" />
-              <path d="M2.5 10h15M10 2.5c2.2 2.2 3.2 4.7 3.2 7.5S12.2 15.3 10 17.5C7.8 15.3 6.8 12.8 6.8 10S7.8 4.7 10 2.5z" stroke-linejoin="round" />
-            </svg>
-            Domains
-          </h2>
-          <p class="text-slate-500 text-sm mt-0.5">Every domain in the registrars you connected, closest to expiry first.</p>
-        </div>
-        <a href="/registrars" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium shrink-0">Manage all</a>
-      </div>
-
-{{#if not domainsReady}}
-      <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 mb-8">
-        <div class="h-56 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
-        <div class="h-56 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
-      </div>
-{{/if}}
-
-{{#if domainsReady}}
-{{#if registrarCount is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center mb-8">
-        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domain registrars connected</h3>
-        <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect Porkbun, Cloudflare, GoDaddy or another registrar to see your domains, expiry dates and DNS next to your servers.</p>
-{{#if Billing.locked}}
-        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-            <rect x="4" y="9" width="12" height="8" rx="2" />
-            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-          </svg>
-          Connect a registrar
-        </button>
-{{/if}}
-{{#if not Billing.locked}}
-        <a href="/registrars" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect a registrar</a>
-{{/if}}
-      </div>
-{{/if}}
-
-{{#if registrarCount is not 0}}
-      <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 mb-8">
-
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
-          <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-            <div class="min-w-0">
-              <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Domains by expiry</h3>
-              <p class="text-slate-500 text-xs mt-0.5 truncate">{{ (domainCount is 0) ? "No domains loaded" : domainCount + " domains across " + registrarCount + (registrarCount is 1 ? " registrar" : " registrars") }}</p>
-            </div>
-{{#if domainsShown.length > 5}}
-            <button onclick="{{ toggleDomains() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-              {{ showAllDomains ? "Show fewer" : "Show all " + domainsShown.length }}
-            </button>
-{{/if}}
-          </div>
-
-{{#if domainCount is not 0}}
-          <div class="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-slate-100 dark:border-slate-800/70">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> {{ expiredCount }} expired
-            </span>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> {{ expiringCount }} expiring
-            </span>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ domainCount - expiredCount - expiringCount }} healthy
-            </span>
-          </div>
-{{/if}}
-
-{{#if domainCount is 0}}
-          <div class="p-10 text-center">
-            <p class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domains found</p>
-            <p class="text-slate-500 text-sm max-w-sm mx-auto">Your connected registrars returned no domains. Open the registrar to check the connection.</p>
-          </div>
-{{/if}}
-
-{{#each d in (showAllDomains ? domainsShown : domainsShown.slice(0, 5))}}
-          <a href="{{ d.href }}" class="flex items-center justify-between gap-4 px-6 py-3.5 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-            <div class="min-w-0">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium font-mono truncate">{{ d.name }}</p>
-              <p class="text-slate-500 text-xs truncate">{{ d.registrar }} · expires {{ d.expiresText }}</p>
-            </div>
-            <div class="flex items-center gap-3 shrink-0">
-              <span class="hidden sm:inline text-xs text-slate-500">{{ d.dayText }}</span>
-              <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider {{ d.badge }}">{{ d.label }}</span>
-            </div>
-          </a>
-{{/each}}
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none content-start">
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Registrars</p>
-            <a href="/registrars" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline font-medium">Manage</a>
-          </div>
-          <div class="space-y-3">
-{{#each r in registrarCards}}
-            <a href="{{ r.href }}" class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-3 hover:border-emerald-500/50 transition-colors">
-              <div class="flex items-center gap-3 min-w-0">
-                <span class="{{ r.tileClass }}">{{ r.tileLetter }}</span>
-                <div class="min-w-0">
-                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ r.label }}</p>
-{{#if r.failed}}
-                  <p class="text-amber-700 dark:text-amber-500 text-xs">Couldn't load domains</p>
-{{/if}}
-{{#if not r.failed}}
-                  <p class="text-slate-500 text-xs">{{ r.countText }}</p>
-{{/if}}
-                </div>
-              </div>
-{{#if r.expiring is not 0}}
-              <span class="shrink-0 inline-flex rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-500">{{ r.expiring }} due</span>
-{{/if}}
-            </a>
-{{/each}}
-          </div>
-        </div>
-      </div>
-{{/if}}
-{{/if}}
-
-      <div class="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6 mb-10">
 
         <div class="space-y-6 min-w-0">
 
           <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Your servers</h2>
-              <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">Manage all</a>
+            <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+                  <IconDatabase class="w-4 h-4" />
+                </span>
+                <div class="min-w-0">
+                  <h2 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">Your servers</h2>
+                  <p class="text-slate-500 text-xs mt-0.5">{{ totalServers }} connected</p>
+                </div>
+              </div>
+              <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium shrink-0">Manage all</a>
             </div>
 
 {{#if not Servers.loading}}
@@ -1023,7 +853,7 @@ template
 {{/if}}
 
 {{#each s in fleet}}
-            <a href="{{ s.href }}" class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            <a href="{{ s.href }}" class="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
               <div class="flex items-center gap-4 min-w-0">
 {{#if s.status is "online"}}
                 <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
@@ -1057,9 +887,17 @@ template
           </div>
 
           <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Recent sites</h2>
-              <span class="text-slate-500 text-xs">{{ siteCount }} total</span>
+            <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+                  <IconFolder class="w-4 h-4" />
+                </span>
+                <div class="min-w-0">
+                  <h2 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">Recent sites</h2>
+                  <p class="text-slate-500 text-xs mt-0.5">Latest deployments</p>
+                </div>
+              </div>
+              <span class="text-slate-500 text-xs shrink-0">{{ siteCount }} total</span>
             </div>
 
 {{#if siteCount is 0}}
@@ -1096,7 +934,7 @@ template
 {{/if}}
 
 {{#each site in recentSites}}
-            <a href="{{ site.href }}" class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            <a href="{{ site.href }}" class="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
               <div class="min-w-0">
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ site.domain }}</p>
                 <p class="text-slate-500 text-xs truncate">{{ site.typeText }} · {{ site.serverName }}</p>
@@ -1129,13 +967,13 @@ template
           </div>
         </div>
 
-        <div class="space-y-6">
+        <div class="space-y-6 min-w-0">
 
 {{#if not setupDone}}
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center justify-between mb-1">
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Get deployed</h2>
-              <span class="text-slate-500 text-xs font-mono">{{ stepsDone }}/3</span>
+              <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono">{{ stepsDone }}/3</span>
             </div>
             <p class="text-slate-500 text-xs mb-4">Three steps to your first live site.</p>
             <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 mb-5 overflow-hidden">
@@ -1197,7 +1035,7 @@ template
 
 {{#if teamReady}}
 {{#if teamCount is not 0}}
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Team</h2>
               <a href="/team" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">Manage</a>
@@ -1206,7 +1044,7 @@ template
 {{#each m in teamMembers}}
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-semibold">{{ m.initial }}</div>
+                  <div class="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-semibold">{{ m.initial }}</div>
                   <div class="min-w-0">
                     <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ m.name }}</p>
                     <p class="text-slate-500 text-xs truncate">{{ m.email }}</p>
@@ -1217,13 +1055,13 @@ template
 {{/each}}
             </div>
 {{#if teamCount is 1}}
-            <p class="text-slate-500 text-xs mt-4">It's just you for now. Invite people from the team page.</p>
+            <p class="text-slate-500 text-xs mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">It's just you for now. Invite people from the team page.</p>
 {{/if}}
           </div>
 {{/if}}
 {{/if}}
 
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Quick actions</h2>
             <div class="grid grid-cols-1 gap-2">
 {{#if Billing.locked}}
@@ -1263,8 +1101,244 @@ template
 {{/if}}
             </div>
           </div>
+
         </div>
       </div>
+
+{{#if Insights.loaded}}
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden mb-10">
+        <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="min-w-0">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Fleet insights</h2>
+            <p class="text-slate-500 text-xs mt-0.5 truncate">{{ Insights.headline }}</p>
+          </div>
+{{#if Insights.rows.length > 2}}
+          <button onclick="{{ Insights.toggle() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            {{ Insights.showAll ? "Show fewer" : "Show all " + Insights.rows.length }}
+          </button>
+{{/if}}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800">
+          <div class="bg-white dark:bg-slate-900 p-5 sm:p-6">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Fleet health</p>
+            <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ Insights.healthPct }}%</p>
+            <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 mt-3 overflow-hidden">
+              <div class="h-full rounded-full bg-emerald-500 transition-all" style="{{ 'width: ' + Insights.healthPct + '%' }}"></div>
+            </div>
+            <p class="text-slate-500 text-xs mt-2">{{ `${Insights.rows.filter((r) => r.label is "Online").length} of ${Insights.rows.length} servers online` }}</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-5 sm:p-6">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Busiest server</p>
+            <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ Insights.busiest }}</p>
+            <p class="text-slate-500 text-xs mt-3">Hosting the most sites</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-5 sm:p-6">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Idle servers</p>
+            <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ Insights.rows.filter((r) => r.count is 0).length }}</p>
+            <p class="text-slate-500 text-xs mt-3 truncate">{{ (Insights.rows.filter((r) => r.count is 0).length is 0) ? "Every server hosts a site" : Insights.rows.filter((r) => r.count is 0).map((r) => r.name).join(", ") + " have no sites" }}</p>
+          </div>
+        </div>
+
+        <div>
+{{#each r in (Insights.showAll ? Insights.rows : Insights.rows.slice(0, 2))}}
+          <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-3.5 border-t border-slate-100 dark:border-slate-800/70">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="w-2 h-2 shrink-0 rounded-full {{ r.dot }}"></span>
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ r.name }}</p>
+            </div>
+            <p class="text-slate-500 text-xs shrink-0">{{ r.label }} · {{ r.count is 1 ? "1 site" : r.count + " sites" }}</p>
+          </div>
+{{/each}}
+        </div>
+      </div>
+{{/if}}
+
+      <div class="flex items-end justify-between gap-4 mb-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+            <IconCloud class="w-4 h-4" />
+          </span>
+          <div class="min-w-0">
+            <h2 class="text-slate-900 dark:text-slate-100 text-lg font-semibold leading-tight">Cloud providers</h2>
+            <p class="text-slate-500 text-sm mt-0.5">Open a provider to see its machines, volumes, IP addresses and spend.</p>
+          </div>
+        </div>
+        <a href="/providers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium shrink-0">Manage all</a>
+      </div>
+
+{{#if not cloudReady}}
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+      </div>
+{{/if}}
+
+{{#if cloudReady}}
+{{#if providerCount is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center mb-10">
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No cloud providers connected</h3>
+        <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr or UpCloud account to create servers from here.</p>
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Connect a provider
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
+        <a href="/providers" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect a provider</a>
+{{/if}}
+      </div>
+{{/if}}
+{{#if providerCount is not 0}}
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-10">
+{{#each c in providerCards}}
+        <a href="{{ c.href }}" class="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="{{ c.tileClass }}">{{ c.tileLetter }}</span>
+            <div class="min-w-0">
+              <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ c.label }}</h3>
+              <p class="text-slate-500 text-xs truncate">{{ c.kindName }} · {{ c.createdText }}</p>
+            </div>
+          </div>
+          <span class="text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm transition-colors">&rarr;</span>
+        </a>
+{{/each}}
+      </div>
+{{/if}}
+{{/if}}
+
+      <div class="flex items-end justify-between gap-4 mb-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-500">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+              <circle cx="10" cy="10" r="7.5" />
+              <path d="M2.5 10h15M10 2.5c2.2 2.2 3.2 4.7 3.2 7.5S12.2 15.3 10 17.5C7.8 15.3 6.8 12.8 6.8 10S7.8 4.7 10 2.5z" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <div class="min-w-0">
+            <h2 class="text-slate-900 dark:text-slate-100 text-lg font-semibold leading-tight">Domains</h2>
+            <p class="text-slate-500 text-sm mt-0.5">Every domain in the registrars you connected, closest to expiry first.</p>
+          </div>
+        </div>
+        <a href="/registrars" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium shrink-0">Manage all</a>
+      </div>
+
+{{#if not domainsReady}}
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4">
+        <div class="h-56 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-56 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+      </div>
+{{/if}}
+
+{{#if domainsReady}}
+{{#if registrarCount is 0}}
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center">
+        <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domain registrars connected</h3>
+        <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Connect Porkbun, Cloudflare, GoDaddy or another registrar to see your domains, expiry dates and DNS next to your servers.</p>
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Connect a registrar
+        </button>
+{{/if}}
+{{#if not Billing.locked}}
+        <a href="/registrars" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Connect a registrar</a>
+{{/if}}
+      </div>
+{{/if}}
+
+{{#if registrarCount is not 0}}
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4">
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+          <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+            <div class="min-w-0">
+              <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Domains by expiry</h3>
+              <p class="text-slate-500 text-xs mt-0.5 truncate">{{ (domainCount is 0) ? "No domains loaded" : domainCount + " domains across " + registrarCount + (registrarCount is 1 ? " registrar" : " registrars") }}</p>
+            </div>
+{{#if domainsShown.length > 5}}
+            <button onclick="{{ toggleDomains() }}" class="shrink-0 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              {{ showAllDomains ? "Show fewer" : "Show all " + domainsShown.length }}
+            </button>
+{{/if}}
+          </div>
+
+{{#if domainCount is not 0}}
+          <div class="flex flex-wrap items-center gap-2 px-5 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-800/70">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> {{ expiredCount }} expired
+            </span>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> {{ expiringCount }} expiring
+            </span>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ domainCount - expiredCount - expiringCount }} healthy
+            </span>
+          </div>
+{{/if}}
+
+{{#if domainCount is 0}}
+          <div class="p-10 text-center">
+            <p class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domains found</p>
+            <p class="text-slate-500 text-sm max-w-sm mx-auto">Your connected registrars returned no domains. Open the registrar to check the connection.</p>
+          </div>
+{{/if}}
+
+{{#each d in (showAllDomains ? domainsShown : domainsShown.slice(0, 5))}}
+          <a href="{{ d.href }}" class="flex items-center justify-between gap-4 px-5 sm:px-6 py-3.5 border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium font-mono truncate">{{ d.name }}</p>
+              <p class="text-slate-500 text-xs truncate">{{ d.registrar }} · expires {{ d.expiresText }}</p>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="hidden sm:inline text-xs text-slate-500">{{ d.dayText }}</span>
+              <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider {{ d.badge }}">{{ d.label }}</span>
+            </div>
+          </a>
+{{/each}}
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none content-start">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Registrars</p>
+            <a href="/registrars" class="text-emerald-700 dark:text-emerald-500 text-xs hover:underline font-medium">Manage</a>
+          </div>
+          <div class="space-y-3">
+{{#each r in registrarCards}}
+            <a href="{{ r.href }}" class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-3 hover:border-emerald-500/50 transition-colors">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="{{ r.tileClass }}">{{ r.tileLetter }}</span>
+                <div class="min-w-0">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold truncate">{{ r.label }}</p>
+{{#if r.failed}}
+                  <p class="text-amber-700 dark:text-amber-500 text-xs">Couldn't load domains</p>
+{{/if}}
+{{#if not r.failed}}
+                  <p class="text-slate-500 text-xs">{{ r.countText }}</p>
+{{/if}}
+                </div>
+              </div>
+{{#if r.expiring is not 0}}
+              <span class="shrink-0 inline-flex rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-500">{{ r.expiring }} due</span>
+{{/if}}
+            </a>
+{{/each}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+{{/if}}
+
     </div>
     </div>
   </div>

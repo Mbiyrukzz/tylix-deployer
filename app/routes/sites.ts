@@ -1,12 +1,16 @@
 /**
  * Sites inside a server.
  *
+ * GET  /api/site-types  the site types, their defaults and runtime (any member)
  * GET  /api/sites       the team's sites (any member)
  * POST /api/sites       (admin) validate, create and queue a CreateSite job
  * GET  /api/sites/:id   one site (the page polls this for step/status/log)
  *
  * Every value validated here ends up in shell commands and nginx config
  * inside the job, so the patterns below are strict on purpose.
+ *
+ * Site types, PHP versions and which types need a port all come from
+ * SiteTypes.ts, so this controller, the provisioner and the create form agree.
  *
  * Writes are refused with 402 while the team is view only (see write()),
  * and creating a site is checked against the team's plan limit.
@@ -24,6 +28,7 @@ import { SourceProvider } from "../models/SourceProvider.js";
 import { createGuard, audit } from "../services/RouteGuard.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 import { requireActive, requireWithin } from "../services/EntitlementService.js";
+import { SITE_TYPES, getType, isPhp, needsPort, PHP_VERSIONS } from "../services/SiteTypes.js";
 
 type Handler = Parameters<Router["post"]>[1];
 
@@ -42,6 +47,10 @@ type SiteRow = {
     repository: string;
     branch: string;
     web_directory: string;
+    app_directory: string;
+    backend_directory: string;
+    build_command: string;
+    start_command: string;
     install_deps: number | boolean;
     status: string;
     step: string;
@@ -50,11 +59,8 @@ type SiteRow = {
     created_at: string;
 };
 
-const NODE_TYPES = ["tylix", "nextjs", "nodejs"];
-const PHP_TYPES = ["laravel", "php"];
-const TYPES = [...NODE_TYPES, ...PHP_TYPES, "static"];
 const COMMAND = /^[^\r\n\0]{1,200}$/;
-const PHP_VERSIONS = ["8.1", "8.2", "8.3", "8.4"];
+const PATH = /^[A-Za-z0-9._\/-]+$/;
 const DOMAIN = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 const USER = /^[a-z][a-z0-9_-]{0,31}$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -88,6 +94,14 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
             return handler(req, res, next);
         });
+
+    // The create form builds its stack picker and defaults from this list.
+    router.get(
+        "/api/site-types",
+        auth(async (_req, res) => {
+            return res.json(SITE_TYPES);
+        }),
+    );
 
     router.get(
         "/api/sites",
@@ -144,7 +158,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             const onServer = ((await Site.all()) as SiteRow[]).filter((s) => s.server_id === server.id);
 
             const type = String(b.type || "");
-            if (!TYPES.includes(type)) fail("type", "Choose a valid site type.");
+            const info = getType(type);
+            if (!info) fail("type", "Choose a valid site type.");
 
             const domain = String(b.domain || "").trim().toLowerCase();
             if (!DOMAIN.test(domain)) fail("domain", "Enter a valid domain, e.g. example.com.");
@@ -171,16 +186,17 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             }
 
             let phpVersion = "";
-            if (PHP_TYPES.includes(type)) {
+            if (isPhp(type)) {
                 phpVersion = String(b.php_version || "");
                 if (!PHP_VERSIONS.includes(phpVersion)) fail("php_version", "Choose a valid PHP version.");
             }
 
+            // Every type that runs a process on a port: node, mern, python, java, go, ruby, dotnet, rust.
             let port = 0;
-            if (NODE_TYPES.includes(type)) {
+            if (needsPort(type)) {
                 const rawPort = String(b.port ?? "").trim();
                 if (rawPort === "" || rawPort === "0") {
-                    const used = new Set(onServer.map((s) => Number(s.port)));
+                    const used = new Set(onServer.filter((s) => needsPort(s.type)).map((s) => Number(s.port)));
                     port = 3000;
                     while (used.has(port)) port++;
                 } else {
@@ -191,7 +207,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 }
             }
 
-            const sourceControlId = Number(b.source_control_id) || 0;
+            // Types such as WordPress don't use a repository, whatever the client sends.
+            const sourceControlId = info?.usesRepository === false ? 0 : Number(b.source_control_id) || 0;
             let repository = "";
             let branch = "";
             if (sourceControlId !== 0) {
@@ -209,10 +226,25 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 if (!BRANCH.test(branch) || branch.includes("..")) fail("branch", "That branch name isn't valid.");
             }
 
-            const webDirectory = String(b.web_directory || "").trim().replace(/^\/+|\/+$/g, "");
-            if (webDirectory && (!/^[A-Za-z0-9._\/-]+$/.test(webDirectory) || webDirectory.split("/").includes(".."))) {
-                fail("web_directory", "Use a relative path like public or dist.");
-            }
+            const dirField = (key: string, label: string): string => {
+                const v = String(b[key] ?? "").trim().replace(/^\/+|\/+$/g, "");
+                if (v && (!PATH.test(v) || v.split("/").includes(".."))) {
+                    fail(key, `${label} must be a relative path like public or dist.`);
+                }
+                return v;
+            };
+
+            const commandField = (key: string, label: string): string => {
+                const v = String(b[key] ?? "").trim();
+                if (v && !COMMAND.test(v)) fail(key, `${label} must be a single line of at most 200 characters.`);
+                return v;
+            };
+
+            const webDirectory = dirField("web_directory", "The web directory");
+            const appDirectory = dirField("app_directory", "The app folder");
+            const backendDirectory = dirField("backend_directory", "The API folder");
+            const buildCommand = commandField("build_command", "The build command");
+            const startCommand = commandField("start_command", "The start command");
 
             // Uniqueness on this server.
             if (Object.keys(errors).length === 0) {
@@ -222,8 +254,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 if (onServer.some((s) => s.isolated_user === isolatedUser)) {
                     fail("isolated_user", "That isolated user is already used on this server.");
                 }
-                // Every app type that listens on a port, not just "nodejs".
-                if (NODE_TYPES.includes(type) && onServer.some((s) => NODE_TYPES.includes(s.type) && Number(s.port) === port)) {
+                if (needsPort(type) && onServer.some((s) => needsPort(s.type) && Number(s.port) === port)) {
                     fail("port", "That port is already used by another site on this server.");
                 }
             }
@@ -254,6 +285,10 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 repository,
                 branch,
                 web_directory: webDirectory,
+                app_directory: appDirectory,
+                backend_directory: backendDirectory,
+                build_command: buildCommand,
+                start_command: startCommand,
                 install_deps: sourceControlId !== 0 && b.install_deps !== false ? 1 : 0,
                 status: "pending",
                 step: "pending",

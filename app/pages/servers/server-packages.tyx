@@ -22,7 +22,9 @@ state
   actionError: ""
   catalog: []
   rows: []
+  presetRows: []
   selected: []
+  picked: []
   task: null
   taskText: ""
   busy: false
@@ -30,8 +32,38 @@ state
   confirmUpgrade: false
   installedCount: 0
   totalCount: 0
+  percent: 0
+  lastError: ""
+  codeOpen: false
+  codeValue: ""
+  codeError: ""
+  codeTitle: ""
+  codeBusy: false
+  pending: null
 
 action
+  global(name) {
+    return Reflect.get(window, name)
+  }
+
+  setGlobal(name, value) {
+    Reflect.set(window, name, value)
+  }
+
+  // Ids match the catalog in services/Installers.ts. Only what is missing gets selected.
+  presetDefs() {
+    return [
+      { id: "laravel", label: "Laravel", note: "PHP 8.4, Composer, Node.js, git", ids: ["php8.4", "composer", "node", "tools"] },
+      { id: "node", label: "Node, Next, Nuxt, Vue", note: "Node.js 22, git and build tools", ids: ["node", "tools"] },
+      { id: "python", label: "FastAPI and Django", note: "Python 3, git and build tools", ids: ["python", "tools"] },
+      { id: "java", label: "Java API", note: "Java 21 and Maven", ids: ["java", "tools"] },
+      { id: "go", label: "Go", note: "Go, git and build tools", ids: ["go", "tools"] },
+      { id: "ruby", label: "Ruby and Rails", note: "Ruby, Bundler, git", ids: ["ruby", "tools"] },
+      { id: "dotnet", label: ".NET", note: ".NET 8 SDK, git", ids: ["dotnet", "tools"] },
+      { id: "rust", label: "Rust", note: "rustup and cargo, git", ids: ["rust", "tools"] }
+    ]
+  }
+
   rebuild() {
     this.rows = this.catalog.map((p, i) => ({
       id: p.id,
@@ -41,8 +73,17 @@ action
       checked: this.selected.indexOf(p.id) >= 0,
       header: i is 0 or this.catalog[i - 1].group is not p.group
     }))
+
+    this.picked = this.rows.filter((r) => r.checked)
     this.totalCount = this.catalog.length
     this.installedCount = this.catalog.filter((p) => p.installed).length
+    this.percent = this.totalCount is 0 ? 0 : Math.round((this.installedCount / this.totalCount) * 100)
+
+    this.presetRows = this.presetDefs().map((d) => {
+      const missing = d.ids.filter((id) => this.catalog.some((c) => c.id is id and not c.installed))
+      const chosen = missing.length > 0 and missing.every((id) => this.selected.indexOf(id) >= 0)
+      return Object.assign({}, d, { left: missing.length, done: missing.length is 0, chosen: chosen })
+    })
   }
 
   setTask(t) {
@@ -71,6 +112,27 @@ action
     this.rebuild()
   }
 
+  applyPreset(id) {
+    const def = this.presetDefs().find((d) => d.id is id)
+    if not def {
+      return null
+    }
+
+    const missing = def.ids.filter((x) => this.catalog.some((c) => c.id is x and not c.installed))
+    if missing.length is 0 {
+      return null
+    }
+
+    const allChosen = missing.every((x) => this.selected.indexOf(x) >= 0)
+    if allChosen {
+      this.selected = this.selected.filter((x) => missing.indexOf(x) < 0)
+    } else {
+      const keep = this.selected.filter((x) => missing.indexOf(x) < 0)
+      this.selected = keep.concat(missing)
+    }
+    this.rebuild()
+  }
+
   clearSelection() {
     this.selected = []
     this.rebuild()
@@ -83,6 +145,71 @@ action
 
   cancelUpgrade() {
     this.confirmUpgrade = false
+  }
+
+  needsCode(result) {
+    if result.status is not 403 {
+      return false
+    }
+
+    const d = result.data or {}
+    const text = ("" + (d.error or "") + " " + (d.code or "")).toLowerCase()
+    return d.two_factor_required is true or d.code is "two_factor_required" or text.includes("two_factor") or text.includes("two-factor")
+  }
+
+  askCode(kind, title) {
+    this.pending = { kind: kind }
+    this.codeTitle = title
+    this.codeValue = ""
+    this.codeError = ""
+    this.codeBusy = false
+    this.codeOpen = true
+    window.setTimeout(() => {
+      const el = document.getElementById("step-up-code")
+      if el {
+        el.focus()
+      }
+    }, 80)
+  }
+
+  closeCode() {
+    this.codeOpen = false
+    this.pending = null
+    this.codeValue = ""
+    this.codeError = ""
+    this.codeBusy = false
+  }
+
+  async submitCode() {
+    if this.codeBusy or not this.pending {
+      return null
+    }
+
+    const code = this.codeValue.trim()
+    if code is "" {
+      this.codeError = "Enter your code."
+      return null
+    }
+
+    this.codeBusy = true
+    this.codeError = ""
+    const kind = this.pending.kind
+    let outcome = "failed"
+
+    if kind is "upgrade" {
+      outcome = await this.runUpgrade(code)
+    } else {
+      outcome = await this.runInstall(code)
+    }
+
+    if outcome is "done" {
+      this.closeCode()
+      return null
+    }
+
+    this.codeError = this.lastError or "That code didn't work. Try again."
+    this.codeValue = ""
+    this.codeBusy = false
   }
 
   async loadCatalog() {
@@ -116,6 +243,44 @@ action
     }
   }
 
+  async runInstall(code) {
+    const payload = code ? { packages: this.selected, code: code } : { packages: this.selected }
+    const result = await useApi("/api/servers/" + this.serverId + "/packages", { method: "POST", body: payload })
+
+    if result.ok {
+      this.selected = []
+      this.setTask(result.data.task)
+      this.rebuild()
+      return "done"
+    }
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't start the install."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  async runUpgrade(code) {
+    const payload = code ? { code: code } : {}
+    const result = await useApi("/api/servers/" + this.serverId + "/packages/upgrade", { method: "POST", body: payload })
+
+    if result.ok {
+      this.setTask(result.data.task)
+      return "done"
+    }
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't start the update."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
   async install() {
     if Billing.locked {
       return null
@@ -127,20 +292,15 @@ action
     this.installing = true
     this.actionError = ""
 
-    const payload = { packages: this.selected }
-    const result = await useApi("/api/servers/" + this.serverId + "/packages", { method: "POST", body: payload })
+    const outcome = await this.runInstall("")
 
-    if result.ok {
-      this.selected = []
-      this.setTask(result.data.task)
-    } else if result.status is 401 {
-      window.location.href = "/login"
-    } else {
-      this.actionError = result.data?.error or "Couldn't start the install."
+    if outcome is "code" {
+      this.askCode("install", "Confirm to install these packages")
+    } else if outcome is "failed" {
+      this.actionError = this.lastError
     }
 
     this.installing = false
-    this.rebuild()
   }
 
   // Updates everything already installed on the server to the latest version.
@@ -156,14 +316,12 @@ action
     this.confirmUpgrade = false
     this.actionError = ""
 
-    const result = await useApi("/api/servers/" + this.serverId + "/packages/upgrade", { method: "POST", body: {} })
+    const outcome = await this.runUpgrade("")
 
-    if result.ok {
-      this.setTask(result.data.task)
-    } else if result.status is 401 {
-      window.location.href = "/login"
-    } else {
-      this.actionError = result.data?.error or "Couldn't start the update."
+    if outcome is "code" {
+      this.askCode("upgrade", "Confirm to update packages")
+    } else if outcome is "failed" {
+      this.actionError = this.lastError
     }
 
     this.installing = false
@@ -184,7 +342,21 @@ action
     }
 
     this.selected = this.task.packages.filter((id) => this.rows.filter((r) => r.id is id and r.installed).length is 0)
+    this.rebuild()
     await this.install()
+  }
+
+  onKey(e) {
+    if not this.codeOpen {
+      return null
+    }
+
+    if e.key is "Escape" {
+      this.closeCode()
+    } else if e.key is "Enter" {
+      e.preventDefault()
+      this.submitCode()
+    }
   }
 
 onMount
@@ -193,6 +365,14 @@ onMount
       window.location.href = "/login"
       return null
     }
+
+    const old = this.global("tylixPackagesKey")
+    if old {
+      document.removeEventListener("keydown", old)
+    }
+    const keyHandler = (e) => this.onKey(e)
+    document.addEventListener("keydown", keyHandler)
+    this.setGlobal("tylixPackagesKey", keyHandler)
 
     const params = new URLSearchParams(window.location.search)
     const sid = params.get("id")
@@ -217,208 +397,413 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
     <ServerSidebar active="packages" serverId="{{ serverId }}" />
     <div class="min-w-0">
-      <div class="max-w-4xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
 
-        <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
-          <IconArrowLeft class="w-4 h-4" /> {{ serverName }}
-        </a>
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-5 py-1">
+        <IconArrowLeft class="w-4 h-4" /> {{ serverName }}
+      </a>
 
-        <LockedBanner />
+      <LockedBanner />
 
-        <div class="flex items-end justify-between gap-4 mb-8">
-          <div>
-            <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Packages</h1>
-            <p class="text-slate-500 text-sm">Install software on this server. Anything already there is marked installed.</p>
+      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-8 sm:py-10 mb-6 sm:mb-8">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
+        <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:items-end">
+          <div class="min-w-0">
+            <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
+              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="truncate">Packages on {{ serverName }}</span>
+            </span>
+            <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900 dark:text-slate-100 mb-3">
+              Get the server
+              <br class="hidden sm:block" />
+              <span class="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">ready for any stack</span>
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-xl leading-relaxed">Pick a stack or choose packages one by one. Anything already on the server is marked installed, and installs run over SSH one step at a time.</p>
           </div>
-{{#if not loading}}
-          <p class="text-slate-500 text-sm shrink-0">{{ installedCount }} of {{ totalCount }} installed</p>
+
+          <div class="min-w-0 lg:w-80 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/70 backdrop-blur overflow-hidden shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 dark:border-slate-800">
+              <span class="w-2 h-2 rounded-full bg-rose-400/80"></span>
+              <span class="w-2 h-2 rounded-full bg-amber-400/80"></span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400/80"></span>
+            </div>
+            <div class="px-3 py-3">
+              <p class="text-sm font-mono text-slate-800 dark:text-slate-200 truncate">$ apt list --installed</p>
+{{#if loading}}
+              <p class="text-slate-500 text-xs mt-2.5">Checking the server…</p>
 {{/if}}
+{{#if not loading}}
+              <div class="mt-2.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div class="h-1.5 rounded-full bg-emerald-500 transition-all" style="width: {{ percent }}%"></div>
+              </div>
+              <div class="flex items-center justify-between gap-2 mt-2.5">
+                <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{{ installedCount }} of {{ totalCount }} installed</span>
+                <span class="text-slate-500 text-xs">{{ selected.length }} selected</span>
+              </div>
+{{/if}}
+            </div>
+          </div>
         </div>
+      </div>
 
 {{#if loadError}}
-        <div class="rounded-xl border border-rose-900/30 bg-slate-200 dark:bg-slate-900 p-5 mb-6">
-          <p role="alert" class="text-rose-500 text-sm mb-3">{{ loadError }}</p>
-          <button onclick="{{ loadCatalog() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Try again</button>
-        </div>
+      <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 mb-6">
+        <p class="text-rose-600 dark:text-rose-400 text-sm break-words">{{ loadError }}</p>
+        <button onclick="{{ loadCatalog() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Try again</button>
+      </div>
 {{/if}}
 
-{{#if not loading}}
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
-          <div class="flex items-center justify-between gap-4 flex-wrap">
-            <div class="min-w-0">
-              <p class="text-slate-800 dark:text-slate-200 text-sm font-medium">Update packages</p>
-              <p class="text-slate-500 text-xs mt-1">Brings everything installed on this server up to the latest version. Services restart briefly while they update.</p>
-            </div>
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
 
-{{#if busy}}
-            <button disabled class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Working…</button>
-{{/if}}
-
-{{#if not busy}}
-{{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="shrink-0 inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-              </svg>
-              Update packages
-            </button>
-{{/if}}
-{{#if not Billing.locked}}
-{{#if confirmUpgrade}}
-            <div class="shrink-0 flex items-center gap-2">
-              <button onclick="{{ upgrade() }}" class="text-sm text-white bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-full px-4 py-2 transition">Yes, update now</button>
-              <button onclick="{{ cancelUpgrade() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
-            </div>
-{{/if}}
-{{#if not confirmUpgrade}}
-            <button onclick="{{ askUpgrade() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Update packages</button>
-{{/if}}
-{{/if}}
-{{/if}}
-          </div>
-        </div>
-{{/if}}
+        <div class="min-w-0 space-y-4 sm:space-y-5">
 
 {{#if task}}
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-              <p class="text-slate-800 dark:text-slate-200 text-sm font-medium">Last install</p>
-              <p class="text-slate-500 text-xs font-mono mt-1 break-words">{{ taskText }}</p>
-            </div>
-            <div class="text-right shrink-0">
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Last install</h2>
+                <p class="text-slate-500 text-xs font-mono mt-1 break-words">{{ taskText }}</p>
+              </div>
+              <div class="shrink-0">
 {{#if task.status is "done"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Done
-              </span>
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Done
+                </span>
 {{/if}}
 {{#if task.status is "failed"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-              </span>
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+                </span>
 {{/if}}
 {{#if task.status is "running"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
-              </span>
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
+                </span>
 {{/if}}
 {{#if task.status is "pending"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
-              </span>
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
+                </span>
 {{/if}}
+              </div>
             </div>
-          </div>
 
 {{#if busy}}
-          <div class="mt-4 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden">
-            <div class="h-1.5 w-1/3 rounded-full bg-emerald-500 animate-pulse"></div>
-          </div>
+            <div class="mt-4 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div class="h-1.5 w-1/3 rounded-full bg-emerald-500 animate-pulse"></div>
+            </div>
 {{#if task.step}}
-          <p class="text-slate-500 text-xs mt-3">{{ task.step }}</p>
+            <p class="text-slate-500 text-xs mt-3 break-words">{{ task.step }}</p>
 {{/if}}
-          <p class="text-slate-500 text-xs mt-1">This can take several minutes. You can leave this page; the install keeps running.</p>
+            <p class="text-slate-500 text-xs mt-1">This can take several minutes. You can leave this page; the install keeps running.</p>
 {{/if}}
 
 {{#if task.status is "failed"}}
 {{#if task.error}}
-          <pre class="mt-4 max-h-40 overflow-auto rounded-lg bg-slate-300/50 dark:bg-slate-950 p-3 text-xs text-rose-600 dark:text-rose-400 font-mono whitespace-pre-wrap">{{ task.error }}</pre>
+            <pre class="mt-4 max-h-40 overflow-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 text-xs text-rose-600 dark:text-rose-400 font-mono whitespace-pre-wrap break-words">{{ task.error }}</pre>
 {{/if}}
-          <div class="mt-4">
+            <div class="mt-4">
 {{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+              <button disabled title="Pay to continue" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Retry
+              </button>
+{{/if}}
+{{#if not Billing.locked}}
+              <button onclick="{{ retryTask() }}" class="w-full sm:w-auto text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Retry</button>
+{{/if}}
+            </div>
+{{/if}}
+          </section>
+{{/if}}
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-1">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">1</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">What will you host?</h2>
+            </div>
+            <p class="text-slate-500 text-sm mb-4 sm:pl-10">Tap a stack to select everything it needs that isn't on the server yet.</p>
+
+{{#if loading}}
+            <p class="text-slate-500 text-sm">Checking what is installed…</p>
+{{/if}}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+{{#each pr in presetRows}}
+{{#if pr.done}}
+              <div class="min-h-[64px] flex items-center justify-between gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3.5 py-2.5">
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ pr.label }}</span>
+                  <span class="block text-xs text-slate-500 truncate">{{ pr.note }}</span>
+                </span>
+                <span class="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
+                </span>
+              </div>
+{{/if}}
+{{#if not pr.done}}
+{{#if pr.chosen}}
+              <button onclick="{{ applyPreset(pr.id) }}" aria-pressed="true" class="min-h-[64px] flex items-center justify-between gap-3 text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3.5 py-2.5 transition-colors">
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ pr.label }}</span>
+                  <span class="block text-xs text-slate-500 truncate">{{ pr.note }}</span>
+                </span>
+                <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Selected</span>
+              </button>
+{{/if}}
+{{#if not pr.chosen}}
+              <button onclick="{{ applyPreset(pr.id) }}" aria-pressed="false" class="min-h-[64px] flex items-center justify-between gap-3 text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3.5 py-2.5 transition-colors hover:border-emerald-500/40">
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ pr.label }}</span>
+                  <span class="block text-xs text-slate-500 truncate">{{ pr.note }}</span>
+                </span>
+                <span class="shrink-0 text-[11px] uppercase tracking-wider text-slate-500">{{ pr.left }} to add</span>
+              </button>
+{{/if}}
+{{/if}}
+{{/each}}
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">2</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Or pick packages</h2>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+{{#each r in rows}}
+{{#if r.header}}
+              <h3 class="col-span-full pt-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">{{ r.group }}</h3>
+{{/if}}
+{{#if r.installed}}
+              <div class="min-h-[52px] flex items-center justify-between gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3.5 py-2.5">
+                <span class="text-sm text-slate-900 dark:text-slate-100 break-words min-w-0">{{ r.label }}</span>
+                <span class="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
+                </span>
+              </div>
+{{/if}}
+{{#if not r.installed}}
+{{#if r.checked}}
+              <button onclick="{{ toggle(r.id) }}" aria-pressed="true" class="min-h-[52px] flex items-center justify-between gap-3 text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3.5 py-2.5 text-sm transition-colors text-slate-900 dark:text-slate-100">
+                <span class="break-words min-w-0">{{ r.label }}</span>
+                <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Selected</span>
+              </button>
+{{/if}}
+{{#if not r.checked}}
+              <button onclick="{{ toggle(r.id) }}" aria-pressed="false" class="min-h-[52px] flex items-center justify-between gap-3 text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3.5 py-2.5 text-sm transition-colors text-slate-700 dark:text-slate-300 hover:border-emerald-500/40">
+                <span class="break-words min-w-0">{{ r.label }}</span>
+                <span class="shrink-0 text-[11px] uppercase tracking-wider text-slate-500">Not installed</span>
+              </button>
+{{/if}}
+{{/if}}
+{{/each}}
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">3</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Keep it up to date</h2>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p class="text-slate-500 text-sm min-w-0">Brings everything installed on this server up to the latest version. Services restart briefly while they update.</p>
+
+{{#if busy}}
+              <button disabled class="shrink-0 w-full sm:w-auto text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Working…</button>
+{{/if}}
+
+{{#if not busy}}
+{{#if Billing.locked}}
+              <button disabled title="Pay to continue" class="shrink-0 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Update packages
+              </button>
+{{/if}}
+{{#if not Billing.locked}}
+{{#if confirmUpgrade}}
+              <div class="shrink-0 flex flex-col-reverse sm:flex-row sm:items-center gap-2">
+                <button onclick="{{ cancelUpgrade() }}" class="w-full sm:w-auto text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-4 py-2.5 transition-colors">Cancel</button>
+                <button onclick="{{ upgrade() }}" class="w-full sm:w-auto text-sm text-white bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-full px-5 py-2.5 transition">Yes, update now</button>
+              </div>
+{{/if}}
+{{#if not confirmUpgrade}}
+              <button onclick="{{ askUpgrade() }}" class="shrink-0 w-full sm:w-auto text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Update packages</button>
+{{/if}}
+{{/if}}
+{{/if}}
+            </div>
+          </section>
+
+{{#if actionError}}
+          <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3">
+            <p class="text-rose-600 dark:text-rose-400 text-sm break-words">{{ actionError }}</p>
+          </div>
+{{/if}}
+
+          <div class="lg:hidden sticky bottom-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+            <div class="flex items-center gap-3 min-w-0">
+              <p class="text-slate-600 dark:text-slate-300 text-sm whitespace-nowrap">{{ selected.length }} selected</p>
+{{#if selected.length is not 0}}
+              <button onclick="{{ clearSelection() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 py-2 transition-colors">Clear</button>
+{{/if}}
+            </div>
+{{#if busy}}
+            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Install running…</button>
+{{/if}}
+{{#if not busy}}
+{{#if selected.length is 0}}
+            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Install</button>
+{{/if}}
+{{#if selected.length is not 0}}
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="inline-flex items-center justify-center gap-1.5 min-h-[48px] text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                 <rect x="4" y="9" width="12" height="8" rx="2" />
                 <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
               </svg>
-              Retry
+              Install
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ retryTask() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Retry</button>
+{{#if installing}}
+            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Starting…</button>
+{{/if}}
+{{#if not installing}}
+            <button onclick="{{ install() }}" class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Install selected</button>
+{{/if}}
+{{/if}}
+{{/if}}
 {{/if}}
           </div>
-{{/if}}
+
         </div>
-{{/if}}
 
-{{#if loading}}
-        <p class="text-slate-500 text-sm">Checking what is installed…</p>
+        <aside class="hidden lg:block lg:sticky lg:top-6 space-y-4">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your install</h2>
+            <dl class="space-y-3 text-sm">
+              <div>
+                <dt class="text-slate-500 text-xs">Server</dt>
+                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ serverName }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Installed</dt>
+                <dd class="text-slate-900 dark:text-slate-100">{{ installedCount }} of {{ totalCount }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Selected</dt>
+{{#if picked.length is 0}}
+                <dd class="text-slate-400">Nothing yet</dd>
 {{/if}}
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-{{#each r in rows}}
-{{#if r.header}}
-          <h2 class="col-span-full text-slate-800 dark:text-slate-200 font-medium mt-6 first:mt-0">{{ r.group }}</h2>
-{{/if}}
-{{#if r.installed}}
-          <div class="flex items-center justify-between rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 px-4 py-3">
-            <span class="text-sm text-slate-800 dark:text-slate-200">{{ r.label }}</span>
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
-            </span>
-          </div>
-{{/if}}
-{{#if not r.installed}}
-{{#if r.checked}}
-          <button onclick="{{ toggle(r.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">
-            <span>{{ r.label }}</span>
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Selected</span>
-          </button>
-{{/if}}
-{{#if not r.checked}}
-          <button onclick="{{ toggle(r.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
-            <span>{{ r.label }}</span>
-            <span class="text-[11px] uppercase tracking-wider text-slate-500">Not installed</span>
-          </button>
-{{/if}}
-{{/if}}
+{{#each pk in picked}}
+                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ pk.label }}</dd>
 {{/each}}
-        </div>
+              </div>
+            </dl>
 
-{{#if actionError}}
-        <p role="alert" class="text-rose-500 text-sm mt-6">{{ actionError }}</p>
-{{/if}}
-
-        <div class="sticky bottom-4 mt-8 flex items-center justify-between gap-4 rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200/95 dark:bg-slate-900/95 backdrop-blur px-5 py-3 shadow-lg">
-          <div class="flex items-center gap-3">
-            <p class="text-slate-600 dark:text-slate-300 text-sm">{{ selected.length }} selected</p>
-{{#if selected.length is not 0}}
-            <button onclick="{{ clearSelection() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Clear</button>
-{{/if}}
-          </div>
+            <div class="mt-5">
 {{#if busy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Install running…</button>
+              <button disabled class="w-full text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Install running…</button>
 {{/if}}
 {{#if not busy}}
 {{#if selected.length is 0}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Install selected</button>
+              <button disabled class="w-full text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Install selected</button>
 {{/if}}
 {{#if selected.length is not 0}}
 {{#if Billing.locked}}
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            Install selected
-          </button>
+              <button disabled title="Pay to continue" class="w-full inline-flex items-center justify-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Install selected
+              </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ install() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Install selected</button>
+{{#if installing}}
+              <button disabled class="w-full text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Starting…</button>
+{{/if}}
+{{#if not installing}}
+              <button onclick="{{ install() }}" class="w-full text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Install selected</button>
 {{/if}}
 {{/if}}
 {{/if}}
-        </div>
+{{/if}}
+{{#if selected.length is not 0}}
+              <button onclick="{{ clearSelection() }}" class="w-full mt-2 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 py-2 transition-colors">Clear selection</button>
+{{/if}}
+            </div>
+          </div>
 
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">What happens next</h2>
+            <ol class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Runs over SSH, one step at a time</li>
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Skips anything already installed</li>
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Keeps going if you leave the page</li>
+            </ol>
+            <p class="text-slate-500 text-xs mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">Installing needs the admin role. If you use two-factor, you'll be asked for a code.</p>
+          </div>
+        </aside>
+
+      </div>
+
+    </div>
+    </div>
+  </div>
+
+{{#if codeOpen}}
+  <div class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-6">
+    <div onclick="{{ closeCode() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+
+    <div role="dialog" aria-modal="true" aria-label="Two-factor code" class="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
+      <h3 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ codeTitle }}</h3>
+      <p class="text-slate-500 text-sm mb-4">Enter the code from your authenticator app or the SMS we sent you.</p>
+
+      <input
+        id="step-up-code"
+        type="text"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        autocapitalize="none"
+        spellcheck="false"
+        maxlength="12"
+        value="{{ codeValue }}"
+        oninput="{{ codeValue = $event.target.value }}"
+        placeholder="123456"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base tracking-widest font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+      />
+
+{{#if codeError}}
+      <p role="alert" class="text-rose-500 text-sm mt-3 break-words">{{ codeError }}</p>
+{{/if}}
+
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
+        <button onclick="{{ closeCode() }}" class="w-full sm:w-auto text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+{{#if codeBusy}}
+        <button disabled class="w-full sm:w-auto text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
+{{/if}}
+{{#if not codeBusy}}
+        <button onclick="{{ submitCode() }}" class="w-full sm:w-auto text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Confirm</button>
+{{/if}}
       </div>
     </div>
   </div>
+{{/if}}
 {{/if}}
 
 {{#if not checkedAuth}}

@@ -20,14 +20,29 @@ state
   loading: true
   notFound: false
   typeLabel: ""
+  statusClass: ""
   groups: []
   plugins: []
   openLog: ""
   error: ""
   timer: 0
   selected: ""
+  picked: null
   choices: []
   activeCount: 0
+  installerOpen: false
+  installerFilter: ""
+  installerGroups: []
+  installerCount: 0
+  installerError: ""
+  installBusy: false
+  lastError: ""
+  codeOpen: false
+  codeValue: ""
+  codeError: ""
+  codeTitle: ""
+  codeBusy: false
+  pending: null
   nginxReady: false
   nginxOpen: false
   nginxFile: ""
@@ -58,6 +73,15 @@ action
       ["php", "PHP"],
       ["nodejs", "Node.js"],
       ["nextjs", "Next.js"],
+      ["nuxt", "Nuxt"],
+      ["vue", "Vue"],
+      ["fastapi", "FastAPI"],
+      ["django", "Django"],
+      ["java", "Java API"],
+      ["go", "Go"],
+      ["ruby", "Ruby"],
+      ["dotnet", ".NET"],
+      ["rust", "Rust"],
       ["wordpress", "WordPress"],
       ["mern", "MERN"],
       ["angular", "Angular"],
@@ -75,9 +99,18 @@ action
     const deps = site.repository ? (site.install_deps ? "Yes" : "No") : ""
     const aliases = Array.isArray(site.aliases) ? site.aliases.join(", ") : ""
 
+    const pill = "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold "
+    let tone = "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+    if site.status is "ready" {
+      tone = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+    } else if site.status is "failed" {
+      tone = "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+
     this.site = site
     this.serverId = "" + site.server_id
     this.typeLabel = typeLabel
+    this.statusClass = pill + tone
     this.nginxReady = site.status is "ready"
     this.nginxFile = "/etc/nginx/sites-available/" + site.domain + ".conf"
 
@@ -133,16 +166,49 @@ action
     ].filter((g) => g.rows.length > 0)
   }
 
+  tileFor(group) {
+    const base = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold "
+    const tones = [
+      ["Laravel", "bg-rose-500/10 text-rose-600 dark:text-rose-400"],
+      ["Tylix", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"],
+      ["Web server", "bg-sky-500/10 text-sky-600 dark:text-sky-400"],
+      ["App services", "bg-amber-500/10 text-amber-600 dark:text-amber-400"],
+      ["Next.js", "bg-violet-500/10 text-violet-600 dark:text-violet-400"],
+      ["Nuxt", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"]
+    ]
+    const hit = tones.find((t) => t[0] is group)
+    return base + (hit ? hit[1] : "bg-slate-500/10 text-slate-600 dark:text-slate-400")
+  }
+
   decorate(list) {
     return list.map((p) => Object.assign({}, p, {
       busy: p.status is "installing" or p.status is "removing",
       isInstalled: p.status is "installed",
       isFailed: p.status is "failed" or p.status is "remove_failed",
+      canAct: p.status is "installed" or p.status is "failed" or p.status is "remove_failed",
       isAvailable: p.status is "available",
       shown: p.status is not "available",
-      label: p.group + " · " + p.name + (p.blocked ? " (unavailable)" : ""),
+      letter: String(p.name).charAt(0).toUpperCase(),
+      tile: this.tileFor(p.group),
       portText: p.port ? "" + p.port : ""
     }))
+  }
+
+  refreshInstaller() {
+    const needle = this.installerFilter.trim().toLowerCase()
+    const list = this.choices.filter((p) => needle is "" or (p.name + " " + p.group + " " + p.description).toLowerCase().includes(needle))
+
+    const buckets = new Map()
+    list.forEach((p) => {
+      if not buckets.has(p.group) {
+        buckets.set(p.group, [])
+      }
+      buckets.get(p.group).push(p)
+    })
+
+    this.installerGroups = Array.from(buckets.entries()).map((e) => ({ title: e[0], items: e[1] }))
+    this.installerCount = list.length
+    this.picked = this.selected ? (this.plugins.find((p) => p.id is this.selected) or null) : null
   }
 
   async loadPlugins() {
@@ -157,6 +223,7 @@ action
       this.plugins = this.decorate(result.data)
       this.choices = this.plugins.filter((p) => p.isAvailable)
       this.activeCount = this.plugins.filter((p) => p.shown).length
+      this.refreshInstaller()
 
       const anyBusy = this.plugins.some((p) => p.busy)
       if anyBusy {
@@ -178,33 +245,206 @@ action
     }
   }
 
-  async install(id) {
+  openInstaller() {
     if Billing.locked {
       return null
     }
-    this.error = ""
+    this.installerFilter = ""
+    this.installerError = ""
+    this.selected = ""
+    this.refreshInstaller()
+    this.installerOpen = true
+    document.body.style.overflow = "hidden"
 
-    if not id {
-      this.error = "Choose a plugin first."
+    window.setTimeout(() => {
+      const el = document.getElementById("installer-filter")
+      if el and window.innerWidth >= 640 {
+        el.focus()
+      }
+    }, 120)
+  }
+
+   closeInstaller() {
+    if this.installBusy {
+      return null
+    }
+    this.installerOpen = false
+    this.installerError = ""
+    document.body.style.overflow = ""
+    this.selected = ""
+    this.picked = null
+  }
+
+  applyInstallerFilter(value) {
+    this.installerFilter = value
+    this.refreshInstaller()
+  }
+
+  pickPlugin(id) {
+    this.selected = id
+    this.installerError = ""
+    this.picked = this.plugins.find((p) => p.id is id) or null
+  }
+
+  needsCode(result) {
+    if result.status is not 403 {
+      return false
+    }
+
+    const d = result.data or {}
+    const text = ("" + (d.error or "") + " " + (d.code or "")).toLowerCase()
+    return d.two_factor_required is true or d.code is "two_factor_required" or text.includes("two_factor") or text.includes("two-factor")
+  }
+
+  askCode(kind, id, title) {
+    this.pending = { kind: kind, id: id }
+    this.codeTitle = title
+    this.codeValue = ""
+    this.codeError = ""
+    this.codeBusy = false
+    this.codeOpen = true
+    window.setTimeout(() => {
+      const el = document.getElementById("step-up-code")
+      if el {
+        el.focus()
+      }
+    }, 80)
+  }
+
+  closeCode() {
+    this.codeOpen = false
+    this.pending = null
+    this.codeValue = ""
+    this.codeError = ""
+    this.codeBusy = false
+  }
+
+  async submitCode() {
+    if this.codeBusy or not this.pending {
       return null
     }
 
-    const picked = this.plugins.find((p) => p.id is id)
-    if picked and picked.isAvailable and picked.blocked {
-      this.error = picked.blocked
+    const code = this.codeValue.trim()
+    if code is "" {
+      this.codeError = "Enter your code."
       return null
     }
 
-    const result = await useApi("/api/sites/" + this.siteId + "/plugins", { method: "POST", body: { plugin: id } })
+    this.codeBusy = true
+    this.codeError = ""
+    const p = this.pending
+    let outcome = "failed"
+
+    if p.kind is "install" {
+      outcome = await this.runInstall(p.id, code)
+    } else if p.kind is "remove" {
+      outcome = await this.runRemove(p.id, code)
+    } else if p.kind is "nginx" {
+      outcome = await this.runSaveNginx(code)
+    }
+
+    if outcome is "done" {
+      this.closeCode()
+      return null
+    }
+
+    this.codeError = this.lastError or "That code didn't work. Try again."
+    this.codeValue = ""
+    this.codeBusy = false
+  }
+
+  async runInstall(id, code) {
+    const body = code ? { plugin: id, code: code } : { plugin: id }
+    const result = await useApi("/api/sites/" + this.siteId + "/plugins", { method: "POST", body: body })
+
+      if result.ok {
+      this.openLog = id
+      this.installerOpen = false
+      this.installerError = ""
+      document.body.style.overflow = ""
+      this.selected = ""
+      this.picked = null
+      await this.loadPlugins()
+      return "done"
+    }
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't install that plugin."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  async runRemove(id, code) {
+    const query = code ? "?code=" + encodeURIComponent(code) : ""
+    const result = await useApi("/api/sites/" + this.siteId + "/plugins/" + id + query, { method: "DELETE" })
 
     if result.ok {
       this.openLog = id
-      this.selected = ""
       await this.loadPlugins()
-    } else if result.status is 401 {
+      return "done"
+    }
+
+    if result.status is 401 {
       window.location.href = "/login"
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't remove that plugin."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  async installPicked() {
+    if Billing.locked or this.installBusy {
+      return null
+    }
+
+    this.installerError = ""
+
+    if not this.picked {
+      this.installerError = "Choose a plugin first."
+      return null
+    }
+
+    if this.picked.blocked {
+      this.installerError = this.picked.blocked
+      return null
+    }
+
+    const id = this.picked.id
+    this.installBusy = true
+    const outcome = await this.runInstall(id, "")
+
+    if outcome is "code" {
+      this.askCode("install", id, "Confirm to install this plugin")
+    } else if outcome is "failed" {
+      this.installerError = this.lastError
+    }
+
+    this.installBusy = false
+  }
+
+  async retry(id, status) {
+    if Billing.locked {
+      return null
+    }
+
+    this.error = ""
+    const removing = status is "remove_failed"
+    let outcome = "failed"
+
+    if removing {
+      outcome = await this.runRemove(id, "")
     } else {
-      this.error = result.data?.error or "Couldn't install that plugin."
+      outcome = await this.runInstall(id, "")
+    }
+
+    if outcome is "code" {
+      this.askCode(removing ? "remove" : "install", id, removing ? "Confirm to remove this plugin" : "Confirm to install this plugin")
+    } else if outcome is "failed" {
+      this.error = this.lastError
     }
   }
 
@@ -217,15 +457,12 @@ action
     }
 
     this.error = ""
-    const result = await useApi("/api/sites/" + this.siteId + "/plugins/" + id, { method: "DELETE" })
+    const outcome = await this.runRemove(id, "")
 
-    if result.ok {
-      this.openLog = id
-      await this.loadPlugins()
-    } else if result.status is 401 {
-      window.location.href = "/login"
-    } else {
-      this.error = result.data?.error or "Couldn't remove that plugin."
+    if outcome is "code" {
+      this.askCode("remove", id, "Confirm to remove this plugin")
+    } else if outcome is "failed" {
+      this.error = this.lastError
     }
   }
 
@@ -309,6 +546,27 @@ action
     document.body.style.overflow = ""
   }
 
+  async runSaveNginx(code) {
+    const body = code ? { content: this.nginxText, code: code } : { content: this.nginxText }
+    const result = await useApi("/api/sites/" + this.siteId + "/nginx", { method: "PUT", body: body })
+
+    if result.ok {
+      this.nginxText = result.data.content
+      this.nginxOriginal = result.data.content
+      this.nginxMessage = "Saved. nginx accepted the config and was reloaded."
+      this.refreshLines()
+      return "done"
+    }
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't save the nginx config."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
   async saveNginx() {
     if Billing.locked {
       return null
@@ -321,17 +579,12 @@ action
     this.nginxError = ""
     this.nginxMessage = ""
 
-    const result = await useApi("/api/sites/" + this.siteId + "/nginx", { method: "PUT", body: { content: this.nginxText } })
+    const outcome = await this.runSaveNginx("")
 
-    if result.ok {
-      this.nginxText = result.data.content
-      this.nginxOriginal = result.data.content
-      this.nginxMessage = "Saved. nginx accepted the config and was reloaded."
-      this.refreshLines()
-    } else if result.status is 401 {
-      window.location.href = "/login"
-    } else {
-      this.nginxError = result.data?.error or "Couldn't save the nginx config."
+    if outcome is "code" {
+      this.askCode("nginx", "", "Confirm to save the nginx config")
+    } else if outcome is "failed" {
+      this.nginxError = this.lastError
     }
 
     this.nginxSaving = false
@@ -346,6 +599,23 @@ action
   }
 
   onNginxKey(e) {
+    if this.codeOpen {
+      if e.key is "Escape" {
+        this.closeCode()
+      } else if e.key is "Enter" {
+        e.preventDefault()
+        this.submitCode()
+      }
+      return null
+    }
+
+    if this.installerOpen {
+      if e.key is "Escape" {
+        this.closeInstaller()
+      }
+      return null
+    }
+
     if not this.nginxOpen {
       return null
     }
@@ -439,72 +709,92 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
-        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
         <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
       <LockedBanner />
 
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
-        <p class="text-slate-500 text-sm">Settings</p>
+      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-7 sm:py-9 mb-6 sm:mb-8">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
+        <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div class="min-w-0">
+            <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
+              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500"></span>
+              <span class="truncate">{{ typeLabel }} site settings</span>
+            </span>
+            <h1 class="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-slate-900 dark:text-slate-100 break-all sm:break-normal sm:truncate mb-2">{{ site.domain }}</h1>
+            <p class="text-slate-600 dark:text-slate-400 text-sm max-w-xl leading-relaxed">Details, the nginx config and plugins for this site.</p>
+          </div>
+          <span class="{{ statusClass }} self-start sm:self-auto shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+            {{ site.status }}
+          </span>
+        </div>
       </div>
 
-      <div class="flex flex-col lg:flex-row gap-8">
+      <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
         <SiteSidebar active="settings" siteId="{{ siteId }}" />
 
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 flex-1 space-y-4 sm:space-y-6">
 
-          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
 {{#each group in groups}}
-            <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-              <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-5">{{ group.title }}</h2>
-              <div class="grid grid-cols-2 gap-5">
+            <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+              <div class="flex items-center gap-3 mb-4 sm:mb-5">
+                <span class="w-1.5 h-5 shrink-0 rounded-full bg-emerald-500"></span>
+                <h2 class="text-slate-900 dark:text-slate-100 font-semibold">{{ group.title }}</h2>
+              </div>
+              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
 {{#each row in group.rows}}
                 <div class="min-w-0">
-                  <p class="text-slate-500 text-xs mb-1">{{ row.label }}</p>
+                  <dt class="text-slate-500 text-xs mb-1">{{ row.label }}</dt>
 {{#if row.mono}}
-                  <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ row.value }}</p>
+                  <dd class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ row.value }}</dd>
 {{/if}}
 {{#if not row.mono}}
-                  <p class="text-slate-800 dark:text-slate-200 text-sm break-words">{{ row.value }}</p>
+                  <dd class="text-slate-900 dark:text-slate-100 text-sm break-words">{{ row.value }}</dd>
 {{/if}}
                 </div>
 {{/each}}
-              </div>
-            </div>
+              </dl>
+            </section>
 {{/each}}
           </div>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
-            <div class="flex items-start justify-between gap-4">
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div class="min-w-0">
-                <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">nginx configuration</h2>
+                <div class="flex items-center gap-3 mb-1.5">
+                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-emerald-500"></span>
+                  <h2 class="text-slate-900 dark:text-slate-100 font-semibold">nginx configuration</h2>
+                </div>
                 <p class="text-slate-500 text-sm">This site's nginx config. It opens in a full-size editor so it isn't changed by accident.</p>
               </div>
 {{#if nginxReady}}
-              <button onclick="{{ openNginx() }}" class="shrink-0 inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 hover:border-emerald-500/60 hover:bg-slate-300/50 dark:hover:bg-slate-800 transition-colors">
+              <button onclick="{{ openNginx() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 sm:py-2 hover:border-emerald-500/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
                   <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
@@ -521,120 +811,102 @@ template
             <p class="text-slate-500 text-xs font-mono mt-5 break-all">{{ nginxFile }}</p>
             <p class="text-slate-500 text-xs mt-2">Just need to send an old address somewhere else? Use <a href="{{ '/servers/site-redirects?id=' + siteId }}" class="text-emerald-700 dark:text-emerald-500 hover:underline">Redirects</a> instead of editing the config.</p>
 {{/if}}
-          </div>
+          </section>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Plugins</h2>
-            <p class="text-slate-500 text-sm mb-5">Extras you can add to this {{ typeLabel }} site. Each one installs over SSH, and you can remove it again.</p>
-
-            <div class="flex flex-wrap items-center gap-3 mb-6">
-{{#if choices.length is 0}}
-              <p class="text-slate-500 text-sm">Every plugin for this site type has been added.</p>
-{{/if}}
-{{#if choices.length is not 0}}
-              <select
-                value="{{ selected }}"
-                onchange="{{ selected = $event.target.value }}"
-                class="min-w-0 flex-1 sm:flex-none sm:w-80 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-              >
-                <option value="">Add a plugin…</option>
-{{#each c in choices}}
-                <option value="{{ c.id }}">{{ c.label }}</option>
-{{/each}}
-              </select>
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+              <div class="min-w-0">
+                <div class="flex items-center gap-3 mb-1.5">
+                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-emerald-500"></span>
+                  <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Plugins</h2>
+                </div>
+                <p class="text-slate-500 text-sm">Extras for this {{ typeLabel }} site. Each one installs over SSH, and you can remove it again.</p>
+              </div>
 {{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 cursor-not-allowed select-none">
+              <button disabled title="Pay to continue" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 sm:py-2 cursor-not-allowed select-none">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                   <rect x="4" y="9" width="12" height="8" rx="2" />
                   <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
                 </svg>
-                Install
+                Add plugin
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ install(selected) }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Install</button>
-{{/if}}
+              <button onclick="{{ openInstaller() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 sm:py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                  <path d="M10 4v12M4 10h12" stroke-linecap="round" />
+                </svg>
+                Add plugin
+              </button>
 {{/if}}
             </div>
 
 {{#if error}}
-            <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+            <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
 {{/if}}
 
 {{#if activeCount is 0}}
-            <p class="text-slate-500 text-sm">Nothing added yet.</p>
+            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">Nothing added yet</p>
+{{#if choices.length is 0}}
+              <p class="text-slate-500 text-sm">There are no plugins for this site type.</p>
+{{/if}}
+{{#if choices.length is not 0}}
+              <p class="text-slate-500 text-sm">{{ choices.length }} available for this site. Use Add plugin to pick one.</p>
+{{/if}}
+            </div>
 {{/if}}
 
 {{#each p in plugins}}
 {{#if p.shown}}
-            <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 p-5 mb-3">
-              <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2 mb-1">
-                    <h3 class="text-slate-800 dark:text-slate-200 text-sm font-semibold">{{ p.name }}</h3>
-                    <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{{ p.group }}</span>
+            <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4 sm:p-5 mb-3">
+              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                <div class="min-w-0 flex items-start gap-3">
+                  <span class="{{ p.tile }}">{{ p.letter }}</span>
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
+                      <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ p.name }}</h3>
+                      <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{{ p.group }}</span>
 {{#if p.isInstalled}}
-                    <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
-                    </span>
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
+                      </span>
 {{/if}}
 {{#if p.busy}}
-                    <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
-                    </span>
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
+                      </span>
 {{/if}}
 {{#if p.isFailed}}
-                    <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-                      <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-                    </span>
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+                      </span>
+{{/if}}
+                    </div>
+                    <p class="text-slate-500 text-sm break-words">{{ p.description }}</p>
+{{#if p.portText}}
+                    <p class="text-slate-500 text-xs mt-1">Local port <span class="font-mono">{{ p.portText }}</span></p>
 {{/if}}
                   </div>
-                  <p class="text-slate-500 text-sm">{{ p.description }}</p>
-{{#if p.portText}}
-                  <p class="text-slate-500 text-xs mt-1">Local port <span class="font-mono">{{ p.portText }}</span></p>
-{{/if}}
                 </div>
 
-                <div class="shrink-0 flex items-center gap-2">
-                  <button onclick="{{ toggleLog(p.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Details</button>
-{{#if p.isInstalled}}
+                <div class="shrink-0 flex flex-wrap items-center gap-2 sm:justify-end">
+                  <button onclick="{{ toggleLog(p.id) }}" class="min-h-[40px] sm:min-h-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Details</button>
+{{#if p.canAct}}
 {{#if Billing.locked}}
-                  <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
+                  <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 min-h-[40px] sm:min-h-0 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 sm:py-1.5 cursor-not-allowed select-none">
                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                       <rect x="4" y="9" width="12" height="8" rx="2" />
                       <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
                     </svg>
-                    Remove
+                    Locked
                   </button>
 {{/if}}
 {{#if not Billing.locked}}
-                  <button onclick="{{ remove(p.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-1.5 hover:bg-rose-500/5 transition-colors">Remove</button>
-{{/if}}
-{{/if}}
 {{#if p.isFailed}}
-{{#if Billing.locked}}
-                  <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                      <rect x="4" y="9" width="12" height="8" rx="2" />
-                      <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                    </svg>
-                    Retry
-                  </button>
+                  <button onclick="{{ retry(p.id, p.status) }}" class="min-h-[40px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 sm:py-1.5 shadow-sm hover:bg-emerald-400 transition-all">Retry</button>
 {{/if}}
-{{#if not Billing.locked}}
-                  <button onclick="{{ install(p.id) }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-emerald-400 transition-all">Retry</button>
-{{/if}}
-{{#if Billing.locked}}
-                  <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                      <rect x="4" y="9" width="12" height="8" rx="2" />
-                      <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                    </svg>
-                    Remove
-                  </button>
-{{/if}}
-{{#if not Billing.locked}}
-                  <button onclick="{{ remove(p.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-1.5 hover:bg-rose-500/5 transition-colors">Remove</button>
+                  <button onclick="{{ remove(p.id) }}" class="min-h-[40px] sm:min-h-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-2 sm:py-1.5 hover:bg-rose-500/5 transition-colors">Remove</button>
 {{/if}}
 {{/if}}
                 </div>
@@ -646,28 +918,138 @@ template
 
 {{#if openLog is p.id}}
 {{#each n in p.notes}}
-              <p class="text-slate-500 text-xs mt-3">&bull; {{ n }}</p>
+              <p class="text-slate-500 text-xs mt-3 break-words">&bull; {{ n }}</p>
 {{/each}}
 {{#if p.log}}
-              <div class="mt-4 max-h-80 overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ p.log }}</div>
+              <div class="mt-4 max-h-72 sm:max-h-80 overflow-y-auto rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 sm:p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ p.log }}</div>
 {{/if}}
 {{/if}}
             </div>
 {{/if}}
 {{/each}}
-          </div>
+          </section>
 
         </div>
       </div>
 
+{{#if installerOpen}}
+      <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+        <div onclick="{{ closeInstaller() }}" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+
+        <div role="dialog" aria-modal="true" aria-label="Add a plugin" class="relative flex flex-col w-full sm:max-w-3xl h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
+
+          <div class="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
+            <div class="min-w-0">
+              <h3 class="text-slate-900 dark:text-slate-100 font-semibold text-base sm:text-lg">Add a plugin</h3>
+              <p class="text-slate-500 text-xs sm:text-sm mt-0.5">For this {{ typeLabel }} site. It installs over SSH and you can remove it again.</p>
+            </div>
+            <button onclick="{{ closeInstaller() }}" title="Close (Esc)" aria-label="Close" class="shrink-0 w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
+                <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="px-4 sm:px-6 pb-3">
+            <input id="installer-filter" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ installerFilter }}" oninput="{{ applyInstallerFilter($event.target.value) }}" placeholder="Search plugins…" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+          </div>
+
+          <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 pb-4">
+{{#if installerCount is 0}}
+{{#if choices.length is 0}}
+            <p class="text-slate-500 text-sm py-6 text-center">Every plugin for this site type has been added.</p>
+{{/if}}
+{{#if choices.length is not 0}}
+            <p class="text-slate-500 text-sm py-6 text-center">No plugins match your search.</p>
+{{/if}}
+{{/if}}
+
+{{#each g in installerGroups}}
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-3 mb-2">{{ g.title }}</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+{{#each i in g.items}}
+{{#if selected is i.id}}
+              <button onclick="{{ pickPlugin(i.id) }}" aria-pressed="true" class="min-h-[64px] flex items-start gap-3 text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3 py-2.5 transition-colors">
+                <span class="{{ i.tile }}">{{ i.letter }}</span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100">{{ i.name }}</span>
+                  <span class="block text-xs text-slate-500 line-clamp-2 break-words">{{ i.description }}</span>
+{{#if i.blocked}}
+                  <span class="block text-[11px] font-semibold text-amber-700 dark:text-amber-500 mt-1">Unavailable</span>
+{{/if}}
+                </span>
+              </button>
+{{/if}}
+{{#if selected is not i.id}}
+              <button onclick="{{ pickPlugin(i.id) }}" aria-pressed="false" class="min-h-[64px] flex items-start gap-3 text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3 py-2.5 transition-colors hover:border-emerald-500/40">
+                <span class="{{ i.tile }}">{{ i.letter }}</span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100">{{ i.name }}</span>
+                  <span class="block text-xs text-slate-500 line-clamp-2 break-words">{{ i.description }}</span>
+{{#if i.blocked}}
+                  <span class="block text-[11px] font-semibold text-amber-700 dark:text-amber-500 mt-1">Unavailable</span>
+{{/if}}
+                </span>
+              </button>
+{{/if}}
+{{/each}}
+            </div>
+{{/each}}
+          </div>
+
+{{#if picked}}
+          <div class="shrink-0 max-h-[34vh] overflow-y-auto overscroll-contain border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 px-4 sm:px-6 py-3">
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ picked?.name }}</p>
+            <p class="text-slate-500 text-sm mt-0.5 break-words">{{ picked?.description }}</p>
+{{#if picked?.blocked}}
+            <p class="text-amber-700 dark:text-amber-500 text-xs mt-2 break-words">{{ picked?.blocked }}</p>
+{{/if}}
+{{#each n in (picked?.notes or [])}}
+            <p class="text-slate-500 text-xs mt-2 break-words">&bull; {{ n }}</p>
+{{/each}}
+          </div>
+{{/if}}
+
+{{#if installerError}}
+          <p role="alert" class="shrink-0 px-4 sm:px-6 py-2 text-rose-500 text-sm break-words border-t border-slate-200 dark:border-slate-800">{{ installerError }}</p>
+{{/if}}
+
+          <div class="shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+            <button onclick="{{ closeInstaller() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">Install</button>
+{{/if}}
+{{#if not Billing.locked}}
+{{#if installBusy}}
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Installing…</button>
+{{/if}}
+{{#if not installBusy}}
+{{#if picked}}
+{{#if picked?.blocked}}
+              <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">Unavailable</button>
+{{/if}}
+{{#if not picked?.blocked}}
+              <button onclick="{{ installPicked() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Install {{ picked?.name }}</button>
+{{/if}}
+{{/if}}
+{{#if not picked}}
+              <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">Choose a plugin</button>
+{{/if}}
+{{/if}}
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
 {{#if nginxReady}}
 {{#if nginxOpen}}
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-8">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-8">
         <div onclick="{{ closeNginx() }}" class="absolute inset-0 bg-slate-950/60 backdrop-blur-md"></div>
 
-        <div class="relative flex flex-col w-full max-w-[1100px] h-full max-h-[92vh] rounded-2xl border border-slate-700/60 bg-slate-950/90 backdrop-blur-xl overflow-hidden shadow-2xl">
+        <div class="relative flex flex-col w-full max-w-[1100px] h-full sm:max-h-[92vh] rounded-none sm:rounded-2xl border-0 sm:border border-slate-700/60 bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-xl overflow-hidden shadow-2xl">
 
-          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-800 bg-slate-900/80">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-slate-800 bg-slate-900/80">
             <div class="flex items-center gap-3 min-w-0">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-950 text-emerald-400">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4.5 h-4.5">
@@ -693,8 +1075,8 @@ template
             </div>
 
             <div class="flex items-center gap-2">
-              <button onclick="{{ reloadNginx() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Reload from server</button>
-              <button onclick="{{ closeNginx() }}" title="Close (Esc)" aria-label="Close the nginx editor" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-1.5 transition-colors">
+              <button onclick="{{ reloadNginx() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-2 sm:py-1.5 transition-colors">Reload<span class="hidden sm:inline"> from server</span></button>
+              <button onclick="{{ closeNginx() }}" title="Close (Esc)" aria-label="Close the nginx editor" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-2 sm:py-1.5 transition-colors">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
                   <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
@@ -705,14 +1087,14 @@ template
           </div>
 
 {{#if nginxError}}
-          <div role="alert" class="mx-5 mt-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 max-h-44 overflow-y-auto">
+          <div role="alert" class="mx-4 sm:mx-5 mt-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 max-h-44 overflow-y-auto">
             <p class="text-rose-400 text-xs font-medium uppercase tracking-wider mb-1">Not saved</p>
             <p class="text-rose-400 text-xs font-mono whitespace-pre-wrap break-words">{{ nginxError }}</p>
           </div>
 {{/if}}
 
 {{#if nginxMessage}}
-          <div role="status" class="mx-5 mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+          <div role="status" class="mx-4 sm:mx-5 mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
             <p class="text-emerald-400 text-sm">{{ nginxMessage }}</p>
           </div>
 {{/if}}
@@ -728,12 +1110,12 @@ template
 
 {{#if nginxLoaded}}
 {{#if not nginxLoading}}
-          <div class="flex-1 min-h-0 flex flex-col px-5 pt-4 pb-4">
+          <div class="flex-1 min-h-0 flex flex-col px-3 sm:px-5 pt-4 pb-4">
             <div class="flex-1 min-h-0 flex rounded-xl border border-slate-800 bg-slate-950 overflow-hidden focus-within:border-emerald-500/50 transition-colors">
               <div
                 id="nginx-gutter"
                 aria-hidden="true"
-                class="shrink-0 w-14 overflow-hidden select-none text-right pr-3 pl-2 pt-3 pb-10 bg-slate-900/60 border-r border-slate-800 text-slate-600 text-[13px] leading-6 font-mono whitespace-pre"
+                class="shrink-0 w-10 sm:w-14 overflow-hidden select-none text-right pr-2 sm:pr-3 pl-1 sm:pl-2 pt-3 pb-10 bg-slate-900/60 border-r border-slate-800 text-slate-600 text-[13px] leading-6 font-mono whitespace-pre"
               >{{ nginxLineNums }}</div>
               <textarea
                 id="nginx-editor"
@@ -743,7 +1125,7 @@ template
                 autocomplete="off"
                 wrap="off"
                 aria-label="nginx configuration"
-                class="flex-1 min-w-0 h-full resize-none bg-transparent text-slate-200 text-[13px] leading-6 font-mono pl-4 pr-4 pt-3 pb-10 overflow-auto whitespace-pre focus:outline-none"
+                class="flex-1 min-w-0 h-full resize-none bg-transparent text-slate-200 text-base sm:text-[13px] leading-6 font-mono pl-3 sm:pl-4 pr-4 pt-3 pb-10 overflow-auto whitespace-pre focus:outline-none"
               ></textarea>
             </div>
 
@@ -752,20 +1134,22 @@ template
 {{/if}}
 {{/if}}
 
-          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-slate-800 bg-slate-900/80">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-3 border-t border-slate-800 bg-slate-900/80">
             <p class="text-slate-500 text-xs">
               <span class="font-mono text-slate-300">{{ nginxLineCount }}</span> lines
-              <span class="mx-1.5 text-slate-700">&bull;</span>
-              Ctrl+S to test and save
-              <span class="mx-1.5 text-slate-700">&bull;</span>
-              Tested with <span class="font-mono text-slate-400">nginx -t</span> first, and restored if the test fails
+              <span class="hidden sm:inline">
+                <span class="mx-1.5 text-slate-700">&bull;</span>
+                Ctrl+S to test and save
+                <span class="mx-1.5 text-slate-700">&bull;</span>
+                Tested with <span class="font-mono text-slate-400">nginx -t</span> first, and restored if the test fails
+              </span>
             </p>
 
             <div class="flex items-center gap-2">
 {{#if nginxText is not nginxOriginal}}
-              <button onclick="{{ discardNginx() }}" class="text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-2 hover:bg-slate-800 transition-colors">Discard changes</button>
+              <button onclick="{{ discardNginx() }}" class="flex-1 sm:flex-none text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-2.5 sm:py-2 hover:bg-slate-800 transition-colors">Discard</button>
 {{/if}}
-              <button onclick="{{ saveNginx() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+              <button onclick="{{ saveNginx() }}" class="flex-1 sm:flex-none text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 sm:py-2 shadow-sm hover:bg-emerald-400 transition-all">
                 {{#if nginxSaving}}Testing and saving…{{/if}}{{#if not nginxSaving}}Test and save{{/if}}
               </button>
             </div>
@@ -775,8 +1159,48 @@ template
       </div>
 {{/if}}
 {{/if}}
+
+{{#if codeOpen}}
+      <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6">
+        <div onclick="{{ closeCode() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+
+        <div role="dialog" aria-modal="true" aria-label="Two-factor code" class="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
+          <h3 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ codeTitle }}</h3>
+          <p class="text-slate-500 text-sm mb-4">Enter the code from your authenticator app or the SMS we sent you.</p>
+
+          <input
+            id="step-up-code"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            autocapitalize="none"
+            spellcheck="false"
+            maxlength="12"
+            value="{{ codeValue }}"
+            oninput="{{ codeValue = $event.target.value }}"
+            placeholder="123456"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-base tracking-widest font-mono px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          />
+
+{{#if codeError}}
+          <p role="alert" class="text-rose-500 text-sm mt-3 break-words">{{ codeError }}</p>
+{{/if}}
+
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
+            <button onclick="{{ closeCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+{{#if codeBusy}}
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
+{{/if}}
+{{#if not codeBusy}}
+            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Confirm</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
 {{/if}}
 
     </div>
     </div>
   </div>
+  

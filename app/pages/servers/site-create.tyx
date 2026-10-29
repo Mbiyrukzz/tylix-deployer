@@ -19,15 +19,22 @@ state
   loading: true
   notFound: false
   sourceControls: []
+  types: []
+  typesError: ""
+  typeLabel: ""
+  typeFull: ""
+  typeDesc: ""
+  needsText: ""
+  hasBuild: true
   type: "tylix"
   usesPhp: false
-  usesNode: true
-  usesApp: true
+  usesNode: false
+  usesApp: false
   usesPython: false
   usesJava: false
   usesRepo: true
   isMern: false
-  isAngular: false
+  isSpa: false
   showWebDir: false
   domain: ""
   aliasText: ""
@@ -48,13 +55,131 @@ state
   webDirectory: ""
   appDirectory: ""
   backendDirectory: ""
-  buildCommand: "npm run build"
-  startCommand: "npm start"
+  buildCommand: ""
+  startCommand: ""
   installDeps: true
   submitting: false
   errors: []
+  fe: {}
+  fieldCount: 0
 
 action
+  // Same short names as the Dashboard (plus nuxt and vue). Unknown ids use the API label.
+  labelFor(id, fallback) {
+    const labels = [
+      ["tylix", "Tylix"],
+      ["laravel", "Laravel"],
+      ["php", "PHP"],
+      ["nodejs", "Node.js"],
+      ["nextjs", "Next.js"],
+      ["nuxt", "Nuxt"],
+      ["vue", "Vue"],
+      ["wordpress", "WordPress"],
+      ["mern", "MERN"],
+      ["angular", "Angular"],
+      ["fastapi", "FastAPI"],
+      ["django", "Django"],
+      ["java", "Java"],
+      ["go", "Go"],
+      ["ruby", "Ruby"],
+      ["dotnet", ".NET"],
+      ["rust", "Rust"],
+      ["static", "Static"]
+    ]
+    const hit = labels.find((l) => l[0] is id)
+    return hit ? hit[1] : fallback
+  }
+
+  // First letter for the tile. ".NET" gives "N".
+  typeLetter(label) {
+    return String(label).replace(".", "").charAt(0).toUpperCase()
+  }
+
+  tileFor(runtime) {
+    const base = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold "
+    const tones = [
+      ["node", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"],
+      ["mern", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"],
+      ["php", "bg-violet-500/10 text-violet-600 dark:text-violet-400"],
+      ["dotnet", "bg-violet-500/10 text-violet-600 dark:text-violet-400"],
+      ["static", "bg-sky-500/10 text-sky-600 dark:text-sky-400"],
+      ["go", "bg-sky-500/10 text-sky-600 dark:text-sky-400"],
+      ["python", "bg-amber-500/10 text-amber-600 dark:text-amber-400"],
+      ["rust", "bg-amber-500/10 text-amber-600 dark:text-amber-400"],
+      ["java", "bg-rose-500/10 text-rose-600 dark:text-rose-400"],
+      ["ruby", "bg-rose-500/10 text-rose-600 dark:text-rose-400"]
+    ]
+    const hit = tones.find((t) => t[0] is runtime)
+    return base + (hit ? hit[1] : "bg-slate-500/10 text-slate-600 dark:text-slate-400")
+  }
+
+  captionFor(runtime) {
+    const names = [
+      ["node", "Node service"],
+      ["mern", "React + Node API"],
+      ["php", "PHP-FPM"],
+      ["static", "Files on nginx"],
+      ["python", "Python service"],
+      ["java", "Java service"],
+      ["go", "Go binary"],
+      ["ruby", "Ruby service"],
+      ["dotnet", ".NET service"],
+      ["rust", "Rust binary"]
+    ]
+    const hit = names.find((n) => n[0] is runtime)
+    return hit ? hit[1] : runtime
+  }
+
+  // What the server needs before this stack can run (names match the Packages page).
+  needsFor(runtime, id) {
+    const needs = [
+      ["node", "Node.js"],
+      ["mern", "Node.js"],
+      ["php", "PHP"],
+      ["python", "Python 3"],
+      ["java", "Java 21 + Maven"],
+      ["go", "Go"],
+      ["ruby", "Ruby + Bundler"],
+      ["dotnet", ".NET 8 SDK"],
+      ["rust", "Rust"]
+    ]
+    if runtime is "static" {
+      return (id is "vue" or id is "angular") ? "Node.js" : ""
+    }
+    const hit = needs.find((n) => n[0] is runtime)
+    return hit ? hit[1] : ""
+  }
+
+  async loadTypes() {
+    this.typesError = ""
+    const result = await useApi("/api/site-types")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    let list = []
+    if result.ok {
+      list = Array.isArray(result.data) ? result.data : (result.data?.types or [])
+    }
+
+    if list.length is 0 {
+      this.typesError = "Couldn't load the site types. Try again."
+      return null
+    }
+
+    this.types = list.map((t) => Object.assign({}, t, {
+      short: this.labelFor(t.id, t.label),
+      letter: this.typeLetter(this.labelFor(t.id, t.label)),
+      tile: this.tileFor(t.runtime),
+      caption: this.captionFor(t.runtime)
+    }))
+
+    const first = this.types.find((t) => t.id is "tylix")
+    this.setType(first ? "tylix" : this.types[0].id)
+  }
+
   resetSource() {
     this.sourceControlId = "0"
     this.repos = []
@@ -67,92 +192,41 @@ action
     this.repoError = ""
   }
 
+  // Everything about a type (runtime, defaults, repository use) comes from /api/site-types.
   setType(value) {
-    this.type = value
-    this.usesPhp = false
-    this.usesNode = false
-    this.usesApp = false
-    this.usesPython = false
-    this.usesJava = false
-    this.usesRepo = true
-    this.isMern = false
-    this.isAngular = false
-    this.showWebDir = false
-    this.webDirectory = ""
-    this.appDirectory = ""
-    this.backendDirectory = ""
-    this.buildCommand = ""
-    this.startCommand = ""
+    const info = this.types.find((t) => t.id is value)
+    if not info {
+      return null
+    }
 
-    if value is "tylix" {
-      this.usesNode = true
-      this.usesApp = true
-      this.buildCommand = "npm run build"
-      this.startCommand = "npm start"
-    } else if value is "laravel" {
-      this.usesPhp = true
-      this.showWebDir = true
-      this.webDirectory = "public"
-    } else if value is "php" {
-      this.usesPhp = true
-      this.showWebDir = true
-    } else if value is "wordpress" {
-      this.usesPhp = true
-      this.usesRepo = false
+    const d = info.defaults or {}
+    const runtime = info.runtime
+
+    this.type = value
+    this.typeLabel = info.short
+    this.typeFull = info.label
+    this.typeDesc = info.description or ""
+    this.needsText = this.needsFor(runtime, value)
+
+    this.usesPhp = runtime is "php"
+    this.usesNode = runtime is "node" or runtime is "mern"
+    this.usesApp = ["node", "mern", "python", "java", "go", "ruby", "dotnet", "rust"].includes(runtime)
+    this.usesPython = runtime is "python"
+    this.usesJava = runtime is "java"
+    this.isMern = runtime is "mern"
+    this.isSpa = value is "angular" or value is "vue"
+    this.usesRepo = info.usesRepository is not false
+    this.showWebDir = runtime is "static" or (runtime is "php" and this.usesRepo) or value is "django"
+    this.hasBuild = this.usesApp or this.isSpa or this.showWebDir or value is "laravel"
+
+    this.webDirectory = d.web_directory or ""
+    this.appDirectory = d.app_directory or ""
+    this.backendDirectory = d.backend_directory or ""
+    this.buildCommand = d.build_command or ""
+    this.startCommand = d.start_command or ""
+
+    if not this.usesRepo {
       this.resetSource()
-    } else if value is "nodejs" {
-      this.usesNode = true
-      this.usesApp = true
-      this.startCommand = "npm start"
-    } else if value is "nextjs" {
-      this.usesNode = true
-      this.usesApp = true
-      this.buildCommand = "npm run build"
-      this.startCommand = "npm start"
-    } else if value is "fastapi" {
-      this.usesApp = true
-      this.usesPython = true
-      this.startCommand = ".venv/bin/uvicorn main:app --host 127.0.0.1 --port $PORT --proxy-headers --forwarded-allow-ips 127.0.0.1"
-    } else if value is "django" {
-      this.usesApp = true
-      this.usesPython = true
-      this.showWebDir = true
-      this.webDirectory = "staticfiles"
-      this.buildCommand = ".venv/bin/python manage.py migrate --noinput && .venv/bin/python manage.py collectstatic --noinput"
-      this.startCommand = ".venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:$PORT --workers 3"
-    } else if value is "java" {
-      this.usesApp = true
-      this.usesJava = true
-      this.startCommand = "java -Xmx512m -jar target/*.jar --server.port=$PORT"
-    } else if value is "go" {
-      this.usesApp = true
-      this.buildCommand = "go build -o app ."
-      this.startCommand = "./app"
-    } else if value is "ruby" {
-      this.usesApp = true
-      this.startCommand = "bundle exec puma -b tcp://127.0.0.1:$PORT -e production"
-    } else if value is "dotnet" {
-      this.usesApp = true
-      this.buildCommand = "dotnet publish -c Release -o publish"
-      this.startCommand = "dotnet publish/YourApp.dll --urls http://127.0.0.1:$PORT"
-    } else if value is "rust" {
-      this.usesApp = true
-      this.buildCommand = "cargo build --release"
-      this.startCommand = "./target/release/your-app"
-    } else if value is "mern" {
-      this.usesNode = true
-      this.usesApp = true
-      this.isMern = true
-      this.appDirectory = "client"
-      this.backendDirectory = "server"
-      this.buildCommand = "npm run build"
-      this.startCommand = "npm start"
-    } else if value is "angular" {
-      this.isAngular = true
-      this.showWebDir = true
-      this.buildCommand = "npm run build"
-    } else if value is "static" {
-      this.showWebDir = true
     }
   }
 
@@ -239,12 +313,37 @@ action
     this.branchPicked = false
   }
 
+  // Field errors show under their input. Anything else goes in the box above the buttons.
+  applyErrors(data) {
+    const shown = ["domain", "aliases", "isolated_user", "php_version", "port", "repository", "branch", "web_directory", "app_directory", "backend_directory", "build_command", "start_command"]
+    const fe = JSON.parse("{}")
+    const other = []
+
+    if data?.errors {
+      Object.entries(data.errors).forEach((pair) => {
+        if shown.includes(pair[0]) {
+          fe[pair[0]] = pair[1][0]
+        } else {
+          other.push(pair[1][0])
+        }
+      })
+    } else {
+      other.push(data?.error or "Couldn't create the site.")
+    }
+
+    this.fe = fe
+    this.fieldCount = Object.keys(fe).length
+    this.errors = other
+  }
+
   async submit() {
     if Billing.locked or this.submitting {
       return null
     }
 
     this.errors = []
+    this.fe = {}
+    this.fieldCount = 0
     this.submitting = true
 
     const aliases = this.aliasText.split(",").map((a) => a.trim()).filter((a) => a.length > 0)
@@ -281,12 +380,7 @@ action
       return null
     }
 
-    if result.data?.errors {
-      this.errors = Object.values(result.data.errors).map((m) => m[0])
-    } else {
-      this.errors = [result.data?.error or "Couldn't create the site."]
-    }
-
+    this.applyErrors(result.data)
     this.submitting = false
   }
 
@@ -312,6 +406,7 @@ onMount
           this.sourceControls = sc.data.map((c) => ({ id: c.id, label: c.label, kind: c.kind, key: "" + c.id }))
         }
 
+        await this.loadTypes()
         this.loading = false
       } else {
         this.notFound = true
@@ -321,327 +416,498 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-2xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
 {{/if}}
 
 {{#if notFound}}
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
-        <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Server not found</h2>
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
         <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if server}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-5">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
       <LockedBanner />
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Create site</h1>
-      <p class="text-slate-500 text-sm mt-1 mb-8">Fill in the details to create a new site on {{ server.name }}.</p>
+      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-8 sm:py-10 mb-6 sm:mb-8">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
+        <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:items-end">
+          <div class="min-w-0">
+            <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
+              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="truncate">New site on {{ server.name }}</span>
+            </span>
+            <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900 dark:text-slate-100 mb-3">
+              Launch a site,
+              <br class="hidden sm:block" />
+              <span class="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">any stack</span>
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-xl leading-relaxed">Pick a stack, point a domain at it and connect a repository. The user, build, service and nginx are set up for you over SSH.</p>
+          </div>
 
-{{#if errors.length is not 0}}
-      <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 mb-6">
-        <ul class="text-rose-500 text-sm space-y-1">
-{{#each e in errors}}
-          <li>{{ e }}</li>
-{{/each}}
-        </ul>
+          <div class="min-w-0 lg:w-80 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/70 backdrop-blur overflow-hidden shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 dark:border-slate-800">
+              <span class="w-2 h-2 rounded-full bg-rose-400/80"></span>
+              <span class="w-2 h-2 rounded-full bg-amber-400/80"></span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400/80"></span>
+            </div>
+            <div class="px-3 py-3">
+              <p class="flex items-center gap-2 text-sm font-mono text-slate-800 dark:text-slate-200 min-w-0">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-500">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                <span class="truncate">{{ domain ? domain : "your-domain.com" }}</span>
+              </p>
+              <div class="flex items-center justify-between gap-2 mt-2.5">
+                <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{{ typeLabel }}</span>
+                <span class="text-slate-500 text-xs truncate">{{ repository ? repository : "no repository yet" }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
+
+        <div class="min-w-0 space-y-4 sm:space-y-5">
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">1</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">What are you deploying?</h2>
+            </div>
+
+{{#if typesError}}
+            <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3">
+              <p class="text-rose-600 dark:text-rose-400 text-sm">{{ typesError }}</p>
+              <button onclick="{{ loadTypes() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Try again</button>
+            </div>
 {{/if}}
 
-      <div class="space-y-6">
+            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+{{#each t in types}}
+{{#if type is t.id}}
+              <button onclick="{{ setType(t.id) }}" aria-pressed="true" class="min-h-[64px] flex items-center gap-3 text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3 py-2.5 transition-colors">
+                <span class="{{ t.tile }}">{{ t.letter }}</span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ t.short }}</span>
+                  <span class="block text-xs text-slate-500 truncate">{{ t.caption }}</span>
+                </span>
+              </button>
+{{/if}}
+{{#if type is not t.id}}
+              <button onclick="{{ setType(t.id) }}" aria-pressed="false" class="min-h-[64px] flex items-center gap-3 text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3 py-2.5 transition-colors hover:border-emerald-500/40">
+                <span class="{{ t.tile }}">{{ t.letter }}</span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ t.short }}</span>
+                  <span class="block text-xs text-slate-500 truncate">{{ t.caption }}</span>
+                </span>
+              </button>
+{{/if}}
+{{/each}}
+            </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Site type</label>
-          <select onchange="{{ setType($event.target.value) }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
-            <option value="tylix">Tylix</option>
-            <option value="laravel">Laravel</option>
-            <option value="php">PHP</option>
-            <option value="nodejs">Node.js (NPM)</option>
-            <option value="nextjs">Next.js</option>
-            <option value="fastapi">FastAPI</option>
-            <option value="django">Django</option>
-            <option value="java">Java API (Spring Boot)</option>
-            <option value="go">Go</option>
-            <option value="ruby">Ruby (Rails / Rack)</option>
-            <option value="dotnet">.NET (ASP.NET Core)</option>
-            <option value="rust">Rust</option>
-            <option value="wordpress">WordPress</option>
-            <option value="mern">MERN (React + Node API)</option>
-            <option value="angular">Angular</option>
-            <option value="static">Static</option>
-          </select>
-{{#if type is "wordpress"}}
-          <p class="text-slate-500 text-xs mt-2">Downloads the latest WordPress and creates its MySQL database. No repository needed.</p>
+{{#if typeDesc}}
+            <div class="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 px-4 py-3">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ typeFull }}</p>
+              <p class="text-slate-500 text-sm mt-0.5 break-words">{{ typeDesc }}</p>
+{{#if needsText}}
+              <p class="text-slate-500 text-xs mt-2">Needs <span class="font-medium text-slate-700 dark:text-slate-300">{{ needsText }}</span> on the server. Add it from the server's Packages page.</p>
 {{/if}}
-{{#if isMern}}
-          <p class="text-slate-500 text-xs mt-2">The React client is built and served by nginx. The Node API runs on the port below and is reached at /api/.</p>
+            </div>
 {{/if}}
-{{#if isAngular}}
-          <p class="text-slate-500 text-xs mt-2">Built on the server with npm and served as a single-page app.</p>
-{{/if}}
-{{#if usesPython}}
-          <p class="text-slate-500 text-xs mt-2">Runs in its own virtualenv. The first deploy installs requirements.txt and starts the app. Needs Python from the Packages page.</p>
-{{/if}}
-{{#if type is "django"}}
-          <p class="text-slate-500 text-xs mt-2">Runs under gunicorn. The web directory is your STATIC_ROOT, served by nginx at /static/.</p>
-{{/if}}
-{{#if usesJava}}
-          <p class="text-slate-500 text-xs mt-2">Built with Maven or Gradle on the server and run as a jar. Needs Java from the Packages page.</p>
-{{/if}}
-{{#if type is "go"}}
-          <p class="text-slate-500 text-xs mt-2">Built on the server with go build and run as a binary. Your app must listen on $PORT. Needs Go from the Packages page.</p>
-{{/if}}
-{{#if type is "ruby"}}
-          <p class="text-slate-500 text-xs mt-2">Gems install with Bundler into vendor/bundle. Needs Ruby from the Packages page. For Rails, add SECRET_KEY_BASE to the env on the Deployment tab.</p>
-{{/if}}
-{{#if type is "dotnet"}}
-          <p class="text-slate-500 text-xs mt-2">Published with dotnet publish. Replace YourApp.dll in the start command with your project's DLL. Needs the .NET SDK from the Packages page.</p>
-{{/if}}
-{{#if type is "rust"}}
-          <p class="text-slate-500 text-xs mt-2">Built with cargo build --release. Replace your-app in the start command with your binary's name. The first build can take several minutes. Needs Rust from the Packages page.</p>
-{{/if}}
-        </div>
+          </section>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Domain</label>
-          <input type="text" autocomplete="off" value="{{ domain }}" oninput="{{ domain = $event.target.value }}" placeholder="example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-        </div>
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">2</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Domain and access</h2>
+            </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Aliases</label>
-          <input type="text" autocomplete="off" value="{{ aliasText }}" oninput="{{ aliasText = $event.target.value }}" placeholder="www.example.com, app.example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">Separate aliases with commas.</p>
-        </div>
+            <label for="site-domain" class="block text-slate-500 text-xs font-medium mb-1.5">Domain</label>
+            <input id="site-domain" type="text" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ domain }}" oninput="{{ domain = $event.target.value }}" placeholder="example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.domain}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.domain }}</p>
+{{/if}}
 
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Isolated user</label>
-          <input type="text" name="site_unix_user" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ isolatedUser }}" oninput="{{ isolatedUser = $event.target.value }}" placeholder="e.g. mysite" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">The isolated user for the site. Must be unique on the server and not a system name such as root or tylix. Leave blank to use the first part of the domain.</p>
-        </div>
+            <label for="site-aliases" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Aliases</label>
+            <input id="site-aliases" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ aliasText }}" oninput="{{ aliasText = $event.target.value }}" placeholder="www.example.com, app.example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.aliases}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.aliases }}</p>
+{{/if}}
+            <p class="text-slate-500 text-xs mt-1.5">Separate aliases with commas.</p>
+
+            <label for="site-user" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Isolated user</label>
+            <input id="site-user" type="text" name="site_unix_user" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ isolatedUser }}" oninput="{{ isolatedUser = $event.target.value }}" placeholder="e.g. mysite" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.isolated_user}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.isolated_user }}</p>
+{{/if}}
+            <p class="text-slate-500 text-xs mt-1.5">Must be unique on the server and not a system name such as root or tylix. Leave blank to use the first part of the domain.</p>
 
 {{#if usesPhp}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">PHP version</label>
-          <select onchange="{{ phpVersion = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
-            <option value="8.5">8.5</option>
-            <option value="8.4" selected>8.4</option>
-            <option value="8.3">8.3</option>
-            <option value="8.2">8.2</option>
-            <option value="8.1">8.1</option>
-          </select>
-          <p class="text-slate-500 text-xs mt-2">PHP-FPM for this version must already be installed on the server.</p>
-        </div>
+            <label for="site-php" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">PHP version</label>
+            <select id="site-php" onchange="{{ phpVersion = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors">
+              <option value="8.5">8.5</option>
+              <option value="8.4" selected>8.4</option>
+              <option value="8.3">8.3</option>
+              <option value="8.2">8.2</option>
+              <option value="8.1">8.1</option>
+            </select>
+{{#if fe.php_version}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.php_version }}</p>
+{{/if}}
+            <p class="text-slate-500 text-xs mt-1.5">PHP-FPM for this version must already be installed on the server.</p>
 {{/if}}
 
 {{#if usesApp}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">App port</label>
-          <input type="text" autocomplete="off" value="{{ port }}" oninput="{{ port = $event.target.value }}" placeholder="Auto (first free port from 3000)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">Your app gets this as the PORT variable. nginx proxies to 127.0.0.1 on it.</p>
-        </div>
+            <label for="site-port" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">App port</label>
+            <input id="site-port" type="text" inputmode="numeric" autocomplete="off" value="{{ port }}" oninput="{{ port = $event.target.value }}" placeholder="Auto (first free port from 3000)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.port}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.port }}</p>
+{{/if}}
+            <p class="text-slate-500 text-xs mt-1.5">Your app gets this as the PORT variable. nginx proxies to 127.0.0.1 on it.</p>
+{{/if}}
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">3</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Source</h2>
+            </div>
+
+{{#if not usesRepo}}
+            <p class="text-slate-500 text-sm">No repository needed for this site type.</p>
 {{/if}}
 
 {{#if usesRepo}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Source control</label>
-          <select onchange="{{ pickConnection($event.target.value) }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
-            <option value="0">None</option>
+            <label for="site-source" class="block text-slate-500 text-xs font-medium mb-1.5">Source control</label>
+            <select id="site-source" onchange="{{ pickConnection($event.target.value) }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors">
+              <option value="0">None</option>
 {{#each sc in sourceControls}}
 {{#if sc.key is sourceControlId}}
-            <option value="{{ sc.id }}" selected>{{ sc.label }} ({{ sc.kind }})</option>
+              <option value="{{ sc.id }}" selected>{{ sc.label }} ({{ sc.kind }})</option>
 {{/if}}
 {{#if sc.key is not sourceControlId}}
-            <option value="{{ sc.id }}">{{ sc.label }} ({{ sc.kind }})</option>
+              <option value="{{ sc.id }}">{{ sc.label }} ({{ sc.kind }})</option>
 {{/if}}
 {{/each}}
-          </select>
-        </div>
+            </select>
+{{#if usesApp}}
+{{#if sourceControlId is "0"}}
+            <p class="text-amber-700 dark:text-amber-500 text-xs mt-2">Without a repository nginx is set up, but there is nothing to run yet. Pick one to start the app.</p>
+{{/if}}
+{{/if}}
 {{/if}}
 
 {{#if sourceControlId is not "0"}}
 {{#if loadingRepos}}
-        <p class="text-slate-500 text-sm">Loading repositories…</p>
+            <p class="text-slate-500 text-sm mt-4">Loading repositories…</p>
 {{/if}}
 
 {{#if repoError}}
-        <p role="alert" class="text-rose-500 text-sm">{{ repoError }}</p>
+            <p role="alert" class="text-rose-500 text-sm mt-4 break-words">{{ repoError }}</p>
+{{/if}}
+
+{{#if fe.repository}}
+            <p role="alert" class="text-rose-500 text-xs mt-3">{{ fe.repository }}</p>
+{{/if}}
+{{#if fe.branch}}
+            <p role="alert" class="text-rose-500 text-xs mt-3">{{ fe.branch }}</p>
 {{/if}}
 
 {{#if repos.length is not 0}}
 {{#if repository is ""}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Repository ({{ repos.length }} total, showing {{ visibleRepos.length }})</label>
-          <input type="text" autocomplete="off" value="{{ repoFilter }}" oninput="{{ applyRepoFilter($event.target.value) }}" placeholder="Filter repositories…" class="w-full mb-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <div class="max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 divide-y divide-slate-300 dark:divide-slate-800">
+            <label for="site-repo-filter" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Repository ({{ repos.length }} total, showing {{ visibleRepos.length }})</label>
+            <input id="site-repo-filter" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ repoFilter }}" oninput="{{ applyRepoFilter($event.target.value) }}" placeholder="Filter repositories…" class="w-full mb-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <div class="max-h-64 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#if visibleRepos.length is 0}}
-            <p class="px-4 py-3 text-slate-500 text-sm">No repositories match.</p>
+              <p class="px-4 py-3 text-slate-500 text-sm">No repositories match.</p>
 {{/if}}
 {{#each r in visibleRepos}}
-            <button onclick="{{ pickRepo(r.full_name) }}" class="w-full text-left px-4 py-2.5 text-sm font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">{{ r.full_name }}</button>
+              <button onclick="{{ pickRepo(r.full_name) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">{{ r.full_name }}</button>
 {{/each}}
-          </div>
-        </div>
+            </div>
 {{/if}}
 {{#if repository is not ""}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Repository</label>
-          <div class="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-            <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ repository }}</span>
-            <button onclick="{{ changeRepo() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Change</button>
-          </div>
-        </div>
+            <p class="text-slate-500 text-xs font-medium mt-4 mb-1.5">Repository</p>
+            <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3">
+              <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ repository }}</span>
+              <button onclick="{{ changeRepo() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Change</button>
+            </div>
 {{/if}}
 {{/if}}
 
 {{#if repository is not ""}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Branch</label>
+            <p class="text-slate-500 text-xs font-medium mt-4 mb-1.5">Branch</p>
 {{#if branchPicked}}
-          <div class="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-            <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ branch }}</span>
-            <button onclick="{{ changeBranch() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Change</button>
-          </div>
+            <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3">
+              <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ branch }}</span>
+              <button onclick="{{ changeBranch() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Change</button>
+            </div>
 {{/if}}
 {{#if not branchPicked}}
 {{#if loadingBranches}}
-          <p class="text-slate-500 text-xs">Loading branches…</p>
+            <p class="text-slate-500 text-xs">Loading branches…</p>
 {{/if}}
 {{#if branches.length is not 0}}
-          <div class="max-h-48 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 divide-y divide-slate-300 dark:divide-slate-800">
+            <div class="max-h-48 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#each b in branches}}
 {{#if b is branch}}
-            <button onclick="{{ pickBranch(b) }}" class="w-full text-left px-4 py-2.5 text-sm font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">{{ b }}</button>
+              <button onclick="{{ pickBranch(b) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">{{ b }}</button>
 {{/if}}
 {{#if b is not branch}}
-            <button onclick="{{ pickBranch(b) }}" class="w-full text-left px-4 py-2.5 text-sm font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">{{ b }}</button>
+              <button onclick="{{ pickBranch(b) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">{{ b }}</button>
 {{/if}}
 {{/each}}
-          </div>
+            </div>
 {{/if}}
 {{#if branches.length is 0}}
 {{#if not loadingBranches}}
-          <p class="text-slate-500 text-xs">No branches found. Using <span class="font-mono">{{ branch }}</span>.</p>
+            <p class="text-slate-500 text-xs">No branches found. Using <span class="font-mono">{{ branch }}</span>.</p>
 {{/if}}
 {{/if}}
 {{/if}}
-        </div>
 {{/if}}
 {{/if}}
+          </section>
+
+{{#if hasBuild}}
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">4</span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Build and run</h2>
+            </div>
 
 {{#if showWebDir}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Web directory</label>
-          <input type="text" autocomplete="off" value="{{ webDirectory }}" oninput="{{ webDirectory = $event.target.value }}" placeholder="e.g., public, www, dist (leave empty for root)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-{{#if isAngular}}
-          <p class="text-slate-500 text-xs mt-2">Leave empty to detect the build output (dist/.../browser) automatically.</p>
+            <label for="site-webdir" class="block text-slate-500 text-xs font-medium mb-1.5">Web directory</label>
+            <input id="site-webdir" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ webDirectory }}" oninput="{{ webDirectory = $event.target.value }}" placeholder="e.g., public, www, dist (leave empty for root)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.web_directory}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.web_directory }}</p>
 {{/if}}
-{{#if not isAngular}}
-          <p class="text-slate-500 text-xs mt-2">The relative path of your website from the site folder.</p>
+{{#if isSpa}}
+            <p class="text-slate-500 text-xs mt-1.5">Leave empty to detect the build output (dist or build) automatically.</p>
 {{/if}}
-        </div>
+{{#if type is "django"}}
+            <p class="text-slate-500 text-xs mt-1.5">Your STATIC_ROOT. nginx serves it at /static/.</p>
+{{/if}}
+{{#if not isSpa}}
+{{#if type is not "django"}}
+            <p class="text-slate-500 text-xs mt-1.5">The relative path of your website from the site folder.</p>
+{{/if}}
+{{/if}}
 {{/if}}
 
 {{#if sourceControlId is not "0"}}
 {{#if usesPhp}}
-        <label class="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
-          <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-4 h-4 accent-emerald-500" />
-          Run <code class="font-mono">composer install --no-dev</code>
-        </label>
+            <label class="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200 mt-4">
+              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-emerald-500" />
+              <span>Run <code class="font-mono">composer install --no-dev</code></span>
+            </label>
 {{/if}}
 {{#if usesNode}}
-        <label class="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
-          <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-4 h-4 accent-emerald-500" />
-          Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)
-        </label>
+            <label class="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200 mt-4">
+              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-emerald-500" />
+              <span>Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)</span>
+            </label>
+{{/if}}
+{{/if}}
 
 {{#if isMern}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Client folder</label>
-          <input type="text" autocomplete="off" value="{{ appDirectory }}" oninput="{{ appDirectory = $event.target.value }}" placeholder="client" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">The React app. The build command runs here and nginx serves its dist or build output.</p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">API folder</label>
-          <input type="text" autocomplete="off" value="{{ backendDirectory }}" oninput="{{ backendDirectory = $event.target.value }}" placeholder="server" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">The Node API. The start command runs here. Add its .env on the server after creating the site.</p>
-        </div>
+            <label for="site-client" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Client folder</label>
+            <input id="site-client" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ appDirectory }}" oninput="{{ appDirectory = $event.target.value }}" placeholder="client" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.app_directory}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.app_directory }}</p>
 {{/if}}
+            <p class="text-slate-500 text-xs mt-1.5">The React app. The build command runs here and nginx serves its dist or build output.</p>
+
+            <label for="site-api" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API folder</label>
+            <input id="site-api" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ backendDirectory }}" oninput="{{ backendDirectory = $event.target.value }}" placeholder="server" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.backend_directory}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.backend_directory }}</p>
+{{/if}}
+            <p class="text-slate-500 text-xs mt-1.5">The Node API. The start command runs here. Add its .env on the server after creating the site.</p>
 {{/if}}
 
 {{#if usesApp}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Build command</label>
-          <input type="text" autocomplete="off" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+            <label for="site-build" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Build command</label>
+            <input id="site-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.build_command}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.build_command }}</p>
+{{/if}}
 {{#if usesJava}}
-          <p class="text-slate-500 text-xs mt-2">Leave empty to auto-detect mvnw, gradlew or mvn. Gradle: sh gradlew bootJar -x test.</p>
+            <p class="text-slate-500 text-xs mt-1.5">Leave empty to auto-detect mvnw, gradlew or mvn. Gradle: sh gradlew bootJar -x test.</p>
 {{/if}}
 {{#if usesPython}}
-          <p class="text-slate-500 text-xs mt-2">Runs after pip install on every deploy, inside the site folder (use .venv/bin/python).</p>
+            <p class="text-slate-500 text-xs mt-1.5">Runs after pip install on every deploy, inside the site folder (use .venv/bin/python).</p>
 {{/if}}
 {{#if type is "ruby"}}
-          <p class="text-slate-500 text-xs mt-2">Optional, runs after bundle install on every deploy. For Rails, e.g. RAILS_ENV=production bundle exec rails assets:precompile db:migrate. Leave empty for Rack and Sinatra apps.</p>
+            <p class="text-slate-500 text-xs mt-1.5">Optional, runs after bundle install on every deploy. For Rails, e.g. RAILS_ENV=production bundle exec rails assets:precompile db:migrate. Leave empty for Rack and Sinatra apps.</p>
 {{/if}}
-        </div>
+{{#if type is "rust"}}
+            <p class="text-slate-500 text-xs mt-1.5">The first build can take several minutes.</p>
+{{/if}}
 
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Start command</label>
-          <input type="text" autocomplete="off" value="{{ startCommand }}" oninput="{{ startCommand = $event.target.value }}" placeholder="npm start" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">Runs as the isolated user under systemd and restarts if it crashes. Listen on $PORT.</p>
-        </div>
+            <label for="site-start" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Start command</label>
+            <input id="site-start" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ startCommand }}" oninput="{{ startCommand = $event.target.value }}" placeholder="npm start" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.start_command}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.start_command }}</p>
 {{/if}}
-{{#if isAngular}}
-        <label class="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
-          <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-4 h-4 accent-emerald-500" />
-          Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)
-        </label>
+            <p class="text-slate-500 text-xs mt-1.5">Runs as the isolated user under systemd and restarts if it crashes. Listen on $PORT.</p>
+{{#if type is "dotnet"}}
+            <p class="text-slate-500 text-xs mt-1">Replace YourApp.dll with your project's DLL.</p>
+{{/if}}
+{{#if type is "rust"}}
+            <p class="text-slate-500 text-xs mt-1">Replace your-app with your binary's name.</p>
+{{/if}}
+{{/if}}
 
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Build command</label>
-          <input type="text" autocomplete="off" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="npm run build" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-        </div>
+{{#if isSpa}}
+{{#if sourceControlId is not "0"}}
+            <label class="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200 mt-4">
+              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-emerald-500" />
+              <span>Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)</span>
+            </label>
 {{/if}}
+
+            <label for="site-spa-build" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Build command</label>
+            <input id="site-spa-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="npm run build" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.build_command}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.build_command }}</p>
+{{/if}}
+{{/if}}
+
 {{#if type is "laravel"}}
-        <div>
-          <label class="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Build command</label>
-          <input type="text" autocomplete="off" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm ci && npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 text-sm px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <p class="text-slate-500 text-xs mt-2">For Vite assets. Needs Node.js on the server.</p>
-        </div>
+            <label for="site-laravel-build" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Build command</label>
+            <input id="site-laravel-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm ci && npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+{{#if fe.build_command}}
+            <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.build_command }}</p>
 {{/if}}
+            <p class="text-slate-500 text-xs mt-1.5">For Vite assets. Needs Node.js on the server.</p>
+{{/if}}
+          </section>
 {{/if}}
 
-        <div class="flex items-center gap-3 pt-2">
+{{#if errors.length is not 0}}
+          <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3">
+            <ul class="text-rose-600 dark:text-rose-400 text-sm space-y-1 break-words">
+{{#each e in errors}}
+              <li>{{ e }}</li>
+{{/each}}
+            </ul>
+          </div>
+{{/if}}
+
+{{#if fieldCount is not 0}}
+          <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3">
+            <p class="text-rose-600 dark:text-rose-400 text-sm">{{ fieldCount is 1 ? "1 field needs attention." : fieldCount + " fields need attention." }} Look for the red notes above.</p>
+          </div>
+{{/if}}
+
+          <div class="sticky bottom-0 z-30 -mx-4 sm:-mx-6 lg:mx-0 px-4 sm:px-6 lg:px-0 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-slate-200 dark:border-slate-800 lg:border-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+            <a href="{{ '/servers/server-sites?id=' + serverId }}" class="text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
 {{#if Billing.locked}}
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            Create
-          </button>
+            <button disabled title="Pay to continue" class="inline-flex items-center justify-center gap-1.5 min-h-[48px] text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+              </svg>
+              Create site
+            </button>
 {{/if}}
 {{#if not Billing.locked}}
 {{#if submitting}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Creating…</button>
+            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
 {{/if}}
 {{#if not submitting}}
-          <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Create</button>
+            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create site</button>
 {{/if}}
 {{/if}}
-          <a href="{{ '/servers/server-sites?id=' + serverId }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</a>
+          </div>
+
         </div>
+
+        <aside class="hidden lg:block lg:sticky lg:top-6 space-y-4">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your site</h2>
+            <dl class="space-y-3 text-sm">
+              <div>
+                <dt class="text-slate-500 text-xs">Server</dt>
+                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ server.name }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Stack</dt>
+                <dd class="text-slate-900 dark:text-slate-100">{{ typeFull }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Domain</dt>
+{{#if domain}}
+                <dd class="text-slate-900 dark:text-slate-100 font-mono break-all">{{ domain }}</dd>
+{{/if}}
+{{#if not domain}}
+                <dd class="text-slate-400">Not entered</dd>
+{{/if}}
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Source</dt>
+{{#if repository}}
+                <dd class="text-slate-900 dark:text-slate-100 font-mono break-all">{{ repository }}@{{ branch }}</dd>
+{{/if}}
+{{#if not repository}}
+                <dd class="text-slate-400">No repository</dd>
+{{/if}}
+              </div>
+{{#if usesApp}}
+              <div>
+                <dt class="text-slate-500 text-xs">App port</dt>
+{{#if port}}
+                <dd class="text-slate-900 dark:text-slate-100 font-mono">{{ port }}</dd>
+{{/if}}
+{{#if not port}}
+                <dd class="text-slate-400">Automatic</dd>
+{{/if}}
+              </div>
+{{/if}}
+            </dl>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">What happens next</h2>
+            <ol class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Creates the isolated user and folder</li>
+{{#if repository}}
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Clones {{ branch }} from your repository</li>
+{{/if}}
+{{#if type is "wordpress"}}
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Downloads WordPress and creates its database</li>
+{{/if}}
+{{#if repository}}
+{{#if hasBuild}}
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Installs dependencies and builds</li>
+{{/if}}
+{{#if usesApp}}
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Sets up the app service</li>
+{{/if}}
+{{/if}}
+              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Configures and reloads nginx</li>
+            </ol>
+            <p class="text-slate-500 text-xs mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">Add HTTPS from the site's page once the domain points at this server.</p>
+          </div>
+        </aside>
 
       </div>
 {{/if}}

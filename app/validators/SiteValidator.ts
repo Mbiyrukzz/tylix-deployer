@@ -1,6 +1,10 @@
 /**
  * Every value checked here ends up in shell commands, nginx config or a
  * systemd runner script, so the patterns are strict on purpose.
+ *
+ * Defaults from SiteTypes.ts apply only to fields that were not sent at all
+ * (API clients). An empty string is a deliberate choice: skip the build,
+ * serve from the site root.
  */
 
 import { getType, isPhp, needsPort, PHP_VERSIONS } from "../services/SiteTypes.js";
@@ -39,6 +43,9 @@ const text = (v: unknown) => (v === null || v === undefined ? "" : String(v).tri
 const cleanDir = (v: unknown) => text(v).replace(/^\/+|\/+$/g, "");
 const badDir = (dir: string) =>
     dir !== "" && (!DIR.test(dir) || dir.split("/").some((p) => p === ".." || p === "."));
+
+/** True when the client sent the field, even as an empty string. */
+const given = (v: unknown) => v !== undefined && v !== null;
 
 function deriveUser(b: Body, domain: string): string {
     let user = text(b.isolated_user).toLowerCase();
@@ -97,8 +104,8 @@ export function validateSite(data: unknown): { valid: boolean; errors: Record<st
         }
     }
 
-    const sourceControlId = Number(b.source_control_id) || 0;
-    if (info?.usesRepository && sourceControlId !== 0) {
+    const sourceControlId = info?.usesRepository ? Number(b.source_control_id) || 0 : 0;
+    if (sourceControlId !== 0) {
         const repo = text(b.repository);
         if (!REPO.test(repo) || repo.split("/").some((p) => p === "." || p === ".." || p.startsWith("-"))) {
             fail("repository", "Pick a repository.");
@@ -116,6 +123,12 @@ export function validateSite(data: unknown): { valid: boolean; errors: Record<st
         if (value !== "" && !COMMAND.test(value)) fail(field, "Use a single line of up to 200 characters.");
     }
 
+    // An app with a repository needs something to run. The provisioner creates
+    // no service when the start command is empty, so the site would sit idle.
+    if (type && needsPort(type) && sourceControlId !== 0 && given(b.start_command) && text(b.start_command) === "") {
+        fail("start_command", "Enter a start command.");
+    }
+
     return { valid: Object.keys(errors).length === 0, errors };
 }
 
@@ -127,7 +140,6 @@ export function normalizeSite(data: unknown): NormalizedSite {
     const domain = text(b.domain).toLowerCase();
 
     const sourceControlId = info?.usesRepository ? Number(b.source_control_id) || 0 : 0;
-    const pick = (value: string, fallback: string | undefined) => (value !== "" ? value : (fallback ?? ""));
 
     return {
         server_id: Number(b.server_id),
@@ -140,11 +152,11 @@ export function normalizeSite(data: unknown): NormalizedSite {
         port: needsPort(type) ? Number(text(b.port)) || 0 : 0,
         repository: sourceControlId !== 0 ? text(b.repository) : "",
         branch: sourceControlId !== 0 ? text(b.branch) || "main" : "",
-        web_directory: pick(cleanDir(b.web_directory), d?.web_directory),
-        app_directory: pick(cleanDir(b.app_directory), d?.app_directory),
-        backend_directory: pick(cleanDir(b.backend_directory), d?.backend_directory),
-        build_command: pick(text(b.build_command), d?.build_command),
-        start_command: pick(text(b.start_command), d?.start_command),
+        web_directory: given(b.web_directory) ? cleanDir(b.web_directory) : (d?.web_directory ?? ""),
+        app_directory: given(b.app_directory) ? cleanDir(b.app_directory) : (d?.app_directory ?? ""),
+        backend_directory: given(b.backend_directory) ? cleanDir(b.backend_directory) : (d?.backend_directory ?? ""),
+        build_command: given(b.build_command) ? text(b.build_command) : (d?.build_command ?? ""),
+        start_command: given(b.start_command) ? text(b.start_command) : (d?.start_command ?? ""),
         install_deps: b.install_deps !== false,
     };
 }

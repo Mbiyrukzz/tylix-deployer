@@ -6,6 +6,10 @@
  * role. Installing and removing return 202 right away and the work
  * continues in the background. The page polls GET /api/sites/:id/plugins
  * for status and log.
+ *
+ * preflight() holds every state check that can refuse an install or a
+ * removal. The route runs it before the two-factor step, so a refused
+ * request never spends a code. The controller runs it again as a backstop.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -77,6 +81,39 @@ function blockedReason(site: SiteRow, def: PluginDef): string {
     return "";
 }
 
+/**
+ * Every state check that can refuse an install or a removal.
+ * Returns the refusal, or null when the request may go ahead.
+ */
+export async function preflight(
+    site: { id: number; type: string; status: string; [key: string]: unknown },
+    def: PluginDef,
+    action: "install" | "uninstall",
+): Promise<{ status: number; error: string } | null> {
+    const row = site as unknown as SiteRow;
+    const rows = await rowsFor(row.id);
+    const existing = rows.find((r) => r.plugin === def.id);
+
+    if (action === "install") {
+        const blocked = blockedReason(row, def);
+        if (blocked) return { status: 409, error: blocked };
+    }
+
+    if (action === "uninstall" && !existing) {
+        return { status: 404, error: "That plugin isn't installed on this site." };
+    }
+
+    if (rows.some(isBusy)) {
+        return { status: 409, error: "Another plugin change is still running on this site. Wait for it to finish." };
+    }
+
+    if (action === "install" && existing && existing.status === "installed") {
+        return { status: 409, error: `${def.name} is already installed.` };
+    }
+
+    return null;
+}
+
 async function freePort(serverId: number, start: number): Promise<number> {
     const used = new Set<number>();
 
@@ -117,12 +154,12 @@ export class SitePluginController {
         );
     }
 
-    /** POST /api/sites/:id/plugins   body { plugin } */
+    /** POST /api/sites/:id/plugins   body { plugin, code? } */
     async install(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
-        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
+        if (!(await requireActive(res, Number(site.team_id)))) return;
 
         const id = String(((req.body ?? {}) as Record<string, unknown>).plugin ?? "");
         const def = getPlugin(id);
@@ -132,23 +169,14 @@ export class SitePluginController {
             return res.json({ error: "That plugin isn't available for this kind of site." });
         }
 
-        const blocked = blockedReason(site, def);
-        if (blocked) {
-            res.status(409);
-            return res.json({ error: blocked });
+        const refusal = await preflight(site, def, "install");
+        if (refusal) {
+            res.status(refusal.status);
+            return res.json({ error: refusal.error });
         }
 
         const rows = await rowsFor(site.id);
-        if (rows.some(isBusy)) {
-            res.status(409);
-            return res.json({ error: "Another plugin change is still running on this site. Wait for it to finish." });
-        }
-
         const existing = rows.find((r) => r.plugin === def.id);
-        if (existing && existing.status === "installed") {
-            res.status(409);
-            return res.json({ error: `${def.name} is already installed.` });
-        }
 
         const port = def.port ? portOf(existing) || (await freePort(site.server_id, def.port.start)) : 0;
 
@@ -175,25 +203,30 @@ export class SitePluginController {
         return res.json({ status: "installing" });
     }
 
-    /** DELETE /api/sites/:id/plugins/:plugin */
+    /** DELETE /api/sites/:id/plugins/:plugin   query { code? } */
     async uninstall(req: TylixRequest, res: TylixResponse) {
         const site = await findOwnedSite(req, res);
         if (!site) return;
         if (!requireRole(req, res, "admin")) return;
-        if (!(await requireActive(res, Number(req.user?.teamId)))) return;
+        if (!(await requireActive(res, Number(site.team_id)))) return;
 
         const def = getPlugin(String(req.params.plugin ?? ""));
-        const rows = await rowsFor(site.id);
-        const row = def ? rows.find((r) => r.plugin === def.id) : undefined;
 
-        if (!def || !row) {
+        if (!def) {
             res.status(404);
             return res.json({ error: "That plugin isn't installed on this site." });
         }
 
-        if (rows.some(isBusy)) {
-            res.status(409);
-            return res.json({ error: "Another plugin change is still running on this site. Wait for it to finish." });
+        const refusal = await preflight(site, def, "uninstall");
+        if (refusal) {
+            res.status(refusal.status);
+            return res.json({ error: refusal.error });
+        }
+
+        const row = (await rowsFor(site.id)).find((r) => r.plugin === def.id);
+        if (!row) {
+            res.status(404);
+            return res.json({ error: "That plugin isn't installed on this site." });
         }
 
         await SitePlugin.update(row.id, { status: "removing", step: "uninstall", error: "" });

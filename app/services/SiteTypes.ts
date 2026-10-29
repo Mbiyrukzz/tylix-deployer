@@ -4,9 +4,9 @@
  * (via GET /api/site-types) all agree.
  *
  *   php     PHP-FPM pool per site (laravel, php, wordpress)
- *   node    one Node process behind an nginx proxy (tylix, nextjs, nodejs)
+ *   node    one Node process behind an nginx proxy (tylix, nextjs, nuxt, nodejs)
  *   mern    React build served by nginx + Node API on a port, /api proxied
- *   static  files served by nginx, optionally built first (angular, static)
+ *   static  files served by nginx, optionally built first (angular, vue, static)
  *   python  virtualenv + gunicorn/uvicorn on a port behind an nginx proxy (fastapi, django)
  *   java    a built jar (Maven or Gradle) on a port behind an nginx proxy (java)
  *   go      a binary built with go build, on a port behind an nginx proxy (go)
@@ -84,6 +84,17 @@ export const SITE_TYPES: SiteTypeInfo[] = [
         runtime: "node",
         usesRepository: true,
         defaults: defaults({ build_command: "npm run build", start_command: "npm start" }),
+    },
+    {
+        id: "nuxt",
+        label: "Nuxt",
+        description: "Nuxt (server rendered): built, then run by Node as a service behind nginx. Listens on $PORT.",
+        runtime: "node",
+        usesRepository: true,
+        defaults: defaults({
+            build_command: "npm run build",
+            start_command: "HOST=127.0.0.1 node .output/server/index.mjs",
+        }),
     },
     {
         id: "fastapi",
@@ -190,6 +201,14 @@ export const SITE_TYPES: SiteTypeInfo[] = [
         defaults: defaults({ build_command: "npm run build" }),
     },
     {
+        id: "vue",
+        label: "Vue",
+        description: "Vue (Vite) app built on the server and served as a single-page app.",
+        runtime: "static",
+        usesRepository: true,
+        defaults: defaults({ build_command: "npm run build" }),
+    },
+    {
         id: "static",
         label: "Static HTML",
         description: "Plain files served by nginx.",
@@ -213,6 +232,9 @@ export const isPhp = (id: string) => getType(id)?.runtime === "php";
 export const isPython = (id: string) => getType(id)?.runtime === "python";
 
 export const isJava = (id: string) => getType(id)?.runtime === "java";
+
+/** Single-page apps: nginx falls back to /index.html for unknown paths. */
+export const isSpa = (id: string) => id === "angular" || id === "vue";
 
 export const isAppRuntime = (runtime: Runtime) => APP_RUNTIMES.includes(runtime);
 
