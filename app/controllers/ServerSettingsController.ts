@@ -5,24 +5,33 @@
  * settings, live system details and the delete check; every change needs the
  * admin role and an active (not view-only) team.
  *
- *   GET  /api/servers/:id/settings                    details, key fingerprint, provision info
+ *   GET  /api/servers/:id/settings                    details, key state, host key state, provision info
  *   GET  /api/servers/:id/system                      live over SSH: system details + services
  *   GET  /api/servers/:id/delete-check                what blocks deleting this server
+ *   POST /api/servers/:id/key/reveal        { code? } the key fingerprints (hidden by default)
  *   POST /api/servers/:id/test                        try to log in, save status
  *   POST /api/servers/:id/key/rotate        { code? }
+ *   POST /api/servers/:id/host-key/pin      { code?, replace? }
  *   PUT  /api/servers/:id/system/timezone   { timezone }
  *   PUT  /api/servers/:id/system/hostname   { hostname }
  *   PUT  /api/servers/:id/system/updates    { enabled }
  *   POST /api/servers/:id/services/:service/restart
  *   POST /api/servers/:id/reboot            { code? }
  *
- * Rotating the key and rebooting also need a valid two-factor code when the
- * caller has two-factor on (requireStepUp). That check runs last, after every
- * check that can refuse the request, so a refused request never spends a code.
+ * Fingerprints are never part of /settings. Viewing them goes through
+ * /key/reveal, which needs a valid two-factor code when the caller has
+ * two-factor on (requireStepUp), and is written to the server log.
+ *
+ * Rotating the key, rebooting and replacing a pinned host key also need a
+ * valid two-factor code when the caller has two-factor on (requireStepUp).
+ * That check runs last, after every check that can refuse the request, so a
+ * refused request never spends a code. The first pin of a host key needs no
+ * code: it is the same trust the deployer already extends today.
  *
  * Every change and every failure is written to the server log, with the
- * reason. Keys are never logged. Editing the connection details and deleting
- * the server stay on the existing ServerController endpoints.
+ * reason. Keys and fingerprints are never logged. Editing the connection
+ * details and deleting the server stay on the existing ServerController
+ * endpoints.
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -42,6 +51,8 @@ import { ServerLogService } from "../services/ServerLogService.js";
 import { createGuard, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { requireActive } from "../services/EntitlementService.js";
+import { sshExec, hostKeyFingerprint, HOST_KEY_RE } from "../services/Ssh.js";
+import { serverTarget } from "../services/Shell.js";
 
 interface ServerRow extends SystemServer {
     user_id: number;
@@ -52,6 +63,8 @@ interface ServerRow extends SystemServer {
     last_checked_at?: string;
     last_error?: string;
     key_rotated_at?: string;
+    ssh_host_key?: string | null;
+    ssh_host_key_at?: string | null;
 }
 
 interface ProvisionRow {
@@ -160,6 +173,19 @@ async function provisionOf(serverId: number): Promise<ProvisionRow | null> {
     return rows.find((p) => Number(p.server_id) === serverId && p.status !== "deleted") ?? null;
 }
 
+/** What the settings page shows about the pinned host key. The fingerprint is not included: see revealKey. */
+function hostKeyInfo(server: ServerRow) {
+    const pinned = Boolean(server.ssh_host_key);
+
+    return {
+        pinned,
+        type: server.ssh_host_key?.split(" ")[0] ?? "",
+        pinned_at: String(server.ssh_host_key_at ?? ""),
+        // Set only for a pinned server whose last connection failed on the key check.
+        changed: pinned && /host key verification failed|host identification has changed/i.test(String(server.last_error ?? "")),
+    };
+}
+
 export class ServerSettingsController {
     /** GET /api/servers/:id/settings */
     async show(req: TylixRequest, res: TylixResponse) {
@@ -175,15 +201,41 @@ export class ServerSettingsController {
             provider = String(row?.kind ?? "");
         }
 
+        // Only whether the key can be read. The fingerprint itself comes from /key/reveal.
+        const fingerprint = await ServerSystem.fingerprint(server);
+
         return res.json({
             server: publicServer(server),
             key: {
-                fingerprint: await ServerSystem.fingerprint(server),
+                readable: Boolean(fingerprint),
                 rotated_at: String(server.key_rotated_at ?? ""),
             },
+            host_key: hostKeyInfo(server),
             provision: prov
                 ? { provider, region: prov.region, plan: prov.plan, image: prov.image, template: prov.template, ip: prov.ip }
                 : null,
+        });
+    }
+
+    /**
+     * POST /api/servers/:id/key/reveal   body { code? }
+     *
+     * The deploy key and pinned host key fingerprints. Any member may ask, but
+     * with two-factor on a valid code is required. Every view is logged.
+     */
+    async revealKey(req: TylixRequest, res: TylixResponse) {
+        const server = await findOwned(req, res);
+        if (!server) return;
+        if (!actionGuard(req, res)) return;
+
+        // Last gate before the answer: second factor, if the caller has one on.
+        if (!(await requireStepUp(req, res, "view this server's key fingerprints"))) return;
+
+        await note(req, server, "server.fingerprints_viewed", `The key fingerprints for "${server.name}" were viewed.`, "info");
+
+        return res.json({
+            fingerprint: await ServerSystem.fingerprint(server),
+            host_fingerprint: server.ssh_host_key ? hostKeyFingerprint(server.ssh_host_key) : "",
         });
     }
 
@@ -273,14 +325,13 @@ export class ServerSettingsController {
                 req,
                 server,
                 "server.key_rotated",
-                `The deploy key for "${server.name}" was replaced. New fingerprint: ${result.fingerprint}.`,
+                `The deploy key for "${server.name}" was replaced.`,
                 result.warning ? "warning" : "success",
                 { warning: result.warning || null },
             );
 
             return res.json({
                 ok: true,
-                fingerprint: result.fingerprint,
                 rotated_at: result.rotated_at,
                 warning: result.warning,
             });
@@ -289,6 +340,54 @@ export class ServerSettingsController {
             await note(req, server, "server.key_rotation_failed", `Replacing the deploy key failed: ${reason}`.slice(0, 600), "error");
             return answerError(res, err, "Couldn't replace the key.");
         }
+    }
+
+    /**
+     * POST /api/servers/:id/host-key/pin   body { code?, replace? }
+     *
+     * Connects without a pin, so the key is read from the same session that
+     * authenticates, then stores it. Replacing an existing pin needs the
+     * second factor; the first pin does not.
+     */
+    async pinHostKey(req: TylixRequest, res: TylixResponse) {
+        const server = await findForChange(req, res);
+        if (!server) return;
+
+        const replace = ((req.body ?? {}) as Record<string, unknown>).replace === true;
+
+        if (server.ssh_host_key && !replace) {
+            res.status(409);
+            return res.json({ error: "A host key is already pinned. Use Trust new key to replace it." });
+        }
+
+        if (ServerSystem.isBusy(server.id)) {
+            res.status(409);
+            return res.json({ error: "Another change is still running on this server. Try again in a moment." });
+        }
+
+        // Replacing a pin is the dangerous case, so it needs the second factor. Last gate.
+        if (replace && !(await requireStepUp(req, res, "trust a new host key for this server"))) return;
+
+        const result = await sshExec(serverTarget({ ...server, ssh_host_key: null } as never), "true", 15_000);
+        const seen = result.code === 0 ? result.observedHostKey : null;
+
+        if (!seen || !HOST_KEY_RE.test(seen)) {
+            await note(req, server, "server.host_key_pin_failed", "Couldn't read the host key.", "error");
+            res.status(502);
+            return res.json({ error: "Couldn't connect to read the host key. Press Test connection first." });
+        }
+
+        await Server.update(server.id, { ssh_host_key: seen, ssh_host_key_at: new Date().toISOString() });
+
+        await note(
+            req,
+            server,
+            replace ? "server.host_key_replaced" : "server.host_key_pinned",
+            `Host key ${replace ? "replaced" : "pinned"} for "${server.name}".`,
+            replace ? "warning" : "success",
+        );
+
+        return res.json({ ok: true });
     }
 
     /** PUT /api/servers/:id/system/timezone   body { timezone } */

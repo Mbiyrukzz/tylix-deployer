@@ -20,6 +20,7 @@
  *                    (a normal login shell)
  *
  * The SSH key sits in a 0600 temp file only until the first output arrives.
+ * The server's pinned host key (if any) is checked with StrictHostKeyChecking=yes.
  * Limits: 3 terminals per user, 15 minutes idle. The terminal size is fixed
  * at connect time.
  *
@@ -35,6 +36,7 @@ import { join } from "node:path";
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { serverTarget } from "./Shell.js";
+import { hostKeyArgs } from "./Ssh.js";
 import { teamIdOfRow } from "./TeamScope.js";
 import { verifyTicket, terminalConfigured } from "./TerminalTicket.js";
 import type { TicketPayload } from "./TerminalTicket.js";
@@ -74,6 +76,7 @@ interface ServerRecord {
     port: number;
     ssh_user: string;
     ssh_key: string;
+    ssh_host_key?: string | null;
 }
 
 interface Session {
@@ -234,14 +237,18 @@ async function begin(ws: Socket, s: Session, ticket: TicketPayload): Promise<voi
         "-p", String(target.port),
         "-o", "BatchMode=yes",
         "-o", "IdentitiesOnly=yes",
-        "-o", "StrictHostKeyChecking=accept-new",
-        "-o", `UserKnownHostsFile=${join(dir, "known_hosts")}`,
+        ...(await hostKeyArgs(dir, target.hostKey)),
         "-o", "ConnectTimeout=10",
         "-o", "ServerAliveInterval=30",
         "-o", "LogLevel=ERROR",
         `${target.user}@${target.host}`,
         command,
     ];
+
+    if (s.finished) {
+        wipeKey(s);
+        return;
+    }
 
     const proc = spawn("ssh", args, { env: { ...process.env, TERM: "xterm-256color" } });
     s.proc = proc;

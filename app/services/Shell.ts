@@ -29,17 +29,19 @@ export function shellScript(vars: Record<string, string>, body: string): string 
     return lines.join("\n") + "\n" + FUNCTIONS + "\n" + body + "\n";
 }
 
-/** Turns a `servers` row into what sshExec expects (decrypts the stored key). */
+/** Turns a `servers` row into what sshExec expects (decrypts the stored key, passes the pinned host key). */
 export function serverTarget(server: {
     host: string;
     port: number;
     ssh_user: string;
     ssh_key: string;
+    ssh_host_key?: string | null;
 }): SshTarget {
     return {
         host: server.host,
         port: Number(server.port),
         user: server.ssh_user,
         privateKey: CryptoService.decrypt(server.ssh_key),
+        hostKey: server.ssh_host_key ?? null,
     };
 }

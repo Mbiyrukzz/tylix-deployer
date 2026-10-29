@@ -19,22 +19,26 @@ export interface ServerAttributes {
     port: number;
     ssh_user: string;
     ssh_key: string;
+    ssh_host_key: string | null;
+    ssh_host_key_at: string | null;
     status: string;
     created_at: string;
     updated_at: string;
 }
 
 export class Server extends Model {
-    static table = "servers";
-    static fillable: (keyof ServerAttributes)[] = [
-        "user_id",
-        "team_id",
-        "name",
-        "host",
-        "port",
-        "ssh_user",
-        "ssh_key",
-        "status",
-    ];
+static table = "servers";
+static fillable: (keyof ServerAttributes)[] = [
+"user_id",
+"team_id",
+"name",
+"host",
+"port",
+"ssh_user",
+"ssh_key",
+"ssh_host_key",
+"ssh_host_key_at",
+"status",
+];
 
 }

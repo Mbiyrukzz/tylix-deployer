@@ -11,6 +11,12 @@ state
   serverId: ""
   server: null
   key: null
+  hostKey: null
+  hostKeyDate: ""
+  revealed: false
+  revealTimer: 0
+  deployFp: ""
+  hostFp: ""
   provision: null
   loading: true
   notFound: false
@@ -208,9 +214,19 @@ action
     return result.data?.error or fallback
   }
 
+  hideKey() {
+    window.clearTimeout(this.revealTimer)
+    this.revealTimer = 0
+    this.revealed = false
+    this.deployFp = ""
+    this.hostFp = ""
+  }
+
   applySettings(data) {
     const s = data.server
     this.key = data.key
+    this.hostKey = data.host_key or null
+    this.hostKeyDate = data.host_key?.pinned_at ? this.fmtDate(data.host_key.pinned_at) : ""
     this.provision = data.provision
     this.fName = s.name
     this.fHost = s.host
@@ -374,6 +390,7 @@ action
     if result.ok {
       this.fKey = ""
       this.showKeyForm = false
+      this.hideKey()
       await this.loadSettings()
       this.say("Key saved. Press Test connection to check that it works.", false)
     } else {
@@ -427,6 +444,8 @@ action
       this.doRemove()
     } else if kind is "restart" {
       this.doRestart(arg)
+    } else if kind is "trustkey" {
+      this.doTrustKey()
     }
   }
 
@@ -475,6 +494,10 @@ action
       outcome = await this.runReboot(code)
     } else if kind is "delete" {
       outcome = await this.runDelete(code)
+    } else if kind is "hostkey" {
+      outcome = await this.runPinKey(code, true)
+    } else if kind is "reveal" {
+      outcome = await this.runReveal(code)
     }
 
     if outcome is "done" {
@@ -487,6 +510,44 @@ action
     this.codeBusy = false
   }
 
+  async runReveal(code) {
+    const result = await useApi("/api/servers/" + this.serverId + "/key/reveal", { method: "POST", body: code ? { code: code } : {} })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    if result.ok {
+      this.deployFp = result.data.fingerprint or ""
+      this.hostFp = result.data.host_fingerprint or ""
+      this.revealed = true
+      window.clearTimeout(this.revealTimer)
+      this.revealTimer = window.setTimeout(() => this.hideKey(), 60000)
+      return "done"
+    }
+
+    this.lastError = this.firstError(result, "Couldn't load the fingerprints.")
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  async reveal() {
+    if this.working is not "" {
+      return null
+    }
+
+    this.setWorking("reveal")
+    const outcome = await this.runReveal("")
+
+    if outcome is "code" {
+      this.askCode("reveal", "Confirm to view the key fingerprints")
+    } else if outcome is "failed" {
+      this.say(this.lastError, true)
+    }
+
+    this.setWorking("")
+  }
+
   async runRotate(code) {
     const result = await useApi("/api/servers/" + this.serverId + "/key/rotate", { method: "POST", body: code ? { code: code } : {} })
 
@@ -496,6 +557,7 @@ action
     }
 
     if result.ok {
+      this.hideKey()
       await this.loadSettings()
       if result.data.warning {
         this.say("Key replaced. " + result.data.warning, true)
@@ -529,6 +591,73 @@ action
 
     if outcome is "code" {
       this.askCode("rotate", "Confirm to replace the SSH key")
+    } else if outcome is "failed" {
+      this.say(this.lastError, true)
+    }
+
+    this.setWorking("")
+  }
+
+  async runPinKey(code, replace) {
+    const body = Object.assign({}, replace ? { replace: true } : {}, code ? { code: code } : {})
+
+    const result = await useApi("/api/servers/" + this.serverId + "/host-key/pin", { method: "POST", body: body })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    if result.ok {
+      this.hideKey()
+      await this.loadSettings()
+      if replace {
+        this.say("New host key trusted. Press Test connection to check it.", false)
+      } else {
+        this.say("Host key pinned. The deployer now refuses any other key for this server.", false)
+      }
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't read the host key."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  async pinHostKey() {
+    if this.working is not "" {
+      return null
+    }
+
+    this.setWorking("pinkey")
+    const outcome = await this.runPinKey("", false)
+
+    if outcome is "failed" {
+      this.say(this.lastError, true)
+    }
+
+    this.setWorking("")
+  }
+
+  trustNewKey() {
+    if this.working is not "" {
+      return null
+    }
+    this.askConfirm(
+      "trustkey",
+      "",
+      "Trust a new host key?",
+      "Only do this if you know why the server's key changed, for example after a reinstall or rebuild. If you didn't expect a change, someone may be intercepting the connection.",
+      "Trust new key",
+      "warn"
+    )
+  }
+
+  async doTrustKey() {
+    this.setWorking("trustkey")
+    const outcome = await this.runPinKey("", true)
+
+    if outcome is "code" {
+      this.askCode("hostkey", "Confirm to trust a new host key")
     } else if outcome is "failed" {
       this.say(this.lastError, true)
     }
@@ -866,6 +995,24 @@ template
 {{/if}}
       </div>
 
+{{#if hostKey}}
+{{#if hostKey.changed}}
+      <div role="alert" class="mb-4 sm:mb-6 rounded-2xl border border-rose-500/40 bg-rose-500/5 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-start gap-3 min-w-0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-6 h-6 shrink-0 mt-0.5 text-rose-500">
+            <path d="M12 4l9 16H3L12 4z" stroke-linejoin="round" />
+            <path d="M12 10v4M12 17h.01" stroke-linecap="round" />
+          </svg>
+          <div class="min-w-0">
+            <p class="text-rose-600 dark:text-rose-400 text-sm font-semibold mb-1">This server's host key changed</p>
+            <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">The deployer refused to connect because the server presented a different key than the one pinned. If you rebuilt or reinstalled the server, trust the new key. If you didn't, don't: someone may be intercepting the connection.</p>
+          </div>
+        </div>
+        <button onclick="{{ trustNewKey() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-rose-600 dark:text-rose-400 border border-rose-500/40 rounded-full px-5 py-2.5 hover:bg-rose-500/10 transition-colors">Review and trust new key</button>
+      </div>
+{{/if}}
+{{/if}}
+
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
 
         <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
@@ -949,28 +1096,38 @@ template
           <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-3.5 sm:p-4">
             <div class="flex items-center justify-between gap-3 mb-2.5">
               <span class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">SHA256 fingerprint</span>
-{{#if key.fingerprint}}
-              <button onclick="{{ copy(key.fingerprint, 'fp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+{{#if key.readable}}
+              <div class="shrink-0 flex items-center gap-2">
+{{#if revealed}}
+                <button onclick="{{ copy(deployFp, 'fp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
 {{#if copied is "fp"}}
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
-                  <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
+                    <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
 {{/if}}
 {{#if copied is not "fp"}}
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
-                  <rect x="7" y="7" width="9" height="9" rx="2" />
-                  <path d="M13 7V5.5A1.5 1.5 0 0011.5 4h-6A1.5 1.5 0 004 5.5v6A1.5 1.5 0 005.5 13H7" stroke-linecap="round" />
-                </svg>
-                Copy
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
+                    <rect x="7" y="7" width="9" height="9" rx="2" />
+                    <path d="M13 7V5.5A1.5 1.5 0 0011.5 4h-6A1.5 1.5 0 004 5.5v6A1.5 1.5 0 005.5 13H7" stroke-linecap="round" />
+                  </svg>
+                  Copy
 {{/if}}
-              </button>
+                </button>
+                <button onclick="{{ hideKey() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Hide</button>
+{{/if}}
+{{#if not revealed}}
+                <button onclick="{{ reveal() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  {{#if working is "reveal"}}Checking…{{/if}}{{#if working is not "reveal"}}Reveal{{/if}}
+                </button>
+{{/if}}
+              </div>
 {{/if}}
             </div>
-{{#if key.fingerprint}}
-            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all leading-relaxed select-all">{{ key.fingerprint }}</p>
+{{#if key.readable}}
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all leading-relaxed select-all">{{ revealed ? deployFp : "SHA256:••••••••••••••••••••••••••••••••••••" }}</p>
 {{/if}}
-{{#if not key.fingerprint}}
+{{#if not key.readable}}
             <p class="text-amber-700 dark:text-amber-500 text-sm">The stored key couldn't be read. Replace it.</p>
 {{/if}}
           </div>
@@ -989,7 +1146,7 @@ template
             <button onclick="{{ toggleKeyForm() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Paste my own key</button>
           </div>
 
-          <p class="text-slate-500 text-xs mt-3 leading-relaxed">Rotating installs a new key, checks that it can log in, saves it, and only then removes the old one, so the deployer can't lock itself out.</p>
+          <p class="text-slate-500 text-xs mt-3 leading-relaxed">Fingerprints stay hidden until you reveal them, and hide again after a minute. Revealing needs your two-factor code when two-factor is on. Rotating installs a new key, checks that it can log in, saves it, and only then removes the old one, so the deployer can't lock itself out.</p>
 
 {{#if showKeyForm}}
           <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
@@ -1002,6 +1159,103 @@ template
           </div>
 {{/if}}
         </section>
+
+{{#if hostKey}}
+        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between gap-3 mb-5">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
+                  <path d="M12 3l8 3v5.5c0 4.5-3.2 8.2-8 9.5-4.8-1.3-8-5-8-9.5V6l8-3z" stroke-linejoin="round" />
+                  <path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <div class="min-w-0">
+                <h2 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">Host key</h2>
+                <p class="text-slate-500 text-xs">Proves the deployer is talking to this server and not an impostor.</p>
+              </div>
+            </div>
+{{#if hostKey.pinned}}
+{{#if hostKey.changed}}
+            <span class="shrink-0 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25">Key changed</span>
+{{/if}}
+{{#if not hostKey.changed}}
+            <span class="shrink-0 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25">Pinned</span>
+{{/if}}
+{{/if}}
+{{#if not hostKey.pinned}}
+            <span class="shrink-0 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-500/25">Not pinned</span>
+{{/if}}
+          </div>
+
+{{#if hostKey.pinned}}
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-3.5 sm:p-4">
+            <div class="flex items-center justify-between gap-3 mb-2.5">
+              <span class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Pinned fingerprint <span class="normal-case font-mono text-slate-400">({{ hostKey.type }})</span></span>
+              <div class="shrink-0 flex items-center gap-2">
+{{#if revealed}}
+                <button onclick="{{ copy(hostFp, 'hfp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+{{#if copied is "hfp"}}
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
+                    <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+{{/if}}
+{{#if copied is not "hfp"}}
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
+                    <rect x="7" y="7" width="9" height="9" rx="2" />
+                    <path d="M13 7V5.5A1.5 1.5 0 0011.5 4h-6A1.5 1.5 0 004 5.5v6A1.5 1.5 0 005.5 13H7" stroke-linecap="round" />
+                  </svg>
+                  Copy
+{{/if}}
+                </button>
+                <button onclick="{{ hideKey() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Hide</button>
+{{/if}}
+{{#if not revealed}}
+                <button onclick="{{ reveal() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  {{#if working is "reveal"}}Checking…{{/if}}{{#if working is not "reveal"}}Reveal{{/if}}
+                </button>
+{{/if}}
+              </div>
+            </div>
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all leading-relaxed select-all">{{ revealed ? hostFp : "SHA256:••••••••••••••••••••••••••••••••••••" }}</p>
+          </div>
+
+{{#if hostKeyDate}}
+          <dl class="grid grid-cols-1 gap-4 mt-4">
+            <div class="min-w-0 flex items-center justify-between gap-3">
+              <dt class="text-slate-500 text-xs">Pinned on</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm text-right">{{ hostKeyDate }}</dd>
+            </div>
+          </dl>
+{{/if}}
+
+{{#if hostKey.changed}}
+          <p class="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 text-rose-600 dark:text-rose-400 text-sm">The server presented a different key than the pinned one, so the deployer refused to connect.</p>
+{{/if}}
+
+          <div class="flex flex-col sm:flex-row gap-2 mt-5">
+            <button onclick="{{ trustNewKey() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-amber-700 dark:text-amber-500 border border-amber-500/40 rounded-full px-6 py-2.5 hover:bg-amber-500/10 transition-colors">
+              {{#if working is "trustkey"}}Reading key…{{/if}}{{#if working is not "trustkey"}}Trust new key{{/if}}
+            </button>
+          </div>
+
+          <p class="text-slate-500 text-xs mt-3 leading-relaxed">Every connection, including the terminal, is checked against this key and refused if it differs. Replacing it needs your two-factor code when two-factor is on.</p>
+{{/if}}
+
+{{#if not hostKey.pinned}}
+          <p class="text-slate-500 text-sm leading-relaxed">No host key is pinned yet, so the deployer trusts whatever key the server shows on first contact. Pin it to make every later connection fail if the key ever differs.</p>
+
+          <div class="flex flex-col sm:flex-row gap-2 mt-5">
+            <button onclick="{{ pinHostKey() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+              {{#if working is "pinkey"}}Reading key…{{/if}}{{#if working is not "pinkey"}}Pin host key{{/if}}
+            </button>
+          </div>
+
+          <p class="text-slate-500 text-xs mt-3 leading-relaxed">The deployer connects once, reads the key from the same session that logs in, and saves it. After pinning, reveal the fingerprint and check it against your provider's console if you want to be sure.</p>
+{{/if}}
+        </section>
+{{/if}}
 
         <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between gap-3 mb-5">

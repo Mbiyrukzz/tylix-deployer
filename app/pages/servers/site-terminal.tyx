@@ -501,10 +501,7 @@ action
     const code = this.pendingCode
     this.pendingCode = ""
 
-    const body = { cols: term.cols, rows: term.rows }
-    if code {
-      body.code = code
-    }
+    const body = Object.assign({ cols: term.cols, rows: term.rows }, code ? { code: code } : {})
 
     const result = await useApi("/api/sites/" + this.siteId + "/terminal", {
       method: "POST",

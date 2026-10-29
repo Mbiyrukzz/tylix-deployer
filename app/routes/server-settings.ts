@@ -6,8 +6,10 @@
  * GET  /api/servers/:id/settings
  * GET  /api/servers/:id/system
  * GET  /api/servers/:id/delete-check
+ * POST /api/servers/:id/key/reveal     (any member; two-factor in the controller)
  * POST /api/servers/:id/test
  * POST /api/servers/:id/key/rotate
+ * POST /api/servers/:id/host-key/pin
  * PUT  /api/servers/:id/system/timezone
  * PUT  /api/servers/:id/system/hostname
  * PUT  /api/servers/:id/system/updates
@@ -37,9 +39,11 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
     router.get("/api/servers/:id/settings", auth(async (req, res) => { await controller.show(req, res); }));
     router.get("/api/servers/:id/system", auth(async (req, res) => { await controller.system(req, res); }));
     router.get("/api/servers/:id/delete-check", auth(async (req, res) => { await controller.deleteCheck(req, res); }));
+    router.post("/api/servers/:id/key/reveal", auth(async (req, res) => { await controller.revealKey(req, res); }));
 
     router.post("/api/servers/:id/test", write(async (req, res) => { await controller.test(req, res); }));
     router.post("/api/servers/:id/key/rotate", write(async (req, res) => { await controller.rotateKey(req, res); }));
+    router.post("/api/servers/:id/host-key/pin", write(async (req, res) => { await controller.pinHostKey(req, res); }));
     router.put("/api/servers/:id/system/timezone", write(async (req, res) => { await controller.timezone(req, res); }));
     router.put("/api/servers/:id/system/hostname", write(async (req, res) => { await controller.hostname(req, res); }));
     router.put("/api/servers/:id/system/updates", write(async (req, res) => { await controller.updates(req, res); }));
