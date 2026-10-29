@@ -111,7 +111,7 @@ template
       </a>
 {{/if}}
       <div class="hidden md:flex items-center gap-2.5 rounded-full border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 pl-1 pr-3 py-1">
-        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-semibold">
+        <div class="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-semibold">
           {{ initial(Auth.user) }}
         </div>
         <span class="hidden lg:block text-sm text-slate-700 dark:text-slate-200 max-w-[120px] truncate">{{ Auth.user.name }}</span>
@@ -154,7 +154,7 @@ template
 
 {{#if Auth.user}}
     <div class="flex items-center gap-3 rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 px-4 py-3 mb-3">
-      <div class="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold">
+      <div class="w-10 h-10 shrink-0 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-semibold">
         {{ initial(Auth.user) }}
       </div>
       <div class="min-w-0">

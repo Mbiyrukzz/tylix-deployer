@@ -63,7 +63,7 @@ state
   failedCount: 0
   successRate: 0
   rateStyle: "width: 0%"
-  heroCls: "from-slate-300 via-slate-400 to-slate-500"
+  heroCls: "bg-slate-400"
   lastDuration: ""
 
 action
@@ -214,15 +214,15 @@ action
 
   heroFor(status) {
     if status is "success" {
-      return "from-emerald-400 via-emerald-500 to-teal-500"
+      return "bg-emerald-500"
     }
     if status is "failed" {
-      return "from-rose-400 via-rose-500 to-orange-500"
+      return "bg-rose-500"
     }
     if status is "deploying" {
-      return "from-amber-300 via-amber-400 to-orange-400 animate-pulse"
+      return "bg-amber-400 animate-pulse"
     }
-    return "from-slate-300 via-slate-400 to-slate-500"
+    return "bg-slate-400"
   }
 
   decorateStage(text, isLast) {
@@ -738,7 +738,7 @@ template
 
 {{#if canDeploy}}
           <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r {{ heroCls }}"></div>
+            <div class="absolute inset-x-0 top-0 h-1 {{ heroCls }}"></div>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
               <div class="min-w-0">
                 <h2 class="text-slate-900 dark:text-slate-100 text-lg font-semibold mb-1">Deploy</h2>

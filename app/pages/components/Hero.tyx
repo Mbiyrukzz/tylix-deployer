@@ -22,8 +22,6 @@ onMount
 
 template
 <section class="relative overflow-hidden px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-20 bg-slate-200 dark:bg-slate-950 transition-colors">
-  <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
-  <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
 
   <div class="relative max-w-6xl mx-auto text-center">
 
@@ -38,7 +36,7 @@ template
     <h1 class="text-4xl sm:text-6xl lg:text-7xl font-bold max-w-4xl mx-auto leading-[1.05] mb-6 tracking-tight text-slate-900 dark:text-slate-100">
       Ship any stack,
       <br class="hidden sm:block" />
-      <span class="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">manage it all in one place</span>
+      <span class="text-emerald-500">manage it all in one place</span>
     </h1>
 
     <p class="text-slate-600 dark:text-slate-400 text-base sm:text-lg max-w-2xl mx-auto mb-9 leading-relaxed">

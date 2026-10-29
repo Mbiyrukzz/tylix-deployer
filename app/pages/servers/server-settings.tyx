@@ -909,7 +909,6 @@ template
       </a>
 
       <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-7 sm:py-9 mb-4 sm:mb-6 shadow-sm dark:shadow-none">
-        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.22),transparent_55%)]"></div>
         <div class="pointer-events-none absolute -right-16 -top-16 w-64 h-64 rounded-full bg-sky-500/10 blur-3xl"></div>
 
         <div class="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">

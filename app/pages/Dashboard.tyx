@@ -533,8 +533,6 @@ template
       <LockedBanner />
 
       <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-8 sm:py-10 mb-6">
-        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
-        <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
 
         <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 lg:items-center">
 
@@ -547,7 +545,7 @@ template
             <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900 dark:text-slate-100 mb-4 break-words">
               {{ greeting }},
               <br class="hidden sm:block" />
-              <span class="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">{{ Auth.user.name }}</span>
+              <span class="text-emerald-500">{{ Auth.user.name }}</span>
             </h1>
 
             <div class="inline-flex items-center gap-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 backdrop-blur px-3.5 py-1.5 mb-6">
@@ -1044,7 +1042,7 @@ template
 {{#each m in teamMembers}}
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-semibold">{{ m.initial }}</div>
+                  <div class="w-9 h-9 shrink-0 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-semibold">{{ m.initial }}</div>
                   <div class="min-w-0">
                     <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ m.name }}</p>
                     <p class="text-slate-500 text-xs truncate">{{ m.email }}</p>

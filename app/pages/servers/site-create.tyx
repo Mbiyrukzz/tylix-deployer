@@ -443,8 +443,6 @@ template
       <LockedBanner />
 
       <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-8 sm:py-10 mb-6 sm:mb-8">
-        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
-        <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
         <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:items-end">
           <div class="min-w-0">
             <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
@@ -454,7 +452,7 @@ template
             <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900 dark:text-slate-100 mb-3">
               Launch a site,
               <br class="hidden sm:block" />
-              <span class="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">any stack</span>
+              <span class="text-emerald-500">any stack</span>
             </h1>
             <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-xl leading-relaxed">Pick a stack, point a domain at it and connect a repository. The user, build, service and nginx are set up for you over SSH.</p>
           </div>
