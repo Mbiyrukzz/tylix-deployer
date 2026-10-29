@@ -13,8 +13,6 @@ state
   headCls: "hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors"
   onCls: "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
   offCls: "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-  disCls: "shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
-  badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
   labelCls: ""
   chevCls: "w-4 h-4 transition-transform"
 
@@ -23,9 +21,7 @@ action
     const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
     const on = "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
     const off = "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-    const dis = "shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
     const head = "hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors"
-    const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
 
     if this.collapsed {
       this.asideCls = asideBase + " lg:w-16 lg:p-2.5"
@@ -33,8 +29,6 @@ action
       this.headCls = "hidden"
       this.onCls = on + " lg:justify-center"
       this.offCls = off + " lg:justify-center"
-      this.disCls = dis + " lg:justify-center"
-      this.badgeCls = "hidden"
       this.labelCls = "lg:hidden"
       this.chevCls = "w-4 h-4 transition-transform rotate-180"
 
@@ -46,8 +40,6 @@ action
       this.headCls = head
       this.onCls = on
       this.offCls = off
-      this.disCls = dis
-      this.badgeCls = badge
       this.labelCls = ""
       this.chevCls = "w-4 h-4 transition-transform"
     }
@@ -254,10 +246,16 @@ template
   </details>
 
   <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800">
-    <span class="{{ disCls }}" aria-disabled="true" title="Settings (coming soon)">
-      <IconCog class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
-      <span class="{{ labelCls }}">Settings</span>
-      <span class="{{ badgeCls }}">Soon</span>
-    </span>
+{{#if active is "settings"}}
+    <a href="{{ '/servers/server-settings?id=' + serverId }}" title="Settings" aria-current="page" class="{{ onCls }}">
+      <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
+      <IconCog class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Settings</span>
+    </a>
+{{/if}}
+{{#if active is not "settings"}}
+    <a href="{{ '/servers/server-settings?id=' + serverId }}" title="Settings" class="{{ offCls }}">
+      <IconCog class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Settings</span>
+    </a>
+{{/if}}
   </div>
 </aside>

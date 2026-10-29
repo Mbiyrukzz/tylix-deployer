@@ -1,0 +1,1280 @@
+page ServerSettings
+
+import { IconArrowLeft, IconCog, IconKey, IconCpuChip, IconTerminal } from "tylix-icons"
+
+title "Server settings"
+
+needs
+  Auth
+
+state
+  serverId: ""
+  server: null
+  key: null
+  provision: null
+  loading: true
+  notFound: false
+  flash: ""
+  flashError: ""
+  flashTimer: 0
+  copied: ""
+  copiedTimer: 0
+  working: ""
+  statusClass: ""
+  pingClass: "hidden"
+  checkedText: ""
+  createdText: ""
+  keyDate: ""
+  sshCmd: ""
+  fName: ""
+  fHost: ""
+  fPort: ""
+  fUser: ""
+  fKey: ""
+  showKeyForm: false
+  sys: null
+  sysLoading: false
+  sysError: ""
+  rawServices: []
+  services: []
+  memStyle: ""
+  diskStyle: ""
+  memText: ""
+  diskText: ""
+  memPct: 0
+  diskPct: 0
+  memBar: "bg-emerald-500"
+  diskBar: "bg-sky-500"
+  uptimeText: ""
+  fZone: ""
+  fHostname: ""
+  blockers: []
+  canDelete: false
+  provisioned: false
+  codeOpen: false
+  codeValue: ""
+  codeError: ""
+  codeTitle: ""
+  codeBusy: false
+  pending: null
+  lastError: ""
+  confirmOpen: false
+  confirmKind: ""
+  confirmArg: ""
+  confirmTitle: ""
+  confirmText: ""
+  confirmLabel: ""
+  confirmIconCls: ""
+  confirmBtnCls: ""
+
+action
+  say(message, isError) {
+    this.flash = isError ? "" : message
+    this.flashError = isError ? message : ""
+    window.clearTimeout(this.flashTimer)
+    this.flashTimer = window.setTimeout(() => {
+      this.flash = ""
+      this.flashError = ""
+    }, 8000)
+  }
+
+  clearFlash() {
+    window.clearTimeout(this.flashTimer)
+    this.flash = ""
+    this.flashError = ""
+  }
+
+  markCopied(id) {
+    this.copied = id
+    window.clearTimeout(this.copiedTimer)
+    this.copiedTimer = window.setTimeout(() => {
+      this.copied = ""
+    }, 2000)
+  }
+
+  copyFallback(text, id) {
+    const ta = document.createElement("textarea")
+    ta.value = text
+    ta.setAttribute("readonly", "")
+    ta.style.position = "fixed"
+    ta.style.opacity = "0"
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand("copy")
+    document.body.removeChild(ta)
+
+    if ok {
+      this.markCopied(id)
+    } else {
+      this.say("Couldn't copy. Select the text and copy it by hand.", true)
+    }
+  }
+
+  copy(text, id) {
+    if not text {
+      return null
+    }
+
+    if navigator.clipboard and window.isSecureContext {
+      navigator.clipboard.writeText(text).then(() => {
+        this.markCopied(id)
+      }).catch(() => {
+        this.copyFallback(text, id)
+      })
+    } else {
+      this.copyFallback(text, id)
+    }
+  }
+
+  pill(status) {
+    const base = "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 "
+    if status is "online" {
+      return base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25"
+    }
+    if status is "offline" {
+      return base + "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25"
+    }
+    return base + "bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-500/25"
+  }
+
+  ping(status) {
+    if status is "online" {
+      return "absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping"
+    }
+    return "hidden"
+  }
+
+  fmtDate(value) {
+    if not value {
+      return ""
+    }
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+  }
+
+  fmtUptime(s) {
+    const d = Math.floor(s / 86400)
+    const h = Math.floor((s % 86400) / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    if d > 0 {
+      return d + "d " + h + "h"
+    }
+    if h > 0 {
+      return h + "h " + m + "m"
+    }
+    return m + "m"
+  }
+
+  fmtSize(mb) {
+    return mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : mb + " MB"
+  }
+
+  pct(used, total) {
+    return total > 0 ? Math.min(100, Math.round(used * 100 / total)) : 0
+  }
+
+  barStyle(used, total) {
+    return "width: " + this.pct(used, total) + "%"
+  }
+
+  barColor(p, base) {
+    if p >= 90 {
+      return "bg-rose-500"
+    }
+    if p >= 75 {
+      return "bg-amber-500"
+    }
+    return base
+  }
+
+  needsCode(result) {
+    if result.status is not 403 {
+      return false
+    }
+
+    const d = result.data or {}
+    const text = ("" + (d.error or "") + " " + (d.code or "")).toLowerCase()
+    return d.two_factor_required is true or d.code is "two_factor_required" or text.includes("two_factor") or text.includes("two-factor")
+  }
+
+  firstError(result, fallback) {
+    const errors = result.data?.errors
+    if errors {
+      const lists = Object.values(errors)
+      const first = lists[0]
+      if Array.isArray(first) and first.length > 0 {
+        return first[0]
+      }
+    }
+    return result.data?.error or fallback
+  }
+
+  applySettings(data) {
+    const s = data.server
+    this.key = data.key
+    this.provision = data.provision
+    this.fName = s.name
+    this.fHost = s.host
+    this.fPort = "" + s.port
+    this.fUser = s.ssh_user
+    this.statusClass = this.pill(s.status)
+    this.pingClass = this.ping(s.status)
+    this.checkedText = s.last_checked_at ? this.fmtDate(s.last_checked_at) : "Never"
+    this.createdText = s.created_at ? this.fmtDate(s.created_at) : ""
+    this.keyDate = data.key.rotated_at ? this.fmtDate(data.key.rotated_at) : "Not replaced since it was added"
+
+    let cmd = "ssh " + s.ssh_user + "@" + s.host
+    if Number(s.port) is not 22 {
+      cmd = cmd + " -p " + s.port
+    }
+    this.sshCmd = cmd
+
+    this.server = s
+  }
+
+  async loadSettings() {
+    const result = await useApi("/api/servers/" + this.serverId + "/settings")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      this.applySettings(result.data)
+    } else {
+      this.notFound = true
+    }
+  }
+
+  decorateServices() {
+    return this.rawServices.map((s) => Object.assign({}, s, {
+      running: s.state is "active",
+      busy: this.working is ("restart:" + s.id),
+      dot: s.state is "active" ? "bg-emerald-500" : "bg-rose-500",
+      badge: s.state is "active"
+        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25"
+        : "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25"
+    }))
+  }
+
+  setWorking(value) {
+    this.working = value
+    this.services = this.decorateServices()
+  }
+
+  async loadSystem() {
+    this.sysLoading = true
+    this.sysError = ""
+
+    const result = await useApi("/api/servers/" + this.serverId + "/system")
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      const i = result.data.info
+      this.sys = i
+      this.rawServices = result.data.services
+      this.services = this.decorateServices()
+      this.uptimeText = this.fmtUptime(i.uptime_seconds)
+      this.memText = this.fmtSize(i.mem_used_mb) + " of " + this.fmtSize(i.mem_total_mb)
+      this.diskText = this.fmtSize(i.disk_used_mb) + " of " + this.fmtSize(i.disk_total_mb)
+      this.memPct = this.pct(i.mem_used_mb, i.mem_total_mb)
+      this.diskPct = this.pct(i.disk_used_mb, i.disk_total_mb)
+      this.memStyle = this.barStyle(i.mem_used_mb, i.mem_total_mb)
+      this.diskStyle = this.barStyle(i.disk_used_mb, i.disk_total_mb)
+      this.memBar = this.barColor(this.memPct, "bg-emerald-500")
+      this.diskBar = this.barColor(this.diskPct, "bg-sky-500")
+      this.fZone = i.timezone
+      this.fHostname = i.hostname
+    } else {
+      this.sysError = result.data?.error or "Couldn't read the server's details."
+    }
+
+    this.sysLoading = false
+  }
+
+  async loadDeleteCheck() {
+    const result = await useApi("/api/servers/" + this.serverId + "/delete-check")
+
+    if result.ok {
+      this.blockers = result.data.blockers
+      this.canDelete = result.data.can_delete
+      this.provisioned = result.data.provisioned
+    }
+  }
+
+  async saveGeneral() {
+    if this.working is not "" {
+      return null
+    }
+
+    this.setWorking("general")
+    const body = { name: this.fName, host: this.fHost, port: this.fPort, ssh_user: this.fUser }
+    const result = await useApi("/api/servers/" + this.serverId, { method: "PUT", body: body })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      await this.loadSettings()
+      this.say("Saved. If you changed the connection details, press Test connection to check them.", false)
+    } else {
+      this.say(this.firstError(result, "Couldn't save the server."), true)
+    }
+
+    this.setWorking("")
+  }
+
+  async testConnection() {
+    if this.working is not "" {
+      return null
+    }
+
+    this.setWorking("test")
+    const result = await useApi("/api/servers/" + this.serverId + "/test", { method: "POST", body: {} })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      await this.loadSettings()
+      if result.data.ok {
+        this.say("Connected. The server is online.", false)
+      } else {
+        this.say("Couldn't connect: " + result.data.error, true)
+      }
+    } else {
+      this.say(this.firstError(result, "Couldn't run the test."), true)
+    }
+
+    this.setWorking("")
+  }
+
+  async savePastedKey() {
+    if this.working is not "" {
+      return null
+    }
+
+    if this.fKey.trim() is "" {
+      this.say("Paste the private key first.", true)
+      return null
+    }
+
+    this.setWorking("pastekey")
+    const body = { name: this.fName, host: this.fHost, port: this.fPort, ssh_user: this.fUser, ssh_key: this.fKey }
+    const result = await useApi("/api/servers/" + this.serverId, { method: "PUT", body: body })
+
+    if result.ok {
+      this.fKey = ""
+      this.showKeyForm = false
+      await this.loadSettings()
+      this.say("Key saved. Press Test connection to check that it works.", false)
+    } else {
+      this.say(this.firstError(result, "Couldn't save the key."), true)
+    }
+
+    this.setWorking("")
+  }
+
+  toggleKeyForm() {
+    this.showKeyForm = not this.showKeyForm
+  }
+
+  askConfirm(kind, arg, title, text, label, tone) {
+    this.confirmKind = kind
+    this.confirmArg = arg
+    this.confirmTitle = title
+    this.confirmText = text
+    this.confirmLabel = label
+
+    if tone is "danger" {
+      this.confirmIconCls = "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/20"
+      this.confirmBtnCls = "bg-rose-500 text-white hover:bg-rose-400"
+    } else if tone is "warn" {
+      this.confirmIconCls = "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20"
+      this.confirmBtnCls = "bg-amber-500 text-white dark:text-slate-950 hover:bg-amber-400"
+    } else {
+      this.confirmIconCls = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20"
+      this.confirmBtnCls = "bg-emerald-500 text-white dark:text-slate-950 hover:bg-emerald-400"
+    }
+
+    this.confirmOpen = true
+  }
+
+  closeConfirm() {
+    this.confirmOpen = false
+    this.confirmKind = ""
+    this.confirmArg = ""
+  }
+
+  acceptConfirm() {
+    const kind = this.confirmKind
+    const arg = this.confirmArg
+    this.closeConfirm()
+
+    if kind is "rotate" {
+      this.doRotate()
+    } else if kind is "reboot" {
+      this.doReboot()
+    } else if kind is "delete" {
+      this.doRemove()
+    } else if kind is "restart" {
+      this.doRestart(arg)
+    }
+  }
+
+  askCode(kind, title) {
+    this.pending = { kind: kind }
+    this.codeTitle = title
+    this.codeValue = ""
+    this.codeError = ""
+    this.codeBusy = false
+    this.codeOpen = true
+    window.setTimeout(() => {
+      const el = document.getElementById("step-up-code")
+      if el {
+        el.focus()
+      }
+    }, 80)
+  }
+
+  closeCode() {
+    this.codeOpen = false
+    this.pending = null
+    this.codeValue = ""
+    this.codeError = ""
+    this.codeBusy = false
+  }
+
+  async submitCode() {
+    if this.codeBusy or not this.pending {
+      return null
+    }
+
+    const code = this.codeValue.trim()
+    if code is "" {
+      this.codeError = "Enter your code."
+      return null
+    }
+
+    this.codeBusy = true
+    this.codeError = ""
+    const kind = this.pending.kind
+    let outcome = "failed"
+
+    if kind is "rotate" {
+      outcome = await this.runRotate(code)
+    } else if kind is "reboot" {
+      outcome = await this.runReboot(code)
+    } else if kind is "delete" {
+      outcome = await this.runDelete(code)
+    }
+
+    if outcome is "done" {
+      this.closeCode()
+      return null
+    }
+
+    this.codeError = this.lastError or "That code didn't work. Try again."
+    this.codeValue = ""
+    this.codeBusy = false
+  }
+
+  async runRotate(code) {
+    const result = await useApi("/api/servers/" + this.serverId + "/key/rotate", { method: "POST", body: code ? { code: code } : {} })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    if result.ok {
+      await this.loadSettings()
+      if result.data.warning {
+        this.say("Key replaced. " + result.data.warning, true)
+      } else {
+        this.say("Key replaced. The old key was removed from the server.", false)
+      }
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't replace the key."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  rotate() {
+    if this.working is not "" {
+      return null
+    }
+    this.askConfirm(
+      "rotate",
+      "",
+      "Replace the deploy key?",
+      "A new key is installed and tested before the old one is removed, so the deployer can't lock itself out.",
+      "Replace key",
+      "ok"
+    )
+  }
+
+  async doRotate() {
+    this.setWorking("rotate")
+    const outcome = await this.runRotate("")
+
+    if outcome is "code" {
+      this.askCode("rotate", "Confirm to replace the SSH key")
+    } else if outcome is "failed" {
+      this.say(this.lastError, true)
+    }
+
+    this.setWorking("")
+  }
+
+  async runReboot(code) {
+    const result = await useApi("/api/servers/" + this.serverId + "/reboot", { method: "POST", body: code ? { code: code } : {} })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    if result.ok {
+      this.say(result.data.message + " Press Test connection in a minute or two.", false)
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't schedule the reboot."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  reboot() {
+    if this.working is not "" {
+      return null
+    }
+    this.askConfirm(
+      "reboot",
+      "",
+      "Reboot this server?",
+      "Every site on it will be offline for a minute or two.",
+      "Reboot now",
+      "warn"
+    )
+  }
+
+  async doReboot() {
+    this.setWorking("reboot")
+    const outcome = await this.runReboot("")
+
+    if outcome is "code" {
+      this.askCode("reboot", "Confirm to reboot this server")
+    } else if outcome is "failed" {
+      this.say(this.lastError, true)
+    }
+
+    this.setWorking("")
+  }
+
+  async runDelete(code) {
+    const result = await useApi("/api/servers/" + this.serverId + "?code=" + encodeURIComponent(code), { method: "DELETE" })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return "done"
+    }
+
+    if result.ok {
+      window.location.href = "/servers"
+      return "done"
+    }
+
+    this.lastError = result.data?.error or "Couldn't delete the server."
+    return this.needsCode(result) ? "code" : "failed"
+  }
+
+  remove() {
+    if this.working is not "" or not this.canDelete {
+      return null
+    }
+    this.askConfirm(
+      "delete",
+      "",
+      "Remove " + this.server.name + "?",
+      "This only deletes its record and saved details in the deployer. The machine itself isn't touched.",
+      "Delete server",
+      "danger"
+    )
+  }
+
+  async doRemove() {
+    this.setWorking("delete")
+    const outcome = await this.runDelete("")
+
+    if outcome is "code" {
+      this.askCode("delete", "Confirm to delete this server")
+    } else if outcome is "failed" {
+      this.say(this.lastError, true)
+    }
+
+    this.setWorking("")
+  }
+
+  async changeSystem(path, method, body, doneText) {
+    const result = await useApi("/api/servers/" + this.serverId + path, { method: method, body: body })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      this.say(result.data.message or doneText, false)
+      await this.loadSystem()
+    } else {
+      this.say(this.firstError(result, "That change didn't work."), true)
+    }
+  }
+
+  async saveZone() {
+    if this.working is not "" {
+      return null
+    }
+    this.setWorking("zone")
+    await this.changeSystem("/system/timezone", "PUT", { timezone: this.fZone }, "Timezone changed.")
+    this.setWorking("")
+  }
+
+  useBrowserZone() {
+    this.fZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  }
+
+  async saveHostname() {
+    if this.working is not "" {
+      return null
+    }
+    this.setWorking("hostname")
+    await this.changeSystem("/system/hostname", "PUT", { hostname: this.fHostname }, "Hostname changed.")
+    this.setWorking("")
+  }
+
+  async toggleUpdates() {
+    if this.working is not "" or not this.sys {
+      return null
+    }
+    this.setWorking("updates")
+    await this.changeSystem("/system/updates", "PUT", { enabled: this.sys.auto_updates is not "on" }, "Updated.")
+    this.setWorking("")
+  }
+
+  restart(id) {
+    if this.working is not "" {
+      return null
+    }
+    this.askConfirm(
+      "restart",
+      id,
+      "Restart " + id + "?",
+      "Sites that use it may drop connections for a moment.",
+      "Restart",
+      "warn"
+    )
+  }
+
+  async doRestart(id) {
+    this.setWorking("restart:" + id)
+    await this.changeSystem("/services/" + id + "/restart", "POST", {}, "Restarted.")
+    this.setWorking("")
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    this.serverId = id or ""
+
+    if not id {
+      this.notFound = true
+      this.loading = false
+    } else {
+      await this.loadSettings()
+      this.loading = false
+
+      if this.server {
+        this.loadDeleteCheck()
+        await this.loadSystem()
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+{{#if serverId}}
+    <ServerSidebar active="settings" serverId="{{ serverId }}" />
+{{/if}}
+    <div class="min-w-0">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+
+{{#if loading}}
+      <div class="animate-pulse space-y-4 sm:space-y-6">
+        <div class="h-4 w-24 rounded bg-slate-200 dark:bg-slate-800"></div>
+        <div class="h-40 rounded-2xl bg-slate-200 dark:bg-slate-800/70"></div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div class="h-20 rounded-2xl bg-slate-200 dark:bg-slate-800/70"></div>
+          <div class="h-20 rounded-2xl bg-slate-200 dark:bg-slate-800/70"></div>
+          <div class="h-20 rounded-2xl bg-slate-200 dark:bg-slate-800/70"></div>
+          <div class="h-20 rounded-2xl bg-slate-200 dark:bg-slate-800/70"></div>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+          <div class="h-72 rounded-2xl bg-slate-200 dark:bg-slate-800/70"></div>
+          <div class="h-72 rounded-2xl bg-slate-200 dark:bg-slate-800/70"></div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if server}}
+
+{{#if flash}}
+      <div role="status" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-white dark:bg-slate-900 px-4 py-3 shadow-xl shadow-emerald-500/10">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 shrink-0 mt-0.5 text-emerald-500">
+          <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <p class="flex-1 min-w-0 text-slate-800 dark:text-slate-200 text-sm break-words">{{ flash }}</p>
+        <button onclick="{{ clearFlash() }}" aria-label="Dismiss" class="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+            <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+{{/if}}
+{{#if flashError}}
+      <div role="alert" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-rose-500/30 bg-white dark:bg-slate-900 px-4 py-3 shadow-xl shadow-rose-500/10">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 shrink-0 mt-0.5 text-rose-500">
+          <circle cx="10" cy="10" r="7.5" />
+          <path d="M10 6.5v4M10 13.5h.01" stroke-linecap="round" />
+        </svg>
+        <p class="flex-1 min-w-0 text-slate-800 dark:text-slate-200 text-sm break-words whitespace-pre-wrap">{{ flashError }}</p>
+        <button onclick="{{ clearFlash() }}" aria-label="Dismiss" class="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+            <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+{{/if}}
+
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
+        <IconArrowLeft class="w-4 h-4" /> Overview
+      </a>
+
+      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-7 sm:py-9 mb-4 sm:mb-6 shadow-sm dark:shadow-none">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.22),transparent_55%)]"></div>
+        <div class="pointer-events-none absolute -right-16 -top-16 w-64 h-64 rounded-full bg-sky-500/10 blur-3xl"></div>
+
+        <div class="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div class="min-w-0 flex items-start gap-4 sm:gap-5">
+            <span class="hidden sm:flex items-center justify-center w-14 h-14 shrink-0 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/25">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="w-7 h-7">
+                <rect x="3" y="4" width="18" height="6.5" rx="2" />
+                <rect x="3" y="13.5" width="18" height="6.5" rx="2" />
+                <path d="M7 7.25h.01M7 16.75h.01" stroke-linecap="round" stroke-width="2.4" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-3">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Server settings
+              </span>
+              <h1 class="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-slate-900 dark:text-slate-100 break-all sm:break-normal sm:truncate mb-3">{{ server.name }}</h1>
+
+              <div class="inline-flex max-w-full items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 pl-3.5 pr-1.5 py-1.5">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 shrink-0 text-slate-400">
+                  <path d="M4 6l4 4-4 4M10 15h6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <code class="min-w-0 truncate text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-mono select-all">{{ sshCmd }}</code>
+                <button onclick="{{ copy(sshCmd, 'ssh') }}" title="Copy the SSH command" aria-label="Copy the SSH command" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors">
+{{#if copied is "ssh"}}
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
+                    <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+{{/if}}
+{{#if copied is not "ssh"}}
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
+                    <rect x="7" y="7" width="9" height="9" rx="2" />
+                    <path d="M13 7V5.5A1.5 1.5 0 0011.5 4h-6A1.5 1.5 0 004 5.5v6A1.5 1.5 0 005.5 13H7" stroke-linecap="round" />
+                  </svg>
+                  Copy
+{{/if}}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 shrink-0">
+            <span class="{{ statusClass }}">
+              <span class="relative flex w-2 h-2">
+                <span class="{{ pingClass }}"></span>
+                <span class="relative inline-flex w-2 h-2 rounded-full bg-current"></span>
+              </span>
+              {{ server.status }}
+            </span>
+            <button onclick="{{ testConnection() }}" class="min-h-[40px] text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60 rounded-full px-5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              {{#if working is "test"}}Testing…{{/if}}{{#if working is not "test"}}Test connection{{/if}}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Last checked</p>
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ checkedText }}</p>
+        </div>
+
+{{#if sys}}
+        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Uptime</p>
+          <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold tracking-tight">{{ uptimeText }}</p>
+        </div>
+        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Memory</p>
+          <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold tracking-tight">{{ memPct }}%</p>
+        </div>
+        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Disk</p>
+          <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold tracking-tight">{{ diskPct }}%</p>
+        </div>
+{{/if}}
+{{#if not sys}}
+{{#if sysLoading}}
+        <div class="h-[74px] rounded-2xl bg-slate-200 dark:bg-slate-800/70 animate-pulse"></div>
+        <div class="h-[74px] rounded-2xl bg-slate-200 dark:bg-slate-800/70 animate-pulse"></div>
+        <div class="h-[74px] rounded-2xl bg-slate-200 dark:bg-slate-800/70 animate-pulse"></div>
+{{/if}}
+{{/if}}
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+
+        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center gap-3 mb-5">
+            <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+              <IconCog class="w-5 h-5" />
+            </span>
+            <div class="min-w-0">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">General</h2>
+              <p class="text-slate-500 text-xs">How the deployer reaches this server.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="f-name" class="block text-slate-500 text-xs font-medium mb-1.5">Name</label>
+              <input id="f-name" type="text" value="{{ fName }}" oninput="{{ fName = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+            </div>
+            <div>
+              <label for="f-user" class="block text-slate-500 text-xs font-medium mb-1.5">SSH user</label>
+              <input id="f-user" type="text" autocapitalize="none" spellcheck="false" value="{{ fUser }}" oninput="{{ fUser = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+            </div>
+            <div>
+              <label for="f-host" class="block text-slate-500 text-xs font-medium mb-1.5">Host</label>
+              <input id="f-host" type="text" autocapitalize="none" spellcheck="false" value="{{ fHost }}" oninput="{{ fHost = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+            </div>
+            <div>
+              <label for="f-port" class="block text-slate-500 text-xs font-medium mb-1.5">SSH port</label>
+              <input id="f-port" type="text" inputmode="numeric" value="{{ fPort }}" oninput="{{ fPort = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2 mt-5">
+            <button onclick="{{ saveGeneral() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+              {{#if working is "general"}}Saving…{{/if}}{{#if working is not "general"}}Save changes{{/if}}
+            </button>
+            <button onclick="{{ testConnection() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              {{#if working is "test"}}Testing…{{/if}}{{#if working is not "test"}}Test connection{{/if}}
+            </button>
+          </div>
+
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Last checked</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm">{{ checkedText }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Added</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm">{{ createdText }}</dd>
+            </div>
+{{#if server.last_error}}
+            <div class="min-w-0 sm:col-span-2 rounded-xl border border-rose-500/25 bg-rose-500/5 px-4 py-3">
+              <dt class="text-rose-600 dark:text-rose-400 text-xs font-semibold mb-1">Last connection error</dt>
+              <dd class="text-rose-600 dark:text-rose-400 text-sm font-mono break-words">{{ server.last_error }}</dd>
+            </div>
+{{/if}}
+{{#if provision}}
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Provider</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm capitalize">{{ provision.provider }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Region and plan</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ provision.region }} / {{ provision.plan }}</dd>
+            </div>
+{{/if}}
+          </dl>
+        </section>
+
+        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center gap-3 mb-5">
+            <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+              <IconKey class="w-5 h-5" />
+            </span>
+            <div class="min-w-0">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">Deploy key</h2>
+              <p class="text-slate-500 text-xs">The key the deployer logs in with. The private key is stored encrypted and never shown.</p>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-3.5 sm:p-4">
+            <div class="flex items-center justify-between gap-3 mb-2.5">
+              <span class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">SHA256 fingerprint</span>
+{{#if key.fingerprint}}
+              <button onclick="{{ copy(key.fingerprint, 'fp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+{{#if copied is "fp"}}
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
+                  <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+{{/if}}
+{{#if copied is not "fp"}}
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
+                  <rect x="7" y="7" width="9" height="9" rx="2" />
+                  <path d="M13 7V5.5A1.5 1.5 0 0011.5 4h-6A1.5 1.5 0 004 5.5v6A1.5 1.5 0 005.5 13H7" stroke-linecap="round" />
+                </svg>
+                Copy
+{{/if}}
+              </button>
+{{/if}}
+            </div>
+{{#if key.fingerprint}}
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all leading-relaxed select-all">{{ key.fingerprint }}</p>
+{{/if}}
+{{#if not key.fingerprint}}
+            <p class="text-amber-700 dark:text-amber-500 text-sm">The stored key couldn't be read. Replace it.</p>
+{{/if}}
+          </div>
+
+          <dl class="grid grid-cols-1 gap-4 mt-4">
+            <div class="min-w-0 flex items-center justify-between gap-3">
+              <dt class="text-slate-500 text-xs">Last replaced</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm text-right">{{ keyDate }}</dd>
+            </div>
+          </dl>
+
+          <div class="flex flex-col sm:flex-row gap-2 mt-5">
+            <button onclick="{{ rotate() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+              {{#if working is "rotate"}}Replacing…{{/if}}{{#if working is not "rotate"}}Rotate key{{/if}}
+            </button>
+            <button onclick="{{ toggleKeyForm() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Paste my own key</button>
+          </div>
+
+          <p class="text-slate-500 text-xs mt-3 leading-relaxed">Rotating installs a new key, checks that it can log in, saves it, and only then removes the old one, so the deployer can't lock itself out.</p>
+
+{{#if showKeyForm}}
+          <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
+            <label for="f-key" class="block text-slate-500 text-xs font-medium mb-1.5">Private key (no passphrase)</label>
+            <textarea id="f-key" rows="6" spellcheck="false" autocapitalize="off" value="{{ fKey }}" oninput="{{ fKey = $event.target.value }}" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-xs font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10"></textarea>
+            <p class="text-slate-500 text-xs mt-2">Use this for servers you added yourself. The matching public key must already be on the server.</p>
+            <button onclick="{{ savePastedKey() }}" class="mt-3 w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              {{#if working is "pastekey"}}Saving…{{/if}}{{#if working is not "pastekey"}}Save key{{/if}}
+            </button>
+          </div>
+{{/if}}
+        </section>
+
+        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between gap-3 mb-5">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-1 ring-sky-500/20">
+                <IconCpuChip class="w-5 h-5" />
+              </span>
+              <div class="min-w-0">
+                <h2 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">System</h2>
+                <p class="text-slate-500 text-xs">Read live over SSH.</p>
+              </div>
+            </div>
+            <button onclick="{{ loadSystem() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Refresh</button>
+          </div>
+
+{{#if sysLoading}}
+          <div class="animate-pulse space-y-3">
+            <div class="h-4 w-2/3 rounded bg-slate-200 dark:bg-slate-800"></div>
+            <div class="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-800"></div>
+            <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800"></div>
+            <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800"></div>
+          </div>
+{{/if}}
+
+{{#if sysError}}
+          <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
+            <p class="text-rose-500 text-sm break-words">{{ sysError }}</p>
+          </div>
+{{/if}}
+
+{{#if sys}}
+{{#if not sysLoading}}
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Operating system</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm break-words">{{ sys.os }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Kernel</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ sys.kernel }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Uptime</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm">{{ uptimeText }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-slate-500 text-xs mb-1">Load (1, 5, 15 min)</dt>
+              <dd class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ sys.load }}</dd>
+            </div>
+          </dl>
+
+          <div class="mt-5 space-y-4">
+            <div>
+              <div class="flex justify-between items-baseline text-xs mb-1.5">
+                <span class="text-slate-500">Memory <span class="text-slate-400">({{ memPct }}%)</span></span>
+                <span class="text-slate-700 dark:text-slate-300 font-mono">{{ memText }}</span>
+              </div>
+              <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500 {{ memBar }}" style="{{ memStyle }}"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between items-baseline text-xs mb-1.5">
+                <span class="text-slate-500">Disk <span class="text-slate-400">({{ diskPct }}%)</span></span>
+                <span class="text-slate-700 dark:text-slate-300 font-mono">{{ diskText }}</span>
+              </div>
+              <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500 {{ diskBar }}" style="{{ diskStyle }}"></div>
+              </div>
+            </div>
+          </div>
+
+{{#if sys.reboot_required}}
+          <p class="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-amber-700 dark:text-amber-400 text-sm">The server has installed updates that need a reboot to finish.</p>
+{{/if}}
+
+          <div class="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 space-y-5">
+            <div>
+              <label for="f-zone" class="block text-slate-500 text-xs font-medium mb-1.5">Timezone <span class="text-slate-400 font-normal">(cron jobs follow this)</span></label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input id="f-zone" type="text" autocapitalize="none" spellcheck="false" value="{{ fZone }}" oninput="{{ fZone = $event.target.value }}" placeholder="Africa/Nairobi" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+                <button onclick="{{ useBrowserZone() }}" class="shrink-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Use mine</button>
+                <button onclick="{{ saveZone() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                  {{#if working is "zone"}}Saving…{{/if}}{{#if working is not "zone"}}Save{{/if}}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label for="f-hostname" class="block text-slate-500 text-xs font-medium mb-1.5">Hostname</label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input id="f-hostname" type="text" autocapitalize="none" spellcheck="false" value="{{ fHostname }}" oninput="{{ fHostname = $event.target.value }}" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+                <button onclick="{{ saveHostname() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                  {{#if working is "hostname"}}Saving…{{/if}}{{#if working is not "hostname"}}Save{{/if}}
+                </button>
+              </div>
+            </div>
+
+{{#if sys.auto_updates is "unavailable"}}
+            <p class="text-slate-500 text-xs">Automatic updates can only be managed on Debian and Ubuntu servers.</p>
+{{/if}}
+{{#if sys.auto_updates is "on"}}
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
+              <div class="min-w-0">
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Automatic security updates</p>
+                <p class="text-slate-500 text-xs">On. The server installs security patches by itself.</p>
+              </div>
+              <button onclick="{{ toggleUpdates() }}" class="shrink-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                {{#if working is "updates"}}Working…{{/if}}{{#if working is not "updates"}}Turn off{{/if}}
+              </button>
+            </div>
+{{/if}}
+{{#if sys.auto_updates is "off"}}
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
+              <div class="min-w-0">
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Automatic security updates</p>
+                <p class="text-slate-500 text-xs">Off. Turning on installs the unattended-upgrades package if it's missing.</p>
+              </div>
+              <button onclick="{{ toggleUpdates() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-emerald-400 transition-all">
+                {{#if working is "updates"}}Working…{{/if}}{{#if working is not "updates"}}Turn on{{/if}}
+              </button>
+            </div>
+{{/if}}
+          </div>
+{{/if}}
+{{/if}}
+        </section>
+
+        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <div class="flex items-center gap-3 mb-5">
+            <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20">
+              <IconTerminal class="w-5 h-5" />
+            </span>
+            <div class="min-w-0">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight">Services and power</h2>
+              <p class="text-slate-500 text-xs">Restart a service or reboot the machine.</p>
+            </div>
+          </div>
+
+{{#if services.length is 0}}
+          <p class="text-slate-500 text-sm">{{ sysLoading ? "Reading from the server…" : "No known services were found on this server." }}</p>
+{{/if}}
+
+{{#each s in services}}
+          <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3 mb-2 transition-colors hover:border-slate-300 dark:hover:border-slate-700">
+            <div class="min-w-0 flex items-center gap-3">
+              <span class="w-2 h-2 shrink-0 rounded-full {{ s.dot }}"></span>
+              <div class="min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ s.label }}</p>
+                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-mono ring-1 {{ s.badge }}">{{ s.state }}</span>
+              </div>
+            </div>
+            <button onclick="{{ restart(s.id) }}" class="shrink-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              {{#if s.busy}}Restarting…{{/if}}{{#if not s.busy}}Restart{{/if}}
+            </button>
+          </div>
+{{/each}}
+
+          <div class="mt-5 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3.5 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Reboot server</p>
+              <p class="text-slate-500 text-xs">Every site on it is offline for a minute or two.</p>
+            </div>
+            <button onclick="{{ reboot() }}" class="shrink-0 text-sm text-amber-700 dark:text-amber-500 border border-amber-500/40 rounded-full px-4 py-1.5 hover:bg-amber-500/10 transition-colors">
+              {{#if working is "reboot"}}Scheduling…{{/if}}{{#if working is not "reboot"}}Reboot{{/if}}
+            </button>
+          </div>
+        </section>
+
+      </div>
+
+      <section class="mt-4 sm:mt-6 rounded-2xl border border-rose-500/30 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
+              <path d="M12 4l9 16H3L12 4z" stroke-linejoin="round" />
+              <path d="M12 10v4M12 17h.01" stroke-linecap="round" />
+            </svg>
+          </span>
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Danger zone</h2>
+        </div>
+
+{{#if canDelete}}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <p class="text-slate-500 text-sm max-w-xl">Delete this server from the deployer. This only removes its record and saved details here. The machine itself isn't touched.</p>
+          <button onclick="{{ remove() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/40 rounded-full px-6 py-2.5 hover:bg-rose-500/5 transition-colors">
+            {{#if working is "delete"}}Deleting…{{/if}}{{#if working is not "delete"}}Delete server{{/if}}
+          </button>
+        </div>
+{{/if}}
+
+{{#if not canDelete}}
+        <p class="text-slate-500 text-sm mb-4">This server can't be deleted yet:</p>
+{{#each b in blockers}}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4 mb-2">
+          <p class="text-slate-900 dark:text-slate-100 text-sm">{{ b.message }}</p>
+{{#each site in (b.sites or [])}}
+          <a href="{{ '/servers/site-detail?id=' + site.id }}" class="inline-block mt-2 mr-3 text-emerald-700 dark:text-emerald-500 text-sm font-mono hover:underline">{{ site.domain }}</a>
+{{/each}}
+        </div>
+{{/each}}
+{{/if}}
+      </section>
+
+{{#if confirmOpen}}
+      <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6">
+        <div onclick="{{ closeConfirm() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+
+        <div role="alertdialog" aria-modal="true" aria-label="{{ confirmTitle }}" class="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
+          <div class="flex items-start gap-4">
+            <span class="flex items-center justify-center w-11 h-11 shrink-0 rounded-xl ring-1 {{ confirmIconCls }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
+                <path d="M12 4l9 16H3L12 4z" stroke-linejoin="round" />
+                <path d="M12 10v4M12 17h.01" stroke-linecap="round" />
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <h3 class="text-slate-900 dark:text-slate-100 font-semibold leading-tight mb-1.5 break-words">{{ confirmTitle }}</h3>
+              <p class="text-slate-500 text-sm leading-relaxed break-words">{{ confirmText }}</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-6">
+            <button onclick="{{ closeConfirm() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+            <button onclick="{{ acceptConfirm() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm font-semibold rounded-full px-5 py-2.5 shadow-sm transition-all {{ confirmBtnCls }}">{{ confirmLabel }}</button>
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if codeOpen}}
+      <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6">
+        <div onclick="{{ closeCode() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+
+        <div role="dialog" aria-modal="true" aria-label="Two-factor code" class="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
+          <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20 mb-3">
+            <IconKey class="w-5 h-5" />
+          </span>
+          <h3 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ codeTitle }}</h3>
+          <p class="text-slate-500 text-sm mb-4">Enter the code from your authenticator app or the SMS we sent you.</p>
+
+          <input
+            id="step-up-code"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            autocapitalize="none"
+            spellcheck="false"
+            maxlength="12"
+            value="{{ codeValue }}"
+            oninput="{{ codeValue = $event.target.value }}"
+            placeholder="123456"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-base tracking-widest font-mono px-4 py-3 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10"
+          />
+
+{{#if codeError}}
+          <p role="alert" class="text-rose-500 text-sm mt-3 break-words">{{ codeError }}</p>
+{{/if}}
+
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
+            <button onclick="{{ closeCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+{{#if codeBusy}}
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
+{{/if}}
+{{#if not codeBusy}}
+            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Confirm</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+    </div>
+  </div>
