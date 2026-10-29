@@ -139,13 +139,16 @@ template
   </a>
 {{/if}}
 
-  <span class="{{ disCls }}" aria-disabled="true" title="Logs (coming soon)">
-    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
-    <span class="{{ labelCls }}">Logs</span>
-    <span class="{{ badgeCls }}">Soon</span>
-  </span>
-
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-2 mx-3"></div>
+  {{#if active is "logs"}}
+  <a href="{{ '/servers/site-logs?id=' + siteId }}" title="Logs" aria-current="page" class="{{ onCls }}">
+    <IconDocumentText class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Logs</span>
+  </a>
+{{/if}}
+{{#if active is not "logs"}}
+  <a href="{{ '/servers/site-logs?id=' + siteId }}" title="Logs" class="{{ offCls }}">
+    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Logs</span>
+  </a>
+{{/if}}
 
 {{#if active is "settings"}}
   <a href="{{ '/servers/site-settings?id=' + siteId }}" title="Settings" aria-current="page" class="{{ onCls }}">

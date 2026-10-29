@@ -1,0 +1,726 @@
+page SiteLogs
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Site logs"
+
+needs
+  Auth
+
+state
+  siteId: ""
+  serverId: ""
+  site: null
+  loading: true
+  notFound: false
+  siteReady: true
+  busy: false
+  seq: 0
+  error: ""
+  sources: []
+  source: ""
+  tiles: []
+  tabs: []
+  sizeTabs: []
+  lines: 1000
+  errorsOnly: true
+  search: ""
+  entries: []
+  view: []
+  preview: []
+  openIds: []
+  errorCount: 0
+  scanned: 0
+  missing: false
+  loaded: false
+  live: false
+  timer: 0
+  copied: ""
+  fetchedAt: ""
+  termOpen: false
+  promptHost: ""
+  promptCmd: ""
+
+action
+  global(name) {
+    return Reflect.get(window, name)
+  }
+
+  setGlobal(name, value) {
+    Reflect.set(window, name, value)
+  }
+
+  describeSource(id) {
+    if id is "app" {
+      return "Output from the app's systemd service: crashes, unhandled errors and anything it prints."
+    }
+    if id is "laravel" {
+      return "The newest storage/logs/laravel log, with each stack trace kept together."
+    }
+    if id is "nginx" {
+      return "Errors nginx recorded for this domain: upstream failures, permissions, bad configs."
+    }
+    if id is "phpfpm" {
+      return "Warnings and errors from this site's PHP-FPM pool."
+    }
+    return "Requests that were answered with a 5xx status."
+  }
+
+  tileTone(id) {
+    const base = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold "
+    if id is "app" {
+      return base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    }
+    if id is "laravel" {
+      return base + "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+    if id is "nginx" {
+      return base + "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+    }
+    if id is "phpfpm" {
+      return base + "bg-violet-500/10 text-violet-600 dark:text-violet-400"
+    }
+    return base + "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+  }
+
+  chipClass(on) {
+    const base = "shrink-0 text-xs rounded-full px-3 py-1.5 border transition-colors "
+    return base + (on ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 font-medium" : "border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600")
+  }
+
+  buildPrompt() {
+    if not this.site {
+      return ""
+    }
+    const n = this.lines
+    const d = this.site.domain
+    if this.source is "app" {
+      return "journalctl -u app-" + this.site.isolated_user + " -n " + n
+    }
+    if this.source is "laravel" {
+      return "tail -n " + n + " storage/logs/laravel.log"
+    }
+    if this.source is "nginx" {
+      return "tail -n " + n + " /var/log/nginx/" + d + "-error.log"
+    }
+    if this.source is "phpfpm" {
+      return "tail -n " + n + " /var/log/php" + this.site.php_version + "-fpm.log | grep pool"
+    }
+    return "tail -n " + n + " /var/log/nginx/" + d + "-access.log | awk '5xx'"
+  }
+
+  refreshTabs() {
+    this.tabs = this.sources.map((s) => ({ id: s.id, label: s.label, cls: this.chipClass(s.id is this.source) }))
+    this.sizeTabs = [500, 1000, 3000].map((n) => ({ n: n, label: String(n), cls: this.chipClass(n is this.lines) }))
+    this.tiles = this.sources.map((s) => ({
+      id: s.id,
+      label: s.label,
+      desc: this.describeSource(s.id),
+      letter: s.label.charAt(0).toUpperCase(),
+      tile: this.tileTone(s.id)
+    }))
+    this.promptCmd = this.buildPrompt()
+  }
+
+  decorate(list) {
+    return list.map((e) => {
+      const warn = e.level is "warn" or e.level is "warning"
+      let levelCls = "shrink-0 min-w-[3.5rem] text-[11px] uppercase tracking-wider text-sky-400"
+      let edgeCls = "border-slate-700"
+      let toneCls = "shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider bg-slate-500/10 text-slate-600 dark:text-slate-400"
+
+      if e.error {
+        levelCls = "shrink-0 min-w-[3.5rem] text-[11px] uppercase tracking-wider font-semibold text-rose-400"
+        edgeCls = "border-rose-500/50"
+        toneCls = "shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400"
+      } else if warn {
+        levelCls = "shrink-0 min-w-[3.5rem] text-[11px] uppercase tracking-wider font-semibold text-amber-400"
+        edgeCls = "border-amber-500/50"
+        toneCls = "shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-400"
+      }
+
+      return Object.assign({}, e, {
+        open: this.openIds.includes(e.id),
+        levelCls: levelCls,
+        edgeCls: edgeCls,
+        toneCls: toneCls,
+        levelText: e.level or "log",
+        timeText: e.time or "",
+        moreText: e.line_count > 1 ? ("+" + (e.line_count - 1) + " lines") : ""
+      })
+    })
+  }
+
+  refreshView() {
+    const needle = this.search.trim().toLowerCase()
+    const list = this.entries.filter((e) => needle is "" or (e.message + " " + e.detail + " " + e.level).toLowerCase().includes(needle))
+    this.view = this.decorate(list)
+    this.preview = this.decorate(this.entries.filter((e) => e.error).slice(0, 5))
+    this.errorCount = this.entries.filter((e) => e.error).length
+  }
+
+  sourceLabel() {
+    const hit = this.sources.find((s) => s.id is this.source)
+    return hit ? hit.label : this.source
+  }
+
+  async loadLogs(quiet) {
+    if quiet and this.busy {
+      return null
+    }
+
+    this.seq = this.seq + 1
+    const ticket = this.seq
+    this.busy = true
+    if not quiet {
+      this.error = ""
+    }
+
+    const query = "?source=" + encodeURIComponent(this.source) + "&lines=" + this.lines + "&errors=" + (this.errorsOnly ? "1" : "0")
+    const result = await useApi("/api/sites/" + this.siteId + "/logs" + query)
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if ticket is not this.seq {
+      return null
+    }
+
+    if result.ok {
+      this.sources = result.data.sources
+      this.source = result.data.source
+      this.entries = result.data.entries
+      this.scanned = result.data.scanned
+      this.missing = result.data.missing
+      this.fetchedAt = new Date().toLocaleTimeString()
+      this.loaded = true
+
+      const ids = this.entries.map((e) => e.id)
+      this.openIds = this.openIds.filter((id) => ids.includes(id))
+      this.refreshTabs()
+      this.refreshView()
+    } else if result.status is 403 {
+      this.error = "Only team admins can view site logs."
+    } else {
+      this.error = result.data?.error or "Couldn't load the logs."
+    }
+
+    this.busy = false
+  }
+
+  async openTerminal(id) {
+    this.termOpen = true
+    document.body.style.overflow = "hidden"
+
+    if id and id is not this.source {
+      this.source = id
+      this.entries = []
+      this.view = []
+      this.preview = []
+      this.openIds = []
+      this.loaded = false
+      this.refreshTabs()
+      await this.loadLogs(false)
+    }
+  }
+
+  openEntry(id) {
+    this.openIds = [id]
+    this.refreshView()
+    this.openTerminal("")
+  }
+
+  closeTerminal() {
+    if not this.termOpen {
+      return null
+    }
+    this.termOpen = false
+    document.body.style.overflow = ""
+    if this.live {
+      this.toggleLive()
+    }
+  }
+
+  onKey(e) {
+    if this.termOpen and e.key is "Escape" {
+      this.closeTerminal()
+    }
+  }
+
+  pickSource(id) {
+    if id is this.source {
+      return null
+    }
+    this.source = id
+    this.entries = []
+    this.view = []
+    this.preview = []
+    this.openIds = []
+    this.loaded = false
+    this.refreshTabs()
+    this.loadLogs(false)
+  }
+
+  setLines(n) {
+    this.lines = n
+    this.refreshTabs()
+    this.loadLogs(false)
+  }
+
+  toggleErrors() {
+    this.errorsOnly = not this.errorsOnly
+    this.loadLogs(false)
+  }
+
+  applySearch(value) {
+    this.search = value
+    this.refreshView()
+  }
+
+  toggle(id) {
+    if this.openIds.includes(id) {
+      this.openIds = this.openIds.filter((x) => x is not id)
+    } else {
+      this.openIds = this.openIds.concat([id])
+    }
+    this.refreshView()
+  }
+
+  expandAll() {
+    this.openIds = this.view.map((e) => e.id)
+    this.refreshView()
+  }
+
+  collapseAll() {
+    this.openIds = []
+    this.refreshView()
+  }
+
+  toggleLive() {
+    this.live = not this.live
+    window.clearInterval(this.timer)
+    this.timer = 0
+
+    if this.live {
+      this.loadLogs(true)
+      this.timer = window.setInterval(() => {
+        if not document.getElementById("site-logs-root") {
+          this.live = false
+          window.clearInterval(this.timer)
+          this.timer = 0
+          return null
+        }
+        this.loadLogs(true)
+      }, 10000)
+    }
+  }
+
+  fallbackCopy(text, done) {
+    const ta = document.createElement("textarea")
+    ta.value = text
+    ta.style.position = "fixed"
+    ta.style.opacity = "0"
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand("copy")
+    document.body.removeChild(ta)
+    done()
+  }
+
+  copyText(text, label) {
+    const done = () => {
+      this.copied = label
+      window.setTimeout(() => {
+        this.copied = ""
+      }, 1800)
+    }
+
+    if window.navigator.clipboard and window.navigator.clipboard.writeText {
+      window.navigator.clipboard.writeText(text).then(done).catch(() => this.fallbackCopy(text, done))
+    } else {
+      this.fallbackCopy(text, done)
+    }
+  }
+
+  formatEntry(e) {
+    const nl = String.fromCharCode(10)
+    return "[" + e.level + "] " + (e.time or "") + nl + e.detail
+  }
+
+  copyOne(id) {
+    const hit = this.entries.find((e) => e.id is id)
+    if hit {
+      this.copyText(this.formatEntry(hit), id)
+    }
+  }
+
+  copyAll() {
+    const nl = String.fromCharCode(10)
+    const picked = this.view.slice(0, 50)
+    if picked.length is 0 {
+      return null
+    }
+
+    const head = [
+      "Site: " + this.site.domain,
+      "Source: " + this.sourceLabel(),
+      "Copied: " + new Date().toISOString(),
+      "Entries: " + picked.length + " of " + this.view.length + " (newest first)"
+    ].join(nl)
+
+    const body = picked.map((e) => this.formatEntry(e)).join(nl + nl + "----" + nl + nl)
+    this.copyText(head + nl + nl + body, "all")
+  }
+
+onMount
+  async {
+    document.body.style.overflow = ""
+
+    const old = this.global("tylixLogHandlers")
+    if old {
+      document.removeEventListener("keydown", old.key)
+    }
+    const keyHandler = (e) => this.onKey(e)
+    document.addEventListener("keydown", keyHandler)
+    this.setGlobal("tylixLogHandlers", { key: keyHandler })
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    this.siteId = id or ""
+
+    if not id {
+      this.notFound = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/sites/" + id)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.site = result.data
+        this.serverId = "" + result.data.server_id
+        this.promptHost = result.data.isolated_user + "@" + result.data.domain
+        this.siteReady = result.data.status is "ready"
+        this.loading = false
+
+        if this.siteReady {
+          await this.loadLogs(false)
+        }
+      } else {
+        this.notFound = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div id="site-logs-root" class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+    <Sidebar active="servers" />
+{{#if serverId}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+    <div class="min-w-0">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if notFound}}
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 text-center">
+        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Site not found</h2>
+        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
+        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+      </div>
+{{/if}}
+
+{{#if site}}
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
+        <IconArrowLeft class="w-4 h-4" /> Sites
+      </a>
+
+      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-7 sm:py-9 mb-6 sm:mb-8">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.20),transparent_60%)]"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15] bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.18)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]"></div>
+        <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div class="min-w-0">
+            <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
+              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500"></span>
+              <span class="truncate">Logs</span>
+            </span>
+            <h1 class="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-slate-900 dark:text-slate-100 break-all sm:break-normal sm:truncate mb-2">{{ site.domain }}</h1>
+            <p class="text-slate-600 dark:text-slate-400 text-sm max-w-xl leading-relaxed">Find out why a site is failing. Open the log terminal, expand an error to see its full trace, and copy it.</p>
+          </div>
+{{#if siteReady}}
+          <button onclick="{{ openTerminal('') }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-2 text-sm bg-slate-950 text-emerald-400 border border-slate-700 font-mono font-semibold rounded-full px-6 py-2.5 shadow-sm hover:border-emerald-500/60 transition-colors">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
+              <path d="M4 6l4 4-4 4M10 15h6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Open log terminal
+          </button>
+{{/if}}
+        </div>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        <SiteSidebar active="logs" siteId="{{ siteId }}" />
+
+        <div class="min-w-0 flex-1 space-y-4 sm:space-y-6">
+
+{{#if not siteReady}}
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center shadow-sm dark:shadow-none">
+            <p class="text-slate-500 text-sm">Logs are available once the site has finished creating.</p>
+          </section>
+{{/if}}
+
+{{#if siteReady}}
+
+{{#if error}}
+          <p role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 text-rose-500 text-sm break-words">{{ error }}</p>
+{{/if}}
+
+{{#if loaded}}
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm dark:shadow-none">
+              <p class="text-slate-500 text-xs mb-1">Errors found</p>
+{{#if errorCount is 0}}
+              <p class="text-emerald-700 dark:text-emerald-400 text-2xl font-bold">0</p>
+{{/if}}
+{{#if errorCount is not 0}}
+              <p class="text-rose-600 dark:text-rose-400 text-2xl font-bold">{{ errorCount }}</p>
+{{/if}}
+              <p class="text-slate-500 text-xs mt-1">in {{ sourceLabel() }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm dark:shadow-none">
+              <p class="text-slate-500 text-xs mb-1">Lines scanned</p>
+              <p class="text-slate-900 dark:text-slate-100 text-2xl font-bold">{{ scanned }}</p>
+              <p class="text-slate-500 text-xs mt-1">newest first</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm dark:shadow-none">
+              <p class="text-slate-500 text-xs mb-1">Last checked</p>
+              <p class="text-slate-900 dark:text-slate-100 text-2xl font-bold">{{ fetchedAt }}</p>
+              <p class="text-slate-500 text-xs mt-1">read from the server</p>
+            </div>
+          </div>
+{{/if}}
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-3 mb-4 sm:mb-5">
+              <span class="w-1.5 h-5 shrink-0 rounded-full bg-emerald-500"></span>
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Log sources</h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+{{#each t in tiles}}
+              <button onclick="{{ openTerminal(t.id) }}" class="min-h-[72px] flex items-start gap-3 text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3.5 py-3 transition-colors hover:border-emerald-500/40">
+                <span class="{{ t.tile }}">{{ t.letter }}</span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100">{{ t.label }}</span>
+                  <span class="block text-xs text-slate-500 leading-relaxed">{{ t.desc }}</span>
+                </span>
+              </button>
+{{/each}}
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <div class="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-1.5 h-5 shrink-0 rounded-full bg-rose-500"></span>
+                <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Latest errors</h2>
+              </div>
+              <button onclick="{{ openTerminal('') }}" class="shrink-0 text-sm text-emerald-700 dark:text-emerald-500 hover:underline font-medium">See all</button>
+            </div>
+
+{{#if not loaded}}
+            <p class="text-slate-500 text-sm">Reading the log from the server…</p>
+{{/if}}
+
+{{#if loaded}}
+{{#if missing}}
+            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No log file yet</p>
+              <p class="text-slate-500 text-sm">It hasn't been created on the server, which usually means nothing has been written to it.</p>
+            </div>
+{{/if}}
+{{#if not missing}}
+{{#if preview.length is 0}}
+            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
+              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No recent errors</p>
+              <p class="text-slate-500 text-sm">Nothing was logged at error level in the last {{ lines }} lines.</p>
+            </div>
+{{/if}}
+{{/if}}
+{{/if}}
+
+{{#each e in preview}}
+            <div class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 sm:p-4 mb-2">
+              <span class="{{ e.toneCls }}">{{ e.levelText }}</span>
+              <div class="min-w-0 flex-1">
+                <p class="text-slate-900 dark:text-slate-100 text-sm font-mono break-words line-clamp-2">{{ e.message }}</p>
+                <p class="text-slate-500 text-xs mt-1">{{ e.timeText }} {{ e.moreText }}</p>
+              </div>
+              <div class="shrink-0 flex items-center gap-2">
+                <button onclick="{{ openEntry(e.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View</button>
+                <button onclick="{{ copyOne(e.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  {{#if copied is e.id}}Copied{{/if}}{{#if copied is not e.id}}Copy{{/if}}
+                </button>
+              </div>
+            </div>
+{{/each}}
+
+            <p class="text-slate-500 text-xs mt-4 leading-relaxed">Passwords, tokens and keys are masked on a best-effort basis. Read an entry before pasting it somewhere public.</p>
+          </section>
+
+{{/if}}
+
+        </div>
+      </div>
+
+{{#if termOpen}}
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-8">
+        <div onclick="{{ closeTerminal() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
+
+        <div role="dialog" aria-modal="true" aria-label="Site log terminal" class="relative flex flex-col w-full max-w-[1200px] h-full sm:h-[88vh] rounded-none sm:rounded-2xl border-0 sm:border border-slate-700/60 bg-slate-950 overflow-hidden shadow-2xl">
+
+          <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/80">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="hidden sm:flex items-center gap-1.5 shrink-0">
+                <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+              </div>
+              <p class="text-slate-300 text-sm font-mono truncate">{{ site.domain }} <span class="text-slate-600">&mdash;</span> logs</p>
+              {{#if live}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+              </span>
+              {{/if}}
+            </div>
+            <button onclick="{{ closeTerminal() }}" title="Close (Esc)" aria-label="Close the log terminal" class="shrink-0 flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-1.5 transition-colors">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
+                <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Close
+              <span class="hidden sm:inline font-mono text-[10px] text-slate-500 border border-slate-700 rounded px-1">Esc</span>
+            </button>
+          </div>
+
+          <div class="px-4 pt-3 pb-2 border-b border-slate-900 bg-slate-950">
+            <div class="flex gap-2 overflow-x-auto pb-2">
+{{#each t in tabs}}
+              <button onclick="{{ pickSource(t.id) }}" class="{{ t.cls }}">{{ t.label }}</button>
+{{/each}}
+            </div>
+
+            <div class="flex flex-col lg:flex-row lg:items-center gap-2">
+              <input type="text" autocomplete="off" spellcheck="false" value="{{ search }}" oninput="{{ applySearch($event.target.value) }}" placeholder="grep…" class="w-full lg:max-w-xs rounded-lg border border-slate-800 bg-slate-900 text-slate-200 placeholder-slate-600 text-base sm:text-xs font-mono px-3 py-2 focus:outline-none focus:border-emerald-500/60 transition-colors" />
+
+              <div class="flex flex-wrap items-center gap-2 lg:ml-auto">
+{{#if errorsOnly}}
+                <button onclick="{{ toggleErrors() }}" aria-pressed="true" class="text-xs rounded-full px-3 py-1.5 border border-rose-500/50 bg-rose-500/10 text-rose-400 font-medium transition-colors">Errors only</button>
+{{/if}}
+{{#if not errorsOnly}}
+                <button onclick="{{ toggleErrors() }}" aria-pressed="false" class="text-xs rounded-full px-3 py-1.5 border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600 transition-colors">Errors only</button>
+{{/if}}
+{{#each z in sizeTabs}}
+                <button onclick="{{ setLines(z.n) }}" title="Lines to scan" class="{{ z.cls }}">{{ z.label }}</button>
+{{/each}}
+                <span class="hidden sm:block w-px h-5 bg-slate-800"></span>
+                <button onclick="{{ loadLogs(false) }}" class="text-xs text-slate-300 border border-slate-700 rounded-full px-3 py-1.5 hover:border-slate-600 hover:text-white transition-colors">
+                  {{#if busy}}Loading…{{/if}}{{#if not busy}}Refresh{{/if}}
+                </button>
+{{#if live}}
+                <button onclick="{{ toggleLive() }}" aria-pressed="true" class="text-xs rounded-full px-3 py-1.5 border border-emerald-500/60 bg-emerald-500/10 text-emerald-400 font-medium transition-colors">Live</button>
+{{/if}}
+{{#if not live}}
+                <button onclick="{{ toggleLive() }}" aria-pressed="false" class="text-xs text-slate-400 border border-slate-700 rounded-full px-3 py-1.5 hover:text-slate-200 hover:border-slate-600 transition-colors">Live</button>
+{{/if}}
+                <button onclick="{{ expandAll() }}" class="text-xs text-slate-400 border border-slate-700 rounded-full px-3 py-1.5 hover:text-slate-200 hover:border-slate-600 transition-colors">Expand</button>
+                <button onclick="{{ collapseAll() }}" class="text-xs text-slate-400 border border-slate-700 rounded-full px-3 py-1.5 hover:text-slate-200 hover:border-slate-600 transition-colors">Collapse</button>
+                <button onclick="{{ copyAll() }}" class="text-xs bg-emerald-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-emerald-400 transition-all">
+                  {{#if copied is "all"}}Copied{{/if}}{{#if copied is not "all"}}Copy all{{/if}}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1 min-h-0 overflow-auto bg-slate-950 py-3 font-mono text-[12.5px] leading-6">
+            <p class="px-3 sm:px-4 pb-3 text-slate-500 break-all"><span class="text-emerald-400">{{ promptHost }}</span><span class="text-slate-600">:~$</span> <span class="text-slate-300">{{ promptCmd }}</span></p>
+
+{{#if error}}
+            <div role="alert" class="mx-3 sm:mx-4 mb-3 rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
+              <p class="text-rose-400 text-xs font-medium uppercase tracking-wider mb-1">Couldn't read the log</p>
+              <p class="text-rose-400 text-xs whitespace-pre-wrap break-words">{{ error }}</p>
+            </div>
+{{/if}}
+
+{{#if not loaded}}
+{{#if not error}}
+            <p class="px-3 sm:px-4 flex items-center gap-2 text-slate-400">
+              <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Connecting to the server…
+            </p>
+{{/if}}
+{{/if}}
+
+{{#if loaded}}
+{{#if missing}}
+            <p class="px-3 sm:px-4 text-slate-400">No such file. Nothing has been written to this log yet.</p>
+{{/if}}
+{{#if not missing}}
+{{#if view.length is 0}}
+              <p class="px-3 sm:px-4 text-emerald-400">Nothing to show in the last {{ lines }} lines.</p>
+              <p class="px-3 sm:px-4 text-slate-500">Turn off Errors only, clear the grep filter, or scan more lines.</p>
+{{/if}}
+{{/if}}
+{{/if}}
+
+{{#each e in view}}
+            <div class="border-b border-slate-900/80">
+              <div class="group flex items-start gap-2 px-3 sm:px-4 py-1 hover:bg-slate-900/70">
+                <button onclick="{{ toggle(e.id) }}" class="min-w-0 flex-1 flex items-start gap-2 text-left">
+{{#if e.open}}
+                  <span class="w-3 shrink-0 text-slate-500 select-none">&#9662;</span>
+{{/if}}
+{{#if not e.open}}
+                  <span class="w-3 shrink-0 text-slate-600 select-none">&#9656;</span>
+{{/if}}
+                  <span class="hidden md:inline shrink-0 text-slate-600">{{ e.timeText }}</span>
+                  <span class="{{ e.levelCls }}">{{ e.levelText }}</span>
+                  <span class="min-w-0 text-slate-200 break-words">{{ e.message }}</span>
+                </button>
+                <button onclick="{{ copyOne(e.id) }}" class="shrink-0 text-[11px] text-slate-500 hover:text-emerald-400 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  {{#if copied is e.id}}copied{{/if}}{{#if copied is not e.id}}copy{{/if}}
+                </button>
+              </div>
+{{#if e.open}}
+              <pre class="ml-7 sm:ml-9 mr-3 sm:mr-4 mb-2 border-l-2 {{ e.edgeCls }} pl-3 text-[12px] leading-5 text-slate-400 whitespace-pre-wrap break-words max-h-80 overflow-auto">{{ e.detail }}</pre>
+{{/if}}
+            </div>
+{{/each}}
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 px-4 py-2.5 border-t border-slate-800 bg-slate-900/80">
+            <p class="text-slate-500 text-xs">
+              <span class="font-mono text-slate-300">{{ view.length }}</span> shown
+              <span class="mx-1.5 text-slate-700">&bull;</span>
+              <span class="font-mono text-slate-300">{{ errorCount }}</span> errors
+              <span class="mx-1.5 text-slate-700">&bull;</span>
+              scanned <span class="font-mono text-slate-300">{{ scanned }}</span> lines
+              <span class="hidden sm:inline">
+                <span class="mx-1.5 text-slate-700">&bull;</span>
+                updated {{ fetchedAt }}
+              </span>
+            </p>
+            <p class="hidden sm:block text-slate-600 text-xs">Newest first. Copy all copies the newest 50. Secrets are masked best-effort.</p>
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{/if}}
+
+    </div>
+    </div>
+  </div>
