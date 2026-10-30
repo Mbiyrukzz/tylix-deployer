@@ -34,19 +34,19 @@ action
   }
 
   desktopLink(href) {
-    const base = "text-sm font-medium rounded-full px-4 py-1.5 transition-colors "
+    const base = "text-base font-medium rounded-full px-4 py-1.5 transition-colors "
     if this.path is href {
       return base + "text-brand-700 dark:text-brand-400 bg-brand-500/10"
     }
-    return base + "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-stone-200/60 dark:hover:bg-white/[0.05]"
+    return base + "text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-white/[0.05]"
   }
 
   mobileLink(href) {
-    const base = "block text-sm font-medium rounded-xl px-3 py-3 transition-colors "
+    const base = "block text-base font-medium rounded-2xl px-4 py-3 transition-colors "
     if this.path is href {
       return base + "text-brand-700 dark:text-brand-400 bg-brand-500/10"
     }
-    return base + "text-slate-700 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-white/[0.05]"
+    return base + "text-zinc-700 dark:text-zinc-300 hover:bg-stone-200/60 dark:hover:bg-white/[0.05]"
   }
 
   initial(user) {
@@ -74,60 +74,61 @@ onMount
   }
 
 template
-<header class="sticky top-0 z-40 border-b border-line bg-[#f5f5f4]/85 dark:bg-[#0a0a0b]/85 backdrop-blur-xl transition-colors">
-  <nav class="h-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 flex items-center justify-between gap-4">
+<header class="sticky top-0 z-40 px-4 sm:px-6 lg:px-10 py-2">
+  <nav class="relative max-w-7xl mx-auto h-12 rounded-full border border-line bg-white/80 dark:bg-[#131315]/80 backdrop-blur-xl pl-4 pr-1.5 flex items-center justify-between gap-4 shadow-sm shadow-black/[0.03] transition-colors">
 
-    <div class="flex items-center gap-8 min-w-0">
+    <div class="flex items-center gap-4 min-w-0">
       <a href="/" onclick="{{ go('/') }}" class="flex items-center gap-2.5 group shrink-0">
-        <img src="/logo-mark.png" alt="Tylix" class="w-8 h-8 group-hover:scale-105 transition-transform" />
-        <span class="text-slate-900 dark:text-slate-100 font-semibold tracking-tight">Tylix Deploy</span>
+        <img src="/logo-mark.png" alt="Tylix" class="w-9 h-9 rounded-lg group-hover:scale-105 transition-transform" />
+        <span class="text-zinc-900 dark:text-zinc-100 text-base font-semibold uppercase tracking-[0.14em]">Tylix <span class="text-brand-500">Deploy</span></span>
       </a>
 
+      <div class="hidden md:block w-px h-5 bg-line"></div>
+
       <div class="hidden md:flex items-center gap-1">
-        <a href="/pricing" onclick="{{ go('/pricing') }}" class="{{ desktopLink('/pricing') }}">Pricing</a>
         <a href="https://tylix.dev/docs" target="_blank" rel="noopener" class="{{ desktopLink('') }}">Docs</a>
       </div>
     </div>
 
-    <div class="flex items-center gap-2 shrink-0">
+    <div class="flex items-center gap-1.5 shrink-0">
 
       <button
         onclick="{{ Theme.toggle() }}"
         aria-label="Toggle color theme"
-        class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors"
+        class="w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 dark:text-zinc-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors"
       >
 {{#if Theme.mode is "dark"}}
-        <IconSun class="w-[18px] h-[18px]" />
+        <IconSun class="w-5 h-5" />
 {{/if}}
 {{#if Theme.mode is not "dark"}}
-        <IconMoon class="w-[18px] h-[18px]" />
+        <IconMoon class="w-5 h-5" />
 {{/if}}
       </button>
 
 {{#if Auth.user}}
-{{#if showDashboardLink}}
-      <a href="/dashboard" class="hidden md:inline-flex text-sm font-semibold bg-brand-500 text-white dark:text-slate-950 rounded-full px-4 py-1.5 shadow-sm hover:bg-brand-400 transition-all">
-        Dashboard
-      </a>
-{{/if}}
-      <div class="hidden md:flex items-center gap-2.5 rounded-full border border-line bg-panel pl-1 pr-3 py-1">
+      <div class="hidden md:flex items-center gap-2 rounded-full bg-stone-100 dark:bg-white/[0.05] pl-1 pr-3 py-1">
         <div class="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-white text-xs font-semibold">
           {{ initial(Auth.user) }}
         </div>
-        <span class="hidden lg:block text-sm text-slate-700 dark:text-slate-200 max-w-[120px] truncate">{{ Auth.user.name }}</span>
+        <span class="hidden lg:block text-sm font-medium text-zinc-700 dark:text-zinc-200 max-w-[140px] truncate">{{ Auth.user.name }}</span>
       </div>
-      <button onclick="{{ logout() }}" class="hidden md:block text-sm text-slate-600 dark:text-slate-300 border border-stone-300 dark:border-white/15 rounded-full px-4 py-1.5 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
+      <button onclick="{{ logout() }}" class="hidden md:block text-sm font-medium text-zinc-600 dark:text-zinc-300 rounded-full px-3 py-2 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
         Log out
       </button>
+{{#if showDashboardLink}}
+      <a href="/dashboard" class="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold bg-brand-500 text-white rounded-full pl-4 pr-3.5 h-9 hover:bg-brand-400 transition-colors">
+        Dashboard <span>&rarr;</span>
+      </a>
+{{/if}}
 {{/if}}
 
 {{#if not Auth.loading}}
 {{#if not Auth.user}}
-      <a href="/login" class="hidden md:block text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-colors px-3 py-1.5">
+      <a href="/login" class="hidden md:inline-flex items-center text-sm font-medium text-zinc-700 dark:text-zinc-200 rounded-full px-4 h-9 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
         Login
       </a>
-      <a href="/register" class="hidden md:block text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-brand-400 transition-all">
-        Get Started
+      <a href="/register" class="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold bg-brand-500 text-white rounded-full pl-4 pr-3.5 h-9 hover:bg-brand-400 transition-colors">
+        Get started <span>&rarr;</span>
       </a>
 {{/if}}
 {{/if}}
@@ -137,29 +138,29 @@ template
         aria-label="Toggle menu"
         aria-expanded="{{ mobileMenuOpen }}"
         aria-controls="mobile-menu"
-        class="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors"
+        class="md:hidden w-9 h-9 flex items-center justify-center rounded-full bg-stone-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200 transition-colors"
       >
 {{#if mobileMenuOpen}}
-        <IconX class="w-[18px] h-[18px]" />
+        <IconX class="w-5 h-5" />
 {{/if}}
 {{#if not mobileMenuOpen}}
-        <IconMenu class="w-[18px] h-[18px]" />
+        <IconMenu class="w-5 h-5" />
 {{/if}}
       </button>
     </div>
   </nav>
 
 {{#if mobileMenuOpen}}
-  <div id="mobile-menu" class="md:hidden border-t border-line bg-page px-4 sm:px-6 py-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+  <div id="mobile-menu" class="md:hidden absolute inset-x-4 sm:inset-x-6 top-[calc(100%-0.25rem)] rounded-3xl border border-line bg-panel p-3 shadow-xl shadow-black/10 max-h-[calc(100vh-5rem)] overflow-y-auto">
 
 {{#if Auth.user}}
-    <div class="flex items-center gap-3 rounded-2xl border border-line bg-panel px-4 py-3 mb-3">
-      <div class="w-10 h-10 shrink-0 rounded-full bg-brand-500 flex items-center justify-center text-white text-sm font-semibold">
+    <div class="flex items-center gap-3 rounded-2xl bg-stone-50 dark:bg-white/[0.03] px-4 py-3 mb-2">
+      <div class="w-10 h-10 shrink-0 rounded-full bg-brand-500 flex items-center justify-center text-white text-base font-semibold">
         {{ initial(Auth.user) }}
       </div>
       <div class="min-w-0">
-        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ Auth.user.name }}</p>
-        <p class="text-slate-500 dark:text-slate-400 text-xs truncate">{{ Auth.user.email }}</p>
+        <p class="text-zinc-900 dark:text-zinc-100 text-base font-medium truncate">{{ Auth.user.name }}</p>
+        <p class="text-zinc-500 text-sm truncate">{{ Auth.user.email }}</p>
       </div>
     </div>
 {{/if}}
@@ -167,23 +168,22 @@ template
     <div class="space-y-1">
 {{#if Auth.user}}
 {{#if showDashboardLink}}
-      <a href="/dashboard" onclick="{{ closeMobileMenu() }}" class="block text-sm font-semibold text-brand-700 dark:text-brand-400 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] rounded-xl px-3 py-3 transition-colors">Dashboard</a>
+      <a href="/dashboard" onclick="{{ closeMobileMenu() }}" class="block text-base font-semibold text-brand-700 dark:text-brand-400 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] rounded-2xl px-4 py-3 transition-colors">Dashboard</a>
 {{/if}}
 {{/if}}
-      <a href="/pricing" onclick="{{ go('/pricing') }}" class="{{ mobileLink('/pricing') }}">Pricing</a>
       <a href="https://tylix.dev/docs" target="_blank" rel="noopener" onclick="{{ closeMobileMenu() }}" class="{{ mobileLink('') }}">Docs</a>
     </div>
 
 {{#if Auth.user}}
-    <div class="h-px bg-stone-200 dark:bg-white/10 my-3"></div>
-    <button onclick="{{ logout() }}" class="w-full text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] rounded-xl px-3 py-3 transition-colors">Log out</button>
+    <div class="h-px bg-line my-2"></div>
+    <button onclick="{{ logout() }}" class="w-full text-left text-base text-zinc-700 dark:text-zinc-300 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] rounded-2xl px-4 py-3 transition-colors">Log out</button>
 {{/if}}
 
 {{#if not Auth.loading}}
 {{#if not Auth.user}}
-    <div class="grid grid-cols-2 gap-3 mt-4">
-      <a href="/login" onclick="{{ closeMobileMenu() }}" class="text-center text-sm font-medium text-slate-700 dark:text-slate-300 border border-stone-300 dark:border-white/15 rounded-full px-4 py-2.5 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">Login</a>
-      <a href="/register" onclick="{{ closeMobileMenu() }}" class="text-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Get Started</a>
+    <div class="grid grid-cols-2 gap-2 mt-3">
+      <a href="/login" onclick="{{ closeMobileMenu() }}" class="text-center text-base font-medium text-zinc-700 dark:text-zinc-200 border border-stone-300 dark:border-white/15 rounded-full px-4 py-2.5 hover:bg-white dark:hover:bg-white/5 transition-colors">Login</a>
+      <a href="/register" onclick="{{ closeMobileMenu() }}" class="text-center text-base bg-brand-500 text-white font-semibold rounded-full px-4 py-2.5 hover:bg-brand-400 transition-colors">Get started</a>
     </div>
 {{/if}}
 {{/if}}

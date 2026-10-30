@@ -1,13 +1,13 @@
 <script>
 </script>
 <template>
-  <div class="min-h-screen flex flex-col bg-slate-200 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors">
-    <Navbar />
+<div class="min-h-screen flex flex-col bg-page text-zinc-800 dark:text-zinc-200 antialiased selection:bg-brand-500/25 transition-colors">
+<Navbar />
 
-    <main class="flex-1 min-w-0">
-      <div data-tylix-slot="true"></div>
-    </main>
+<main class="flex-1 min-w-0">
+<div data-tylix-slot="true"></div>
+</main>
 
-    <SiteFooter />
-  </div>
+<SiteFooter />
+</div>
 </template>
