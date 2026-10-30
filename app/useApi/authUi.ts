@@ -69,15 +69,15 @@ export const authUi = {
         } else if (pw.length >= 18) {
             label = "Very strong";
             pct = 100;
-            color = "#059669";
+            color = "#ea580c";
         } else if (pw.length >= 14) {
             label = "Strong";
             pct = 80;
-            color = "#10b981";
+            color = "#f97316";
         } else {
             label = "Okay";
             pct = 55;
-            color = "#f59e0b";
+            color = "#facc15";
         }
 
         return { length, letter, number, symbol, ok, label, pct, color };
