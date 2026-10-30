@@ -26,7 +26,7 @@ init
       this.user = me.data
     } else {
       const path = window.location.pathname
-      const isPublic = path is "/" or path is "/login" or path is "/register"  or path is "/forgot-password"or path is "/pricing" or path is "/reset-password" or path is "/privacy" or path.startsWith("/accept-invite")
+      const isPublic = path is "/" or path is "/login" or path is "/register" or path is "/terms"  or path is "/forgot-password"or path is "/pricing" or path is "/reset-password" or path is "/privacy" or path.startsWith("/accept-invite")
       if not isPublic {
         window.location.replace("/login")
         await new Promise(() => setTimeout(() => 0, 60000))
