@@ -36,7 +36,7 @@ action
   // Dot colour and label fade for one step row.
   decorateStep(s) {
     const tones = [
-      ["done", "#10b981", "1", "Done"],
+      ["done", "#f97316", "1", "Done"],
       ["running", "#0ea5e9", "1", "In progress"],
       ["failed", "#f43f5e", "1", "Failed"],
       ["pending", "#64748b", "0.55", "Waiting"]

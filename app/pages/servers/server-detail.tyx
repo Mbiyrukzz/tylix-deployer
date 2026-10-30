@@ -49,9 +49,9 @@ state
   memArea: ""
   cpuNow: 0
   memNow: 0
-  cpuColor: "#10b981"
+  cpuColor: "#f97316"
   memColor: "#38bdf8"
-  diskColor: "#10b981"
+  diskColor: "#f97316"
   cpuBar: "width: 0%"
   memBar: "width: 0%"
   memText: ""
@@ -230,9 +230,9 @@ action
     this.memArea = this.chartArea(mem)
     this.cpuNow = s.cpu_pct
     this.memNow = s.mem_pct
-    this.cpuColor = this.toneColor(s.cpu_pct, "#10b981")
+    this.cpuColor = this.toneColor(s.cpu_pct, "#f97316")
     this.memColor = this.toneColor(s.mem_pct, "#38bdf8")
-    this.diskColor = this.toneColor(s.disk_pct, "#10b981")
+    this.diskColor = this.toneColor(s.disk_pct, "#f97316")
     this.cpuBar = "width: " + Math.min(100, s.cpu_pct) + "%"
     this.memBar = "width: " + Math.min(100, s.mem_pct) + "%"
     this.memText = this.formatBytes(s.mem_used) + " of " + this.formatBytes(s.mem_total)

@@ -511,9 +511,9 @@ action
       theme: {
         background: "rgba(2, 6, 23, 0)",
         foreground: "#e2e8f0",
-        cursor: "#10b981",
+        cursor: "#f97316",
         cursorAccent: "#020617",
-        selectionBackground: "#10b98140",
+        selectionBackground: "#f9731640",
         black: "#0f172a",
         red: "#f43f5e",
         green: "#10b981",

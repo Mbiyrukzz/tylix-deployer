@@ -26,8 +26,8 @@ template
         <p class="text-2xl font-semibold text-slate-800 dark:text-slate-200">32<span class="text-base text-slate-500">%</span></p>
         <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-16 mt-2">
           <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
-          <polygon points="0,80 0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32 300,80" fill="#10b981" fill-opacity="0.15" />
-          <polyline points="0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          <polygon points="0,80 0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32 300,80" fill="#f97316" fill-opacity="0.15" />
+          <polyline points="0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
         </svg>
       </div>
 
@@ -52,7 +52,7 @@ template
         <div class="relative w-24 h-24 mx-auto mt-1">
           <svg viewBox="0 0 100 100" class="w-24 h-24">
             <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
-            <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round" stroke-dasharray="81.4 226.2" transform="rotate(-90 50 50)" />
+            <circle cx="50" cy="50" r="36" fill="none" stroke="#f97316" stroke-width="10" stroke-linecap="round" stroke-dasharray="81.4 226.2" transform="rotate(-90 50 50)" />
           </svg>
           <div class="absolute inset-0 flex items-center justify-center">
             <span class="text-lg font-semibold text-slate-800 dark:text-slate-200">36%</span>
