@@ -38,9 +38,9 @@ export class RefreshToken extends Model {
     }
 
     static async findValid(rawToken: string): Promise<RefreshTokenAttributes | null> {
-        const tokenHash = this.hash(rawToken);
-        const all = (await this.all()) as RefreshTokenAttributes[];
-        const record = all.find((t) => t.token_hash === tokenHash);
+        const record = (await this.query()
+            .where("token_hash", this.hash(rawToken))
+            .first()) as RefreshTokenAttributes | null;
 
         if (!record) return null;
         if (record.revoked_at) return null;
@@ -56,8 +56,12 @@ export class RefreshToken extends Model {
     }
 
     static async revokeAllForUser(userId: number) {
-        const all = (await this.all()) as RefreshTokenAttributes[];
-        const active = all.filter((t) => t.user_id === userId && !t.revoked_at);
+        // Filtered by user in the database; the revoked check stays in code
+        // because a NULL comparison isn't something I've seen the builder handle.
+        const rows = (await this.query()
+            .where("user_id", userId)
+            .get()) as unknown as RefreshTokenAttributes[];
+        const active = rows.filter((t) => !t.revoked_at);
         await Promise.all(
             active.map((t) => this.update(t.id, { revoked_at: new Date().toISOString() })),
         );

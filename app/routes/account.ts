@@ -17,6 +17,9 @@
  * Password-checking endpoints share one per-user limiter so a stolen
  * session can't be used to guess the current password.
  *
+ * A new password follows the same rules as registration and reset
+ * (PasswordPolicy) and is checked against known breaches.
+ *
  * Changing the password signs the user out everywhere (including this
  * device), the same as the reset flow: access tokens already issued
  * still work until they expire (15 minutes by default).
@@ -34,12 +37,14 @@ import { CryptoService } from "../services/CryptoService.js";
 import { TwoFactorService } from "../services/TwoFactorService.js";
 import { SmsTwoFactorService } from "../services/SmsTwoFactorService.js";
 import type { SendResult } from "../services/SmsTwoFactorService.js";
+import { PasswordBreachService } from "../services/PasswordBreachService.js";
+import { passwordProblem } from "../validators/PasswordPolicy.js";
 
 type Handler = Parameters<Router["get"]>[1];
 type FieldErrors = Record<string, string[]>;
 
-const MIN_PASSWORD_LENGTH = 8;
-const MAX_PASSWORD_LENGTH = 128;
+const BREACH_MESSAGE =
+    "That password has appeared in a known data breach. Please choose a different one.";
 
 // In-memory, per server process (same as the auth limiters).
 const limiter = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
@@ -134,14 +139,20 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
             const errors: FieldErrors = {};
             if (!current) errors.current_password = ["Enter your current password."];
-            if (!next) errors.password = ["Enter a new password."];
-            else if (next.length < MIN_PASSWORD_LENGTH) {
-                errors.password = [`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`];
-            } else if (next.length > MAX_PASSWORD_LENGTH) {
-                errors.password = [`Password must be at most ${MAX_PASSWORD_LENGTH} characters.`];
-            } else if (next === current) {
-                errors.password = ["Your new password must be different from the current one."];
+
+            if (!next) {
+                errors.password = ["Enter a new password."];
+            } else {
+                // Same rules as registration and reset: length, letter, number,
+                // symbol, banned fragments, and no part of the email or name.
+                const problem = passwordProblem(next, { email: user.email, name: user.name });
+                if (problem) {
+                    errors.password = [problem];
+                } else if (next === current) {
+                    errors.password = ["Your new password must be different from the current one."];
+                }
             }
+
             if (!errors.password && next !== confirmation) {
                 errors.password_confirmation = ["The two passwords don't match."];
             }
@@ -149,6 +160,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
 
             if (!(await verifyPassword(current, user.password))) {
                 return fail(res, { current_password: ["That isn't your current password."] });
+            }
+
+            // After the current password is verified, so this call can't be
+            // used by someone without it, and no lookup is spent on a bad request.
+            if (await PasswordBreachService.isBreached(next)) {
+                return fail(res, { password: [BREACH_MESSAGE] });
             }
 
             await User.updatePassword(user.id, next);
