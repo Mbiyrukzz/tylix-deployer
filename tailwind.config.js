@@ -1,3 +1,5 @@
+import colors from "tailwindcss/colors";
+
 /** @type {import('tailwindcss').Config} */
 export default {
     darkMode: "class",
@@ -9,6 +11,14 @@ export default {
                     blue: "#8b5cf6",
                     orange: "#e879f9",
                 },
+                // The one accent. To test another color, change `colors.orange`
+                // to colors.sky, colors.violet, colors.teal and so on.
+                brand: colors.orange,
+                // Neutrals. These switch between light and dark on their own
+                // through the CSS variables, so no dark: prefix is needed.
+                page: "var(--page)",
+                panel: "var(--panel)",
+                line: "var(--line)",
             },
             keyframes: {
                 "loader-slide": {
