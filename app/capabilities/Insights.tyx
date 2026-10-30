@@ -28,7 +28,7 @@ action
         name: s.name,
         label: this.statusLabel(s.status),
         count: count,
-        dot: s.status is "online" ? "bg-emerald-500" : "bg-rose-500"
+        dot: s.status is "online" ? "bg-brand-500" : "bg-rose-500"
       }
     })
 

@@ -8,24 +8,24 @@ props
 
 state
   collapsed: false
-  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[230px] lg:p-5"
+  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[230px] lg:p-5"
   topCls: "hidden lg:flex items-center mb-1 justify-between px-1"
   titleCls: "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
-  onCls: "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-  offCls: "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+  onCls: "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+  offCls: "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
   disCls: "shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
-  badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
-  footCls: "shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800"
+  badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
+  footCls: "shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line"
   labelCls: ""
   chevCls: "w-4 h-4 transition-transform"
 
 action
   applyLayout() {
-    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
-    const on = "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-    const off = "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
+    const on = "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+    const off = "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
     const dis = "shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
-    const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+    const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
     const title = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
 
     if this.collapsed {
@@ -71,7 +71,7 @@ template
 
   <div class="{{ topCls }}">
     <p class="{{ titleCls }}">This provider</p>
-    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-300/50 dark:hover:bg-slate-900/70 transition-colors">
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
         <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
@@ -80,103 +80,103 @@ template
 
 {{#if active is "overview"}}
   <a href="{{ '/providers/provider-detail?id=' + providerId }}" title="Overview" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconGauge class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Overview</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconGauge class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 {{#if active is not "overview"}}
   <a href="{{ '/providers/provider-detail?id=' + providerId }}" title="Overview" class="{{ offCls }}">
-    <IconGauge class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Overview</span>
+    <IconGauge class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 
 {{#if active is "machines"}}
   <a href="{{ '/providers/provider-machines?id=' + providerId }}" title="Machines" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconServer class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Machines</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconServer class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Machines</span>
   </a>
 {{/if}}
 {{#if active is not "machines"}}
   <a href="{{ '/providers/provider-machines?id=' + providerId }}" title="Machines" class="{{ offCls }}">
-    <IconServer class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Machines</span>
+    <IconServer class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Machines</span>
   </a>
 {{/if}}
 
 {{#if active is "firewalls"}}
   <a href="{{ '/providers/provider-firewalls?id=' + providerId }}" title="Firewalls" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconShieldCheck class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Firewalls</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Firewalls</span>
   </a>
 {{/if}}
 {{#if active is not "firewalls"}}
   <a href="{{ '/providers/provider-firewalls?id=' + providerId }}" title="Firewalls" class="{{ offCls }}">
-    <IconShieldCheck class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Firewalls</span>
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Firewalls</span>
   </a>
 {{/if}}
 
 {{#if active is "volumes"}}
   <a href="{{ '/providers/provider-volumes?id=' + providerId }}" title="Volumes" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconCube class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Volumes</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconCube class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Volumes</span>
   </a>
 {{/if}}
 {{#if active is not "volumes"}}
   <a href="{{ '/providers/provider-volumes?id=' + providerId }}" title="Volumes" class="{{ offCls }}">
-    <IconCube class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Volumes</span>
+    <IconCube class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Volumes</span>
   </a>
 {{/if}}
 
 {{#if active is "images"}}
   <a href="{{ '/providers/provider-images?id=' + providerId }}" title="Images" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconPhotograph class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Images</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconPhotograph class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Images</span>
   </a>
 {{/if}}
 {{#if active is not "images"}}
   <a href="{{ '/providers/provider-images?id=' + providerId }}" title="Images" class="{{ offCls }}">
-    <IconPhotograph class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Images</span>
+    <IconPhotograph class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Images</span>
   </a>
 {{/if}}
 
 {{#if active is "ips"}}
   <a href="{{ '/providers/provider-ips?id=' + providerId }}" title="IP addresses" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconSignal class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">IP addresses</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconSignal class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">IP addresses</span>
   </a>
 {{/if}}
 {{#if active is not "ips"}}
   <a href="{{ '/providers/provider-ips?id=' + providerId }}" title="IP addresses" class="{{ offCls }}">
-    <IconSignal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">IP addresses</span>
+    <IconSignal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">IP addresses</span>
   </a>
 {{/if}}
 
 {{#if active is "domains"}}
   <a href="{{ '/providers/provider-domains?id=' + providerId }}" title="Domains" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconGlobe class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Domains</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconGlobe class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Domains</span>
   </a>
 {{/if}}
 {{#if active is not "domains"}}
   <a href="{{ '/providers/provider-domains?id=' + providerId }}" title="Domains" class="{{ offCls }}">
-    <IconGlobe class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Domains</span>
+    <IconGlobe class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Domains</span>
   </a>
 {{/if}}
 
 {{#if active is "billing"}}
   <a href="{{ '/providers/provider-billing?id=' + providerId }}" title="Billing" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconDocumentText class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Billing</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconDocumentText class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Billing</span>
   </a>
 {{/if}}
 {{#if active is not "billing"}}
   <a href="{{ '/providers/provider-billing?id=' + providerId }}" title="Billing" class="{{ offCls }}">
-    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Billing</span>
+    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Billing</span>
   </a>
 {{/if}}
 
   <div class="{{ footCls }}">
     <a href="/providers" title="All providers" class="{{ offCls }}">
-      <IconArrowLeft class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">All providers</span>
+      <IconArrowLeft class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">All providers</span>
     </a>
     <span class="{{ disCls }}" aria-disabled="true" title="More (VPCs, load balancers, Kubernetes and more)">
       <IconCog class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />

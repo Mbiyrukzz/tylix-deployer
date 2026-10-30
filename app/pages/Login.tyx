@@ -205,12 +205,12 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-100 dark:bg-slate-950 transition-colors px-6 py-16">
-    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-300/40 dark:shadow-none overflow-hidden">
+  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-page transition-colors px-6 py-16">
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] rounded-3xl border border-line bg-panel shadow-xl shadow-slate-300/40 dark:shadow-none overflow-hidden">
 
       <div class="hidden lg:flex flex-col justify-between bg-slate-950 p-10 relative overflow-hidden">
-        <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl"></div>
-        <div class="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-emerald-500/5 blur-3xl"></div>
+        <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-brand-500/10 blur-3xl"></div>
+        <div class="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-brand-500/5 blur-3xl"></div>
 
         <a href="/" class="relative flex items-center gap-2.5">
           <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
@@ -218,23 +218,23 @@ template
         </a>
 
         <div class="relative">
-          <p class="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-3">Ship without the SSH dance</p>
+          <p class="text-brand-400 text-xs font-semibold uppercase tracking-wider mb-3">Ship without the SSH dance</p>
           <h2 class="text-white text-3xl font-bold leading-tight tracking-tight mb-8">Push to your branch.<br />We handle the rest.</h2>
 
           <div class="rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
             <div class="flex items-center gap-1.5 px-4 py-3 border-b border-slate-800">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-500/70"></span>
               <span class="w-2.5 h-2.5 rounded-full bg-amber-500/70"></span>
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/70"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-brand-500/70"></span>
               <span class="ml-3 text-slate-500 text-xs font-mono">deploy.log</span>
             </div>
             <div class="p-4 font-mono text-xs leading-relaxed space-y-1">
               <p><span class="text-slate-500">$</span> <span class="text-slate-300">git pull origin main</span></p>
-              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">Pulled 14 commits</span></p>
-              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">npm ci &amp;&amp; npm run build</span></p>
-              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">Ran 2 migrations</span></p>
-              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">Reloaded process, health check passed</span></p>
-              <p class="text-emerald-400">Deployed in 38s</p>
+              <p><span class="text-brand-400">✓</span> <span class="text-slate-400">Pulled 14 commits</span></p>
+              <p><span class="text-brand-400">✓</span> <span class="text-slate-400">npm ci &amp;&amp; npm run build</span></p>
+              <p><span class="text-brand-400">✓</span> <span class="text-slate-400">Ran 2 migrations</span></p>
+              <p><span class="text-brand-400">✓</span> <span class="text-slate-400">Reloaded process, health check passed</span></p>
+              <p class="text-brand-400">Deployed in 38s</p>
             </div>
           </div>
         </div>
@@ -255,13 +255,13 @@ template
           </a>
 
 {{#if not needsCode}}
-          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Welcome back</p>
+          <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Welcome back</p>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Log in to your account</h1>
           <p class="text-slate-500 text-sm mb-8">Pick up where your last deploy left off.</p>
 {{/if}}
 
 {{#if needsCode}}
-          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Two-factor</p>
+          <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Two-factor</p>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Enter your code</h1>
           <p class="text-slate-500 text-sm mb-8">{{ codeHelp }}</p>
 {{/if}}
@@ -274,7 +274,7 @@ template
 {{/if}}
 
 {{#if smsSent}}
-          <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">We texted a code to <span class="font-mono">{{ phoneHint }}</span>. It expires in 5 minutes.</p>
+          <p class="text-brand-700 dark:text-brand-500 text-sm mb-4">We texted a code to <span class="font-mono">{{ phoneHint }}</span>. It expires in 5 minutes.</p>
 {{/if}}
 {{#if smsNotice}}
           <p role="alert" class="text-amber-600 dark:text-amber-500 text-sm mb-4">{{ smsNotice }}</p>
@@ -291,12 +291,12 @@ template
             placeholder="you@example.com"
             value="{{ email }}"
             oninput="{{ setField('email', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition"
           />
 
           <div class="flex items-center justify-between mb-2">
             <label for="password" class="block text-slate-600 dark:text-slate-400 text-xs font-medium">Password</label>
-            <a href="/forgot-password" class="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">Forgot password?</a>
+            <a href="/forgot-password" class="text-xs text-brand-700 dark:text-brand-400 hover:underline">Forgot password?</a>
           </div>
           <div class="relative mb-6">
             <input
@@ -307,7 +307,7 @@ template
               placeholder="••••••••"
               value="{{ password }}"
               oninput="{{ setField('password', event.target.value) }}"
-              class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl pl-4 pr-16 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+              class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl pl-4 pr-16 py-2.5 outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition"
             />
             <button type="button" onclick="{{ togglePassword() }}" class="absolute inset-y-0 right-0 px-4 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
               {{#if showPassword}}Hide{{/if}}{{#if not showPassword}}Show{{/if}}
@@ -328,7 +328,7 @@ template
             placeholder="123456"
             value="{{ code }}"
             oninput="{{ setCode(event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-mono text-center text-lg tracking-[0.4em] rounded-xl px-4 py-3 mb-6 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-mono text-center text-lg tracking-[0.4em] rounded-xl px-4 py-3 mb-6 outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition"
           />
 {{/if}}
 
@@ -338,7 +338,7 @@ template
 {{/if}}
 
 {{#if submitting}}
-          <button disabled class="w-full inline-flex items-center justify-center gap-2 bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold opacity-70 cursor-not-allowed transition">
+          <button disabled class="w-full inline-flex items-center justify-center gap-2 bg-brand-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold opacity-70 cursor-not-allowed transition">
             <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
@@ -347,7 +347,7 @@ template
           </button>
 {{/if}}
 {{#if not submitting}}
-          <button onclick="{{ submit() }}" class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          <button onclick="{{ submit() }}" class="w-full bg-brand-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all">
             {{#if needsCode}}Verify and log in{{/if}}{{#if not needsCode}}Log in{{/if}}
           </button>
 {{/if}}
@@ -358,7 +358,7 @@ template
           <button disabled class="w-full text-sm text-slate-400 mt-3 py-2">Sending…</button>
 {{/if}}
 {{#if not sending}}
-          <button onclick="{{ textMeCode() }}" class="w-full text-sm text-emerald-700 dark:text-emerald-400 hover:underline mt-3 py-2 transition-colors">
+          <button onclick="{{ textMeCode() }}" class="w-full text-sm text-brand-700 dark:text-brand-400 hover:underline mt-3 py-2 transition-colors">
             {{#if smsSent}}Resend code{{/if}}{{#if not smsSent}}Text me a code{{/if}}
           </button>
 {{/if}}
@@ -370,7 +370,7 @@ template
 
 {{#if not needsCode}}
           <p class="text-sm text-slate-500 text-center mt-6">
-            New to Tylix Deploy? <a href="/register" class="text-emerald-700 dark:text-emerald-400 hover:underline">Create an account</a>
+            New to Tylix Deploy? <a href="/register" class="text-brand-700 dark:text-brand-400 hover:underline">Create an account</a>
           </p>
 {{/if}}
         </div>

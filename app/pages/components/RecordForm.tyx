@@ -233,7 +233,7 @@ template
 
   <div onclick="{{ close() }}" style="position: absolute; inset: 0; background: rgba(2, 6, 23, 0.6); backdrop-filter: blur(4px);"></div>
 
-  <div class="relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl" style="width: 100%; max-width: 36rem; max-height: 90vh; overflow-y: auto;">
+  <div class="relative rounded-2xl border border-line bg-panel shadow-xl" style="width: 100%; max-width: 36rem; max-height: 90vh; overflow-y: auto;">
 
     <div class="flex items-center justify-between gap-4 px-6 pt-6 pb-4">
       <h2 id="rec-title" class="text-slate-900 dark:text-slate-100 font-semibold">
@@ -258,10 +258,10 @@ template
       <div class="flex flex-wrap gap-2 mb-5">
 {{#each t in types}}
 {{#if fType is t}}
-        <button onclick="{{ pickType(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ t }}</button>
+        <button onclick="{{ pickType(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">{{ t }}</button>
 {{/if}}
 {{#if fType is not t}}
-        <button onclick="{{ pickType(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ t }}</button>
+        <button onclick="{{ pickType(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">{{ t }}</button>
 {{/if}}
 {{/each}}
       </div>
@@ -274,7 +274,7 @@ template
         type="text"
         value="{{ fService }}"
         oninput="{{ fService = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="sip"
       />
 {{#if serviceError}}
@@ -285,10 +285,10 @@ template
       <div class="flex flex-wrap gap-2">
 {{#each p in protocols}}
 {{#if fProtocol is p}}
-        <button onclick="{{ pickProtocol(p) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ p }}</button>
+        <button onclick="{{ pickProtocol(p) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">{{ p }}</button>
 {{/if}}
 {{#if fProtocol is not p}}
-        <button onclick="{{ pickProtocol(p) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ p }}</button>
+        <button onclick="{{ pickProtocol(p) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">{{ p }}</button>
 {{/if}}
 {{/each}}
       </div>
@@ -301,7 +301,7 @@ template
         type="text"
         value="{{ fName }}"
         oninput="{{ fName = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="@ for the root, or www"
       />
 {{#if nameError}}
@@ -314,10 +314,10 @@ template
       <div class="flex flex-wrap gap-2">
 {{#each t in tags}}
 {{#if fTag is t}}
-        <button onclick="{{ pickTag(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ t }}</button>
+        <button onclick="{{ pickTag(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">{{ t }}</button>
 {{/if}}
 {{#if fTag is not t}}
-        <button onclick="{{ pickTag(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ t }}</button>
+        <button onclick="{{ pickTag(t) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">{{ t }}</button>
 {{/if}}
 {{/each}}
       </div>
@@ -332,7 +332,7 @@ template
         type="text"
         value="{{ fValue }}"
         oninput="{{ fValue = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ valuePlaceholder }}"
       />
 {{#if valueError}}
@@ -358,7 +358,7 @@ template
         inputmode="numeric"
         value="{{ fPriority }}"
         oninput="{{ fPriority = $event.target.value }}"
-        class="w-32 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-32 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
       />
 {{#if priorityError}}
       <p class="text-rose-500 text-xs mt-1.5">{{ priorityError }}</p>
@@ -375,7 +375,7 @@ template
             inputmode="numeric"
             value="{{ fPriority }}"
             oninput="{{ fPriority = $event.target.value }}"
-            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           />
 {{#if priorityError}}
           <p class="text-rose-500 text-xs mt-1.5">{{ priorityError }}</p>
@@ -389,7 +389,7 @@ template
             inputmode="numeric"
             value="{{ fWeight }}"
             oninput="{{ fWeight = $event.target.value }}"
-            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           />
 {{#if weightError}}
           <p class="text-rose-500 text-xs mt-1.5">{{ weightError }}</p>
@@ -403,7 +403,7 @@ template
             inputmode="numeric"
             value="{{ fPort }}"
             oninput="{{ fPort = $event.target.value }}"
-            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           />
 {{#if portError}}
           <p class="text-rose-500 text-xs mt-1.5">{{ portError }}</p>
@@ -416,10 +416,10 @@ template
       <div class="flex flex-wrap gap-2">
 {{#each t in ttlOptions}}
 {{#if fTtl is t.key}}
-        <button onclick="{{ pickTtl(t.key) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ t.label }}</button>
+        <button onclick="{{ pickTtl(t.key) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">{{ t.label }}</button>
 {{/if}}
 {{#if fTtl is not t.key}}
-        <button onclick="{{ pickTtl(t.key) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ t.label }}</button>
+        <button onclick="{{ pickTtl(t.key) }}" class="text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">{{ t.label }}</button>
 {{/if}}
 {{/each}}
       </div>
@@ -438,7 +438,7 @@ template
     <div class="flex items-center justify-end gap-3 px-6 py-5">
       <button onclick="{{ close() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-      <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+      <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not saving}}
 {{#if billingLocked}}
@@ -451,7 +451,7 @@ template
       </button>
 {{/if}}
 {{#if not billingLocked}}
-      <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save record</button>
+      <button onclick="{{ submit() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save record</button>
 {{/if}}
 {{/if}}
     </div>

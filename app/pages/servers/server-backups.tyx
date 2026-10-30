@@ -338,7 +338,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="backups" serverId="{{ serverId }}" />
@@ -351,14 +351,14 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if server}}
-      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
@@ -371,10 +371,10 @@ template
       <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
 {{/if}}
 {{#if note}}
-      <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ note }}</p>
+      <p class="text-brand-700 dark:text-brand-500 text-sm mb-4">{{ note }}</p>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">New backup</h2>
 
         <label class="block text-slate-500 text-xs mb-1" for="bName">Name</label>
@@ -387,10 +387,10 @@ template
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
 {{#each o in dbOptions}}
 {{#if o.checked}}
-          <button onclick="{{ toggleDb(o.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">&#10003; {{ o.name }}</button>
+          <button onclick="{{ toggleDb(o.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">&#10003; {{ o.name }}</button>
 {{/if}}
 {{#if not o.checked}}
-          <button onclick="{{ toggleDb(o.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">{{ o.name }}</button>
+          <button onclick="{{ toggleDb(o.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">{{ o.name }}</button>
 {{/if}}
 {{/each}}
         </div>
@@ -400,11 +400,11 @@ template
             <label class="block text-slate-500 text-xs mb-1" for="bSchedule">Schedule (server time)</label>
             <input id="bSchedule" type="text" value="0 2 * * *" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-2" />
             <div class="flex flex-wrap gap-1.5">
-              <button onclick="{{ schedulePreset('0 * * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Hourly</button>
-              <button onclick="{{ schedulePreset('0 */6 * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Every 6 hours</button>
-              <button onclick="{{ schedulePreset('0 2 * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Daily 02:00</button>
-              <button onclick="{{ schedulePreset('0 2 * * 0') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Weekly (Sun 02:00)</button>
-              <button onclick="{{ schedulePreset('0 2 1 * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">Monthly</button>
+              <button onclick="{{ schedulePreset('0 * * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-brand-500/50">Hourly</button>
+              <button onclick="{{ schedulePreset('0 */6 * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-brand-500/50">Every 6 hours</button>
+              <button onclick="{{ schedulePreset('0 2 * * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-brand-500/50">Daily 02:00</button>
+              <button onclick="{{ schedulePreset('0 2 * * 0') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-brand-500/50">Weekly (Sun 02:00)</button>
+              <button onclick="{{ schedulePreset('0 2 1 * *') }}" class="text-xs rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-slate-600 dark:text-slate-300 hover:border-brand-500/50">Monthly</button>
             </div>
           </div>
           <div>
@@ -417,17 +417,17 @@ template
         <p class="text-slate-500 text-xs mb-2">Where to store them</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
 {{#if storageId is 0}}
-          <button onclick="{{ pickStorage(0) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">This server only</button>
+          <button onclick="{{ pickStorage(0) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">This server only</button>
 {{/if}}
 {{#if storageId is not 0}}
-          <button onclick="{{ pickStorage(0) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">This server only</button>
+          <button onclick="{{ pickStorage(0) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">This server only</button>
 {{/if}}
 {{#each s in storages}}
 {{#if storageId is s.id}}
-          <button onclick="{{ pickStorage(s.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">Dropbox: {{ s.name }}</button>
+          <button onclick="{{ pickStorage(s.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">Dropbox: {{ s.name }}</button>
 {{/if}}
 {{#if storageId is not s.id}}
-          <button onclick="{{ pickStorage(s.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">Dropbox: {{ s.name }}</button>
+          <button onclick="{{ pickStorage(s.id) }}" class="text-left rounded-xl border px-4 py-2.5 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">Dropbox: {{ s.name }}</button>
 {{/if}}
 {{/each}}
         </div>
@@ -442,11 +442,11 @@ template
         </span>
 {{/if}}
 {{#if not Billing.locked}}
-        <button onclick="{{ toggleDropbox() }}" class="text-sm text-emerald-700 dark:text-emerald-500 hover:underline font-medium mb-4">Connect Dropbox</button>
+        <button onclick="{{ toggleDropbox() }}" class="text-sm text-brand-700 dark:text-brand-500 hover:underline font-medium mb-4">Connect Dropbox</button>
 {{/if}}
 
 {{#if showDropbox}}
-        <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
+        <div class="rounded-xl border border-line p-4 mb-4">
           <p class="text-slate-500 text-xs mb-3">
             Create an app at dropbox.com/developers/apps, enable the permissions
             <span class="font-mono">files.content.write</span> and <span class="font-mono">files.metadata.read</span>,
@@ -464,7 +464,7 @@ template
           <p role="alert" class="text-rose-500 text-sm mb-3 break-words">{{ dropboxError }}</p>
 {{/if}}
 {{#if dropboxBusy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking with Dropbox…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking with Dropbox…</button>
 {{/if}}
 {{#if not dropboxBusy}}
 {{#if Billing.locked}}
@@ -477,7 +477,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ connectDropbox() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Connect</button>
+          <button onclick="{{ connectDropbox() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Connect</button>
 {{/if}}
 {{/if}}
         </div>
@@ -502,7 +502,7 @@ template
 
         <div class="mt-5">
 {{#if busy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -515,13 +515,13 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Schedule backup</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Schedule backup</button>
 {{/if}}
 {{/if}}
         </div>
       </div>
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Scheduled backups</h2>
 
 {{#if backups.length is 0}}
@@ -531,11 +531,11 @@ template
 {{/if}}
 
 {{#each b in backups}}
-        <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+        <div class="rounded-xl border border-line px-4 py-3 mb-2">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ b.name }}
-                <span class="text-xs font-mono text-emerald-700 dark:text-emerald-500 ml-2">{{ b.schedule }}</span>
+                <span class="text-xs font-mono text-brand-700 dark:text-brand-500 ml-2">{{ b.schedule }}</span>
               </p>
               <p class="text-slate-500 text-xs font-mono truncate">{{ b.dbText }}</p>
               <p class="text-slate-400 text-xs truncate">{{ b.storage_name }} · keeps {{ b.retention }} per database</p>
@@ -551,7 +551,7 @@ template
               </span>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ runNow(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Run now</button>
+              <button onclick="{{ runNow(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-brand-600 px-2 py-1">Run now</button>
 {{/if}}
               <button onclick="{{ viewFiles(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Files</button>
               <button onclick="{{ viewLog(b.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Log</button>
@@ -586,7 +586,7 @@ template
 {{/if}}
 {{#if not panelBusy}}
 {{#if panelKind is "log"}}
-          <pre class="rounded-lg bg-slate-950 text-emerald-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
+          <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
 {{/if}}
 {{#if panelKind is "files"}}
 {{#if files.length is 0}}
@@ -594,13 +594,13 @@ template
 {{/if}}
           <div class="mt-3 space-y-1">
 {{#each f in files}}
-            <div class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-3 py-2">
+            <div class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-line px-3 py-2">
               <div class="min-w-0">
                 <p class="text-slate-800 dark:text-slate-200 text-xs font-mono truncate">{{ f.name }}</p>
                 <p class="text-slate-500 text-xs">{{ f.sizeText }} · {{ f.dateText }}</p>
               </div>
               <div class="flex shrink-0 items-center gap-2">
-                <a href="{{ '/api/servers/' + serverId + '/backups/' + b.id + '/files/download?name=' + f.name }}" class="text-xs text-emerald-700 dark:text-emerald-500 hover:underline font-medium">Download</a>
+                <a href="{{ '/api/servers/' + serverId + '/backups/' + b.id + '/files/download?name=' + f.name }}" class="text-xs text-brand-700 dark:text-brand-500 hover:underline font-medium">Download</a>
 {{#if confirmFile is f.name}}
                 <button onclick="{{ deleteFile(b.id, f.name) }}" class="text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-md px-2 py-1">Delete for good</button>
                 <button onclick="{{ cancelDeleteFile() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-1 py-1">Cancel</button>

@@ -489,7 +489,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
     {{#if serverId}}
     <ServerSidebar active="server" serverId="{{ serverId }}" />
@@ -505,15 +505,15 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been deleted, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if provisioning}}
-      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
@@ -526,8 +526,8 @@ template
           </span>
 {{/if}}
 {{#if Provisioning.finished}}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Ready
           </span>
 {{/if}}
 {{#if not Provisioning.failed}}
@@ -550,10 +550,10 @@ template
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ Provisioning.error }}</p>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-2">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-2">
         <div class="flex items-center justify-between gap-4 mb-3">
           <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ Provisioning.headline }}</p>
-          <p class="text-emerald-600 dark:text-emerald-400 text-xs font-mono tabular-nums shrink-0">{{ Provisioning.shown }}%</p>
+          <p class="text-brand-600 dark:text-brand-400 text-xs font-mono tabular-nums shrink-0">{{ Provisioning.shown }}%</p>
         </div>
 
         <div class="flex items-center gap-[2px] mb-6">
@@ -562,19 +562,19 @@ template
           <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-slate-500/20"></span>
 {{/if}}
 {{#if seg.k is 1}}
-          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-500"></span>
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-brand-500"></span>
 {{/if}}
 {{#if seg.k is 2}}
-          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-100"></span>
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-brand-100"></span>
 {{/if}}
 {{#if seg.k is 3}}
-          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-200"></span>
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-brand-200"></span>
 {{/if}}
 {{#if seg.k is 4}}
-          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-300"></span>
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-brand-300"></span>
 {{/if}}
 {{#if seg.k is 5}}
-          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-emerald-400"></span>
+          <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-brand-400"></span>
 {{/if}}
 {{#if seg.k is 6}}
           <span class="flex-1 min-w-0 h-5 rounded-[2px] bg-rose-500"></span>
@@ -583,10 +583,10 @@ template
         </div>
 
 {{#each s in Provisioning.steps}}
-        <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+        <div class="flex items-center justify-between gap-4 rounded-xl border border-line px-4 py-3 mb-2">
           <div class="flex items-center gap-3 min-w-0">
 {{#if s.state is "done"}}
-            <span class="w-2 h-2 shrink-0 rounded-full bg-emerald-500"></span>
+            <span class="w-2 h-2 shrink-0 rounded-full bg-brand-500"></span>
 {{/if}}
 {{#if s.state is "running"}}
             <span class="w-2 h-2 shrink-0 rounded-full bg-sky-500 animate-pulse"></span>
@@ -608,12 +608,12 @@ template
       </div>
 
 {{#if Provisioning.finished}}
-      <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mb-6">Your server is ready. Opening it…</p>
+      <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mb-6">Your server is ready. Opening it…</p>
 {{/if}}
 {{#if not Provisioning.finished}}
 {{#if Provisioning.live}}
       <p class="flex items-center gap-1.5 text-slate-400 text-xs mb-6">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
         Live
       </p>
 {{/if}}
@@ -627,7 +627,7 @@ template
 {{/if}}
 
 {{#if server}}
-      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
@@ -638,8 +638,8 @@ template
           <div class="flex items-center gap-3 mb-2">
             <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ server.name }}</h1>
 {{#if status is "online"}}
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Online
             </span>
 {{/if}}
 {{#if status is "pending"}}
@@ -691,7 +691,7 @@ template
 {{/if}}
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Uptime</p>
 {{#if hasStats}}
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ uptimeText }}</p>
@@ -700,7 +700,7 @@ template
           <p class="text-slate-400 text-lg font-semibold">—</p>
 {{/if}}
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Load average</p>
 {{#if hasStats}}
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold font-mono">{{ loadText }}</p>
@@ -709,7 +709,7 @@ template
           <p class="text-slate-400 text-lg font-semibold">—</p>
 {{/if}}
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Region</p>
 {{#if region}}
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold font-mono">{{ region }}</p>
@@ -718,7 +718,7 @@ template
           <p class="text-slate-400 text-lg font-semibold">Custom</p>
 {{/if}}
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Plan</p>
 {{#if plan}}
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold font-mono">{{ plan }}</p>
@@ -731,7 +731,7 @@ template
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-3">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">CPU</p>
           </div>
@@ -751,7 +751,7 @@ template
 {{/if}}
         </div>
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-3">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Memory</p>
 {{#if hasStats}}
@@ -774,7 +774,7 @@ template
 {{/if}}
         </div>
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-3">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Disk</p>
 {{#if hasStats}}
@@ -802,7 +802,7 @@ template
 {{#if hasStats}}
 {{#if live}}
       <p class="flex items-center gap-1.5 text-slate-400 text-xs mb-6">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
         Live · last update {{ lastChecked }}
       </p>
 {{/if}}
@@ -819,13 +819,13 @@ template
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Connect</h2>
           <p class="text-slate-500 text-sm mb-4">Open a shell on this server from your machine.</p>
           <div class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3">
-            <code class="flex-1 text-emerald-400 text-sm font-mono truncate">{{ sshCommand }}</code>
+            <code class="flex-1 text-brand-400 text-sm font-mono truncate">{{ sshCommand }}</code>
 {{#if copied}}
-            <button class="text-xs text-emerald-400 font-medium">Copied</button>
+            <button class="text-xs text-brand-400 font-medium">Copied</button>
 {{/if}}
 {{#if not copied}}
             <button onclick="{{ copySsh() }}" class="text-xs text-slate-400 hover:text-white font-medium transition-colors">Copy</button>
@@ -859,7 +859,7 @@ template
           </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-1">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Sites</h2>
 {{#if Billing.locked}}
@@ -872,7 +872,7 @@ template
             </span>
 {{/if}}
 {{#if not Billing.locked}}
-            <a href="{{ '/servers/site-create?id=' + serverId }}" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">New site</a>
+            <a href="{{ '/servers/site-create?id=' + serverId }}" class="text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">New site</a>
 {{/if}}
           </div>
           <p class="text-slate-500 text-sm mb-4">Apps deployed on this server.</p>
@@ -890,7 +890,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+            <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
               Create a site
             </a>
 {{/if}}
@@ -898,7 +898,7 @@ template
 {{/if}}
 
 {{#each site in sites}}
-          <a href="{{ site.href }}" class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2 hover:border-emerald-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+          <a href="{{ site.href }}" class="flex items-center justify-between rounded-xl border border-line px-4 py-3 mb-2 hover:border-brand-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
             <div class="min-w-0">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ site.name }}</p>
               <p class="text-slate-500 text-xs font-mono truncate">{{ site.domain }}</p>
@@ -909,7 +909,7 @@ template
         </div>
       </div>
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Reboot server</h2>
         <p class="text-slate-500 text-sm mb-4">Restarts the machine over SSH. Sites and services on it will be offline for about a minute. The SSH user needs to be root or have passwordless sudo.</p>
 
@@ -963,7 +963,7 @@ template
 {{/if}}
       </div>
 
-      <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white dark:bg-slate-900 p-6">
+      <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-panel p-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1">Delete server</h2>
         <p class="text-slate-500 text-sm mb-4">This removes the server and its stored SSH key. Your machine itself is not touched.</p>
 
@@ -1001,11 +1001,11 @@ template
             maxlength="12"
             value="{{ code }}"
             oninput="{{ code = $event.target.value }}"
-            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
           />
           <p class="text-slate-500 text-xs mt-2">{{ TwoFactor.totp ? "Enter a code from your authenticator app, or a recovery code." : "Enter the code texted to " + TwoFactor.smsHint + "." }}</p>
 {{#if TwoFactor.notice}}
-          <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
+          <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
 {{/if}}
 {{#if codeError}}
           <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>

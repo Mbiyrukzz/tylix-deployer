@@ -46,7 +46,7 @@ action
 
   dotClass(level) {
     if level is "success" {
-      return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-emerald-500"
+      return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-brand-500"
     }
     if level is "warning" {
       return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-amber-500"
@@ -59,7 +59,7 @@ action
 
   badgeClass(level) {
     if level is "success" {
-      return "text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
+      return "text-[10px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400"
     }
     if level is "warning" {
       return "text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
@@ -170,7 +170,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="logs" serverId="{{ serverId }}" />
@@ -183,14 +183,14 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if server}}
-      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
@@ -203,16 +203,16 @@ template
       <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div class="flex flex-wrap gap-1.5">
 {{#each f in filters}}
 {{#if f.active}}
-              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">{{ f.label }}</button>
+              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">{{ f.label }}</button>
 {{/if}}
 {{#if not f.active}}
-              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50">{{ f.label }}</button>
+              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-500/50">{{ f.label }}</button>
 {{/if}}
 {{/each}}
             </div>
@@ -232,7 +232,7 @@ template
           <button disabled class="text-sm text-slate-400 px-2 py-1">Loading…</button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ load() }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Refresh</button>
+          <button onclick="{{ load() }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-brand-600 px-2 py-1">Refresh</button>
 {{/if}}
         </div>
 
@@ -243,7 +243,7 @@ template
 {{/if}}
 
 {{#each l in logs}}
-        <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 mb-2">
+        <div class="rounded-xl border border-line px-4 py-3 mb-2">
           <div class="flex items-start gap-3">
             <span class="{{ l.dotCls }}"></span>
             <div class="min-w-0 flex-1">
@@ -259,7 +259,7 @@ template
 {{/if}}
           </div>
 {{#if openId is l.id}}
-          <pre class="rounded-lg bg-slate-950 text-emerald-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ l.metaText }}</pre>
+          <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ l.metaText }}</pre>
 {{/if}}
         </div>
 {{/each}}

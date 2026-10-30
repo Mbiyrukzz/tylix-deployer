@@ -207,14 +207,14 @@ template
   </button>
 {{/if}}
 {{#if not provider}}
-  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
     <IconPlus class="w-4 h-4" /> Connect account
   </button>
 {{/if}}
 
 {{#if showModal}}
   <div role="dialog" aria-modal="true" aria-labelledby="source-form-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-line bg-panel shadow-xl p-6">
       <div class="flex items-center justify-between mb-5">
         <h3 id="source-form-title" class="text-slate-900 dark:text-slate-200 font-medium">
 {{#if provider}}
@@ -233,16 +233,16 @@ template
       <p class="block text-slate-500 text-xs mb-1.5">Provider</p>
       <div class="grid grid-cols-2 gap-3 mb-1">
 {{#if kind is "github"}}
-        <button onclick="{{ pickKind('github') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">GitHub</button>
+        <button onclick="{{ pickKind('github') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">GitHub</button>
 {{/if}}
 {{#if kind is not "github"}}
-        <button onclick="{{ pickKind('github') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">GitHub</button>
+        <button onclick="{{ pickKind('github') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-brand-500/40">GitHub</button>
 {{/if}}
 {{#if kind is "gitlab"}}
-        <button onclick="{{ pickKind('gitlab') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">GitLab</button>
+        <button onclick="{{ pickKind('gitlab') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">GitLab</button>
 {{/if}}
 {{#if kind is not "gitlab"}}
-        <button onclick="{{ pickKind('gitlab') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">GitLab</button>
+        <button onclick="{{ pickKind('gitlab') }}" class="text-left rounded-xl border px-4 py-3 text-sm border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-brand-500/40">GitLab</button>
 {{/if}}
       </div>
 {{#if kindError}}
@@ -258,7 +258,7 @@ template
         autofocus
         value="{{ label }}"
         oninput="{{ label = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="e.g. Ashmif GitHub"
       />
 {{#if labelError}}
@@ -275,7 +275,7 @@ template
         autocomplete="off"
         value="{{ token }}"
         oninput="{{ token = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
       />
 {{#if tokenError}}
       <p class="text-rose-500 text-xs mb-2">{{ tokenError }}</p>
@@ -288,7 +288,7 @@ template
 {{/if}}
 
 {{#if codeOpen}}
-      <div class="mt-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4">
+      <div class="mt-5 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 p-4">
         <label for="step-up-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
         <p class="text-slate-500 text-xs mb-2">Replacing credentials needs a second-factor code.</p>
         <input
@@ -299,7 +299,7 @@ template
           maxlength="12"
           value="{{ code }}"
           oninput="{{ code = $event.target.value }}"
-          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         />
 {{#if tfTotp}}
         <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
@@ -308,7 +308,7 @@ template
         <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
 {{/if}}
 {{#if smsNotice}}
-        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+        <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ smsNotice }}</p>
 {{/if}}
 {{#if codeError}}
         <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
@@ -331,10 +331,10 @@ template
       <div class="flex items-center justify-end gap-3">
         <button onclick="{{ close() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Checking…</button>
+        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Checking…</button>
 {{/if}}
 {{#if not saving}}
-        <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save</button>
+        <button onclick="{{ submit() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
 {{/if}}
       </div>
     </div>

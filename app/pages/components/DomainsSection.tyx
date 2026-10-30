@@ -3,31 +3,31 @@ component DomainsSection
 template
   <section class="px-6 py-20 bg-slate-100 dark:bg-slate-950 transition-colors">
     <div class="max-w-5xl mx-auto">
-      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-2">Domain management</p>
+      <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-2">Domain management</p>
       <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">Your domains next to your servers</h2>
       <p class="text-slate-500 max-w-2xl mb-10">Connect your registrar once, then manage domains, DNS records and renewals from the same place you deploy.</p>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">1</div>
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">1</div>
           <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Connect a registrar</h3>
           <p class="text-slate-500 text-xs leading-relaxed">Link Namecheap or Cloudflare with an API key. It is stored encrypted.</p>
         </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">2</div>
           <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">See every domain</h3>
           <p class="text-slate-500 text-xs leading-relaxed">All your domains in one list, with expiry dates and status.</p>
         </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">3</div>
           <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Edit DNS records</h3>
           <p class="text-slate-500 text-xs leading-relaxed">Add, change and remove records, and point a domain at your server.</p>
         </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">4</div>
           <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Track renewals</h3>
           <p class="text-slate-500 text-xs leading-relaxed">Know which domains expire soon, and check email and billing at the registrar.</p>

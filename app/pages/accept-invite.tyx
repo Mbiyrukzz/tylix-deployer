@@ -89,7 +89,7 @@ onMount
 
 template
   <div class="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 px-6 py-10 transition-colors">
-    <div class="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm dark:shadow-none">
+    <div class="w-full max-w-lg rounded-2xl border border-line bg-panel p-8 shadow-sm dark:shadow-none">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading invitation…</p>
@@ -100,7 +100,7 @@ template
       <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Log in to continue</h1>
       <p class="text-slate-500 text-sm mb-6">Log in or register with the email address this invitation was sent to. You'll come back here automatically.</p>
       <div class="flex items-center gap-3">
-        <a href="/login" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Log in</a>
+        <a href="/login" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Log in</a>
         <a href="/register" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Register</a>
       </div>
 {{/if}}
@@ -117,7 +117,7 @@ template
 
 {{#if alreadyMember}}
       <p class="text-slate-600 dark:text-slate-300 text-sm mb-6">You're already on this team.</p>
-      <a href="/settings/team" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Open the team</a>
+      <a href="/settings/team" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Open the team</a>
 {{/if}}
 
 {{#if not alreadyMember}}
@@ -152,7 +152,7 @@ template
 
 {{#if total is not 0}}
 {{#if confirmed}}
-      <button onclick="{{ toggleConfirm() }}" class="text-sm text-emerald-700 dark:text-emerald-500 border border-emerald-300 dark:border-emerald-900/50 rounded-lg px-4 py-2 mb-5 font-medium">✓ I understand and want to move my data</button>
+      <button onclick="{{ toggleConfirm() }}" class="text-sm text-brand-700 dark:text-brand-500 border border-brand-300 dark:border-brand-900/50 rounded-lg px-4 py-2 mb-5 font-medium">✓ I understand and want to move my data</button>
 {{/if}}
 {{#if not confirmed}}
       <button onclick="{{ toggleConfirm() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 mb-5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">I understand and want to move my data</button>
@@ -164,12 +164,12 @@ template
 {{/if}}
 
 {{#if busy}}
-      <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Joining…</button>
+      <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Joining…</button>
 {{/if}}
 {{#if not busy}}
 {{#if confirmed}}
 {{#if conflicts.length is 0}}
-      <button onclick="{{ accept() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Join team</button>
+      <button onclick="{{ accept() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Join team</button>
 {{/if}}
 {{/if}}
 {{/if}}

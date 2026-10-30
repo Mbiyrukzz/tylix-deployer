@@ -172,7 +172,7 @@ action
   kindStyle(kind) {
     let name = "Linode (Akamai)"
     let letter = "L"
-    let cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    let cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-brand-500/10 text-brand-700 dark:text-brand-500"
 
     if kind is "hetzner" {
       name = "Hetzner Cloud"
@@ -254,7 +254,7 @@ action
   registrarTile(i) {
     const base = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold "
     const tones = [
-      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
+      "bg-brand-500/10 text-brand-700 dark:text-brand-500",
       "bg-sky-500/10 text-sky-600 dark:text-sky-400",
       "bg-violet-500/10 text-violet-600 dark:text-violet-400",
       "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -300,7 +300,7 @@ action
         badge = "bg-yellow-400/10 text-yellow-600 dark:text-yellow-400"
       } else {
         dayText = days + " days left"
-        badge = "bg-orange-500/10 text-orange-600 dark:text-orange-500"
+        badge = "bg-brand-500/10 text-brand-600 dark:text-brand-500"
       }
     } else {
       label = "No expiry data"
@@ -523,7 +523,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-stone-100 dark:bg-[#0a0a0b] transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-page transition-colors">
 
     <Sidebar active="overview" />
 
@@ -538,11 +538,11 @@ template
           <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100 break-words">
             {{ greeting }},
             <br class="hidden sm:block" />
-            <span class="text-orange-500">{{ Auth.user.name }}</span>
+            <span class="text-brand-500">{{ Auth.user.name }}</span>
           </h1>
           <div class="mt-4 inline-flex items-center gap-2.5 rounded-full border border-stone-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3.5 py-1.5">
 {{#if healthState is "ok"}}
-            <span class="w-2 h-2 shrink-0 rounded-full bg-orange-500"></span>
+            <span class="w-2 h-2 shrink-0 rounded-full bg-brand-500"></span>
 {{/if}}
 {{#if healthState is "warn"}}
             <span class="w-2 h-2 shrink-0 rounded-full bg-yellow-400"></span>
@@ -575,7 +575,7 @@ template
           <a href="/servers" class="inline-flex text-sm text-zinc-700 dark:text-zinc-200 border border-stone-300 dark:border-white/15 rounded-full px-5 py-2.5 hover:bg-white dark:hover:bg-white/5 transition-colors">
             New server
           </a>
-          <a href="{{ newSiteHref }}" class="inline-flex text-sm font-semibold bg-orange-500 text-white rounded-full px-5 py-2.5 hover:bg-orange-400 transition-colors">
+          <a href="{{ newSiteHref }}" class="inline-flex text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2.5 hover:bg-brand-400 transition-colors">
             New site
           </a>
 {{/if}}
@@ -583,7 +583,7 @@ template
       </div>
 
 {{#if hasAttention}}
-      <div class="rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] overflow-hidden mb-4">
+      <div class="rounded-3xl border border-line bg-panel overflow-hidden mb-4">
         <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-4">
           <h2 class="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
             <IconExclamationTriangle class="w-4 h-4 text-yellow-400" /> Needs attention
@@ -606,7 +606,7 @@ template
 
       <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
 
-        <div class="relative overflow-hidden xl:col-span-8 rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] p-5 sm:p-7">
+        <div class="relative overflow-hidden xl:col-span-8 rounded-3xl border border-line bg-panel p-5 sm:p-7">
           <svg class="pointer-events-none absolute inset-0 w-full h-full text-zinc-400/25 dark:text-white/[0.07]" aria-hidden="true">
             <defs>
               <pattern id="flowdots" width="22" height="22" patternUnits="userSpaceOnUse">
@@ -629,7 +629,7 @@ template
 {{/if}}
 {{#if not Billing.locked}}
               <a href="/servers" class="shrink-0 inline-flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-200 bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-full px-4 py-2 hover:bg-stone-200 dark:hover:bg-white/10 transition-colors">
-                Add server <span class="text-orange-500">+</span>
+                Add server <span class="text-brand-500">+</span>
               </a>
 {{/if}}
             </div>
@@ -642,61 +642,61 @@ template
                     <p class="text-[11px] uppercase tracking-widest text-zinc-500">Servers</p>
                     <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{{ totalServers }} connected</p>
                   </div>
-                  <div class="w-16 shrink-0 bg-orange-500 flex items-center justify-center text-white">
+                  <div class="w-16 shrink-0 bg-brand-500 flex items-center justify-center text-white">
                     <IconDatabase class="w-6 h-6" />
                   </div>
                 </div>
               </div>
 
               <svg viewBox="0 0 200 288" preserveAspectRatio="none" class="hidden md:block flex-1 min-w-0 h-[288px]" aria-hidden="true">
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 36, 200 36" stroke-width="{{ siteCount is 0 ? 3 : 10 }}" class="{{ siteCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-orange-500' }}" />
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 108, 200 108" stroke-width="{{ domainCount is 0 ? 3 : 10 }}" class="{{ domainCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-orange-500' }}" />
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 180, 200 180" stroke-width="{{ providerCount is 0 ? 3 : 10 }}" class="{{ providerCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-orange-500' }}" />
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 252, 200 252" stroke-width="{{ teamCount is 0 ? 3 : 10 }}" class="{{ teamCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-orange-500' }}" />
+                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 36, 200 36" stroke-width="{{ siteCount is 0 ? 3 : 10 }}" class="{{ siteCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
+                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 108, 200 108" stroke-width="{{ domainCount is 0 ? 3 : 10 }}" class="{{ domainCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
+                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 180, 200 180" stroke-width="{{ providerCount is 0 ? 3 : 10 }}" class="{{ providerCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
+                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 252, 200 252" stroke-width="{{ teamCount is 0 ? 3 : 10 }}" class="{{ teamCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
               </svg>
 
               <div class="md:w-56 shrink-0 space-y-2 md:space-y-0">
 
-                <a href="/servers" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ siteCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-orange-500' }}">
+                <a href="/servers" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ siteCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
                   <div class="min-w-0">
                     <p class="text-[11px] text-zinc-500">Sites</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ siteCount }} total</p>
                     <p class="text-[11px] text-zinc-500">{{ readyCount }} live</p>
                   </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ siteCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-orange-500' }}">
+                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ siteCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
                     <span class="h-0.5 w-3.5 rounded-full {{ siteCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
                   </span>
                 </a>
 
-                <a href="/registrars" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ domainCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-orange-500' }}">
+                <a href="/registrars" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ domainCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
                   <div class="min-w-0">
                     <p class="text-[11px] text-zinc-500">Domains</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ domainCount }} total</p>
                     <p class="text-[11px] text-zinc-500">{{ expiringCount }} expiring</p>
                   </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ domainCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-orange-500' }}">
+                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ domainCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
                     <span class="h-0.5 w-3.5 rounded-full {{ domainCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
                   </span>
                 </a>
 
-                <a href="/providers" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ providerCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-orange-500' }}">
+                <a href="/providers" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ providerCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
                   <div class="min-w-0">
                     <p class="text-[11px] text-zinc-500">Cloud providers</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ providerCount }} connected</p>
                     <p class="text-[11px] text-zinc-500">{{ registrarCount }} registrars</p>
                   </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ providerCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-orange-500' }}">
+                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ providerCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
                     <span class="h-0.5 w-3.5 rounded-full {{ providerCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
                   </span>
                 </a>
 
-                <a href="/team" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ teamCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-orange-500' }}">
+                <a href="/team" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ teamCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
                   <div class="min-w-0">
                     <p class="text-[11px] text-zinc-500">Team</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ teamCount }} members</p>
                     <p class="text-[11px] text-zinc-500">{{ teamStaff }} owner or admin</p>
                   </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ teamCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-orange-500' }}">
+                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ teamCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
                     <span class="h-0.5 w-3.5 rounded-full {{ teamCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
                   </span>
                 </a>
@@ -704,7 +704,7 @@ template
               </div>
             </div>
 
-            <div class="mt-6 pt-5 border-t border-stone-200 dark:border-white/[0.06] flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div class="mt-6 pt-5 border-t border-line flex flex-wrap items-center gap-x-8 gap-y-3">
               <div class="flex items-baseline gap-2">
                 <span class="text-4xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">{{ onlineCount }}</span>
                 <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Servers online</span>
@@ -719,7 +719,7 @@ template
           </div>
         </div>
 
-        <div class="xl:col-span-4 rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] p-5 sm:p-7 flex flex-col">
+        <div class="xl:col-span-4 rounded-3xl border border-line bg-panel p-5 sm:p-7 flex flex-col">
           <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 text-center">Fleet status</h2>
 
           <div class="relative w-44 h-44 mx-auto my-6">
@@ -737,7 +737,7 @@ template
 
           <div class="space-y-2.5 mt-auto">
             <div class="flex items-center justify-between rounded-xl bg-stone-50 dark:bg-white/[0.03] px-4 py-2.5 text-xs">
-              <span class="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Online</span>
+              <span class="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><span class="w-2 h-2 rounded-full bg-brand-500"></span> Online</span>
               <span class="font-mono text-zinc-900 dark:text-zinc-100">{{ onlineCount }}</span>
             </div>
             <div class="flex items-center justify-between rounded-xl bg-stone-50 dark:bg-white/[0.03] px-4 py-2.5 text-xs">
@@ -754,7 +754,7 @@ template
 
       <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
 
-        <div class="xl:col-span-4 rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] p-5 sm:p-7">
+        <div class="xl:col-span-4 rounded-3xl border border-line bg-panel p-5 sm:p-7">
           <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-5">Details</h2>
 
           <div class="grid grid-cols-2 gap-3">
@@ -838,13 +838,13 @@ template
           </div>
         </div>
 
-        <div class="xl:col-span-8 rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] overflow-hidden">
+        <div class="xl:col-span-8 rounded-3xl border border-line bg-panel overflow-hidden">
           <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
             <div class="min-w-0">
               <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Servers</h2>
               <p class="text-zinc-500 text-xs mt-1">{{ totalServers }} connected</p>
             </div>
-            <a href="/servers" class="text-orange-600 dark:text-orange-500 text-sm hover:underline shrink-0">Manage all</a>
+            <a href="/servers" class="text-brand-600 dark:text-brand-500 text-sm hover:underline shrink-0">Manage all</a>
           </div>
 
           <div class="hidden sm:grid grid-cols-[minmax(0,1fr)_100px_110px] gap-4 px-6 py-2 border-t border-stone-100 dark:border-white/5 bg-stone-50 dark:bg-white/[0.02] text-[11px] font-medium uppercase tracking-wider text-zinc-500">
@@ -870,7 +870,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <a href="/servers" class="inline-flex items-center text-sm font-semibold bg-orange-500 text-white rounded-full px-5 py-2 hover:bg-orange-400 transition-colors">
+            <a href="/servers" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">
               Add your first server
             </a>
 {{/if}}
@@ -887,7 +887,7 @@ template
             <span class="hidden sm:inline text-sm text-zinc-600 dark:text-zinc-400">{{ s.siteLabel }}</span>
             <div>
 {{#if s.status is "online"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-orange-600 dark:text-orange-500"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Online</span>
+              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 dark:text-brand-500"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>Online</span>
 {{/if}}
 {{#if s.status is "offline"}}
               <span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Offline</span>
@@ -903,7 +903,7 @@ template
 
       <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
 
-        <div class="xl:col-span-8 rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] overflow-hidden">
+        <div class="xl:col-span-8 rounded-3xl border border-line bg-panel overflow-hidden">
           <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
             <div class="min-w-0">
               <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Recent sites</h2>
@@ -914,7 +914,7 @@ template
 {{#if siteCount is not 0}}
           <div class="px-5 sm:px-6 pb-4">
             <div class="flex h-1.5 rounded-full bg-stone-200 dark:bg-white/10 overflow-hidden">
-              <div class="h-full bg-orange-500 transition-all" style="{{ readyStyle }}"></div>
+              <div class="h-full bg-brand-500 transition-all" style="{{ readyStyle }}"></div>
               <div class="h-full bg-yellow-400 transition-all" style="{{ buildStyle }}"></div>
               <div class="h-full bg-rose-500 transition-all" style="{{ failStyle }}"></div>
             </div>
@@ -945,12 +945,12 @@ template
 {{/if}}
 {{#if not Billing.locked}}
 {{#if totalServers is 0}}
-            <a href="/servers" class="inline-flex items-center text-sm font-semibold bg-orange-500 text-white rounded-full px-5 py-2 hover:bg-orange-400 transition-colors">
+            <a href="/servers" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">
               Add a server first
             </a>
 {{/if}}
 {{#if totalServers is not 0}}
-            <a href="{{ newSiteHref }}" class="inline-flex items-center text-sm font-semibold bg-orange-500 text-white rounded-full px-5 py-2 hover:bg-orange-400 transition-colors">
+            <a href="{{ newSiteHref }}" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">
               Create a site
             </a>
 {{/if}}
@@ -967,7 +967,7 @@ template
             <span class="hidden sm:inline text-sm text-zinc-600 dark:text-zinc-400 truncate">{{ site.serverName }}</span>
             <div>
 {{#if site.status is "ready"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-orange-600 dark:text-orange-500"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Ready</span>
+              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 dark:text-brand-500"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>Ready</span>
 {{/if}}
 {{#if site.status is "failed"}}
               <span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Failed</span>
@@ -986,20 +986,20 @@ template
         <div class="xl:col-span-4 space-y-4 min-w-0">
 
 {{#if not setupDone}}
-          <div class="rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] p-5 sm:p-7">
+          <div class="rounded-3xl border border-line bg-panel p-5 sm:p-7">
             <div class="flex items-center justify-between mb-1">
               <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Get deployed</h2>
               <span class="text-xs font-mono text-zinc-500">{{ stepsDone }}/3</span>
             </div>
             <p class="text-zinc-500 text-xs mb-4">Three steps to your first live site.</p>
             <div class="h-1.5 rounded-full bg-stone-200 dark:bg-white/10 mb-5 overflow-hidden">
-              <div class="h-full rounded-full bg-orange-500 transition-all" style="{{ progressStyle }}"></div>
+              <div class="h-full rounded-full bg-brand-500 transition-all" style="{{ progressStyle }}"></div>
             </div>
 
             <div class="space-y-4">
               <div class="flex items-start gap-3">
 {{#if step1}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-orange-500 text-white text-[11px] flex items-center justify-center">✓</span>
+                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-brand-500 text-white text-[11px] flex items-center justify-center">✓</span>
 {{/if}}
 {{#if not step1}}
                 <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full border border-stone-300 dark:border-white/20 text-zinc-500 text-[11px] flex items-center justify-center">1</span>
@@ -1010,14 +1010,14 @@ template
                   <p class="text-zinc-400 text-xs">View only. Pay to continue.</p>
 {{/if}}
 {{#if not Billing.locked}}
-                  <a href="/servers" class="text-orange-600 dark:text-orange-500 text-xs hover:underline">Add or provision a server</a>
+                  <a href="/servers" class="text-brand-600 dark:text-brand-500 text-xs hover:underline">Add or provision a server</a>
 {{/if}}
                 </div>
               </div>
 
               <div class="flex items-start gap-3">
 {{#if step2}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-orange-500 text-white text-[11px] flex items-center justify-center">✓</span>
+                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-brand-500 text-white text-[11px] flex items-center justify-center">✓</span>
 {{/if}}
 {{#if not step2}}
                 <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full border border-stone-300 dark:border-white/20 text-zinc-500 text-[11px] flex items-center justify-center">2</span>
@@ -1028,14 +1028,14 @@ template
                   <p class="text-zinc-400 text-xs">View only. Pay to continue.</p>
 {{/if}}
 {{#if not Billing.locked}}
-                  <a href="{{ newSiteHref }}" class="text-orange-600 dark:text-orange-500 text-xs hover:underline">Pick a framework and repo</a>
+                  <a href="{{ newSiteHref }}" class="text-brand-600 dark:text-brand-500 text-xs hover:underline">Pick a framework and repo</a>
 {{/if}}
                 </div>
               </div>
 
               <div class="flex items-start gap-3">
 {{#if step3}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-orange-500 text-white text-[11px] flex items-center justify-center">✓</span>
+                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-brand-500 text-white text-[11px] flex items-center justify-center">✓</span>
 {{/if}}
 {{#if not step3}}
                 <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full border border-stone-300 dark:border-white/20 text-zinc-500 text-[11px] flex items-center justify-center">3</span>
@@ -1051,10 +1051,10 @@ template
 
 {{#if teamReady}}
 {{#if teamCount is not 0}}
-          <div class="rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] p-5 sm:p-7">
+          <div class="rounded-3xl border border-line bg-panel p-5 sm:p-7">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Team</h2>
-              <a href="/team" class="text-orange-600 dark:text-orange-500 text-sm hover:underline">Manage</a>
+              <a href="/team" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Manage</a>
             </div>
             <div class="space-y-3">
 {{#each m in teamMembers}}
@@ -1081,7 +1081,7 @@ template
       </div>
 
 {{#if Insights.loaded}}
-      <div class="rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] overflow-hidden mb-4">
+      <div class="rounded-3xl border border-line bg-panel overflow-hidden mb-4">
         <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
           <div class="min-w-0">
             <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 truncate">Fleet insights</h2>
@@ -1094,23 +1094,23 @@ template
 {{/if}}
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-stone-200 dark:bg-white/[0.06] border-t border-stone-200 dark:border-white/[0.06]">
-          <div class="bg-white dark:bg-[#131315] p-5 sm:p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-line border-t border-line">
+          <div class="bg-panel p-5 sm:p-6">
             <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-wider mb-2">Fleet health</p>
             <p class="text-3xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">{{ Insights.healthPct }}%</p>
             <div class="h-1.5 rounded-full bg-stone-200 dark:bg-white/10 mt-3 overflow-hidden">
-              <div class="h-full rounded-full bg-orange-500 transition-all" style="{{ 'width: ' + Insights.healthPct + '%' }}"></div>
+              <div class="h-full rounded-full bg-brand-500 transition-all" style="{{ 'width: ' + Insights.healthPct + '%' }}"></div>
             </div>
             <p class="text-zinc-500 text-xs mt-2">{{ `${Insights.rows.filter((r) => r.label is "Online").length} of ${Insights.rows.length} servers online` }}</p>
           </div>
 
-          <div class="bg-white dark:bg-[#131315] p-5 sm:p-6">
+          <div class="bg-panel p-5 sm:p-6">
             <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-wider mb-2">Busiest server</p>
             <p class="text-3xl font-light tracking-tight text-zinc-900 dark:text-zinc-100 truncate">{{ Insights.busiest }}</p>
             <p class="text-zinc-500 text-xs mt-3">Hosting the most sites</p>
           </div>
 
-          <div class="bg-white dark:bg-[#131315] p-5 sm:p-6">
+          <div class="bg-panel p-5 sm:p-6">
             <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-wider mb-2">Idle servers</p>
             <p class="text-3xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">{{ Insights.rows.filter((r) => r.count is 0).length }}</p>
             <p class="text-zinc-500 text-xs mt-3 truncate">{{ (Insights.rows.filter((r) => r.count is 0).length is 0) ? "Every server hosts a site" : Insights.rows.filter((r) => r.count is 0).map((r) => r.name).join(", ") + " have no sites" }}</p>
@@ -1131,13 +1131,13 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] p-5 sm:p-7 mb-4">
+      <div class="rounded-3xl border border-line bg-panel p-5 sm:p-7 mb-4">
         <div class="flex items-center justify-between gap-4 mb-5">
           <div class="min-w-0">
             <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Cloud providers</h2>
             <p class="text-zinc-500 text-xs mt-1">Open a provider to see its machines, volumes, IP addresses and spend.</p>
           </div>
-          <a href="/providers" class="text-orange-600 dark:text-orange-500 text-sm hover:underline shrink-0">Manage all</a>
+          <a href="/providers" class="text-brand-600 dark:text-brand-500 text-sm hover:underline shrink-0">Manage all</a>
         </div>
 
 {{#if not cloudReady}}
@@ -1163,7 +1163,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <a href="/providers" class="inline-flex items-center text-sm font-semibold bg-orange-500 text-white rounded-full px-5 py-2 hover:bg-orange-400 transition-colors">Connect a provider</a>
+          <a href="/providers" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">Connect a provider</a>
 {{/if}}
         </div>
 {{/if}}
@@ -1178,7 +1178,7 @@ template
                 <p class="text-zinc-500 text-xs truncate">{{ c.kindName }} · {{ c.createdText }}</p>
               </div>
             </div>
-            <span class="text-zinc-400 group-hover:text-orange-500 text-sm transition-colors">&rarr;</span>
+            <span class="text-zinc-400 group-hover:text-brand-500 text-sm transition-colors">&rarr;</span>
           </a>
 {{/each}}
         </div>
@@ -1188,7 +1188,7 @@ template
 
       <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
 
-        <div class="xl:col-span-8 rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] overflow-hidden">
+        <div class="xl:col-span-8 rounded-3xl border border-line bg-panel overflow-hidden">
           <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
             <div class="min-w-0">
               <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Domains</h2>
@@ -1200,7 +1200,7 @@ template
                 {{ showAllDomains ? "Show fewer" : "Show all " + domainsShown.length }}
               </button>
 {{/if}}
-              <a href="/registrars" class="text-orange-600 dark:text-orange-500 text-sm hover:underline">Manage all</a>
+              <a href="/registrars" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Manage all</a>
             </div>
           </div>
 
@@ -1225,7 +1225,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <a href="/registrars" class="inline-flex items-center text-sm font-semibold bg-orange-500 text-white rounded-full px-5 py-2 hover:bg-orange-400 transition-colors">Connect a registrar</a>
+            <a href="/registrars" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">Connect a registrar</a>
 {{/if}}
           </div>
 {{/if}}
@@ -1235,7 +1235,7 @@ template
           <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 sm:px-6 py-2.5 border-t border-stone-100 dark:border-white/5 text-xs">
             <span class="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>{{ expiredCount }} expired</span>
             <span class="inline-flex items-center gap-1.5 text-yellow-600 dark:text-yellow-400"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>{{ expiringCount }} expiring</span>
-            <span class="inline-flex items-center gap-1.5 text-orange-600 dark:text-orange-500"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>{{ domainCount - expiredCount - expiringCount }} healthy</span>
+            <span class="inline-flex items-center gap-1.5 text-brand-600 dark:text-brand-500"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>{{ domainCount - expiredCount - expiringCount }} healthy</span>
           </div>
 
           <div class="hidden sm:grid grid-cols-[minmax(0,1fr)_150px_110px] gap-4 px-6 py-2 border-t border-stone-100 dark:border-white/5 bg-stone-50 dark:bg-white/[0.02] text-[11px] font-medium uppercase tracking-wider text-zinc-500">
@@ -1269,10 +1269,10 @@ template
 {{/if}}
         </div>
 
-        <div class="xl:col-span-4 rounded-3xl border border-stone-200 dark:border-white/[0.06] bg-white dark:bg-[#131315] p-5 sm:p-7 content-start">
+        <div class="xl:col-span-4 rounded-3xl border border-line bg-panel p-5 sm:p-7 content-start">
           <div class="flex items-center justify-between mb-5">
             <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Registrars</h2>
-            <a href="/registrars" class="text-orange-600 dark:text-orange-500 text-sm hover:underline">Manage</a>
+            <a href="/registrars" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Manage</a>
           </div>
 
 {{#if not domainsReady}}

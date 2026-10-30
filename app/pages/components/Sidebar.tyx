@@ -6,10 +6,10 @@ props
   active: String
 
 template
-<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
+<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
 
   <div class="hidden lg:flex items-center gap-3 mb-7 px-1">
-    <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shadow-sm dark:shadow-emerald-500/30 ring-1 ring-inset ring-white/20">
+    <div class="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-sm dark:shadow-brand-500/30 ring-1 ring-inset ring-white/20">
       <IconBolt class="w-[18px] h-[18px] text-white" />
     </div>
     <div class="flex flex-col leading-tight">
@@ -21,78 +21,78 @@ template
   <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1">Workspace</p>
 
 {{#if active is "overview"}}
-  <a href="/dashboard" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconViewGrid class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Overview
+  <a href="/dashboard" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconViewGrid class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Overview
   </a>
 {{/if}}
 {{#if active is not "overview"}}
-  <a href="/dashboard" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconViewGrid class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Overview
+  <a href="/dashboard" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconViewGrid class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Overview
   </a>
 {{/if}}
 
 {{#if active is "servers"}}
-  <a href="/servers" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconServer class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Servers
+  <a href="/servers" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconServer class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Servers
   </a>
 {{/if}}
 {{#if active is not "servers"}}
-  <a href="/servers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconServer class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Servers
+  <a href="/servers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconServer class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Servers
   </a>
 {{/if}}
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-3"></div>
+  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"></div>
   <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1">Connections</p>
 
 {{#if active is "providers"}}
-  <a href="/providers" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconCloud class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Providers
+  <a href="/providers" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconCloud class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Providers
   </a>
 {{/if}}
 {{#if active is not "providers"}}
-  <a href="/providers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconCloud class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Providers
+  <a href="/providers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconCloud class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Providers
   </a>
 {{/if}}
 
 {{#if active is "registrars"}}
-  <a href="/registrars" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconGlobe class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Registrars
+  <a href="/registrars" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconGlobe class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Registrars
   </a>
 {{/if}}
 {{#if active is not "registrars"}}
-  <a href="/registrars" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconGlobe class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Registrars
+  <a href="/registrars" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconGlobe class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Registrars
   </a>
 {{/if}}
 
 {{#if active is "source-control"}}
-  <a href="/source-control" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconCode class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Source control
+  <a href="/source-control" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconCode class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Source control
   </a>
 {{/if}}
 {{#if active is not "source-control"}}
-  <a href="/source-control" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconCode class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Source control
+  <a href="/source-control" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+    <IconCode class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Source control
   </a>
 {{/if}}
 
-  <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800">
+  <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line">
 {{#if active is "settings"}}
-    <a href="/settings" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-      <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-      <IconAdjustments class="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Settings
+    <a href="/settings" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+      <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+      <IconAdjustments class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Settings
     </a>
 {{/if}}
 {{#if active is not "settings"}}
-    <a href="/settings" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      <IconAdjustments class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> Settings
+    <a href="/settings" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+      <IconAdjustments class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Settings
     </a>
 {{/if}}
   </div>

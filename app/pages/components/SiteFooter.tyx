@@ -1,7 +1,7 @@
 component SiteFooter
 
 template
-<footer class="border-t border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 transition-colors">
+<footer class="border-t border-line bg-page transition-colors">
   <div class="max-w-6xl mx-auto px-6 pt-12 pb-8">
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10">
@@ -19,30 +19,30 @@ template
       <div>
         <p class="text-slate-900 dark:text-slate-100 text-xs font-semibold uppercase tracking-wider mb-4">Product</p>
         <ul class="space-y-3">
-          <li><a href="/pricing" class="text-slate-600 dark:text-slate-400 text-sm hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Pricing</a></li>
-          <li><a href="https://tylix.dev/docs" class="text-slate-600 dark:text-slate-400 text-sm hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Docs</a></li>
+          <li><a href="/pricing" class="text-slate-600 dark:text-slate-400 text-sm hover:text-brand-700 dark:hover:text-brand-400 transition-colors">Pricing</a></li>
+          <li><a href="https://tylix.dev/docs" class="text-slate-600 dark:text-slate-400 text-sm hover:text-brand-700 dark:hover:text-brand-400 transition-colors">Docs</a></li>
         </ul>
       </div>
 
       <div>
         <p class="text-slate-900 dark:text-slate-100 text-xs font-semibold uppercase tracking-wider mb-4">Legal</p>
         <ul class="space-y-3">
-          <li><a href="/terms" class="text-slate-600 dark:text-slate-400 text-sm hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Terms of Service</a></li>
-          <li><a href="/privacy" class="text-slate-600 dark:text-slate-400 text-sm hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Privacy Policy</a></li>
+          <li><a href="/terms" class="text-slate-600 dark:text-slate-400 text-sm hover:text-brand-700 dark:hover:text-brand-400 transition-colors">Terms of Service</a></li>
+          <li><a href="/privacy" class="text-slate-600 dark:text-slate-400 text-sm hover:text-brand-700 dark:hover:text-brand-400 transition-colors">Privacy Policy</a></li>
         </ul>
       </div>
 
     </div>
 
-    <div class="mt-10 pt-6 border-t border-slate-300 dark:border-slate-800 flex flex-col-reverse sm:flex-row items-center justify-between gap-5">
+    <div class="mt-10 pt-6 border-t border-line flex flex-col-reverse sm:flex-row items-center justify-between gap-5">
       <p class="text-slate-500 text-sm text-center sm:text-left">
         © 2026 Tylix by <a href="https://ashmif.com" target="_blank" rel="noopener" class="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Ashmif Office Solutions Ltd</a>
       </p>
       <div class="flex items-center gap-3">
-        <a href="https://github.com/tylixjs" target="_blank" rel="noopener" aria-label="GitHub" class="w-9 h-9 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
+        <a href="https://github.com/tylixjs" target="_blank" rel="noopener" aria-label="GitHub" class="w-9 h-9 rounded-full border border-stone-300 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-brand-700 dark:hover:text-brand-400 hover:border-brand-500/50 transition-colors">
           <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.69 1.25 3.35.96.1-.74.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 015.77 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0023.5 12C23.5 5.65 18.35.5 12 .5z" /></svg>
         </a>
-        <a href="https://discord.gg/tylix" target="_blank" rel="noopener" aria-label="Discord" class="w-9 h-9 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
+        <a href="https://discord.gg/tylix" target="_blank" rel="noopener" aria-label="Discord" class="w-9 h-9 rounded-full border border-stone-300 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-brand-700 dark:hover:text-brand-400 hover:border-brand-500/50 transition-colors">
           <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M20.3 4.4A17.6 17.6 0 0016 3l-.2.4c1.5.4 2.2.9 3 1.5a12 12 0 00-10.5 0c.8-.6 1.7-1.2 3.1-1.5L11 3a17.6 17.6 0 00-4.3 1.4C3.9 8.5 3.2 12.5 3.5 16.4a17.8 17.8 0 005.3 2.7l1.1-1.8c-.6-.2-1.2-.5-1.7-.9l.4-.3a12.7 12.7 0 0010.8 0l.4.3c-.5.4-1.1.7-1.7.9l1.1 1.8a17.8 17.8 0 005.3-2.7c.4-4.5-.7-8.5-3.2-12zM9.5 14c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm5 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z" /></svg>
         </a>
       </div>

@@ -33,7 +33,7 @@ state
   idleText: "15:00"
   idleWarn: false
   idlePct: 100
-  idleBar: "bg-emerald-500"
+  idleBar: "bg-brand-500"
   sessionText: "0:00"
   copied: false
   expanded: false
@@ -116,7 +116,7 @@ action
 
   dotClass(status) {
     if status is "online" {
-      return "bg-emerald-500"
+      return "bg-brand-500"
     }
     if status is "offline" {
       return "bg-rose-500"
@@ -125,8 +125,8 @@ action
   }
 
   buildChips() {
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-emerald-500 text-white dark:text-slate-950 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
-    const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-emerald-500/50 transition-all"
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
+    const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-brand-500/50 transition-all"
 
     this.chips = Servers.data.map((s) => ({
       id: s.id,
@@ -158,7 +158,7 @@ action
       this.idleText = this.clock(left)
       this.idleWarn = left <= 120
       this.idlePct = Math.round(left / 9)
-      this.idleBar = left <= 120 ? "bg-amber-500" : "bg-emerald-500"
+      this.idleBar = left <= 120 ? "bg-amber-500" : "bg-brand-500"
       this.sessionText = this.clock(Math.floor((now - this.connectedAt) / 1000))
     } else {
       this.stopTicker()
@@ -383,7 +383,7 @@ action
       this.idleText = "15:00"
       this.idleWarn = false
       this.idlePct = 100
-      this.idleBar = "bg-emerald-500"
+      this.idleBar = "bg-brand-500"
       this.sessionText = "0:00"
       this.live = true
       this.phase = "connected"
@@ -642,13 +642,13 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
     <ServerSidebar active="terminal" serverId="{{ serverId }}" />
     <div class="min-w-0">
     <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
 
-      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
@@ -660,9 +660,9 @@ template
       </div>
 
 {{#if chips.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center mb-6">
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-8 text-center mb-6">
         <p class="text-slate-500 text-sm mb-3">No servers yet. Add one to open a terminal on it.</p>
-        <a href="/servers" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Add a server</a>
+        <a href="/servers" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">Add a server</a>
       </div>
 {{/if}}
 
@@ -702,7 +702,7 @@ template
           <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/80">
             <div class="flex items-center gap-3 min-w-0">
 {{#if phase is "connected"}}
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-brand-500 shrink-0"></span>
 {{/if}}
 {{#if phase is "connecting"}}
               <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
@@ -724,7 +724,7 @@ template
               <p class="text-slate-500 text-sm">No server selected</p>
 {{/if}}
 {{#if phase is "connected"}}
-              <span class="hidden sm:inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">Connected</span>
+              <span class="hidden sm:inline-flex items-center rounded-full bg-brand-500/10 text-brand-400 text-xs font-medium px-2.5 py-0.5">Connected</span>
 {{/if}}
 {{#if phase is "connecting"}}
               <span class="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">Connecting</span>
@@ -740,7 +740,7 @@ template
             <div class="flex items-center gap-2">
 {{#if live}}
 {{#if copied}}
-              <button class="text-xs text-emerald-400 font-medium px-3 py-1.5">Copied</button>
+              <button class="text-xs text-brand-400 font-medium px-3 py-1.5">Copied</button>
 {{/if}}
 {{#if not copied}}
               <button onclick="{{ copySelection() }}" title="Copy the selected text" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Copy</button>
@@ -760,10 +760,10 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ connect() }}" class="text-xs bg-emerald-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-emerald-400 transition-all">Reconnect</button>
+              <button onclick="{{ connect() }}" class="text-xs bg-brand-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-brand-400 transition-all">Reconnect</button>
 {{/if}}
 {{/if}}
-              <button onclick="{{ toggleExpand() }}" title="Expand or collapse (Esc to exit)" aria-label="Toggle expanded terminal" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-1.5 transition-colors">
+              <button onclick="{{ toggleExpand() }}" title="Expand or collapse (Esc to exit)" aria-label="Toggle expanded terminal" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-brand-500/60 rounded-full px-3 py-1.5 transition-colors">
 {{#if expanded}}
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
                   <path d="M8 3v5H3M12 17v-5h5M8 8L3 3M12 12l5 5" stroke-linecap="round" stroke-linejoin="round" />
@@ -794,7 +794,7 @@ template
 {{#if phase is "idle"}}
             <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
               <div class="text-center max-w-sm">
-                <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-emerald-400">
+                <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-brand-400">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-6 h-6">
                     <path d="M4 6l4 4-4 4M10 14h6" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
@@ -812,7 +812,7 @@ template
                 </button>
 {{/if}}
 {{#if not Billing.locked}}
-                <button onclick="{{ connect() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Connect</button>
+                <button onclick="{{ connect() }}" class="text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Connect</button>
 {{/if}}
 {{/if}}
 {{#if not server}}
@@ -834,19 +834,19 @@ template
                 </div>
                 <p class="text-slate-200 font-medium mb-1">Confirm it's you</p>
                 <p class="text-slate-500 text-sm mb-5">Opening a shell on {{ server.name }} needs a verification code from your authenticator app, a recovery code, or a text message.</p>
-                <input id="terminal-code" type="text" autocomplete="one-time-code" maxlength="32" placeholder="Verification code" class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 text-center font-mono tracking-widest px-4 py-2.5 focus:outline-none focus:border-emerald-500/60" />
+                <input id="terminal-code" type="text" autocomplete="one-time-code" maxlength="32" placeholder="Verification code" class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 text-center font-mono tracking-widest px-4 py-2.5 focus:outline-none focus:border-brand-500/60" />
 {{#if codeError}}
                 <p role="alert" class="text-rose-400 text-xs mt-2 break-words">{{ codeError }}</p>
 {{/if}}
 {{#if smsNote}}
-                <p class="text-emerald-400 text-xs mt-2">{{ smsNote }}</p>
+                <p class="text-brand-400 text-xs mt-2">{{ smsNote }}</p>
 {{/if}}
                 <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
-                  <button onclick="{{ submitCode() }}" class="text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-emerald-400 transition-all">Verify and connect</button>
+                  <button onclick="{{ submitCode() }}" class="text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-brand-400 transition-all">Verify and connect</button>
                   <button onclick="{{ cancelCode() }}" class="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-full px-4 py-2 transition-colors">Cancel</button>
                 </div>
 {{#if hasSms}}
-                <button onclick="{{ sendSms() }}" class="text-xs text-emerald-400 hover:underline mt-4">Text me a code</button>
+                <button onclick="{{ sendSms() }}" class="text-xs text-brand-400 hover:underline mt-4">Text me a code</button>
 {{/if}}
               </div>
             </div>
@@ -878,7 +878,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-xs rounded-full border border-slate-700 bg-slate-950/60 text-slate-300 px-3 py-1 hover:border-emerald-500/50 transition-all">{{ c.label }}</button>
+              <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-xs rounded-full border border-slate-700 bg-slate-950/60 text-slate-300 px-3 py-1 hover:border-brand-500/50 transition-all">{{ c.label }}</button>
 {{/if}}
 {{/each}}
             </div>
@@ -907,7 +907,7 @@ template
       </div>
 
 {{#if not expanded}}
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mt-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 mt-6 shadow-sm dark:shadow-none">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-slate-800 dark:text-slate-200 font-medium text-sm">Quick checks</h2>
 {{#if live}}
@@ -927,7 +927,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-sm rounded-full border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 px-4 py-1.5 hover:border-emerald-500/50 transition-all">{{ c.label }}</button>
+          <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-sm rounded-full border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 px-4 py-1.5 hover:border-brand-500/50 transition-all">{{ c.label }}</button>
 {{/if}}
 {{/each}}
         </div>

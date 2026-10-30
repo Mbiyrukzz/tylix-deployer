@@ -98,7 +98,7 @@ action
 
     let statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
     if d.status is "active" or d.status is "verified" {
-      statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500"
+      statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500"
     }
 
     return Object.assign({}, d, {
@@ -294,13 +294,13 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
   <Sidebar active="providers" />
   <ProviderSidebar active="domains" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Provider
       </a>
 
@@ -322,7 +322,7 @@ template
         </button>
 {{/if}}
 {{#if not Billing.locked}}
-        <button onclick="{{ openForm() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Add domain</button>
+        <button onclick="{{ openForm() }}" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Add domain</button>
 {{/if}}
 {{/if}}
       </div>
@@ -340,7 +340,7 @@ template
 {{/if}}
 
 {{#if showForm}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 mb-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Add a domain</h2>
         <p class="text-slate-500 text-sm mb-4">After it is created, point the domain's nameservers at {{ kindName }} in your registrar.</p>
 
@@ -350,7 +350,7 @@ template
           type="text"
           value="{{ newName }}"
           oninput="{{ newName = $event.target.value }}"
-          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           placeholder="example.com"
         />
 {{#if nameError}}
@@ -364,7 +364,7 @@ template
           type="text"
           value="{{ newEmail }}"
           oninput="{{ newEmail = $event.target.value }}"
-          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           placeholder="admin@example.com"
         />
 {{#if emailError}}
@@ -379,7 +379,7 @@ template
         <div class="flex items-center justify-end gap-3 mt-5">
           <button onclick="{{ closeForm() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not saving}}
 {{#if Billing.locked}}
@@ -392,7 +392,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create domain</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create domain</button>
 {{/if}}
 {{/if}}
         </div>
@@ -401,9 +401,9 @@ template
 
 {{#if not locked}}
 {{#if list.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
-        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-          <IconGlobe class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4">
+          <IconGlobe class="w-6 h-6 text-brand-700 dark:text-brand-500" />
         </div>
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domains yet</h3>
         <p class="text-slate-500 text-sm max-w-sm mx-auto">Add a domain to manage its DNS records here.</p>
@@ -417,27 +417,27 @@ template
           value="{{ query }}"
           oninput="{{ setQuery($event.target.value) }}"
           placeholder="Search domains"
-          class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          class="w-full rounded-xl border border-line bg-panel text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
         />
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 {{#each d in domains}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <div class="flex items-start justify-between gap-3 mb-4">
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <IconGlobe class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-brand-500/10 flex items-center justify-center">
+                <IconGlobe class="w-4 h-4 text-brand-700 dark:text-brand-500" />
               </div>
               <div class="min-w-0">
-                <a href="{{ d.href }}" class="block text-slate-900 dark:text-slate-100 font-semibold truncate hover:text-emerald-700 dark:hover:text-emerald-500 transition-colors">{{ d.name }}</a>
+                <a href="{{ d.href }}" class="block text-slate-900 dark:text-slate-100 font-semibold truncate hover:text-brand-700 dark:hover:text-brand-500 transition-colors">{{ d.name }}</a>
                 <p class="text-slate-500 text-xs">{{ d.countText }}</p>
               </div>
             </div>
             <span class="{{ d.statusCls }}">{{ d.status }}</span>
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-line">
             <a href="{{ d.href }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">DNS records</a>
 {{#if Billing.locked}}
             <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
@@ -470,7 +470,7 @@ template
               <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
 {{/if}}
 {{#if smsNotice}}
-              <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+              <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ smsNotice }}</p>
 {{/if}}
 {{#if removeCodeError}}
               <p role="alert" class="text-rose-500 text-xs mt-2">{{ removeCodeError }}</p>

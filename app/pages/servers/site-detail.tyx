@@ -243,7 +243,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
@@ -256,15 +256,15 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-8 text-center">
         <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
@@ -275,8 +275,8 @@ template
           <div class="flex items-center gap-3 mb-2">
             <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
 {{#if site.status is "ready"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Ready
             </span>
 {{/if}}
 {{#if site.status is "failed"}}
@@ -320,7 +320,7 @@ template
           </span>
 {{/if}}
 {{#if not Billing.locked}}
-          <a href="{{ '/servers/site-terminal?id=' + siteId }}" class="inline-flex items-center gap-2 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+          <a href="{{ '/servers/site-terminal?id=' + siteId }}" class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
             <span class="font-mono">&gt;_</span> Terminal
           </a>
 {{/if}}
@@ -355,19 +355,19 @@ template
 {{/if}}
 
 {{#if site.status is "creating"}}
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mb-6">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 mb-6">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Current step</p>
             <p class="text-slate-800 dark:text-slate-200 text-sm">{{ stepText }}…</p>
           </div>
 {{/if}}
 
 {{#if site.status is "pending"}}
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-5 mb-6">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 mb-6">
             <p class="text-slate-800 dark:text-slate-200 text-sm">Queued, starting shortly…</p>
           </div>
 {{/if}}
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-5">Application</h2>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
@@ -447,7 +447,7 @@ template
             </div>
           </div>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-4">Deployment log</h2>
 {{#if site.log}}
             <div class="max-h-96 overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ site.log }}</div>
@@ -458,7 +458,7 @@ template
           </div>
 
 {{#if canDelete}}
-          <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-slate-200 dark:bg-slate-900 p-6">
+          <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-panel p-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Delete site</h2>
             <p class="text-slate-500 text-sm mb-4">Permanently removes this site and everything it created on the server: the app service, the nginx site, the PHP pool, the SSL certificate, any WordPress database, the isolated user and every file under <span class="font-mono">/home/{{ site.isolated_user }}</span>. This can't be undone.</p>
 
@@ -496,11 +496,11 @@ template
                 maxlength="12"
                 value="{{ code }}"
                 oninput="{{ code = $event.target.value }}"
-                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
               />
               <p class="text-slate-500 text-xs mt-2">{{ TwoFactor.totp ? "Enter a code from your authenticator app, or a recovery code." : "Enter the code texted to " + TwoFactor.smsHint + "." }}</p>
 {{#if TwoFactor.notice}}
-              <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
+              <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
 {{/if}}
 {{#if codeError}}
               <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>

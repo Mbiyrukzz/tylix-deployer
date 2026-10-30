@@ -228,7 +228,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="settings" />
     <SettingsSidebar active="team" />
     <div class="min-w-0">
@@ -247,7 +247,7 @@ template
 {{/if}}
 
 {{#if hasManyTeams}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your teams</h2>
         <div class="divide-y divide-slate-200 dark:divide-slate-800">
 {{#each t in teams}}
@@ -257,7 +257,7 @@ template
               <p class="text-slate-500 text-xs">{{ t.role }}</p>
             </div>
 {{#if t.current}}
-            <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 shrink-0">Current</span>
+            <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500 shrink-0">Current</span>
 {{/if}}
 {{#if not t.current}}
             <button onclick="{{ switchTo(t.id) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition shrink-0">Switch</button>
@@ -268,7 +268,7 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ teamName }}</h2>
         <p class="text-slate-500 text-sm mb-5">Your role: <span class="font-semibold text-slate-700 dark:text-slate-300">{{ role }}</span></p>
 
@@ -293,7 +293,7 @@ template
               <button onclick="{{ removeMember(m.id) }}" class="text-xs text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg px-2.5 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Remove</button>
 {{/if}}
               <div class="text-right">
-                <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">{{ m.role }}</span>
+                <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">{{ m.role }}</span>
                 <p class="text-slate-500 text-xs mt-1">Joined {{ m.joined }}</p>
               </div>
             </div>
@@ -302,47 +302,47 @@ template
         </div>
 
 {{#if canLeave}}
-        <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
+        <div class="mt-5 pt-5 border-t border-line">
           <button onclick="{{ leave() }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Leave team</button>
         </div>
 {{/if}}
       </div>
 
 {{#if canManage}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Invite someone</h2>
         <p class="text-slate-500 text-sm mb-5">They get an email with a link that works once and expires in 7 days. If they already have servers or connections of their own, they'll be asked to bring them into this team.</p>
 
         <label for="invite-email" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Email</label>
-        <input id="invite-email" type="email" autocomplete="off" placeholder="name@example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="invite-email" type="email" autocomplete="off" placeholder="name@example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
         <label for="invite-role" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Role</label>
-        <select id="invite-role" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20">
+        <select id="invite-role" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
           <option value="member">Member</option>
           <option value="admin">Admin (can invite and manage the team)</option>
         </select>
 
 {{#if notice}}
-        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-sm mt-4">{{ notice }}</p>
+        <p role="status" class="text-brand-700 dark:text-brand-500 text-sm mt-4">{{ notice }}</p>
 {{/if}}
 {{#if link}}
         <div class="rounded-xl bg-slate-950 px-4 py-3 mt-2">
-          <code class="block text-emerald-400 text-xs font-mono break-all">{{ link }}</code>
+          <code class="block text-brand-400 text-xs font-mono break-all">{{ link }}</code>
         </div>
 {{/if}}
 
         <div class="mt-6">
 {{#if busy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ invite() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Send invitation</button>
+          <button onclick="{{ invite() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Send invitation</button>
 {{/if}}
         </div>
       </div>
 
 {{#if invites.length is not 0}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Pending invitations</h2>
         <div class="divide-y divide-slate-200 dark:divide-slate-800">
 {{#each i in invites}}

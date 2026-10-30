@@ -119,8 +119,8 @@ action
       icon = "!"
     } else if isOk {
       kind = "ok"
-      cls = "text-emerald-400"
-      rowCls = "border-emerald-500/40 hover:bg-white/5"
+      cls = "text-brand-400"
+      rowCls = "border-brand-500/40 hover:bg-white/5"
       icon = "✓"
     } else if body.startsWith("$ ") or body.startsWith("+ ") {
       kind = "cmd"
@@ -174,7 +174,7 @@ action
   applyLogFilter() {
     const activeCls = "inline-flex items-center gap-2 rounded-full bg-slate-700 text-white text-xs font-medium px-3 py-1.5 transition-colors"
     const idleCls = "inline-flex items-center gap-2 rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 text-xs font-medium px-3 py-1.5 transition-colors"
-    const keys = [["all", "All", "bg-slate-400"], ["error", "Errors", "bg-rose-500"], ["warn", "Warnings", "bg-amber-500"], ["stage", "Stages", "bg-emerald-500"]]
+    const keys = [["all", "All", "bg-slate-400"], ["error", "Errors", "bg-rose-500"], ["warn", "Warnings", "bg-amber-500"], ["stage", "Stages", "bg-brand-500"]]
     const f = this.logFilter
 
     this.shownLogLines = this.logLines.filter((l) => this.matches(l, f))
@@ -214,7 +214,7 @@ action
 
   heroFor(status) {
     if status is "success" {
-      return "bg-emerald-500"
+      return "bg-brand-500"
     }
     if status is "failed" {
       return "bg-rose-500"
@@ -226,7 +226,7 @@ action
   }
 
   decorateStage(text, isLast) {
-    let tone = "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+    let tone = "bg-brand-500/10 border-brand-500/20 text-brand-300"
     let icon = "✓"
 
     if isLast and this.deployStatus is "deploying" {
@@ -422,8 +422,8 @@ action
 
     if d.status is "success" and d.id is activeId {
       label = "Active"
-      tone = "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-500"
-      dot = "bg-emerald-500"
+      tone = "bg-brand-500/10 border-brand-500/20 text-brand-700 dark:text-brand-500"
+      dot = "bg-brand-500"
     }
     if d.status is "failed" {
       label = "Failed"
@@ -456,8 +456,8 @@ action
   }
 
   applyHistFilter() {
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-emerald-500 text-white dark:text-slate-950 text-xs font-semibold px-3.5 py-1.5 transition-all"
-    const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-xs font-medium px-3.5 py-1.5 hover:border-emerald-500/50 transition-all"
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-xs font-semibold px-3.5 py-1.5 transition-all"
+    const idleCls = "inline-flex items-center gap-2 rounded-full border border-line bg-panel text-slate-600 dark:text-slate-300 text-xs font-medium px-3.5 py-1.5 hover:border-brand-500/50 transition-all"
     const keys = [["all", "All"], ["success", "Successful"], ["failed", "Failed"]]
 
     this.shownHistory = this.histFilter is "all" ? this.history : this.history.filter((d) => d.status is this.histFilter)
@@ -651,7 +651,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_minmax(0,1fr)] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_minmax(0,1fr)] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
@@ -661,22 +661,22 @@ template
 
 {{#if loading}}
       <div class="space-y-4">
-        <div class="h-8 w-64 rounded-lg bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
-        <div class="h-40 rounded-2xl bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
-        <div class="h-56 rounded-2xl bg-slate-200 dark:bg-slate-900 animate-pulse"></div>
+        <div class="h-8 w-64 rounded-lg bg-panel animate-pulse"></div>
+        <div class="h-40 rounded-2xl bg-panel animate-pulse"></div>
+        <div class="h-56 rounded-2xl bg-panel animate-pulse"></div>
       </div>
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-sm dark:shadow-none">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-5">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-5">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
@@ -685,8 +685,8 @@ template
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
         <div class="min-w-0">
           <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-center gap-2.5 max-w-full">
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">{{ site.domain }}</h1>
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-500 transition-colors">{{ site.domain }}</h1>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">
               <path d="M11 3h6v6M17 3l-8 8M15 11v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" />
             </svg>
           </a>
@@ -695,8 +695,8 @@ template
 
         <div class="shrink-0">
 {{#if deployStatus is "success"}}
-          <span class="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed
+          <span class="inline-flex items-center gap-2 rounded-full bg-brand-500/10 border border-brand-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Deployed
           </span>
 {{/if}}
 {{#if deployStatus is "failed"}}
@@ -731,13 +731,13 @@ template
 {{/if}}
 
 {{#if not canDeploy}}
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
             <p class="text-slate-900 dark:text-slate-100 text-sm">This site has no repository, so there is nothing to deploy.</p>
           </div>
 {{/if}}
 
 {{#if canDeploy}}
-          <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="relative overflow-hidden rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
             <div class="absolute inset-x-0 top-0 h-1 {{ heroCls }}"></div>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
               <div class="min-w-0">
@@ -752,7 +752,7 @@ template
               </div>
               <div class="shrink-0">
 {{#if busy}}
-                <button disabled class="inline-flex items-center gap-2 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">
+                <button disabled class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">
                   <span class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Deploying…
                 </button>
 {{/if}}
@@ -767,7 +767,7 @@ template
                 </button>
 {{/if}}
 {{#if not Billing.locked}}
-                <button onclick="{{ deploy() }}" class="inline-flex items-center gap-2 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+                <button onclick="{{ deploy() }}" class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                   Deploy now
                 </button>
@@ -777,7 +777,7 @@ template
             </div>
 
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3">
                 <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Last deployed</p>
 {{#if deployedText}}
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ deployedText }} UTC</p>
@@ -786,11 +786,11 @@ template
                 <p class="text-slate-400 text-sm">Never</p>
 {{/if}}
               </div>
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3 min-w-0">
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3 min-w-0">
                 <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Branch</p>
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ site.branch }}</p>
               </div>
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3">
                 <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Last duration</p>
 {{#if lastDuration}}
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ lastDuration }}</p>
@@ -799,17 +799,17 @@ template
                 <p class="text-slate-400 text-sm">None yet</p>
 {{/if}}
               </div>
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3">
                 <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Success rate</p>
-                <p class="text-sm mb-2"><span class="text-emerald-600 dark:text-emerald-500 font-semibold">{{ successCount }}</span> <span class="text-slate-400">passed</span> <span class="text-slate-300 dark:text-slate-700">/</span> <span class="text-rose-600 dark:text-rose-500 font-semibold">{{ failedCount }}</span> <span class="text-slate-400">failed</span></p>
+                <p class="text-sm mb-2"><span class="text-brand-600 dark:text-brand-500 font-semibold">{{ successCount }}</span> <span class="text-slate-400">passed</span> <span class="text-slate-300 dark:text-slate-700">/</span> <span class="text-rose-600 dark:text-rose-500 font-semibold">{{ failedCount }}</span> <span class="text-slate-400">failed</span></p>
                 <div class="h-1.5 w-full rounded-full bg-rose-500/20 overflow-hidden">
-                  <div class="h-full rounded-full bg-emerald-500 transition-all" style="{{ rateStyle }}"></div>
+                  <div class="h-full rounded-full bg-brand-500 transition-all" style="{{ rateStyle }}"></div>
                 </div>
               </div>
             </div>
 
 {{#if saved}}
-            <p class="text-emerald-700 dark:text-emerald-500 text-sm mt-4">Saved.</p>
+            <p class="text-brand-700 dark:text-brand-500 text-sm mt-4">Saved.</p>
 {{/if}}
           </div>
 
@@ -819,7 +819,7 @@ template
                 <div class="flex items-center gap-1.5">
                   <span class="w-2.5 h-2.5 rounded-full bg-rose-500/70"></span>
                   <span class="w-2.5 h-2.5 rounded-full bg-amber-500/70"></span>
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/70"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-brand-500/70"></span>
                 </div>
                 <p class="text-slate-300 text-xs font-medium">Latest deployment</p>
 {{#if deployStatus is "deploying"}}
@@ -830,7 +830,7 @@ template
               </div>
               <div class="flex flex-wrap items-center gap-2">
 {{#if latestStages is not 0}}
-                <span class="text-[11px] text-emerald-400 bg-emerald-500/10 rounded-full px-2.5 py-1">{{ latestStages }} stages</span>
+                <span class="text-[11px] text-brand-400 bg-brand-500/10 rounded-full px-2.5 py-1">{{ latestStages }} stages</span>
 {{/if}}
 {{#if latestWarns is not 0}}
                 <span class="text-[11px] text-amber-300 bg-amber-500/10 rounded-full px-2.5 py-1">{{ latestWarns }} warnings</span>
@@ -891,7 +891,7 @@ template
             </div>
             <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-800/70 bg-slate-900/40">
               <p class="text-slate-500 text-[11px]">{{ hiddenCount }} more lines in the full log</p>
-              <button onclick="{{ openLive() }}" class="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">View full log &rarr;</button>
+              <button onclick="{{ openLive() }}" class="text-[11px] font-semibold text-brand-400 hover:text-brand-300 transition-colors">View full log &rarr;</button>
             </div>
 {{/if}}
 {{/if}}
@@ -906,7 +906,7 @@ template
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button onclick="{{ openModal('script') }}" class="group text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+            <button onclick="{{ openModal('script') }}" class="group text-left rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
               <div class="flex items-center gap-3">
                 <span class="w-9 h-9 shrink-0 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M4 17l6-6-6-6M12 19h8" /></svg>
@@ -915,11 +915,11 @@ template
                   <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Deployment script</p>
                   <p class="text-slate-500 text-xs">Commands run after the latest code is pulled.</p>
                 </div>
-                <span class="text-xs text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Edit &rarr;</span>
+                <span class="text-xs text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">Edit &rarr;</span>
               </div>
             </button>
 {{#if envPath}}
-            <button onclick="{{ openModal('env') }}" class="group text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none hover:border-emerald-500/50 transition-colors">
+            <button onclick="{{ openModal('env') }}" class="group text-left rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
               <div class="flex items-center gap-3">
                 <span class="w-9 h-9 shrink-0 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
@@ -928,13 +928,13 @@ template
                   <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Environment</p>
                   <p class="text-slate-500 text-xs font-mono truncate">{{ envPath }}</p>
                 </div>
-                <span class="text-xs text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Edit &rarr;</span>
+                <span class="text-xs text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">Edit &rarr;</span>
               </div>
             </button>
 {{/if}}
           </div>
 
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Deployment history</h2>
               <div class="flex flex-wrap items-center gap-2">
@@ -955,7 +955,7 @@ template
 
             <div class="space-y-2">
 {{#each d in shownHistory}}
-              <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors">
+              <div class="flex flex-wrap items-center gap-3 rounded-xl border border-line px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors">
                 <span class="{{ d.dotCls }}"></span>
                 <span class="{{ d.badgeCls }}">{{ d.label }}</span>
                 <div class="min-w-0 flex-1 basis-40">
@@ -980,7 +980,7 @@ template
 
 {{#if modal is "script"}}
       <div role="dialog" aria-modal="true" aria-labelledby="script-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
-        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
           <div class="flex items-center justify-between mb-2">
             <h3 id="script-title" class="text-slate-900 dark:text-slate-100 font-semibold">Deployment script</h3>
             <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -995,7 +995,7 @@ template
             autocomplete="off"
             value="{{ scriptText }}"
             oninput="{{ setScript() }}"
-            class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors resize-y"
+            class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
           ></textarea>
 {{#if error}}
           <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
@@ -1005,7 +1005,7 @@ template
             <div class="flex items-center gap-3">
               <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+              <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not saving}}
 {{#if Billing.locked}}
@@ -1018,7 +1018,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save</button>
+              <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
 {{/if}}
 {{/if}}
             </div>
@@ -1029,7 +1029,7 @@ template
 
 {{#if modal is "env"}}
       <div role="dialog" aria-modal="true" aria-labelledby="env-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
-        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
+        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
           <div class="flex items-center justify-between mb-2">
             <h3 id="env-title" class="text-slate-900 dark:text-slate-100 font-semibold">Environment</h3>
             <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -1044,7 +1044,7 @@ template
             autocomplete="off"
             value="{{ envText }}"
             oninput="{{ setEnv() }}"
-            class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors resize-y"
+            class="w-full mb-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
             placeholder="APP_ENV=production"
           ></textarea>
 {{#if error}}
@@ -1053,7 +1053,7 @@ template
           <div class="flex items-center justify-end gap-3">
             <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-            <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+            <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not saving}}
 {{#if Billing.locked}}
@@ -1066,7 +1066,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save</button>
+            <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
 {{/if}}
 {{/if}}
           </div>
@@ -1083,7 +1083,7 @@ template
               <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-rose-500/70"></span>
                 <span class="w-2.5 h-2.5 rounded-full bg-amber-500/70"></span>
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/70"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-brand-500/70"></span>
               </div>
               <h3 id="log-title" class="text-slate-200 text-sm font-medium">Deployment log</h3>
 {{#if logStatus is "deploying"}}
@@ -1092,8 +1092,8 @@ template
               </span>
 {{/if}}
 {{#if logStatus is "success"}}
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Deployed
               </span>
 {{/if}}
 {{#if logStatus is "failed"}}
@@ -1127,7 +1127,7 @@ template
             <span class="ml-auto hidden md:flex items-center gap-3 text-[11px] text-slate-500">
               <span class="inline-flex items-center gap-1"><span class="text-rose-300">&#10005;</span> error</span>
               <span class="inline-flex items-center gap-1"><span class="text-amber-300">!</span> warning</span>
-              <span class="inline-flex items-center gap-1"><span class="text-emerald-400">&#10003;</span> ok</span>
+              <span class="inline-flex items-center gap-1"><span class="text-brand-400">&#10003;</span> ok</span>
               <span class="inline-flex items-center gap-1"><span class="text-violet-300">$</span> command</span>
               <span class="inline-flex items-center gap-1"><span class="text-fuchsia-300">&#9095;</span> git</span>
               <span class="inline-flex items-center gap-1"><span class="text-cyan-300">&bull;</span> tooling</span>
@@ -1136,7 +1136,7 @@ template
 
 {{#if logStatus is "deploying"}}
           <div class="h-0.5 w-full bg-slate-800 overflow-hidden">
-            <div class="h-full w-1/3 bg-emerald-500 animate-pulse"></div>
+            <div class="h-full w-1/3 bg-brand-500 animate-pulse"></div>
           </div>
 {{/if}}
 
@@ -1155,9 +1155,9 @@ template
 {{/if}}
 {{#each l in shownLogLines}}
 {{#if l.isStage}}
-              <div id="log-line-{{ l.n }}" class="flex items-center gap-2.5 mt-5 mb-1.5 px-5 py-2 bg-emerald-500/10 border-l-2 border-emerald-500">
-                <span class="text-emerald-400 text-[11px]">&#9656;</span>
-                <span class="min-w-0 text-emerald-300 font-semibold [overflow-wrap:anywhere]">{{ l.text }}</span>
+              <div id="log-line-{{ l.n }}" class="flex items-center gap-2.5 mt-5 mb-1.5 px-5 py-2 bg-brand-500/10 border-l-2 border-brand-500">
+                <span class="text-brand-400 text-[11px]">&#9656;</span>
+                <span class="min-w-0 text-brand-300 font-semibold [overflow-wrap:anywhere]">{{ l.text }}</span>
               </div>
 {{/if}}
 {{#if not l.isStage}}
@@ -1170,7 +1170,7 @@ template
 {{/each}}
             </div>
 {{#if not modalAtBottom}}
-            <button onclick="{{ jumpModal() }}" class="absolute bottom-4 right-6 inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-500 text-slate-950 rounded-full px-3.5 py-2 shadow-lg hover:bg-emerald-400 transition-colors">
+            <button onclick="{{ jumpModal() }}" class="absolute bottom-4 right-6 inline-flex items-center gap-1.5 text-xs font-semibold bg-brand-500 text-slate-950 rounded-full px-3.5 py-2 shadow-lg hover:bg-brand-400 transition-colors">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M10 4v12M5 11l5 5 5-5" /></svg>
               Jump to bottom
             </button>

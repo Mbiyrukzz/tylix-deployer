@@ -5,24 +5,24 @@ template
     <div class="max-w-5xl mx-auto">
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
-          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-2">Pricing</p>
+          <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-2">Pricing</p>
           <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Start free, pick a plan when you're ready</h2>
         </div>
-        <a href="/pricing" class="shrink-0 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:underline">See all plans</a>
+        <a href="/pricing" class="shrink-0 text-sm font-medium text-brand-700 dark:text-brand-400 hover:underline">See all plans</a>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
           <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Personal</h3>
           <p class="text-slate-900 dark:text-slate-100 mb-2"><span class="text-3xl font-bold tracking-tight">$10</span><span class="text-slate-500 text-sm"> / month</span></p>
           <p class="text-slate-500 text-sm">3 servers · 10 sites</p>
         </div>
-        <div class="rounded-2xl border-2 border-emerald-500 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border-2 border-brand-500 bg-panel p-6 shadow-sm dark:shadow-none">
           <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Pro</h3>
           <p class="text-slate-900 dark:text-slate-100 mb-2"><span class="text-3xl font-bold tracking-tight">$20</span><span class="text-slate-500 text-sm"> / month</span></p>
           <p class="text-slate-500 text-sm">10 servers · 50 sites · 5 members</p>
         </div>
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
           <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Business</h3>
           <p class="text-slate-900 dark:text-slate-100 mb-2"><span class="text-3xl font-bold tracking-tight">$49</span><span class="text-slate-500 text-sm"> / month</span></p>
           <p class="text-slate-500 text-sm">30 servers · unlimited sites · 15 members</p>

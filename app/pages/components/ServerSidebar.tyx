@@ -8,19 +8,19 @@ props
 
 state
   collapsed: false
-  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[230px] lg:p-5"
+  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[230px] lg:p-5"
   topCls: "hidden lg:flex items-center mb-1 lg:justify-end"
   headCls: "hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors"
-  onCls: "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-  offCls: "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+  onCls: "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+  offCls: "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
   labelCls: ""
   chevCls: "w-4 h-4 transition-transform"
 
 action
   applyLayout() {
-    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-300/30 dark:bg-slate-900/40 p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
-    const on = "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-    const off = "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
+    const on = "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+    const off = "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
     const head = "hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors"
 
     if this.collapsed {
@@ -64,7 +64,7 @@ template
 <aside class="{{ asideCls }}">
 
   <div class="{{ topCls }}">
-    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-300/50 dark:hover:bg-slate-900/70 transition-colors">
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
         <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
@@ -81,54 +81,54 @@ template
 
 {{#if active is "server"}}
   <a href="{{ '/servers/server-detail?id=' + serverId }}" title="Overview" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconGauge class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Overview</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconGauge class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 {{#if active is not "server"}}
   <a href="{{ '/servers/server-detail?id=' + serverId }}" title="Overview" class="{{ offCls }}">
-    <IconGauge class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Overview</span>
+    <IconGauge class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 
 {{#if active is "sites"}}
   <a href="{{ '/servers/server-sites?id=' + serverId }}" title="Sites" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconGlobe class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Sites</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconGlobe class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Sites</span>
   </a>
 {{/if}}
 {{#if active is not "sites"}}
   <a href="{{ '/servers/server-sites?id=' + serverId }}" title="Sites" class="{{ offCls }}">
-    <IconGlobe class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Sites</span>
+    <IconGlobe class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Sites</span>
   </a>
 {{/if}}
 
 {{#if active is "databases"}}
   <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Database" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconDatabase class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Database</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconDatabase class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Database</span>
   </a>
 {{/if}}
 {{#if active is not "databases"}}
   <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Database" class="{{ offCls }}">
-    <IconDatabase class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Database</span>
+    <IconDatabase class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Database</span>
   </a>
 {{/if}}
 
 {{#if active is "backups"}}
   <a href="{{ '/servers/server-backups?id=' + serverId }}" title="Backups" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconArchive class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Backups</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconArchive class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Backups</span>
   </a>
 {{/if}}
 {{#if active is not "backups"}}
   <a href="{{ '/servers/server-backups?id=' + serverId }}" title="Backups" class="{{ offCls }}">
-    <IconArchive class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Backups</span>
+    <IconArchive class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Backups</span>
   </a>
 {{/if}}
   </details>
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-1"></div>
+  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-1"></div>
 
   <details open class="tylix-sec group/sec contents lg:flex lg:flex-col lg:gap-1">
     <summary class="{{ headCls }}">
@@ -140,42 +140,42 @@ template
 
 {{#if active is "cron"}}
   <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="CronJobs" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconClock class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">CronJobs</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconClock class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">CronJobs</span>
   </a>
 {{/if}}
 {{#if active is not "cron"}}
   <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="CronJobs" class="{{ offCls }}">
-    <IconClock class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">CronJobs</span>
+    <IconClock class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">CronJobs</span>
   </a>
 {{/if}}
 
 {{#if active is "workers"}}
   <a href="{{ '/servers/server-workers?id=' + serverId }}" title="Workers" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconCpuChip class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Workers</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconCpuChip class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Workers</span>
   </a>
 {{/if}}
 {{#if active is not "workers"}}
   <a href="{{ '/servers/server-workers?id=' + serverId }}" title="Workers" class="{{ offCls }}">
-    <IconCpuChip class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Workers</span>
+    <IconCpuChip class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Workers</span>
   </a>
 {{/if}}
 
 {{#if active is "packages"}}
   <a href="{{ '/servers/server-packages?id=' + serverId }}" title="Packages" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconPackage class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Packages</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconPackage class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Packages</span>
   </a>
 {{/if}}
 {{#if active is not "packages"}}
   <a href="{{ '/servers/server-packages?id=' + serverId }}" title="Packages" class="{{ offCls }}">
-    <IconPackage class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Packages</span>
+    <IconPackage class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Packages</span>
   </a>
 {{/if}}
   </details>
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-1"></div>
+  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-1"></div>
 
   <details open class="tylix-sec group/sec contents lg:flex lg:flex-col lg:gap-1">
     <summary class="{{ headCls }}">
@@ -187,30 +187,30 @@ template
 
 {{#if active is "firewall"}}
   <a href="{{ '/servers/server-firewall?id=' + serverId }}" title="Firewall" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconShieldCheck class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Firewall</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Firewall</span>
   </a>
 {{/if}}
 {{#if active is not "firewall"}}
   <a href="{{ '/servers/server-firewall?id=' + serverId }}" title="Firewall" class="{{ offCls }}">
-    <IconShieldCheck class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Firewall</span>
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Firewall</span>
   </a>
 {{/if}}
 
 {{#if active is "ssh-keys"}}
   <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" title="SSH Keys" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconKey class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">SSH Keys</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconKey class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">SSH Keys</span>
   </a>
 {{/if}}
 {{#if active is not "ssh-keys"}}
   <a href="{{ '/servers/server-ssh-keys?id=' + serverId }}" title="SSH Keys" class="{{ offCls }}">
-    <IconKey class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">SSH Keys</span>
+    <IconKey class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">SSH Keys</span>
   </a>
 {{/if}}
   </details>
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-3 mx-1"></div>
+  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-1"></div>
 
   <details open class="tylix-sec group/sec contents lg:flex lg:flex-col lg:gap-1">
     <summary class="{{ headCls }}">
@@ -222,39 +222,39 @@ template
 
 {{#if active is "logs"}}
   <a href="{{ '/servers/server-logs?id=' + serverId }}" title="Logs" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconDocumentText class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Logs</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconDocumentText class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Logs</span>
   </a>
 {{/if}}
 {{#if active is not "logs"}}
   <a href="{{ '/servers/server-logs?id=' + serverId }}" title="Logs" class="{{ offCls }}">
-    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Logs</span>
+    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Logs</span>
   </a>
 {{/if}}
 
 {{#if active is "terminal"}}
   <a href="{{ '/servers/server-terminal?id=' + serverId }}" title="Terminal" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-    <IconTerminal class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Terminal</span>
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <IconTerminal class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Terminal</span>
   </a>
 {{/if}}
 {{#if active is not "terminal"}}
   <a href="{{ '/servers/server-terminal?id=' + serverId }}" title="Terminal" class="{{ offCls }}">
-    <IconTerminal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Terminal</span>
+    <IconTerminal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Terminal</span>
   </a>
 {{/if}}
   </details>
 
-  <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-slate-300 dark:border-slate-800">
+  <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line">
 {{#if active is "settings"}}
     <a href="{{ '/servers/server-settings?id=' + serverId }}" title="Settings" aria-current="page" class="{{ onCls }}">
-      <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500"></span>
-      <IconCog class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Settings</span>
+      <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+      <IconCog class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Settings</span>
     </a>
 {{/if}}
 {{#if active is not "settings"}}
     <a href="{{ '/servers/server-settings?id=' + serverId }}" title="Settings" class="{{ offCls }}">
-      <IconCog class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Settings</span>
+      <IconCog class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Settings</span>
     </a>
 {{/if}}
   </div>

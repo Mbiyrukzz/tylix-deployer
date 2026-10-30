@@ -9,12 +9,12 @@ template
 <div role="status" aria-live="polite" style="min-height: calc(100vh - 4rem)" class="flex items-center justify-center bg-slate-200 dark:bg-slate-950">
   <div class="flex flex-col items-center justify-center py-14">
     <div class="relative w-14 h-14 flex items-center justify-center">
-      <span class="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping"></span>
+      <span class="absolute inset-0 rounded-full bg-brand-500/30 animate-ping"></span>
       <img src="/logo-mark.png" alt="" class="relative w-12 h-12" />
     </div>
     <p class="text-slate-600 dark:text-slate-300 text-sm font-medium mt-5">{{ label }}</p>
     <div class="w-40 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden mt-3">
-      <div class="w-2/3 h-full rounded-full bg-emerald-500 animate-pulse"></div>
+      <div class="w-2/3 h-full rounded-full bg-brand-500 animate-pulse"></div>
     </div>
   </div>
 </div>
@@ -31,12 +31,12 @@ template
     <div class="max-w-5xl mx-auto">
       <div class="flex flex-col items-center justify-center py-14">
         <div class="relative w-14 h-14 flex items-center justify-center">
-          <span class="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping"></span>
+          <span class="absolute inset-0 rounded-full bg-brand-500/30 animate-ping"></span>
           <img src="/logo-mark.png" alt="" class="relative w-12 h-12" />
         </div>
         <p class="text-slate-600 dark:text-slate-300 text-sm font-medium mt-5">{{ label }}</p>
         <div class="w-40 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden mt-3">
-          <div class="w-2/3 h-full rounded-full bg-emerald-500 animate-pulse"></div>
+          <div class="w-2/3 h-full rounded-full bg-brand-500 animate-pulse"></div>
         </div>
       </div>
       <div class="space-y-4">

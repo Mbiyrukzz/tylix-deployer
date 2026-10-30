@@ -6,7 +6,7 @@ state
   effective: "26 October 2026"
 
 template
-  <div class="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-950 transition-colors px-4 sm:px-6 py-8 sm:py-12">
+  <div class="min-h-[calc(100vh-4rem)] bg-page transition-colors px-4 sm:px-6 py-8 sm:py-12">
     <div class="max-w-6xl mx-auto">
 
       <a href="/" class="inline-flex items-center gap-2.5 mb-8">
@@ -14,38 +14,38 @@ template
         <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
       </a>
 
-      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
+      <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
       <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Privacy Policy</h1>
       <p class="text-slate-500 text-sm mb-10">Effective {{ effective }}</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
 
         <nav class="hidden lg:block">
-          <div class="sticky top-24 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div class="sticky top-24 rounded-2xl border border-line bg-panel p-4">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">On this page</p>
             <ul class="space-y-1.5 text-sm">
-              <li><a href="#who" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">1. Who we are</a></li>
-              <li><a href="#collect" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">2. What we collect</a></li>
-              <li><a href="#use" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">3. How we use it</a></li>
-              <li><a href="#basis" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">4. Legal basis</a></li>
-              <li><a href="#sharing" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">5. Who we share with</a></li>
-              <li><a href="#security" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">6. Security</a></li>
-              <li><a href="#cookies" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">7. Cookies</a></li>
-              <li><a href="#retention" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">8. Retention</a></li>
-              <li><a href="#transfers" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">9. International transfers</a></li>
-              <li><a href="#rights" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">10. Your rights</a></li>
-              <li><a href="#children" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">11. Children</a></li>
-              <li><a href="#changes" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">12. Changes</a></li>
-              <li><a href="#contact" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">13. Contact</a></li>
+              <li><a href="#who" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">1. Who we are</a></li>
+              <li><a href="#collect" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">2. What we collect</a></li>
+              <li><a href="#use" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">3. How we use it</a></li>
+              <li><a href="#basis" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">4. Legal basis</a></li>
+              <li><a href="#sharing" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">5. Who we share with</a></li>
+              <li><a href="#security" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">6. Security</a></li>
+              <li><a href="#cookies" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">7. Cookies</a></li>
+              <li><a href="#retention" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">8. Retention</a></li>
+              <li><a href="#transfers" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">9. International transfers</a></li>
+              <li><a href="#rights" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">10. Your rights</a></li>
+              <li><a href="#children" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">11. Children</a></li>
+              <li><a href="#changes" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">12. Changes</a></li>
+              <li><a href="#contact" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">13. Contact</a></li>
             </ul>
           </div>
         </nav>
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-8 shadow-sm dark:shadow-none min-w-0 break-words">
+        <div class="rounded-2xl border border-line bg-panel p-5 sm:p-8 shadow-sm dark:shadow-none min-w-0 break-words">
 
           <section id="who" class="mb-8 sm:mb-10 scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">1. Who we are</h2>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Ashmif Office Solutions Ltd, based in Mombasa, Kenya, runs Tylix Deploy and is the data controller for personal data processed through it. This policy explains what we collect, why, who we share it with, and the choices you have. We process personal data in line with the Kenya Data Protection Act, 2019. It sits alongside our <a href="/terms" class="text-emerald-700 dark:text-emerald-400 hover:underline">Terms of Service</a>.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Ashmif Office Solutions Ltd, based in Mombasa, Kenya, runs Tylix Deploy and is the data controller for personal data processed through it. This policy explains what we collect, why, who we share it with, and the choices you have. We process personal data in line with the Kenya Data Protection Act, 2019. It sits alongside our <a href="/terms" class="text-brand-700 dark:text-brand-400 hover:underline">Terms of Service</a>.</p>
             <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Content you deploy or store on your own servers (for example, your customers' data in your databases) is yours. For that content you are the controller and we only act on your instructions to provide the Service.</p>
           </section>
 
@@ -125,7 +125,7 @@ template
               <li>have data deleted where we no longer need it, subject to legal duties to keep it;</li>
               <li>receive a copy of data you provided in a portable format, where applicable.</li>
             </ul>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">To use these rights, email <a href="mailto:privacy@tylix.dev" class="text-emerald-700 dark:text-emerald-400 hover:underline">privacy@tylix.dev</a>. We may need to verify your identity first and we will respond within the time the law sets. You also have the right to complain to the Office of the Data Protection Commissioner of Kenya (odpc.go.ke), though we would appreciate the chance to fix the problem first.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">To use these rights, email <a href="mailto:privacy@tylix.dev" class="text-brand-700 dark:text-brand-400 hover:underline">privacy@tylix.dev</a>. We may need to verify your identity first and we will respond within the time the law sets. You also have the right to complain to the Office of the Data Protection Commissioner of Kenya (odpc.go.ke), though we would appreciate the chance to fix the problem first.</p>
           </section>
 
           <section id="children" class="mb-8 sm:mb-10 scroll-mt-24">
@@ -141,15 +141,15 @@ template
           <section id="contact" class="scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">13. Contact</h2>
             <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Ashmif Office Solutions Ltd, Mombasa, Kenya</p>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Website: <a href="https://ashmif.com" target="_blank" rel="noopener" class="text-emerald-700 dark:text-emerald-400 hover:underline">ashmif.com</a></p>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Privacy questions and requests: <a href="mailto:privacy@tylix.dev" class="text-emerald-700 dark:text-emerald-400 hover:underline">privacy@tylix.dev</a></p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Website: <a href="https://ashmif.com" target="_blank" rel="noopener" class="text-brand-700 dark:text-brand-400 hover:underline">ashmif.com</a></p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Privacy questions and requests: <a href="mailto:privacy@tylix.dev" class="text-brand-700 dark:text-brand-400 hover:underline">privacy@tylix.dev</a></p>
           </section>
 
         </div>
       </div>
 
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-8 text-sm">
-        <a href="/terms" class="text-emerald-700 dark:text-emerald-400 hover:underline">&larr; Terms of Service</a>
+        <a href="/terms" class="text-brand-700 dark:text-brand-400 hover:underline">&larr; Terms of Service</a>
         <p class="text-slate-500">© 2026 Tylix by <a href="https://ashmif.com" target="_blank" rel="noopener" class="hover:underline">Ashmif</a></p>
       </div>
     </div>

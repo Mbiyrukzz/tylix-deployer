@@ -87,7 +87,7 @@ action
 
     let statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
     if f.status is "enabled" or f.status is "attached" {
-      statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500"
+      statusCls = "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500"
     }
 
     return Object.assign({}, f, {
@@ -207,8 +207,8 @@ action
   // ---- Rule editor ----
 
   buildButtons() {
-    const activeCls = "text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200"
-    const idleCls = "text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40"
+    const activeCls = "text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200"
+    const idleCls = "text-left rounded-xl border px-4 py-2 text-sm font-mono transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40"
 
     this.dirButtons = [["in", "Inbound"], ["out", "Outbound"]].map((d) => ({
       key: d[0],
@@ -258,7 +258,7 @@ action
     let actionCls = "inline-flex w-16 shrink-0 justify-center rounded-md px-2 py-1 text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400"
     if r.action is "ACCEPT" {
       actionLabel = "Allow"
-      actionCls = "inline-flex w-16 shrink-0 justify-center rounded-md px-2 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+      actionCls = "inline-flex w-16 shrink-0 justify-center rounded-md px-2 py-1 text-xs font-semibold bg-brand-500/10 text-brand-700 dark:text-brand-500"
     }
 
     return Object.assign({}, r, {
@@ -498,13 +498,13 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
   <Sidebar active="providers" />
   <ProviderSidebar active="firewalls" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Provider
       </a>
 
@@ -526,7 +526,7 @@ template
         </button>
 {{/if}}
 {{#if not Billing.locked}}
-        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create firewall</button>
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create firewall</button>
 {{/if}}
 {{/if}}
       </div>
@@ -544,7 +544,7 @@ template
 {{/if}}
 
 {{#if showCreate}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 mb-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Create a firewall</h2>
         <p class="text-slate-500 text-sm mb-4">It starts with no rules. Add them next, then attach it to servers in the {{ kindName }} console.</p>
 
@@ -554,7 +554,7 @@ template
           type="text"
           value="{{ newLabel }}"
           oninput="{{ newLabel = $event.target.value }}"
-          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           placeholder="web-servers"
         />
 {{#if labelError}}
@@ -568,7 +568,7 @@ template
         <div class="flex items-center justify-end gap-3 mt-5">
           <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if creating}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not creating}}
 {{#if Billing.locked}}
@@ -581,7 +581,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create firewall</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create firewall</button>
 {{/if}}
 {{/if}}
         </div>
@@ -589,7 +589,7 @@ template
 {{/if}}
 
 {{#if editorOpen}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 mb-6 shadow-sm dark:shadow-none">
         <div class="flex items-start justify-between gap-4 mb-4">
           <div class="min-w-0">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">Rules for {{ editLabel }}</h2>
@@ -631,13 +631,13 @@ template
 {{/if}}
 
 {{#if not policiesEditable}}
-        <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-4 py-3 mb-5">
+        <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 px-4 py-3 mb-5">
           <p class="text-slate-500 text-xs">{{ kindName }} firewalls only allow traffic. Inbound traffic you don't allow is blocked. Outbound is open until you add an outbound rule, after which only the outbound traffic you allow gets through.</p>
         </div>
 {{/if}}
 
 {{#if ruleOpen}}
-        <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-5 mb-5">
+        <div class="rounded-xl border border-brand-500/40 bg-brand-500/5 p-5 mb-5">
           <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-4">
 {{#if editingRule}}
             Edit rule
@@ -668,7 +668,7 @@ template
             type="text"
             value="{{ fPorts }}"
             oninput="{{ fPorts = $event.target.value }}"
-            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
             placeholder="22"
           />
 {{#if policiesEditable}}
@@ -692,7 +692,7 @@ template
             type="text"
             value="{{ fAddresses }}"
             oninput="{{ fAddresses = $event.target.value }}"
-            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
             placeholder="0.0.0.0/0, ::/0"
           />
           <p class="text-slate-500 text-xs mt-1.5">0.0.0.0/0 and ::/0 mean anywhere. Use a /32 to match a single IPv4 address.</p>
@@ -712,7 +712,7 @@ template
             type="text"
             value="{{ fLabel }}"
             oninput="{{ fLabel = $event.target.value }}"
-            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
             placeholder="Allow SSH from the office"
           />
 
@@ -737,7 +737,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ commitRule() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+            <button onclick="{{ commitRule() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
 {{#if editingRule}}
               Update rule
 {{/if}}
@@ -758,7 +758,7 @@ template
 
         <div class="space-y-2">
 {{#each r in rows}}
-          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
+          <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
             <div class="flex flex-wrap items-center gap-3">
               <span class="{{ r.actionCls }}">{{ r.actionLabel }}</span>
               <div class="min-w-0 flex-1 basis-48">
@@ -800,7 +800,7 @@ template
         <div class="flex items-center justify-end gap-3 mt-6">
           <button onclick="{{ closeEditor() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if editorSaving}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not editorSaving}}
 {{#if Billing.locked}}
@@ -813,7 +813,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ saveRules() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save rules</button>
+          <button onclick="{{ saveRules() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save rules</button>
 {{/if}}
 {{/if}}
         </div>
@@ -822,9 +822,9 @@ template
 
 {{#if not locked}}
 {{#if list.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
-        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-          <IconShieldCheck class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4">
+          <IconShieldCheck class="w-6 h-6 text-brand-700 dark:text-brand-500" />
         </div>
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No firewalls yet</h3>
         <p class="text-slate-500 text-sm max-w-sm mx-auto">Create a firewall to control which traffic can reach your servers.</p>
@@ -834,11 +834,11 @@ template
 {{#if list.length is not 0}}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 {{#each f in list}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <div class="flex items-start justify-between gap-3 mb-4">
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <IconShieldCheck class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-brand-500/10 flex items-center justify-center">
+                <IconShieldCheck class="w-4 h-4 text-brand-700 dark:text-brand-500" />
               </div>
               <div class="min-w-0">
                 <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ f.label }}</h3>
@@ -860,7 +860,7 @@ template
           </div>
           <p class="text-slate-500 text-xs mb-4">{{ f.policyText }}</p>
 
-          <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-line">
             <button onclick="{{ openEditor(f.id) }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Edit rules</button>
 {{#if Billing.locked}}
             <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">

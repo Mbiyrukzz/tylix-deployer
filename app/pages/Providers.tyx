@@ -44,7 +44,7 @@ action
     // Linode is the default; each other provider overrides name, letter and colour.
     let kindName = "Linode (Akamai)"
     let tileLetter = "L"
-    let tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    let tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-brand-500/10 text-brand-700 dark:text-brand-500"
     if p.kind is "hetzner" {
       kindName = "Hetzner Cloud"
       tileLetter = "H"
@@ -158,12 +158,12 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-page transition-colors">
   <Sidebar active="providers" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Dashboard
       </a>
 
@@ -176,39 +176,39 @@ template
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Connections</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ items.length }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Linode</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ linodeCount }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Hetzner</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ hetznerCount }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">DigitalOcean</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ doCount }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Vultr</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ vultrCount }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">AWS</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ awsCount }}</p>
         </div>
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">UpCloud</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ upcloudCount }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Contabo</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ contaboCount }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Servers created</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ serverCount }}</p>
         </div>
@@ -221,9 +221,9 @@ template
 {{/if}}
 
 {{#if items.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
         <div class="flex items-center justify-center gap-3 mb-4">
-          <span class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-lg font-bold">L</span>
+          <span class="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-lg font-bold">L</span>
           <span class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-lg font-bold">H</span>
           <span class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg font-bold">D</span>
           <span class="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center text-lg font-bold">V</span>
@@ -240,7 +240,7 @@ template
 {{#if items.length is not 0}}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 {{#each p in items}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
 
           <div class="flex items-start justify-between gap-3 mb-5">
             <div class="flex items-center gap-3 min-w-0">
@@ -250,8 +250,8 @@ template
                 <p class="text-slate-500 text-xs">{{ p.kindName }}</p>
               </div>
             </div>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ p.status }}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> {{ p.status }}
             </span>
           </div>
 
@@ -266,9 +266,9 @@ template
             </div>
           </div>
 
-          <div class="flex items-center gap-3 pt-5 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-3 pt-5 border-t border-line">
             
-                        <a href="{{ '/providers/provider-detail?id=' + p.id }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">Manage</a>
+                        <a href="{{ '/providers/provider-detail?id=' + p.id }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Manage</a>
             <ProviderForm provider="{{ p }}" onSaved="{{ updateProvider }}" />
 
 {{#if removing is p.id}}

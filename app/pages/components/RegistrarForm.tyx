@@ -445,14 +445,14 @@ template
   </button>
 {{/if}}
 {{#if not registrar}}
-  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
     <IconPlus class="w-4 h-4" /> Connect domain provider
   </button>
 {{/if}}
 
 {{#if showModal}}
   <div role="dialog" aria-modal="true" aria-labelledby="registrar-form-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
@@ -481,7 +481,7 @@ template
       <div class="grid grid-cols-2 gap-3 mb-5">
 {{#each k in kinds}}
 {{#if kind is k.id}}
-        <button onclick="{{ pick(k.id) }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3 py-3 text-left transition-colors">
+        <button onclick="{{ pick(k.id) }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-brand-500 bg-brand-500/5 px-3 py-3 text-left transition-colors">
           <span class="{{ k.tileClass }}">{{ k.letter }}</span>
           <span class="min-w-0">
             <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
@@ -490,7 +490,7 @@ template
         </button>
 {{/if}}
 {{#if kind is not k.id}}
-        <button onclick="{{ pick(k.id) }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+        <button onclick="{{ pick(k.id) }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-line px-3 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
           <span class="{{ k.tileClass }}">{{ k.letter }}</span>
           <span class="min-w-0">
             <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
@@ -509,7 +509,7 @@ template
         autofocus
         value="{{ label }}"
         oninput="{{ label = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="e.g. Client domains"
       />
 {{#if labelError}}
@@ -525,7 +525,7 @@ template
         spellcheck="false"
         value="{{ apiUser }}"
         oninput="{{ apiUser = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if apiUserError}}
@@ -542,7 +542,7 @@ template
         spellcheck="false"
         value="{{ apiKey }}"
         oninput="{{ apiKey = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if apiKeyError}}
@@ -559,7 +559,7 @@ template
         spellcheck="false"
         value="{{ secretKey }}"
         oninput="{{ secretKey = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if secretKeyError}}
@@ -576,7 +576,7 @@ template
         spellcheck="false"
         value="{{ apiSecret }}"
         oninput="{{ apiSecret = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if apiSecretError}}
@@ -593,7 +593,7 @@ template
         spellcheck="false"
         value="{{ apiToken }}"
         oninput="{{ apiToken = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if tokenError}}
@@ -610,7 +610,7 @@ template
         spellcheck="false"
         value="{{ accountId }}"
         oninput="{{ accountId = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if accountIdError}}
@@ -627,7 +627,7 @@ template
         spellcheck="false"
         value="{{ clientIp }}"
         oninput="{{ clientIp = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if clientIpError}}
@@ -636,7 +636,7 @@ template
 {{/if}}
 
 {{#if showR2}}
-      <div class="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
+      <div class="mt-6 pt-5 border-t border-line">
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">R2 storage <span class="text-slate-400 font-normal">(optional)</span></p>
         <p class="text-slate-500 text-xs mt-0.5">S3-compatible credentials for the R2 API or any S3 client.</p>
       </div>
@@ -649,7 +649,7 @@ template
         spellcheck="false"
         value="{{ r2AccessKey }}"
         oninput="{{ r2AccessKey = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if r2AccessKeyError}}
@@ -664,7 +664,7 @@ template
         spellcheck="false"
         value="{{ r2SecretKey }}"
         oninput="{{ r2SecretKey = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ placeholder }}"
       />
 {{#if r2SecretKeyError}}
@@ -679,7 +679,7 @@ template
         spellcheck="false"
         value="{{ r2Endpoint }}"
         oninput="{{ r2Endpoint = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="https://<account id>.r2.cloudflarestorage.com"
       />
 {{#if r2EndpointError}}
@@ -688,18 +688,18 @@ template
 {{/if}}
 
 {{#if not registrar}}
-      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4 mt-4">
+      <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 p-4 mt-4">
 {{#if kind is "porkbun"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Get your Porkbun API keys</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://porkbun.com/account/api" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; API Access</a> and create an API key. Copy both the API key and the secret key.</li>
+          <li>Open <a href="https://porkbun.com/account/api" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Account &rarr; API Access</a> and create an API key. Copy both the API key and the secret key.</li>
           <li>For each domain you want to manage, open Domain Management &rarr; Details and switch on <span class="font-mono">API Access</span>. Domains without it won't be listed.</li>
         </ol>
 {{/if}}
 {{#if kind is "cloudflare"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Connect Cloudflare</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Create a custom token under <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">My Profile &rarr; API Tokens</a> or Manage Account &rarr; Account API Tokens. See <a href="https://developers.cloudflare.com/fundamentals/api/how-to/make-api-calls/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">how to make API calls</a>.</li>
+          <li>Create a custom token under <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">My Profile &rarr; API Tokens</a> or Manage Account &rarr; Account API Tokens. See <a href="https://developers.cloudflare.com/fundamentals/api/how-to/make-api-calls/" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">how to make API calls</a>.</li>
           <li>Permissions: <span class="font-mono">Zone: Read</span>, <span class="font-mono">DNS: Edit</span>, <span class="font-mono">Email Routing Rules: Edit</span> for forwarding, and <span class="font-mono">Billing: Read</span> for the billing page.</li>
           <li>Copy your <span class="font-mono">Account ID</span> from the account's overview page in the dashboard.</li>
           <li>Optional: for R2, create an R2 API token and paste its Access Key ID, Secret Access Key and S3 endpoint. The secret is shown once.</li>
@@ -709,7 +709,7 @@ template
 {{#if kind is "godaddy"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create GoDaddy API keys</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://developer.godaddy.com/keys" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">developer.godaddy.com/keys</a> and create a key with the <span class="font-mono">Production</span> environment.</li>
+          <li>Open <a href="https://developer.godaddy.com/keys" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">developer.godaddy.com/keys</a> and create a key with the <span class="font-mono">Production</span> environment.</li>
           <li>Copy the key and the secret. GoDaddy shows the secret only once.</li>
         </ol>
         <p class="text-slate-500 text-xs mt-3">GoDaddy only gives Domains API access to accounts with enough domains. If it answers 403 with correct keys, that's the likely reason.</p>
@@ -717,7 +717,7 @@ template
 {{#if kind is "namecheap"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Enable the Namecheap API</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://ap.www.namecheap.com/settings/tools/apiaccess/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Profile &rarr; Tools &rarr; API Access</a>, switch API access on and copy the key. The API user is your Namecheap username.</li>
+          <li>Open <a href="https://ap.www.namecheap.com/settings/tools/apiaccess/" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Profile &rarr; Tools &rarr; API Access</a>, switch API access on and copy the key. The API user is your Namecheap username.</li>
           <li>Under <span class="font-mono">Whitelisted IPs</span>, add the public IPv4 address of this server and enter the same address above. Namecheap ignores requests from any other IP.</li>
         </ol>
         <p class="text-slate-500 text-xs mt-3">Namecheap can only edit DNS for domains that use Namecheap DNS, and its API can't change auto-renew. The account balance is shown on the billing page.</p>
@@ -725,7 +725,7 @@ template
 {{#if kind is "dynadot"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Get your Dynadot API key</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://www.dynadot.com/account/domain/setting/api.html" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Tools &rarr; API</a>, create a key and copy it.</li>
+          <li>Open <a href="https://www.dynadot.com/account/domain/setting/api.html" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Tools &rarr; API</a>, create a key and copy it.</li>
           <li>If you restrict the key by IP, allow the public IP of this server.</li>
         </ol>
         <p class="text-slate-500 text-xs mt-3">Dynadot rewrites a zone as a whole, so DNS edits work only for domains using Dynadot DNS and without forwarding or email records. The account balance is shown on the billing page.</p>
@@ -733,21 +733,21 @@ template
 {{#if kind is "namecom"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Name.com API token</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://www.name.com/account/settings/api" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; Settings &rarr; API</a> and create a production token.</li>
+          <li>Open <a href="https://www.name.com/account/settings/api" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Account &rarr; Settings &rarr; API</a> and create a production token.</li>
           <li>Enter your Name.com username and the token. The test-environment token won't work.</li>
         </ol>
 {{/if}}
 {{#if kind is "spaceship"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create Spaceship API keys</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://www.spaceship.com/application/api-manager/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">API Manager</a> and create a key with domains and DNS permissions.</li>
+          <li>Open <a href="https://www.spaceship.com/application/api-manager/" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">API Manager</a> and create a key with domains and DNS permissions.</li>
           <li>Copy the key and the secret. The secret is shown once.</li>
         </ol>
 {{/if}}
 {{#if kind is "route53"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create an IAM access key for Route 53</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>In <a href="https://console.aws.amazon.com/iam/home#/users" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">IAM &rarr; Users</a>, create a user (or pick one) and create an access key for it.</li>
+          <li>In <a href="https://console.aws.amazon.com/iam/home#/users" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">IAM &rarr; Users</a>, create a user (or pick one) and create an access key for it.</li>
           <li>Give it <span class="font-mono">route53:*</span> and <span class="font-mono">route53domains:*</span>, or narrower rights for the zones and domains you want to manage.</li>
         </ol>
         <p class="text-slate-500 text-xs mt-3">Only the keys are checked when you save. Missing permissions show up when you open a page, with AWS's own message. Domains whose DNS lives in Route 53 but are registered elsewhere are listed too, without expiry dates.</p>
@@ -761,7 +761,7 @@ template
 {{/if}}
 
 {{#if codeOpen}}
-      <div class="mt-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4">
+      <div class="mt-5 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 p-4">
         <label for="step-up-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
         <p class="text-slate-500 text-xs mb-2">Replacing credentials needs a second-factor code.</p>
         <input
@@ -772,7 +772,7 @@ template
           maxlength="12"
           value="{{ code }}"
           oninput="{{ code = $event.target.value }}"
-          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         />
 {{#if tfTotp}}
         <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
@@ -781,7 +781,7 @@ template
         <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
 {{/if}}
 {{#if smsNotice}}
-        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+        <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ smsNotice }}</p>
 {{/if}}
 {{#if codeError}}
         <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
@@ -806,12 +806,12 @@ template
           Cancel
         </button>
 {{#if saving}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">
+        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">
           Verifying…
         </button>
 {{/if}}
 {{#if not saving}}
-        <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        <button onclick="{{ submit() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
           Save
         </button>
 {{/if}}

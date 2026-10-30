@@ -14,13 +14,6 @@
     }
 }
 
-@theme {
-  --color-brand-300: var(--color-orange-300);
-  --color-brand-400: var(--color-orange-400);
-  --color-brand-500: var(--color-orange-500);
-  --color-brand-600: var(--color-orange-600);
-  --color-brand-700: var(--color-orange-700);
-}
 
 :root {
   --page: #f5f5f4;
@@ -34,8 +27,7 @@
   --line: rgb(255 255 255 / 0.06);
 }
 
-@theme inline {
-  --color-page: var(--page);
-  --color-panel: var(--panel);
-  --color-line: var(--line);
+
+html, body {
+  background-color: var(--page);
 }

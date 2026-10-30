@@ -479,12 +479,12 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
     <div class="min-w-0">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
 
-      <a href="/servers" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-5">
+      <a href="/servers" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-5">
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
 
@@ -505,41 +505,41 @@ template
 
         <div class="min-w-0 space-y-4 sm:space-y-5">
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">1</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">1</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Where is the server?</h2>
             </div>
 
 {{#if Providers.data.length is 0}}
             <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 mb-3 text-sm text-slate-500">
-              No provider connected yet. <a href="/providers" class="text-emerald-700 dark:text-emerald-500 hover:underline">Connect a provider</a> to create a machine from here, or add a server you already have below.
+              No provider connected yet. <a href="/providers" class="text-brand-700 dark:text-brand-500 hover:underline">Connect a provider</a> to create a machine from here, or add a server you already have below.
             </div>
 {{/if}}
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 {{#each p in providerCards}}
 {{#if providerId is p.id}}
-              <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="true" class="min-h-[56px] text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+              <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="true" class="min-h-[56px] text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-sm transition-colors">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
                 <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
               </button>
 {{/if}}
 {{#if providerId is not p.id}}
-              <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="false" class="min-h-[56px] text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="false" class="min-h-[56px] text-left rounded-xl border-2 border-line px-4 py-3 text-sm transition-colors hover:border-brand-500/40">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
                 <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
               </button>
 {{/if}}
 {{/each}}
 {{#if custom}}
-              <button onclick="{{ pickCustom() }}" aria-pressed="true" class="min-h-[56px] text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+              <button onclick="{{ pickCustom() }}" aria-pressed="true" class="min-h-[56px] text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-sm transition-colors">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Custom server</span>
                 <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
               </button>
 {{/if}}
 {{#if not custom}}
-              <button onclick="{{ pickCustom() }}" aria-pressed="false" class="min-h-[56px] text-left rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ pickCustom() }}" aria-pressed="false" class="min-h-[56px] text-left rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm transition-colors hover:border-brand-500/40">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Custom server</span>
                 <span class="block text-xs text-slate-500">Already created somewhere else. Add it with its SSH details.</span>
               </button>
@@ -551,9 +551,9 @@ template
           </section>
 
 {{#if custom}}
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">2</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">2</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Connection details</h2>
             </div>
 
@@ -563,7 +563,7 @@ template
               type="text"
               value="{{ name }}"
               oninput="{{ name = $event.target.value }}"
-              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
               placeholder="e.g. production-web"
             />
 {{#if nameError}}
@@ -580,7 +580,7 @@ template
                   autocapitalize="off"
                   value="{{ host }}"
                   oninput="{{ host = $event.target.value }}"
-                  class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+                  class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
                   placeholder="203.0.113.10"
                 />
 {{#if hostError}}
@@ -595,7 +595,7 @@ template
                   inputmode="numeric"
                   value="{{ port }}"
                   oninput="{{ port = $event.target.value }}"
-                  class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+                  class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
                 />
 {{#if portError}}
                 <p class="text-rose-500 text-xs mt-1.5">{{ portError }}</p>
@@ -610,7 +610,7 @@ template
               autocapitalize="off"
               value="{{ sshUser }}"
               oninput="{{ sshUser = $event.target.value }}"
-              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
               placeholder="root"
             />
 {{#if userError}}
@@ -624,7 +624,7 @@ template
               spellcheck="false"
               value="{{ sshKey }}"
               oninput="{{ sshKey = $event.target.value }}"
-              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
             ></textarea>
             <p class="text-slate-500 text-xs mt-1.5">Use a dedicated key without a passphrase. It is stored encrypted and never shown again.</p>
@@ -635,13 +635,13 @@ template
 {{/if}}
 
 {{#if not custom}}
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">2</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">2</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Region</h2>
             </div>
 
-            <button onclick="{{ toggleRegion() }}" aria-expanded="{{ regionOpen }}" class="w-full min-h-[48px] flex items-center justify-between gap-3 text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+            <button onclick="{{ toggleRegion() }}" aria-expanded="{{ regionOpen }}" class="w-full min-h-[48px] flex items-center justify-between gap-3 text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-colors">
 {{#if regionLabel}}
               <span class="truncate">{{ regionLabel }}</span>
 {{/if}}
@@ -653,7 +653,7 @@ template
 {{#if regionOpen}}
             <div class="mt-2 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#each r in regions}}
-              <button onclick="{{ pickRegion(r.id, r.label) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+              <button onclick="{{ pickRegion(r.id, r.label) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm text-slate-800 dark:text-slate-200 hover:bg-brand-500/10 transition-colors">
                 {{ r.label }} <span class="text-xs text-slate-500 font-mono break-all">{{ r.id }}</span>
               </button>
 {{/each}}
@@ -664,45 +664,45 @@ template
 {{/if}}
           </section>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">3</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">3</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Template</h2>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 {{#if tpl is "tylix"}}
-              <button onclick="{{ pickTpl('tylix') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+              <button onclick="{{ pickTpl('tylix') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-sm transition-colors">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Tylix</span>
                 <span class="block text-xs text-slate-500 mt-1">Standard plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
               </button>
 {{/if}}
 {{#if tpl is not "tylix"}}
-              <button onclick="{{ pickTpl('tylix') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ pickTpl('tylix') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-line px-4 py-3 text-sm transition-colors hover:border-brand-500/40">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Tylix</span>
                 <span class="block text-xs text-slate-500 mt-1">Standard plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB RAM or more.</span>
               </button>
 {{/if}}
 {{#if tpl is "standard"}}
-              <button onclick="{{ pickTpl('standard') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+              <button onclick="{{ pickTpl('standard') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-sm transition-colors">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Standard</span>
                 <span class="block text-xs text-slate-500 mt-1">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
               </button>
 {{/if}}
 {{#if tpl is not "standard"}}
-              <button onclick="{{ pickTpl('standard') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ pickTpl('standard') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-line px-4 py-3 text-sm transition-colors hover:border-brand-500/40">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Standard</span>
                 <span class="block text-xs text-slate-500 mt-1">nginx, MySQL 8.4, Redis, Supervisor, UFW, remote-monitor. No Node.js.</span>
               </button>
 {{/if}}
 {{#if tpl is "bare"}}
-              <button onclick="{{ pickTpl('bare') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+              <button onclick="{{ pickTpl('bare') }}" aria-pressed="true" class="text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-sm transition-colors">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Bare</span>
                 <span class="block text-xs text-slate-500 mt-1">Just the OS and SSH access. Add packages later from the server's Packages page.</span>
               </button>
 {{/if}}
 {{#if tpl is not "bare"}}
-              <button onclick="{{ pickTpl('bare') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ pickTpl('bare') }}" aria-pressed="false" class="text-left rounded-xl border-2 border-line px-4 py-3 text-sm transition-colors hover:border-brand-500/40">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">Bare</span>
                 <span class="block text-xs text-slate-500 mt-1">Just the OS and SSH access. Add packages later from the server's Packages page.</span>
               </button>
@@ -713,9 +713,9 @@ template
 {{/if}}
           </section>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">4</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">4</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Plan</h2>
             </div>
 
@@ -723,7 +723,7 @@ template
             <p class="text-slate-500 text-sm">Choose a region first. Prices depend on the region.</p>
 {{/if}}
 {{#if region}}
-            <button onclick="{{ togglePlan() }}" aria-expanded="{{ planOpen }}" class="w-full min-h-[48px] flex items-center justify-between gap-3 text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+            <button onclick="{{ togglePlan() }}" aria-expanded="{{ planOpen }}" class="w-full min-h-[48px] flex items-center justify-between gap-3 text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-colors">
 {{#if planLabel}}
               <span class="truncate">{{ planLabel }}</span>
 {{/if}}
@@ -735,7 +735,7 @@ template
 {{#if planOpen}}
             <div class="mt-2 max-h-80 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#each p in shownPlans}}
-              <button onclick="{{ pickPlan(p.id, p.label) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+              <button onclick="{{ pickPlan(p.id, p.label) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm text-slate-800 dark:text-slate-200 hover:bg-brand-500/10 transition-colors">
                 <span class="block font-medium">{{ p.label }}</span>
                 <span class="block text-xs text-slate-500">{{ p.memory_mb }} MB / {{ p.vcpus }} vCPU / {{ p.disk_gb }} GB / {{ p.priceText }}</span>
               </button>
@@ -748,21 +748,21 @@ template
 {{/if}}
           </section>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">5</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">5</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Operating system</h2>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 {{#each i in images}}
 {{#if image is i.id}}
-              <button onclick="{{ pickImage(i.id) }}" aria-pressed="true" class="min-h-[48px] text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-sm transition-colors">
+              <button onclick="{{ pickImage(i.id) }}" aria-pressed="true" class="min-h-[48px] text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-sm transition-colors">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">{{ i.label }}</span>
               </button>
 {{/if}}
 {{#if image is not i.id}}
-              <button onclick="{{ pickImage(i.id) }}" aria-pressed="false" class="min-h-[48px] text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-sm transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ pickImage(i.id) }}" aria-pressed="false" class="min-h-[48px] text-left rounded-xl border-2 border-line px-4 py-3 text-sm transition-colors hover:border-brand-500/40">
                 <span class="block font-semibold text-slate-900 dark:text-slate-100">{{ i.label }}</span>
               </button>
 {{/if}}
@@ -773,9 +773,9 @@ template
 {{/if}}
           </section>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">6</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">6</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Server name</h2>
             </div>
 
@@ -786,7 +786,7 @@ template
               autocapitalize="off"
               value="{{ name }}"
               oninput="{{ name = $event.target.value }}"
-              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
               placeholder="e.g. web-1"
             />
 {{#if nameError}}
@@ -796,7 +796,7 @@ template
 {{/if}}
 
 {{#if codeOpen}}
-          <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:p-6">
+          <section class="rounded-2xl border border-brand-500/30 bg-brand-500/5 p-4 sm:p-6">
             <label for="create-code" class="block text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1.5">Verification code</label>
             <input
               id="create-code"
@@ -806,7 +806,7 @@ template
               maxlength="12"
               value="{{ code }}"
               oninput="{{ code = $event.target.value }}"
-              class="w-full sm:w-64 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              class="w-full sm:w-64 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
             />
 {{#if tfTotp}}
             <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
@@ -815,7 +815,7 @@ template
             <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
 {{/if}}
 {{#if smsNotice}}
-            <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+            <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ smsNotice }}</p>
 {{/if}}
 {{#if codeError}}
             <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
@@ -837,7 +837,7 @@ template
           </div>
 {{/if}}
 
-          <div class="sticky bottom-0 z-30 -mx-4 sm:-mx-6 lg:mx-0 px-4 sm:px-6 lg:px-0 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-slate-200 dark:border-slate-800 lg:border-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+          <div class="sticky bottom-0 z-30 -mx-4 sm:-mx-6 lg:mx-0 px-4 sm:px-6 lg:px-0 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-line lg:border-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
             <a href="/servers" class="text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
 {{#if Billing.locked}}
             <button disabled title="Pay to continue" class="inline-flex items-center justify-center gap-1.5 min-h-[48px] text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
@@ -856,18 +856,18 @@ template
 {{#if not Billing.locked}}
 {{#if custom}}
 {{#if saving}}
-            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Adding…</button>
+            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Adding…</button>
 {{/if}}
 {{#if not saving}}
-            <button onclick="{{ submitCustom() }}" class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Add server</button>
+            <button onclick="{{ submitCustom() }}" class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Add server</button>
 {{/if}}
 {{/if}}
 {{#if not custom}}
 {{#if saving}}
-            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
+            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
 {{/if}}
 {{#if not saving}}
-            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</button>
+            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</button>
 {{/if}}
 {{/if}}
 {{/if}}
@@ -876,7 +876,7 @@ template
         </div>
 
         <aside class="hidden lg:block lg:sticky lg:top-6">
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your server</h2>
             <dl class="space-y-3 text-sm">
               <div>
@@ -934,7 +934,7 @@ template
               </div>
             </dl>
 {{#if twoFactorOn}}
-            <p class="text-slate-500 text-xs mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">You'll be asked for a verification code before this is created.</p>
+            <p class="text-slate-500 text-xs mt-5 pt-4 border-t border-line">You'll be asked for a verification code before this is created.</p>
 {{/if}}
           </div>
         </aside>

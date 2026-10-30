@@ -60,7 +60,7 @@ action
 
     let pending = false
     let statusText = "Ready"
-    let statusCls = base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+    let statusCls = base + "bg-brand-500/10 text-brand-700 dark:text-brand-500"
     if i.status is "creating" or i.status is "pending_upload" {
       pending = true
       statusText = "Creating"
@@ -343,13 +343,13 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
   <Sidebar active="providers" />
   <ProviderSidebar active="images" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Provider
       </a>
 
@@ -371,7 +371,7 @@ template
         </button>
 {{/if}}
 {{#if not Billing.locked}}
-        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create image</button>
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create image</button>
 {{/if}}
 {{/if}}
       </div>
@@ -394,18 +394,18 @@ template
 {{/if}}
 
       <div class="grid grid-cols-2 gap-4 mb-6">
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Images</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ list.length }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Total size</p>
           <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ totalText }}</p>
         </div>
       </div>
 
 {{#if showCreate}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 mb-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Create an image</h2>
 {{#if kind is "linode"}}
         <p class="text-slate-500 text-sm mb-4">Captures the server's largest disk. Linode limits an image to 6 GB, and a running server is captured as it is, so shut it down first for a clean copy.</p>
@@ -416,7 +416,7 @@ template
 
         <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Server</p>
         <div class="relative">
-          <button onclick="{{ toggleMachine() }}" class="w-full flex items-center justify-between text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors">
+          <button onclick="{{ toggleMachine() }}" class="w-full flex items-center justify-between text-left rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-colors">
 {{#if fMachineLabel}}
             <span>{{ fMachineLabel }}</span>
 {{/if}}
@@ -426,9 +426,9 @@ template
             <span class="text-slate-500 text-xs">&#9662;</span>
           </button>
 {{#if machineOpen}}
-          <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+          <div class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-300 dark:border-slate-700 bg-panel shadow-lg">
 {{#each m in machineOptions}}
-            <button onclick="{{ pickMachine(m.id, m.label) }}" class="block w-full text-left px-3.5 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">
+            <button onclick="{{ pickMachine(m.id, m.label) }}" class="block w-full text-left px-3.5 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-brand-500/10 transition-colors">
               {{ m.label }} <span class="text-xs text-slate-500 font-mono">{{ m.region }}</span>
             </button>
 {{/each}}
@@ -445,7 +445,7 @@ template
           type="text"
           value="{{ fLabel }}"
           oninput="{{ fLabel = $event.target.value }}"
-          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           placeholder="web-1-before-upgrade"
         />
 {{#if labelError}}
@@ -459,7 +459,7 @@ template
         <div class="flex items-center justify-end gap-3 mt-6">
           <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if creating}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not creating}}
 {{#if Billing.locked}}
@@ -472,7 +472,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create image</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create image</button>
 {{/if}}
 {{/if}}
         </div>
@@ -480,9 +480,9 @@ template
 {{/if}}
 
 {{#if list.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
-        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-          <IconPhotograph class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4">
+          <IconPhotograph class="w-6 h-6 text-brand-700 dark:text-brand-500" />
         </div>
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No images yet</h3>
         <p class="text-slate-500 text-sm max-w-sm mx-auto">Create an image from a server to keep a copy you can restore or clone from.</p>
@@ -491,11 +491,11 @@ template
 
       <div class="space-y-3">
 {{#each i in list}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <div class="flex items-start justify-between gap-4">
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <IconPhotograph class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              <div class="w-10 h-10 shrink-0 rounded-xl bg-brand-500/10 flex items-center justify-center">
+                <IconPhotograph class="w-4 h-4 text-brand-700 dark:text-brand-500" />
               </div>
               <div class="min-w-0">
                 <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ i.label }}</h3>
@@ -513,7 +513,7 @@ template
               type="text"
               value="{{ renameValue }}"
               oninput="{{ renameValue = $event.target.value }}"
-              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
             />
 {{#if renameError}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ renameError }}</p>
@@ -521,7 +521,7 @@ template
             <div class="flex items-center justify-end gap-3 mt-3">
               <button onclick="{{ cancelRename() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if renameBusy}}
-              <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+              <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not renameBusy}}
 {{#if Billing.locked}}
@@ -534,14 +534,14 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ saveRename() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Save name</button>
+              <button onclick="{{ saveRename() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save name</button>
 {{/if}}
 {{/if}}
             </div>
           </div>
 {{/if}}
 
-          <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-line">
 {{#if Billing.locked}}
             <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">

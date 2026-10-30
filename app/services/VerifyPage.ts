@@ -60,20 +60,20 @@ export function renderVerifyPage(state: VerifyState, email?: string): string {
 <title>${escapeHtml(c.title)} · ${escapeHtml(APP_NAME)}</title>
 <style>
   :root {
-    --bg: #f1f5f9; --card: #ffffff; --border: #e2e8f0;
+    --bg: #f5f5f4; --card: #ffffff; --border: #e7e5e4;
     --text: #0f172a; --muted: #64748b; --faint: #94a3b8;
-    --ok: #059669; --ok-bg: rgba(16,185,129,.12);
+    --ok: #ea580c; --ok-bg: rgba(249,115,22,.12);
     --info: #0284c7; --info-bg: rgba(14,165,233,.12);
     --warn: #d97706; --warn-bg: rgba(245,158,11,.14);
-    --btn: #10b981; --btn-hover: #34d399; --btn-text: #ffffff;
-    --glow: rgba(16,185,129,.18); --shadow: 0 10px 40px rgba(15,23,42,.08);
+    --btn: #f97316; --btn-hover: #fb923c; --btn-text: #ffffff;
+    --glow: rgba(249,115,22,.18); --shadow: 0 10px 40px rgba(15,23,42,.08);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #020617; --card: #0f172a; --border: #1e293b;
+      --bg: #0a0a0b; --card: #131315; --border: rgba(255,255,255,.06);
       --text: #f1f5f9; --muted: #94a3b8; --faint: #64748b;
-      --ok: #34d399; --info: #38bdf8; --warn: #fbbf24;
-      --btn-text: #020617; --glow: rgba(16,185,129,.14); --shadow: none;
+      --ok: #fb923c; --info: #38bdf8; --warn: #fbbf24;
+      --btn-text: #020617; --glow: rgba(249,115,22,.14); --shadow: none;
     }
   }
   * { box-sizing: border-box; }

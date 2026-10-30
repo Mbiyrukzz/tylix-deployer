@@ -10,8 +10,8 @@ template
     </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 hover:border-slate-700 transition">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4">
-          <IconBolt class="w-5 h-5 text-emerald-400" />
+        <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center mb-4">
+          <IconBolt class="w-5 h-5 text-brand-400" />
         </div>
         <h3 class="text-slate-200 font-medium mb-2">No virtual DOM</h3>
         <p class="text-slate-400 text-sm leading-relaxed">
@@ -20,28 +20,28 @@ template
         </p>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 hover:border-slate-700 transition">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4">
-          <IconDatabase class="w-5 h-5 text-emerald-400" />
+        <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center mb-4">
+          <IconDatabase class="w-5 h-5 text-brand-400" />
         </div>
         <h3 class="text-slate-200 font-medium mb-2">One ORM, four drivers</h3>
         <p class="text-slate-400 text-sm leading-relaxed">
           SQLite, PostgreSQL, MySQL, or MongoDB — swap the driver
-          in <code class="text-emerald-400">tylix.config.js</code>.
+          in <code class="text-brand-400">tylix.config.js</code>.
         </p>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 hover:border-slate-700 transition">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4">
-          <IconAdjustments class="w-5 h-5 text-emerald-400" />
+        <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center mb-4">
+          <IconAdjustments class="w-5 h-5 text-brand-400" />
         </div>
         <h3 class="text-slate-200 font-medium mb-2">Generator-first CLI</h3>
         <p class="text-slate-400 text-sm leading-relaxed">
-          <code class="text-emerald-400">tylix make:feature</code> scaffolds a model,
+          <code class="text-brand-400">tylix make:feature</code> scaffolds a model,
           migration, and full CRUD API in one command.
         </p>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 hover:border-slate-700 transition">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4">
-          <IconLockClosed class="w-5 h-5 text-emerald-400" />
+        <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center mb-4">
+          <IconLockClosed class="w-5 h-5 text-brand-400" />
         </div>
         <h3 class="text-slate-200 font-medium mb-2">Auth out of the box</h3>
         <p class="text-slate-400 text-sm leading-relaxed">
@@ -50,8 +50,8 @@ template
         </p>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 hover:border-slate-700 transition">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4">
-          <IconFire class="w-5 h-5 text-emerald-400" />
+        <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center mb-4">
+          <IconFire class="w-5 h-5 text-brand-400" />
         </div>
         <h3 class="text-slate-200 font-medium mb-2">Instant hot reload</h3>
         <p class="text-slate-400 text-sm leading-relaxed">
@@ -60,13 +60,13 @@ template
         </p>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 hover:border-slate-700 transition">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4">
-          <IconDocument class="w-5 h-5 text-emerald-400" />
+        <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center mb-4">
+          <IconDocument class="w-5 h-5 text-brand-400" />
         </div>
         <h3 class="text-slate-200 font-medium mb-2">Readable syntax</h3>
         <p class="text-slate-400 text-sm leading-relaxed">
-          Word operators like <code class="text-emerald-400">and</code>, <code class="text-emerald-400">or</code>,
-          and <code class="text-emerald-400">not</code> instead of symbols.
+          Word operators like <code class="text-brand-400">and</code>, <code class="text-brand-400">or</code>,
+          and <code class="text-brand-400">not</code> instead of symbols.
         </p>
       </div>
     </div>

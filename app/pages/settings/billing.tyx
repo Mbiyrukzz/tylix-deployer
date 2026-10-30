@@ -41,7 +41,7 @@ action
       percent = Math.min(100, Math.round((used / limit) * 100))
     }
 
-    let bar = "h-2 rounded-full bg-emerald-500"
+    let bar = "h-2 rounded-full bg-brand-500"
     if limit is not null and used >= limit {
       bar = "h-2 rounded-full bg-amber-500"
     }
@@ -168,7 +168,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="settings" />
     <SettingsSidebar active="billing" />
     <div class="min-w-0">
@@ -186,7 +186,7 @@ template
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
 {{/if}}
 {{#if message}}
-      <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ message }}</p>
+      <p class="text-brand-700 dark:text-brand-500 text-sm mb-4">{{ message }}</p>
 {{/if}}
 {{#if dueCount is not 0}}
       <div role="alert" class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-6 flex items-center justify-between gap-4">
@@ -200,12 +200,12 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">{{ planName }}</h2>
 {{#if stateName is "active"}}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ statusText }}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> {{ statusText }}
           </span>
 {{/if}}
 {{#if stateName is "lapsed"}}
@@ -254,7 +254,7 @@ template
 {{/if}}
       </div>
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-5">Usage</h2>
         <div class="space-y-5">
 {{#each r in rows}}
@@ -271,7 +271,7 @@ template
         </div>
       </div>
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Plans</h2>
                 <p class="text-slate-500 text-xs mt-4">Prices are shown in USD. You are charged the equivalent in KES at checkout. Payments are processed by Paystack, and plans renew monthly until cancelled.</p>
         <div class="divide-y divide-slate-200 dark:divide-slate-800">
@@ -282,15 +282,15 @@ template
               <p class="text-slate-500 text-xs">{{ p.summary }}</p>
             </div>
 {{#if p.current}}
-            <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500 shrink-0">Current</span>
+            <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500 shrink-0">Current</span>
 {{/if}}
 {{#if not p.current}}
 {{#if canManage}}
 {{#if busy is p.id}}
-            <button disabled class="shrink-0 rounded-xl bg-emerald-600 text-white text-sm font-medium px-4 py-2 opacity-50">Opening…</button>
+            <button disabled class="shrink-0 rounded-xl bg-brand-600 text-white text-sm font-medium px-4 py-2 opacity-50">Opening…</button>
 {{/if}}
 {{#if busy is not p.id}}
-            <button onclick="{{ choose(p.id) }}" class="shrink-0 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 transition-colors">Choose</button>
+            <button onclick="{{ choose(p.id) }}" class="shrink-0 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium px-4 py-2 transition-colors">Choose</button>
 {{/if}}
 {{/if}}
 {{/if}}

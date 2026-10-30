@@ -6,7 +6,7 @@ state
   effective: "26 October 2026"
 
 template
-  <div class="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-950 transition-colors px-4 sm:px-6 py-8 sm:py-12">
+  <div class="min-h-[calc(100vh-4rem)] bg-page transition-colors px-4 sm:px-6 py-8 sm:py-12">
     <div class="max-w-6xl mx-auto">
 
       <a href="/" class="inline-flex items-center gap-2.5 mb-8">
@@ -14,46 +14,46 @@ template
         <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
       </a>
 
-      <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
+      <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
       <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Terms of Service</h1>
       <p class="text-slate-500 text-sm mb-10">Effective {{ effective }}</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
 
         <nav class="hidden lg:block">
-          <div class="sticky top-24 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div class="sticky top-24 rounded-2xl border border-line bg-panel p-4">
             <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">On this page</p>
             <ul class="space-y-1.5 text-sm">
-              <li><a href="#agreement" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">1. Agreement</a></li>
-              <li><a href="#service" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">2. The service</a></li>
-              <li><a href="#accounts" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">3. Accounts</a></li>
-              <li><a href="#teams" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">4. Teams and roles</a></li>
-              <li><a href="#billing" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">5. Plans and billing</a></li>
-              <li><a href="#viewonly" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">6. View only mode</a></li>
-              <li><a href="#infrastructure" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">7. Your infrastructure</a></li>
-              <li><a href="#content" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">8. Your content</a></li>
-              <li><a href="#acceptable" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">9. Acceptable use</a></li>
-              <li><a href="#backups" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">10. Backups</a></li>
-              <li><a href="#availability" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">11. Availability</a></li>
-              <li><a href="#thirdparty" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">12. Third parties</a></li>
-              <li><a href="#ip" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">13. Intellectual property</a></li>
-              <li><a href="#termination" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">14. Suspension and termination</a></li>
-              <li><a href="#disclaimer" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">15. Disclaimers</a></li>
-              <li><a href="#liability" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">16. Liability</a></li>
-              <li><a href="#indemnity" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">17. Indemnity</a></li>
-              <li><a href="#changes" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">18. Changes</a></li>
-              <li><a href="#law" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">19. Governing law</a></li>
-              <li><a href="#contact" class="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400">20. Contact</a></li>
+              <li><a href="#agreement" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">1. Agreement</a></li>
+              <li><a href="#service" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">2. The service</a></li>
+              <li><a href="#accounts" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">3. Accounts</a></li>
+              <li><a href="#teams" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">4. Teams and roles</a></li>
+              <li><a href="#billing" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">5. Plans and billing</a></li>
+              <li><a href="#viewonly" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">6. View only mode</a></li>
+              <li><a href="#infrastructure" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">7. Your infrastructure</a></li>
+              <li><a href="#content" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">8. Your content</a></li>
+              <li><a href="#acceptable" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">9. Acceptable use</a></li>
+              <li><a href="#backups" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">10. Backups</a></li>
+              <li><a href="#availability" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">11. Availability</a></li>
+              <li><a href="#thirdparty" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">12. Third parties</a></li>
+              <li><a href="#ip" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">13. Intellectual property</a></li>
+              <li><a href="#termination" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">14. Suspension and termination</a></li>
+              <li><a href="#disclaimer" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">15. Disclaimers</a></li>
+              <li><a href="#liability" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">16. Liability</a></li>
+              <li><a href="#indemnity" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">17. Indemnity</a></li>
+              <li><a href="#changes" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">18. Changes</a></li>
+              <li><a href="#law" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">19. Governing law</a></li>
+              <li><a href="#contact" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400">20. Contact</a></li>
             </ul>
           </div>
         </nav>
 
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-8 shadow-sm dark:shadow-none min-w-0 break-words">
+        <div class="rounded-2xl border border-line bg-panel p-5 sm:p-8 shadow-sm dark:shadow-none min-w-0 break-words">
 
           <section id="agreement" class="mb-8 sm:mb-10 scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">1. Agreement</h2>
             <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">These Terms of Service ("Terms") are a contract between you and Ashmif Office Solutions Ltd, a company registered in Kenya ("we", "us", "Tylix"). They govern your access to and use of Tylix Deploy, including the website, dashboard, APIs and everything we provide through them (the "Service").</p>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">By creating an account, ticking the agreement box, or using the Service, you accept these Terms and our <a href="/privacy" class="text-emerald-700 dark:text-emerald-400 hover:underline">Privacy Policy</a>. If you use the Service for a company or team, you confirm you have authority to bind it, and "you" includes that organisation. You must be at least 18 years old.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">By creating an account, ticking the agreement box, or using the Service, you accept these Terms and our <a href="/privacy" class="text-brand-700 dark:text-brand-400 hover:underline">Privacy Policy</a>. If you use the Service for a company or team, you confirm you have authority to bind it, and "you" includes that organisation. You must be at least 18 years old.</p>
           </section>
 
           <section id="service" class="mb-8 sm:mb-10 scroll-mt-24">
@@ -86,7 +86,7 @@ template
           <section id="billing" class="mb-8 sm:mb-10 scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">5. Plans, billing and renewal</h2>
             <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
-              <li><strong>Plans.</strong> We offer paid plans (currently Personal, Pro and Business) with limits on team members, servers, sites and connections. Current prices and limits are on the <a href="/pricing" class="text-emerald-700 dark:text-emerald-400 hover:underline">pricing page</a>.</li>
+              <li><strong>Plans.</strong> We offer paid plans (currently Personal, Pro and Business) with limits on team members, servers, sites and connections. Current prices and limits are on the <a href="/pricing" class="text-brand-700 dark:text-brand-400 hover:underline">pricing page</a>.</li>
               <li><strong>Currency.</strong> Prices are shown in US dollars and charged in Kenyan shillings (KES) at checkout. The amount in KES may vary with exchange rates, and your bank or card issuer may add its own fees.</li>
               <li><strong>Payment processing.</strong> Payments are handled by Paystack. We do not see or store your full card details.</li>
               <li><strong>Renewal.</strong> Subscriptions renew automatically each month until you cancel. By subscribing you authorise us and Paystack to charge you each period.</li>
@@ -196,15 +196,15 @@ template
           <section id="contact" class="scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">20. Contact</h2>
             <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Ashmif Office Solutions Ltd, Mombasa, Kenya</p>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Website: <a href="https://ashmif.com" target="_blank" rel="noopener" class="text-emerald-700 dark:text-emerald-400 hover:underline">ashmif.com</a></p>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Questions about these Terms: <a href="mailto:legal@tylix.dev" class="text-emerald-700 dark:text-emerald-400 hover:underline">legal@tylix.dev</a></p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-1">Website: <a href="https://ashmif.com" target="_blank" rel="noopener" class="text-brand-700 dark:text-brand-400 hover:underline">ashmif.com</a></p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Questions about these Terms: <a href="mailto:legal@tylix.dev" class="text-brand-700 dark:text-brand-400 hover:underline">legal@tylix.dev</a></p>
           </section>
 
         </div>
       </div>
 
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-8 text-sm">
-        <a href="/privacy" class="text-emerald-700 dark:text-emerald-400 hover:underline">Privacy Policy &rarr;</a>
+        <a href="/privacy" class="text-brand-700 dark:text-brand-400 hover:underline">Privacy Policy &rarr;</a>
         <p class="text-slate-500">© 2026 Tylix by <a href="https://ashmif.com" target="_blank" rel="noopener" class="hover:underline">Ashmif</a></p>
       </div>
     </div>

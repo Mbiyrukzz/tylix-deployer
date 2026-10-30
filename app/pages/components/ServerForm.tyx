@@ -108,14 +108,14 @@ template
   </button>
 {{/if}}
 {{#if not server}}
-  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
     <IconPlus class="w-4 h-4" /> Add server
   </button>
 {{/if}}
 
 {{#if showModal}}
   <div role="dialog" aria-modal="true" aria-labelledby="server-form-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-900 shadow-xl p-6">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-line bg-panel shadow-xl p-6">
       <div class="flex items-center justify-between mb-5">
         <h3 id="server-form-title" class="text-slate-900 dark:text-slate-200 font-medium">
 {{#if server}}
@@ -137,7 +137,7 @@ template
         autofocus
         value="{{ name }}"
         oninput="{{ name = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="e.g. Production web 1"
       />
 {{#if nameError}}
@@ -153,7 +153,7 @@ template
         type="text"
         value="{{ host }}"
         oninput="{{ host = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="203.0.113.10 or server.example.com"
       />
 {{#if hostError}}
@@ -172,7 +172,7 @@ template
             inputmode="numeric"
             value="{{ port }}"
             oninput="{{ port = $event.target.value }}"
-            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           />
 {{#if portError}}
           <p class="text-rose-500 text-xs mb-3">{{ portError }}</p>
@@ -185,7 +185,7 @@ template
             type="text"
             value="{{ sshUser }}"
             oninput="{{ sshUser = $event.target.value }}"
-            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+            class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
           />
 {{#if userError}}
           <p class="text-rose-500 text-xs mb-3">{{ userError }}</p>
@@ -201,7 +201,7 @@ template
         autocomplete="off"
         value="{{ sshKey }}"
         oninput="{{ sshKey = $event.target.value }}"
-        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 resize-none transition-colors"
+        class="w-full mb-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 resize-none transition-colors"
         placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
       ></textarea>
 {{#if keyError}}
@@ -223,18 +223,18 @@ template
           Cancel
         </button>
 {{#if saving}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">
+        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">
           Saving…
         </button>
 {{/if}}
 {{#if not saving}}
 {{#if server}}
-        <button onclick="{{ submit() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        <button onclick="{{ submit() }}" class="inline-flex items-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
           Save changes
         </button>
 {{/if}}
 {{#if not server}}
-        <button onclick="{{ submit() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        <button onclick="{{ submit() }}" class="inline-flex items-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
           <IconPlus class="w-4 h-4" /> Add server
         </button>
 {{/if}}

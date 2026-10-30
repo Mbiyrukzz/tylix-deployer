@@ -85,7 +85,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="settings" />
     <SettingsSidebar active="account" />
     <div class="min-w-0">
@@ -99,22 +99,22 @@ template
 {{/if}}
 
 {{#if not loading}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Profile</h2>
         <p class="text-slate-500 text-sm mb-5">This is the name shown in the deployer.</p>
 
         <label for="account-name" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Name</label>
-        <input id="account-name" type="text" maxlength="100" value="{{ name }}" autocomplete="name" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="account-name" type="text" maxlength="100" value="{{ name }}" autocomplete="name" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if nameError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ nameError }}</p>
 {{/if}}
 
         <label class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Email</label>
-        <div class="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3.5 py-2.5">
+        <div class="flex items-center gap-3 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 px-3.5 py-2.5">
           <span class="flex-1 min-w-0 text-sm text-slate-600 dark:text-slate-400 font-mono truncate">{{ email }}</span>
 {{#if verified}}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Verified
           </span>
 {{/if}}
 {{#if not verified}}
@@ -131,17 +131,17 @@ template
 
         <div class="flex items-center gap-4 mt-6">
 {{#if saving}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
             Saving…
           </button>
 {{/if}}
 {{#if not saving}}
-          <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+          <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
             Save changes
           </button>
 {{/if}}
 {{#if saved}}
-          <span role="status" class="text-emerald-700 dark:text-emerald-500 text-sm font-medium">Saved</span>
+          <span role="status" class="text-brand-700 dark:text-brand-500 text-sm font-medium">Saved</span>
 {{/if}}
         </div>
       </div>

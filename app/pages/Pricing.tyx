@@ -60,19 +60,19 @@ action
       tagline: this.tagline(p.id),
       featured: f,
       cardClass: f
-        ? "relative flex flex-col rounded-3xl bg-slate-900 ring-1 ring-emerald-500/40 p-7 sm:p-8 shadow-2xl shadow-emerald-500/20 md:-my-3"
-        : "relative flex flex-col rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 sm:p-8 shadow-sm dark:shadow-none",
+        ? "relative flex flex-col rounded-3xl bg-slate-900 ring-1 ring-brand-500/40 p-7 sm:p-8 shadow-2xl shadow-brand-500/20 md:-my-3"
+        : "relative flex flex-col rounded-3xl border border-line bg-panel p-7 sm:p-8 shadow-sm dark:shadow-none",
       nameClass: f ? "text-white text-lg font-semibold" : "text-slate-900 dark:text-slate-100 text-lg font-semibold",
       mutedClass: f ? "text-slate-400" : "text-slate-500",
       priceClass: f ? "text-5xl font-bold tracking-tight text-white" : "text-5xl font-bold tracking-tight text-slate-900 dark:text-slate-100",
-      dividerClass: f ? "border-slate-800" : "border-slate-100 dark:border-slate-800/70",
+      dividerClass: f ? "border-slate-800" : "border-line/70",
       labelClass: f ? "text-slate-300" : "text-slate-600 dark:text-slate-400",
       valueClass: f ? "font-semibold text-white" : "font-semibold text-slate-900 dark:text-slate-100",
       btnClass: f
-        ? "block w-full text-center text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-5 py-3 hover:bg-emerald-400 transition-all"
+        ? "block w-full text-center text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-5 py-3 hover:bg-brand-400 transition-all"
         : "block w-full text-center text-sm font-semibold text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors",
       thClass: f
-        ? "text-center font-semibold text-emerald-700 dark:text-emerald-400 px-5 py-4 bg-emerald-500/5"
+        ? "text-center font-semibold text-brand-700 dark:text-brand-400 px-5 py-4 bg-brand-500/5"
         : "text-center font-semibold text-slate-900 dark:text-slate-100 px-5 py-4",
       features: [
         { label: "Team members", value: this.describe(lim.members) },
@@ -96,7 +96,7 @@ action
         id: p.id,
         value: this.describe(p.limits[k[1]]),
         cls: p.id is this.featuredId
-          ? "text-center font-semibold text-slate-900 dark:text-slate-100 px-5 py-3.5 bg-emerald-500/5"
+          ? "text-center font-semibold text-slate-900 dark:text-slate-100 px-5 py-3.5 bg-brand-500/5"
           : "text-center font-medium text-slate-900 dark:text-slate-100 px-5 py-3.5"
       }))
     }))
@@ -135,17 +135,17 @@ template
     <section class="relative overflow-hidden px-4 sm:px-6 pt-14 sm:pt-24 pb-16 sm:pb-24">
 
       <div class="relative max-w-3xl mx-auto text-center">
-        <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-6">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Simple monthly pricing
+        <span class="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3.5 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-6">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Simple monthly pricing
         </span>
         <h1 class="text-4xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-5">
-          Deploy more.<br class="hidden sm:block" /> <span class="text-emerald-600 dark:text-emerald-500">Pay for what you run.</span>
+          Deploy more.<br class="hidden sm:block" /> <span class="text-brand-600 dark:text-brand-500">Pay for what you run.</span>
         </h1>
         <p class="text-slate-600 dark:text-slate-400 text-base sm:text-lg leading-relaxed max-w-xl mx-auto mb-8">
           One dashboard for your servers, sites and domains. Pick a plan, cancel any time.
         </p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a href="/register" class="w-full sm:w-auto text-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-7 py-3 shadow-sm hover:bg-emerald-400 transition-all">Start free</a>
+          <a href="/register" class="w-full sm:w-auto text-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-7 py-3 shadow-sm hover:bg-brand-400 transition-all">Start free</a>
           <a href="#compare" class="w-full sm:w-auto text-center text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-7 py-3 hover:bg-white dark:hover:bg-slate-900 transition-colors">Compare plans</a>
         </div>
       </div>
@@ -164,7 +164,7 @@ template
 
 {{#if not loading}}
 {{#if failed}}
-        <div class="max-w-xl mx-auto rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
+        <div class="max-w-xl mx-auto rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
           <p class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">Couldn't load pricing</p>
           <p class="text-slate-500 text-sm">Please refresh the page or try again in a moment.</p>
         </div>
@@ -175,7 +175,7 @@ template
 {{#each p in plans}}
           <div class="{{ p.cardClass }}">
 {{#if p.featured}}
-            <span class="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex rounded-full bg-emerald-500 px-3.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-950 whitespace-nowrap">Most popular</span>
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex rounded-full bg-brand-500 px-3.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-950 whitespace-nowrap">Most popular</span>
 {{/if}}
             <h2 class="{{ p.nameClass }}">{{ p.name }}</h2>
             <p class="{{ p.mutedClass }} text-sm mt-1.5 min-h-[2.5rem]">{{ p.tagline }}</p>
@@ -190,7 +190,7 @@ template
             <ul class="mt-7 pt-6 border-t {{ p.dividerClass }} space-y-4 flex-1">
 {{#each f in p.features}}
               <li class="flex items-center gap-3 text-sm">
-                <span class="w-5 h-5 shrink-0 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <span class="w-5 h-5 shrink-0 rounded-full bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" class="w-3 h-3"><path d="M4.5 10.5l3.5 3.5 7.5-8" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </span>
                 <span class="{{ p.labelClass }} flex-1">{{ f.label }}</span>
@@ -218,8 +218,8 @@ template
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 {{#each i in included}}
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
-            <span class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
+            <span class="w-9 h-9 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-3">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" class="w-4 h-4"><path d="M4.5 10.5l3.5 3.5 7.5-8" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </span>
             <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-1">{{ i.title }}</h3>
@@ -232,7 +232,7 @@ template
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Works with your cloud</p>
           <div class="flex flex-wrap items-center justify-center gap-2.5">
 {{#each name in providers}}
-            <span class="rounded-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-1.5 text-sm text-slate-700 dark:text-slate-300">{{ name }}</span>
+            <span class="rounded-full border border-slate-300 dark:border-slate-800 bg-panel px-4 py-1.5 text-sm text-slate-700 dark:text-slate-300">{{ name }}</span>
 {{/each}}
           </div>
         </div>
@@ -244,11 +244,11 @@ template
     <section id="compare" class="px-4 sm:px-6 pb-16 sm:pb-24 scroll-mt-24">
       <div class="max-w-4xl mx-auto">
         <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Compare plans</h2>
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-x-auto">
+        <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-x-auto">
           <table class="w-full min-w-[480px] text-sm">
             <thead>
-              <tr class="border-b border-slate-200 dark:border-slate-800">
-                <th class="sticky left-0 bg-white dark:bg-slate-900 text-left font-medium text-slate-500 text-xs uppercase tracking-wider px-5 py-4">Limits</th>
+              <tr class="border-b border-line">
+                <th class="sticky left-0 bg-panel text-left font-medium text-slate-500 text-xs uppercase tracking-wider px-5 py-4">Limits</th>
 {{#each p in plans}}
                 <th class="{{ p.thClass }}">{{ p.name }}</th>
 {{/each}}
@@ -256,8 +256,8 @@ template
             </thead>
             <tbody>
 {{#each row in compareRows}}
-              <tr class="border-b border-slate-100 dark:border-slate-800/70 last:border-b-0">
-                <td class="sticky left-0 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 px-5 py-3.5">{{ row.label }}</td>
+              <tr class="border-b border-line/70 last:border-b-0">
+                <td class="sticky left-0 bg-panel text-slate-600 dark:text-slate-400 px-5 py-3.5">{{ row.label }}</td>
 {{#each c in row.cells}}
                 <td class="{{ c.cls }}">{{ c.value }}</td>
 {{/each}}
@@ -276,7 +276,7 @@ template
         <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Frequently asked questions</h2>
         <div class="space-y-3">
 {{#each f in faqs}}
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden">
+          <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
             <button onclick="{{ toggleFaq(f.id) }}" aria-expanded="{{ openId is f.id }}" class="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
               <span class="text-slate-900 dark:text-slate-100 text-sm sm:text-base font-medium">{{ f.q }}</span>
               <span class="w-7 h-7 shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
@@ -302,7 +302,7 @@ template
           <h2 class="text-2xl sm:text-4xl font-bold tracking-tight text-white mb-3">Ready to ship your next site?</h2>
           <p class="text-slate-400 text-sm sm:text-base max-w-md mx-auto mb-8">Connect a server, create a site and go live in minutes.</p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a href="/register" class="w-full sm:w-auto text-center text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-7 py-3 hover:bg-emerald-400 transition-all">Create your account</a>
+            <a href="/register" class="w-full sm:w-auto text-center text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-7 py-3 hover:bg-brand-400 transition-all">Create your account</a>
             <a href="/login" class="w-full sm:w-auto text-center text-sm text-slate-200 border border-slate-700 rounded-full px-7 py-3 hover:bg-slate-800 transition-colors">Sign in</a>
           </div>
         </div>

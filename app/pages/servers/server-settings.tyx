@@ -49,7 +49,7 @@ state
   diskText: ""
   memPct: 0
   diskPct: 0
-  memBar: "bg-emerald-500"
+  memBar: "bg-brand-500"
   diskBar: "bg-sky-500"
   uptimeText: ""
   fZone: ""
@@ -135,7 +135,7 @@ action
   pill(status) {
     const base = "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 "
     if status is "online" {
-      return base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25"
+      return base + "bg-brand-500/10 text-brand-700 dark:text-brand-400 ring-brand-500/25"
     }
     if status is "offline" {
       return base + "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25"
@@ -145,7 +145,7 @@ action
 
   ping(status) {
     if status is "online" {
-      return "absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping"
+      return "absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-60 animate-ping"
     }
     return "hidden"
   }
@@ -266,9 +266,9 @@ action
     return this.rawServices.map((s) => Object.assign({}, s, {
       running: s.state is "active",
       busy: this.working is ("restart:" + s.id),
-      dot: s.state is "active" ? "bg-emerald-500" : "bg-rose-500",
+      dot: s.state is "active" ? "bg-brand-500" : "bg-rose-500",
       badge: s.state is "active"
-        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25"
+        ? "bg-brand-500/10 text-brand-700 dark:text-brand-400 ring-brand-500/25"
         : "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25"
     }))
   }
@@ -301,7 +301,7 @@ action
       this.diskPct = this.pct(i.disk_used_mb, i.disk_total_mb)
       this.memStyle = this.barStyle(i.mem_used_mb, i.mem_total_mb)
       this.diskStyle = this.barStyle(i.disk_used_mb, i.disk_total_mb)
-      this.memBar = this.barColor(this.memPct, "bg-emerald-500")
+      this.memBar = this.barColor(this.memPct, "bg-brand-500")
       this.diskBar = this.barColor(this.diskPct, "bg-sky-500")
       this.fZone = i.timezone
       this.fHostname = i.hostname
@@ -418,8 +418,8 @@ action
       this.confirmIconCls = "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20"
       this.confirmBtnCls = "bg-amber-500 text-white dark:text-slate-950 hover:bg-amber-400"
     } else {
-      this.confirmIconCls = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20"
-      this.confirmBtnCls = "bg-emerald-500 text-white dark:text-slate-950 hover:bg-emerald-400"
+      this.confirmIconCls = "bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-brand-500/20"
+      this.confirmBtnCls = "bg-brand-500 text-white dark:text-slate-950 hover:bg-brand-400"
     }
 
     this.confirmOpen = true
@@ -841,7 +841,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="settings" serverId="{{ serverId }}" />
@@ -867,18 +867,18 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-6 sm:p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if server}}
 
 {{#if flash}}
-      <div role="status" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-white dark:bg-slate-900 px-4 py-3 shadow-xl shadow-emerald-500/10">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 shrink-0 mt-0.5 text-emerald-500">
+      <div role="status" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-brand-500/30 bg-panel px-4 py-3 shadow-xl shadow-brand-500/10">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 shrink-0 mt-0.5 text-brand-500">
           <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <p class="flex-1 min-w-0 text-slate-800 dark:text-slate-200 text-sm break-words">{{ flash }}</p>
@@ -890,7 +890,7 @@ template
       </div>
 {{/if}}
 {{#if flashError}}
-      <div role="alert" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-rose-500/30 bg-white dark:bg-slate-900 px-4 py-3 shadow-xl shadow-rose-500/10">
+      <div role="alert" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-rose-500/30 bg-panel px-4 py-3 shadow-xl shadow-rose-500/10">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 shrink-0 mt-0.5 text-rose-500">
           <circle cx="10" cy="10" r="7.5" />
           <path d="M10 6.5v4M10 13.5h.01" stroke-linecap="round" />
@@ -904,16 +904,16 @@ template
       </div>
 {{/if}}
 
-      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
         <IconArrowLeft class="w-4 h-4" /> Overview
       </a>
 
-      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-7 sm:py-9 mb-4 sm:mb-6 shadow-sm dark:shadow-none">
+      <div class="relative overflow-hidden rounded-2xl border border-line bg-panel px-5 sm:px-8 py-7 sm:py-9 mb-4 sm:mb-6 shadow-sm dark:shadow-none">
         <div class="pointer-events-none absolute -right-16 -top-16 w-64 h-64 rounded-full bg-sky-500/10 blur-3xl"></div>
 
         <div class="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div class="min-w-0 flex items-start gap-4 sm:gap-5">
-            <span class="hidden sm:flex items-center justify-center w-14 h-14 shrink-0 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/25">
+            <span class="hidden sm:flex items-center justify-center w-14 h-14 shrink-0 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-1 ring-brand-500/25">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="w-7 h-7">
                 <rect x="3" y="4" width="18" height="6.5" rx="2" />
                 <rect x="3" y="13.5" width="18" height="6.5" rx="2" />
@@ -921,22 +921,22 @@ template
               </svg>
             </span>
             <div class="min-w-0">
-              <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Server settings
+              <span class="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-3">
+                <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Server settings
               </span>
               <h1 class="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-slate-900 dark:text-slate-100 break-all sm:break-normal sm:truncate mb-3">{{ server.name }}</h1>
 
-              <div class="inline-flex max-w-full items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 pl-3.5 pr-1.5 py-1.5">
+              <div class="inline-flex max-w-full items-center gap-2 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 pl-3.5 pr-1.5 py-1.5">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 shrink-0 text-slate-400">
                   <path d="M4 6l4 4-4 4M10 15h6" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
                 <code class="min-w-0 truncate text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-mono select-all">{{ sshCmd }}</code>
                 <button onclick="{{ copy(sshCmd, 'ssh') }}" title="Copy the SSH command" aria-label="Copy the SSH command" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors">
 {{#if copied is "ssh"}}
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-brand-500">
                     <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
-                  <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+                  <span class="text-brand-600 dark:text-brand-400">Copied</span>
 {{/if}}
 {{#if copied is not "ssh"}}
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
@@ -966,21 +966,21 @@ template
       </div>
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+        <div class="min-w-0 rounded-2xl border border-line bg-panel px-4 py-3.5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Last checked</p>
           <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ checkedText }}</p>
         </div>
 
 {{#if sys}}
-        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+        <div class="min-w-0 rounded-2xl border border-line bg-panel px-4 py-3.5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Uptime</p>
           <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold tracking-tight">{{ uptimeText }}</p>
         </div>
-        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+        <div class="min-w-0 rounded-2xl border border-line bg-panel px-4 py-3.5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Memory</p>
           <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold tracking-tight">{{ memPct }}%</p>
         </div>
-        <div class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm dark:shadow-none">
+        <div class="min-w-0 rounded-2xl border border-line bg-panel px-4 py-3.5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Disk</p>
           <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold tracking-tight">{{ diskPct }}%</p>
         </div>
@@ -1014,9 +1014,9 @@ template
 
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
 
-        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+        <section class="min-w-0 rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center gap-3 mb-5">
-            <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+            <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-1 ring-brand-500/20">
               <IconCog class="w-5 h-5" />
             </span>
             <div class="min-w-0">
@@ -1028,24 +1028,24 @@ template
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label for="f-name" class="block text-slate-500 text-xs font-medium mb-1.5">Name</label>
-              <input id="f-name" type="text" value="{{ fName }}" oninput="{{ fName = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+              <input id="f-name" type="text" value="{{ fName }}" oninput="{{ fName = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
             </div>
             <div>
               <label for="f-user" class="block text-slate-500 text-xs font-medium mb-1.5">SSH user</label>
-              <input id="f-user" type="text" autocapitalize="none" spellcheck="false" value="{{ fUser }}" oninput="{{ fUser = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+              <input id="f-user" type="text" autocapitalize="none" spellcheck="false" value="{{ fUser }}" oninput="{{ fUser = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
             </div>
             <div>
               <label for="f-host" class="block text-slate-500 text-xs font-medium mb-1.5">Host</label>
-              <input id="f-host" type="text" autocapitalize="none" spellcheck="false" value="{{ fHost }}" oninput="{{ fHost = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+              <input id="f-host" type="text" autocapitalize="none" spellcheck="false" value="{{ fHost }}" oninput="{{ fHost = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
             </div>
             <div>
               <label for="f-port" class="block text-slate-500 text-xs font-medium mb-1.5">SSH port</label>
-              <input id="f-port" type="text" inputmode="numeric" value="{{ fPort }}" oninput="{{ fPort = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+              <input id="f-port" type="text" inputmode="numeric" value="{{ fPort }}" oninput="{{ fPort = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
             </div>
           </div>
 
           <div class="flex flex-col sm:flex-row gap-2 mt-5">
-            <button onclick="{{ saveGeneral() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+            <button onclick="{{ saveGeneral() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
               {{#if working is "general"}}Saving…{{/if}}{{#if working is not "general"}}Save changes{{/if}}
             </button>
             <button onclick="{{ testConnection() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -1053,7 +1053,7 @@ template
             </button>
           </div>
 
-          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-5 border-t border-line">
             <div class="min-w-0">
               <dt class="text-slate-500 text-xs mb-1">Last checked</dt>
               <dd class="text-slate-900 dark:text-slate-100 text-sm">{{ checkedText }}</dd>
@@ -1081,9 +1081,9 @@ template
           </dl>
         </section>
 
-        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+        <section class="min-w-0 rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center gap-3 mb-5">
-            <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+            <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-1 ring-brand-500/20">
               <IconKey class="w-5 h-5" />
             </span>
             <div class="min-w-0">
@@ -1092,18 +1092,18 @@ template
             </div>
           </div>
 
-          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-3.5 sm:p-4">
+          <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/50 p-3.5 sm:p-4">
             <div class="flex items-center justify-between gap-3 mb-2.5">
               <span class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">SHA256 fingerprint</span>
 {{#if key.readable}}
               <div class="shrink-0 flex items-center gap-2">
 {{#if revealed}}
-                <button onclick="{{ copy(deployFp, 'fp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button onclick="{{ copy(deployFp, 'fp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-panel px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
 {{#if copied is "fp"}}
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-brand-500">
                     <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
-                  <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+                  <span class="text-brand-600 dark:text-brand-400">Copied</span>
 {{/if}}
 {{#if copied is not "fp"}}
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
@@ -1113,10 +1113,10 @@ template
                   Copy
 {{/if}}
                 </button>
-                <button onclick="{{ hideKey() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Hide</button>
+                <button onclick="{{ hideKey() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-panel px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Hide</button>
 {{/if}}
 {{#if not revealed}}
-                <button onclick="{{ reveal() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button onclick="{{ reveal() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-panel px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                   {{#if working is "reveal"}}Checking…{{/if}}{{#if working is not "reveal"}}Reveal{{/if}}
                 </button>
 {{/if}}
@@ -1139,7 +1139,7 @@ template
           </dl>
 
           <div class="flex flex-col sm:flex-row gap-2 mt-5">
-            <button onclick="{{ rotate() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+            <button onclick="{{ rotate() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
               {{#if working is "rotate"}}Replacing…{{/if}}{{#if working is not "rotate"}}Rotate key{{/if}}
             </button>
             <button onclick="{{ toggleKeyForm() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Paste my own key</button>
@@ -1148,9 +1148,9 @@ template
           <p class="text-slate-500 text-xs mt-3 leading-relaxed">Fingerprints stay hidden until you reveal them, and hide again after a minute. Revealing needs your two-factor code when two-factor is on. Rotating installs a new key, checks that it can log in, saves it, and only then removes the old one, so the deployer can't lock itself out.</p>
 
 {{#if showKeyForm}}
-          <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
+          <div class="mt-5 pt-5 border-t border-line">
             <label for="f-key" class="block text-slate-500 text-xs font-medium mb-1.5">Private key (no passphrase)</label>
-            <textarea id="f-key" rows="6" spellcheck="false" autocapitalize="off" value="{{ fKey }}" oninput="{{ fKey = $event.target.value }}" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-xs font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10"></textarea>
+            <textarea id="f-key" rows="6" spellcheck="false" autocapitalize="off" value="{{ fKey }}" oninput="{{ fKey = $event.target.value }}" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-xs font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"></textarea>
             <p class="text-slate-500 text-xs mt-2">Use this for servers you added yourself. The matching public key must already be on the server.</p>
             <button onclick="{{ savePastedKey() }}" class="mt-3 w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               {{#if working is "pastekey"}}Saving…{{/if}}{{#if working is not "pastekey"}}Save key{{/if}}
@@ -1160,10 +1160,10 @@ template
         </section>
 
 {{#if hostKey}}
-        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+        <section class="min-w-0 rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between gap-3 mb-5">
             <div class="flex items-center gap-3 min-w-0">
-              <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+              <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-1 ring-brand-500/20">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
                   <path d="M12 3l8 3v5.5c0 4.5-3.2 8.2-8 9.5-4.8-1.3-8-5-8-9.5V6l8-3z" stroke-linejoin="round" />
                   <path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round" />
@@ -1179,7 +1179,7 @@ template
             <span class="shrink-0 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25">Key changed</span>
 {{/if}}
 {{#if not hostKey.changed}}
-            <span class="shrink-0 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25">Pinned</span>
+            <span class="shrink-0 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 bg-brand-500/10 text-brand-700 dark:text-brand-400 ring-brand-500/25">Pinned</span>
 {{/if}}
 {{/if}}
 {{#if not hostKey.pinned}}
@@ -1188,17 +1188,17 @@ template
           </div>
 
 {{#if hostKey.pinned}}
-          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-3.5 sm:p-4">
+          <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/50 p-3.5 sm:p-4">
             <div class="flex items-center justify-between gap-3 mb-2.5">
               <span class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Pinned fingerprint <span class="normal-case font-mono text-slate-400">({{ hostKey.type }})</span></span>
               <div class="shrink-0 flex items-center gap-2">
 {{#if revealed}}
-                <button onclick="{{ copy(hostFp, 'hfp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button onclick="{{ copy(hostFp, 'hfp') }}" title="Copy the fingerprint" aria-label="Copy the fingerprint" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-panel px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
 {{#if copied is "hfp"}}
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-500">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-brand-500">
                     <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
-                  <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+                  <span class="text-brand-600 dark:text-brand-400">Copied</span>
 {{/if}}
 {{#if copied is not "hfp"}}
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
@@ -1208,10 +1208,10 @@ template
                   Copy
 {{/if}}
                 </button>
-                <button onclick="{{ hideKey() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Hide</button>
+                <button onclick="{{ hideKey() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-panel px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Hide</button>
 {{/if}}
 {{#if not revealed}}
-                <button onclick="{{ reveal() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button onclick="{{ reveal() }}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-panel px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                   {{#if working is "reveal"}}Checking…{{/if}}{{#if working is not "reveal"}}Reveal{{/if}}
                 </button>
 {{/if}}
@@ -1246,7 +1246,7 @@ template
           <p class="text-slate-500 text-sm leading-relaxed">No host key is pinned yet, so the deployer trusts whatever key the server shows on first contact. Pin it to make every later connection fail if the key ever differs.</p>
 
           <div class="flex flex-col sm:flex-row gap-2 mt-5">
-            <button onclick="{{ pinHostKey() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+            <button onclick="{{ pinHostKey() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
               {{#if working is "pinkey"}}Reading key…{{/if}}{{#if working is not "pinkey"}}Pin host key{{/if}}
             </button>
           </div>
@@ -1256,7 +1256,7 @@ template
         </section>
 {{/if}}
 
-        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+        <section class="min-w-0 rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between gap-3 mb-5">
             <div class="flex items-center gap-3 min-w-0">
               <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-1 ring-sky-500/20">
@@ -1331,13 +1331,13 @@ template
           <p class="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-amber-700 dark:text-amber-400 text-sm">The server has installed updates that need a reboot to finish.</p>
 {{/if}}
 
-          <div class="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 space-y-5">
+          <div class="mt-6 pt-5 border-t border-line space-y-5">
             <div>
               <label for="f-zone" class="block text-slate-500 text-xs font-medium mb-1.5">Timezone <span class="text-slate-400 font-normal">(cron jobs follow this)</span></label>
               <div class="flex flex-col sm:flex-row gap-2">
-                <input id="f-zone" type="text" autocapitalize="none" spellcheck="false" value="{{ fZone }}" oninput="{{ fZone = $event.target.value }}" placeholder="Africa/Nairobi" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
+                <input id="f-zone" type="text" autocapitalize="none" spellcheck="false" value="{{ fZone }}" oninput="{{ fZone = $event.target.value }}" placeholder="Africa/Nairobi" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
                 <button onclick="{{ useBrowserZone() }}" class="shrink-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Use mine</button>
-                <button onclick="{{ saveZone() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                <button onclick="{{ saveZone() }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
                   {{#if working is "zone"}}Saving…{{/if}}{{#if working is not "zone"}}Save{{/if}}
                 </button>
               </div>
@@ -1346,8 +1346,8 @@ template
             <div>
               <label for="f-hostname" class="block text-slate-500 text-xs font-medium mb-1.5">Hostname</label>
               <div class="flex flex-col sm:flex-row gap-2">
-                <input id="f-hostname" type="text" autocapitalize="none" spellcheck="false" value="{{ fHostname }}" oninput="{{ fHostname = $event.target.value }}" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10" />
-                <button onclick="{{ saveHostname() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                <input id="f-hostname" type="text" autocapitalize="none" spellcheck="false" value="{{ fHostname }}" oninput="{{ fHostname = $event.target.value }}" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
+                <button onclick="{{ saveHostname() }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
                   {{#if working is "hostname"}}Saving…{{/if}}{{#if working is not "hostname"}}Save{{/if}}
                 </button>
               </div>
@@ -1357,7 +1357,7 @@ template
             <p class="text-slate-500 text-xs">Automatic updates can only be managed on Debian and Ubuntu servers.</p>
 {{/if}}
 {{#if sys.auto_updates is "on"}}
-            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
               <div class="min-w-0">
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Automatic security updates</p>
                 <p class="text-slate-500 text-xs">On. The server installs security patches by itself.</p>
@@ -1368,12 +1368,12 @@ template
             </div>
 {{/if}}
 {{#if sys.auto_updates is "off"}}
-            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
               <div class="min-w-0">
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Automatic security updates</p>
                 <p class="text-slate-500 text-xs">Off. Turning on installs the unattended-upgrades package if it's missing.</p>
               </div>
-              <button onclick="{{ toggleUpdates() }}" class="shrink-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-emerald-400 transition-all">
+              <button onclick="{{ toggleUpdates() }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-brand-400 transition-all">
                 {{#if working is "updates"}}Working…{{/if}}{{#if working is not "updates"}}Turn on{{/if}}
               </button>
             </div>
@@ -1383,7 +1383,7 @@ template
 {{/if}}
         </section>
 
-        <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+        <section class="min-w-0 rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center gap-3 mb-5">
             <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20">
               <IconTerminal class="w-5 h-5" />
@@ -1399,7 +1399,7 @@ template
 {{/if}}
 
 {{#each s in services}}
-          <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3 mb-2 transition-colors hover:border-slate-300 dark:hover:border-slate-700">
+          <div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/40 px-4 py-3 mb-2 transition-colors hover:border-slate-300 dark:hover:border-slate-700">
             <div class="min-w-0 flex items-center gap-3">
               <span class="w-2 h-2 shrink-0 rounded-full {{ s.dot }}"></span>
               <div class="min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1426,7 +1426,7 @@ template
 
       </div>
 
-      <section class="mt-4 sm:mt-6 rounded-2xl border border-rose-500/30 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+      <section class="mt-4 sm:mt-6 rounded-2xl border border-rose-500/30 bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <div class="flex items-center gap-3 mb-4">
           <span class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
@@ -1449,10 +1449,10 @@ template
 {{#if not canDelete}}
         <p class="text-slate-500 text-sm mb-4">This server can't be deleted yet:</p>
 {{#each b in blockers}}
-        <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4 mb-2">
+        <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/40 p-4 mb-2">
           <p class="text-slate-900 dark:text-slate-100 text-sm">{{ b.message }}</p>
 {{#each site in (b.sites or [])}}
-          <a href="{{ '/servers/site-detail?id=' + site.id }}" class="inline-block mt-2 mr-3 text-emerald-700 dark:text-emerald-500 text-sm font-mono hover:underline">{{ site.domain }}</a>
+          <a href="{{ '/servers/site-detail?id=' + site.id }}" class="inline-block mt-2 mr-3 text-brand-700 dark:text-brand-500 text-sm font-mono hover:underline">{{ site.domain }}</a>
 {{/each}}
         </div>
 {{/each}}
@@ -1463,7 +1463,7 @@ template
       <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6">
         <div onclick="{{ closeConfirm() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
 
-        <div role="alertdialog" aria-modal="true" aria-label="{{ confirmTitle }}" class="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
+        <div role="alertdialog" aria-modal="true" aria-label="{{ confirmTitle }}" class="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-line bg-panel p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
           <div class="flex items-start gap-4">
             <span class="flex items-center justify-center w-11 h-11 shrink-0 rounded-xl ring-1 {{ confirmIconCls }}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
@@ -1489,8 +1489,8 @@ template
       <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6">
         <div onclick="{{ closeCode() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
 
-        <div role="dialog" aria-modal="true" aria-label="Two-factor code" class="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
-          <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20 mb-3">
+        <div role="dialog" aria-modal="true" aria-label="Two-factor code" class="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-line bg-panel p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
+          <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-1 ring-brand-500/20 mb-3">
             <IconKey class="w-5 h-5" />
           </span>
           <h3 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ codeTitle }}</h3>
@@ -1507,7 +1507,7 @@ template
             value="{{ codeValue }}"
             oninput="{{ codeValue = $event.target.value }}"
             placeholder="123456"
-            class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-base tracking-widest font-mono px-4 py-3 transition-shadow focus:outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-base tracking-widest font-mono px-4 py-3 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
           />
 
 {{#if codeError}}
@@ -1517,10 +1517,10 @@ template
           <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
             <button onclick="{{ closeCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
 {{#if codeBusy}}
-            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
 {{/if}}
 {{#if not codeBusy}}
-            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Confirm</button>
+            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Confirm</button>
 {{/if}}
           </div>
         </div>

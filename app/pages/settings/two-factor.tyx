@@ -354,7 +354,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="settings" />
     <SettingsSidebar active="two-factor" />
     <div class="min-w-0">
@@ -375,7 +375,7 @@ template
 {{#if step is "idle"}}
 
 {{#if not enabled}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Authenticator app</h2>
           <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
@@ -384,12 +384,12 @@ template
         </div>
         <p class="text-slate-500 text-sm mb-5">This account can hold SSH keys and cloud tokens, so a second step at login is worth having. You'll need an authenticator app such as Google Authenticator, Authy or 1Password.</p>
 {{#if busy}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
           Starting…
         </button>
 {{/if}}
 {{#if not busy}}
-        <button onclick="{{ startSetup() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+        <button onclick="{{ startSetup() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
           Set up authenticator app
         </button>
 {{/if}}
@@ -397,17 +397,17 @@ template
 {{/if}}
 
 {{#if enabled}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Authenticator app</h2>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> On
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> On
           </span>
         </div>
         <p class="text-slate-500 text-sm">Logging in asks for a code from your authenticator app.</p>
       </div>
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Recovery codes</h2>
         <p class="text-slate-500 text-sm mb-4">Each code works once, if you lose your phone. <span class="font-semibold text-slate-700 dark:text-slate-300">{{ remaining }}</span> left. Generating new codes cancels the old ones.</p>
 {{#if mode is not "regen"}}
@@ -417,7 +417,7 @@ template
 {{/if}}
       </div>
 
-      <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white dark:bg-slate-900 p-6">
+      <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-panel p-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1">Turn off authenticator app</h2>
         <p class="text-slate-500 text-sm mb-4">Logging in will stop asking for an authenticator code.</p>
 {{#if mode is not "disable"}}
@@ -428,7 +428,7 @@ template
       </div>
 
 {{#if mode}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mt-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mt-6">
 {{#if mode is "disable"}}
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Confirm it's you</h2>
         <p class="text-slate-500 text-sm mb-5">Enter your password and a code to turn the authenticator app off.</p>
@@ -439,25 +439,25 @@ template
 {{/if}}
 
         <label for="tf-password" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Password</label>
-        <input id="tf-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="tf-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if passwordError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ passwordError }}</p>
 {{/if}}
 
         <label for="tf-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Authenticator or recovery code</label>
-        <input id="tf-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="tf-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if codeError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ codeError }}</p>
 {{/if}}
 
         <div class="flex items-center gap-3 mt-6">
 {{#if busy}}
-          <button disabled class="text-sm text-white bg-emerald-600 rounded-lg px-4 py-2 opacity-50">
+          <button disabled class="text-sm text-white bg-brand-600 rounded-lg px-4 py-2 opacity-50">
             Working…
           </button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ submitMode() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+          <button onclick="{{ submitMode() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
             Confirm
           </button>
           <button onclick="{{ cancelMode() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
@@ -469,12 +469,12 @@ template
 {{/if}}
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mt-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mt-6">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Text message (SMS)</h2>
 {{#if smsEnabled}}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> On
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> On
           </span>
 {{/if}}
 {{#if not smsEnabled}}
@@ -489,29 +489,29 @@ template
         <p role="alert" class="text-rose-500 text-sm mb-4">{{ smsError }}</p>
 {{/if}}
 {{#if smsNotice}}
-        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ smsNotice }}</p>
+        <p role="status" class="text-brand-700 dark:text-brand-500 text-sm mb-4">{{ smsNotice }}</p>
 {{/if}}
 
 {{#if smsStep is "idle"}}
 {{#if not smsEnabled}}
         <label for="sms-phone" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Mobile number</label>
-        <input id="sms-phone" type="tel" autocomplete="tel" placeholder="0712 345 678" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="sms-phone" type="tel" autocomplete="tel" placeholder="0712 345 678" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if smsPhoneError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ smsPhoneError }}</p>
 {{/if}}
 
         <label for="sms-setup-password" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Your password</label>
-        <input id="sms-setup-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="sms-setup-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if smsPasswordError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ smsPasswordError }}</p>
 {{/if}}
 
         <div class="mt-6">
 {{#if smsBusy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
 {{/if}}
 {{#if not smsBusy}}
-          <button onclick="{{ startSms() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Send code</button>
+          <button onclick="{{ startSms() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Send code</button>
 {{/if}}
         </div>
 {{/if}}
@@ -524,16 +524,16 @@ template
 
 {{#if smsStep is "verify"}}
         <label for="sms-confirm-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Enter the code we sent to {{ smsHint }}</label>
-        <input id="sms-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" class="w-48 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono tracking-widest placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="sms-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" class="w-48 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono tracking-widest placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if smsCodeError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ smsCodeError }}</p>
 {{/if}}
         <div class="flex items-center gap-3 mt-6">
 {{#if smsBusy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking…</button>
 {{/if}}
 {{#if not smsBusy}}
-          <button onclick="{{ confirmSms() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Turn on text messages</button>
+          <button onclick="{{ confirmSms() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Turn on text messages</button>
           <button onclick="{{ sendSmsCode() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Resend</button>
           <button onclick="{{ cancelSms() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{/if}}
@@ -542,13 +542,13 @@ template
 
 {{#if smsStep is "disable"}}
         <label for="sms-disable-password" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Password</label>
-        <input id="sms-disable-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="sms-disable-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if smsPasswordError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ smsPasswordError }}</p>
 {{/if}}
 
         <label for="sms-disable-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Code</label>
-        <input id="sms-disable-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="sms-disable-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
         <p class="text-slate-500 text-xs mt-2">Use a code texted to {{ smsHint }}, or one from your authenticator app or recovery codes.</p>
 {{#if smsCodeError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ smsCodeError }}</p>
@@ -556,10 +556,10 @@ template
 
         <div class="flex items-center gap-3 mt-6">
 {{#if smsBusy}}
-          <button disabled class="text-sm text-white bg-emerald-600 rounded-lg px-4 py-2 opacity-50">Working…</button>
+          <button disabled class="text-sm text-white bg-brand-600 rounded-lg px-4 py-2 opacity-50">Working…</button>
 {{/if}}
 {{#if not smsBusy}}
-          <button onclick="{{ disableSms() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Turn off</button>
+          <button onclick="{{ disableSms() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Turn off</button>
           <button onclick="{{ sendSmsCode() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Text me a code</button>
           <button onclick="{{ cancelSms() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{/if}}
@@ -570,14 +570,14 @@ template
 {{/if}}
 
 {{#if step is "setup"}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">1. Add this account to your app</h2>
-        <p class="text-slate-500 text-sm mb-4">In your authenticator app choose "enter a setup key" and paste this. On a phone, <a href="{{ uri }}" class="text-emerald-700 dark:text-emerald-500 hover:underline font-medium">tap here</a> to open it directly.</p>
+        <p class="text-slate-500 text-sm mb-4">In your authenticator app choose "enter a setup key" and paste this. On a phone, <a href="{{ uri }}" class="text-brand-700 dark:text-brand-500 hover:underline font-medium">tap here</a> to open it directly.</p>
 
         <div class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3">
-          <code class="flex-1 text-emerald-400 text-sm font-mono break-all">{{ secretText }}</code>
+          <code class="flex-1 text-brand-400 text-sm font-mono break-all">{{ secretText }}</code>
 {{#if copiedSecret}}
-          <button class="text-xs text-emerald-400 font-medium">Copied</button>
+          <button class="text-xs text-brand-400 font-medium">Copied</button>
 {{/if}}
 {{#if not copiedSecret}}
           <button onclick="{{ copySecret() }}" class="text-xs text-slate-400 hover:text-white font-medium transition-colors">Copy</button>
@@ -587,19 +587,19 @@ template
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mt-8 mb-1">2. Enter the 6-digit code</h2>
         <p class="text-slate-500 text-sm mb-4">This proves the app is set up correctly. The authenticator app stays off until you do.</p>
 
-        <input id="tf-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" class="w-48 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono tracking-widest placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+        <input id="tf-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" class="w-48 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-mono tracking-widest placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 {{#if codeError}}
         <p role="alert" class="text-rose-500 text-sm mt-2">{{ codeError }}</p>
 {{/if}}
 
         <div class="flex items-center gap-3 mt-6">
 {{#if busy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
             Checking…
           </button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ confirmSetup() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+          <button onclick="{{ confirmSetup() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
             Turn on authenticator app
           </button>
           <button onclick="{{ cancelSetup() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
@@ -615,18 +615,18 @@ template
         <p class="text-amber-800 dark:text-amber-400 text-sm"><span class="font-semibold">Save these now.</span> They're shown only once. Each works one time if you lose access to your app.</p>
       </div>
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Recovery codes</h2>
 
         <div class="grid grid-cols-2 gap-2 rounded-xl bg-slate-950 px-4 py-4">
 {{#each c in codes}}
-          <code class="text-emerald-400 text-sm font-mono">{{ c }}</code>
+          <code class="text-brand-400 text-sm font-mono">{{ c }}</code>
 {{/each}}
         </div>
 
         <div class="flex items-center gap-3 mt-6">
 {{#if copiedCodes}}
-          <button class="text-sm text-emerald-700 dark:text-emerald-500 border border-emerald-200 dark:border-emerald-900/50 rounded-lg px-4 py-2 font-medium">
+          <button class="text-sm text-brand-700 dark:text-brand-500 border border-brand-200 dark:border-brand-900/50 rounded-lg px-4 py-2 font-medium">
             Copied
           </button>
 {{/if}}
@@ -635,7 +635,7 @@ template
             Copy all
           </button>
 {{/if}}
-          <button onclick="{{ finishCodes() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">
+          <button onclick="{{ finishCodes() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
             I've saved them
           </button>
         </div>

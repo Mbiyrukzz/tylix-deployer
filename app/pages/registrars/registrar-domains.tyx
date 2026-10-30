@@ -155,13 +155,13 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
   <Sidebar active="registrars" />
   <RegistrarSidebar active="domains" registrarId="{{ registrarId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="/registrars" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="/registrars" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Domain providers
       </a>
 
@@ -185,7 +185,7 @@ template
 
 {{#if not loading}}
 {{#if domains.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center">
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-10 text-center">
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No domains found</h3>
         <p class="text-slate-500 text-sm max-w-sm mx-auto">This account has no domains the API can see. Some providers only list domains that have API access switched on.</p>
       </div>
@@ -198,15 +198,15 @@ template
           value="{{ query }}"
           oninput="{{ setQuery($event.target.value) }}"
           placeholder="Search domains"
-          class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          class="w-full rounded-xl border border-line bg-panel text-slate-900 dark:text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
         />
       </div>
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
 {{#each d in shown}}
         <div class="px-5 py-4 flex flex-wrap items-center justify-between gap-4">
           <div class="min-w-0">
-            <a href="{{ d.dnsHref }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 hover:underline">{{ d.name }}</a>
+            <a href="{{ d.dnsHref }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 hover:underline">{{ d.name }}</a>
             <p class="{{ d.expCls }}">Expires {{ d.expiresText }}</p>
           </div>
           <div class="flex items-center gap-3">
@@ -216,7 +216,7 @@ template
 {{#if d.showLock}}
             <button onclick="{{ toggleLock(d) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{{ d.lockText }}</button>
 {{/if}}
-            <a href="{{ d.dnsHref }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-emerald-400 transition-all">DNS</a>
+            <a href="{{ d.dnsHref }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-brand-400 transition-all">DNS</a>
           </div>
         </div>
 {{/each}}

@@ -186,11 +186,11 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-100 dark:bg-slate-950 transition-colors px-6 py-16">
-    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-300/40 dark:shadow-none overflow-hidden">
+  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-page transition-colors px-6 py-16">
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] rounded-3xl border border-line bg-panel shadow-xl shadow-slate-300/40 dark:shadow-none overflow-hidden">
 
       <div class="hidden lg:flex flex-col justify-between bg-slate-950 p-10 relative overflow-hidden">
-        <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl"></div>
+        <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-brand-500/10 blur-3xl"></div>
 
         <a href="/" class="relative flex items-center gap-2.5">
           <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
@@ -198,33 +198,33 @@ template
         </a>
 
         <div class="relative">
-          <p class="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-3">Zero to deployed</p>
+          <p class="text-brand-400 text-xs font-semibold uppercase tracking-wider mb-3">Zero to deployed</p>
           <h2 class="text-white text-3xl font-bold leading-tight tracking-tight mb-8">Your first deploy is four steps away.</h2>
 
           <div class="space-y-3">
             <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">1</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/15 text-brand-400 text-xs font-semibold flex items-center justify-center">1</span>
               <div>
                 <p class="text-slate-200 text-sm font-medium">Add a server</p>
                 <p class="text-slate-500 text-xs mt-0.5">Provision on Linode, Hetzner, DigitalOcean or Vultr, or connect your own over SSH.</p>
               </div>
             </div>
             <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">2</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/15 text-brand-400 text-xs font-semibold flex items-center justify-center">2</span>
               <div>
                 <p class="text-slate-200 text-sm font-medium">Create a site</p>
                 <p class="text-slate-500 text-xs mt-0.5">Tylix, Laravel, Node.js, WordPress, MERN and more.</p>
               </div>
             </div>
             <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">3</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/15 text-brand-400 text-xs font-semibold flex items-center justify-center">3</span>
               <div>
                 <p class="text-slate-200 text-sm font-medium">Connect your repo</p>
                 <p class="text-slate-500 text-xs mt-0.5">Pick a repository and branch, set your env and script.</p>
               </div>
             </div>
             <div class="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center">4</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/15 text-brand-400 text-xs font-semibold flex items-center justify-center">4</span>
               <div>
                 <p class="text-slate-200 text-sm font-medium">Hit Deploy</p>
                 <p class="text-slate-500 text-xs mt-0.5">Watch the log live, then add SSL in one click.</p>
@@ -248,12 +248,12 @@ template
 {{/if}}
 
 {{#if signedIn}}
-          <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center text-lg mb-5 text-emerald-700 dark:text-emerald-400">✓</div>
+          <div class="w-11 h-11 rounded-xl bg-brand-500/10 flex items-center justify-center text-lg mb-5 text-brand-700 dark:text-brand-400">✓</div>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">You're already signed in</h1>
           <p class="text-slate-500 text-sm mb-8">
             Signed in as <span class="text-slate-800 dark:text-slate-300 font-medium">{{ signedInEmail }}</span>.
           </p>
-          <a href="/dashboard" class="inline-block w-full text-center bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all mb-3">
+          <a href="/dashboard" class="inline-block w-full text-center bg-brand-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all mb-3">
             Go to Dashboard
           </a>
           <a href="/pricing" class="inline-block w-full text-center border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl py-2.5 font-medium hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
@@ -263,7 +263,7 @@ template
 
 {{#if registered}}
 {{#if emailSent}}
-          <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center text-lg mb-5 text-emerald-700 dark:text-emerald-400">✓</div>
+          <div class="w-11 h-11 rounded-xl bg-brand-500/10 flex items-center justify-center text-lg mb-5 text-brand-700 dark:text-brand-400">✓</div>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Check your email</h1>
           <p class="text-slate-500 text-sm mb-3">
             We sent a verification link to <span class="text-slate-800 dark:text-slate-300 font-medium">{{ email }}</span>.
@@ -276,13 +276,13 @@ template
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Account created</h1>
           <p class="text-slate-500 text-sm mb-8">{{ registerMessage }}</p>
 {{/if}}
-          <a href="/login" class="inline-block w-full text-center bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+          <a href="/login" class="inline-block w-full text-center bg-brand-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all">
             Go to login
           </a>
 {{/if}}
 
 {{#if showForm}}
-          <p class="text-emerald-700 dark:text-emerald-500 text-xs font-semibold uppercase tracking-wider mb-1">Get started</p>
+          <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Get started</p>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Create your account</h1>
           <p class="text-slate-500 text-sm mb-8">Deploy your first app in minutes.</p>
 
@@ -302,7 +302,7 @@ template
             placeholder="Jane Doe"
             value="{{ name }}"
             oninput="{{ setField('name', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition"
           />
 
           <label for="email" class="block text-slate-600 dark:text-slate-400 text-xs font-medium mb-2">Email</label>
@@ -314,7 +314,7 @@ template
             placeholder="you@example.com"
             value="{{ email }}"
             oninput="{{ setField('email', event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-4 outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition"
           />
 
           <div class="absolute -left-[9999px] h-0 w-0 overflow-hidden opacity-0" aria-hidden="true">
@@ -340,7 +340,7 @@ template
               placeholder="At least 10 characters"
               value="{{ password }}"
               oninput="{{ updatePassword(event.target.value) }}"
-              class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl pl-4 pr-16 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+              class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl pl-4 pr-16 py-2.5 outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition"
             />
             <button type="button" onclick="{{ togglePassword() }}" class="absolute inset-y-0 right-0 px-4 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
               {{#if showPassword}}Hide{{/if}}{{#if not showPassword}}Show{{/if}}
@@ -357,19 +357,19 @@ template
 
           <ul class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-4">
             <li class="flex items-center gap-1.5">
-{{#if pwLength}}<span class="text-emerald-600 dark:text-emerald-400">✓</span><span class="text-slate-600 dark:text-slate-300">10+ characters</span>{{/if}}
+{{#if pwLength}}<span class="text-brand-600 dark:text-brand-400">✓</span><span class="text-slate-600 dark:text-slate-300">10+ characters</span>{{/if}}
 {{#if not pwLength}}<span class="text-slate-400">○</span><span class="text-slate-500">10+ characters</span>{{/if}}
             </li>
             <li class="flex items-center gap-1.5">
-{{#if pwLetter}}<span class="text-emerald-600 dark:text-emerald-400">✓</span><span class="text-slate-600 dark:text-slate-300">A letter</span>{{/if}}
+{{#if pwLetter}}<span class="text-brand-600 dark:text-brand-400">✓</span><span class="text-slate-600 dark:text-slate-300">A letter</span>{{/if}}
 {{#if not pwLetter}}<span class="text-slate-400">○</span><span class="text-slate-500">A letter</span>{{/if}}
             </li>
             <li class="flex items-center gap-1.5">
-{{#if pwNumber}}<span class="text-emerald-600 dark:text-emerald-400">✓</span><span class="text-slate-600 dark:text-slate-300">A number</span>{{/if}}
+{{#if pwNumber}}<span class="text-brand-600 dark:text-brand-400">✓</span><span class="text-slate-600 dark:text-slate-300">A number</span>{{/if}}
 {{#if not pwNumber}}<span class="text-slate-400">○</span><span class="text-slate-500">A number</span>{{/if}}
             </li>
             <li class="flex items-center gap-1.5">
-{{#if pwSymbol}}<span class="text-emerald-600 dark:text-emerald-400">✓</span><span class="text-slate-600 dark:text-slate-300">A symbol</span>{{/if}}
+{{#if pwSymbol}}<span class="text-brand-600 dark:text-brand-400">✓</span><span class="text-slate-600 dark:text-slate-300">A symbol</span>{{/if}}
 {{#if not pwSymbol}}<span class="text-slate-400">○</span><span class="text-slate-500">A symbol</span>{{/if}}
             </li>
           </ul>
@@ -387,10 +387,10 @@ template
             placeholder="Repeat your password"
             value="{{ confirmPassword }}"
             oninput="{{ updateConfirm(event.target.value) }}"
-            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-1.5 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition"
+            class="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 mb-1.5 outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition"
           />
 {{#if matchYes}}
-          <p class="text-emerald-600 dark:text-emerald-400 text-xs mb-5">Passwords match.</p>
+          <p class="text-brand-600 dark:text-brand-400 text-xs mb-5">Passwords match.</p>
 {{/if}}
 {{#if matchNo}}
           <p class="text-rose-600 dark:text-rose-400 text-xs mb-5">Passwords don't match yet.</p>
@@ -403,16 +403,16 @@ template
 
           <label class="flex items-start gap-2.5 text-sm text-slate-500 dark:text-slate-400 mb-5">
 {{#if agreedToTerms}}
-            <input type="checkbox" checked onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
+            <input type="checkbox" checked onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-brand-500 focus:ring-brand-500" />
 {{/if}}
 {{#if not agreedToTerms}}
-            <input type="checkbox" onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-emerald-500 focus:ring-emerald-500" />
+            <input type="checkbox" onclick="{{ toggleTerms() }}" class="mt-0.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-brand-500 focus:ring-brand-500" />
 {{/if}}
             <span>
               I agree to the
-              <a href="/terms" target="_blank" class="text-emerald-700 dark:text-emerald-400 hover:underline">Terms of Service</a>
+              <a href="/terms" target="_blank" class="text-brand-700 dark:text-brand-400 hover:underline">Terms of Service</a>
               and
-              <a href="/privacy" target="_blank" class="text-emerald-700 dark:text-emerald-400 hover:underline">Privacy Policy</a>.
+              <a href="/privacy" target="_blank" class="text-brand-700 dark:text-brand-400 hover:underline">Privacy Policy</a>.
             </span>
           </label>
 
@@ -420,12 +420,12 @@ template
           <div id="register-captcha" class="mb-5 min-h-[78px]"></div>
 {{/if}}
 
-          <button onclick="{{ submit() }}" class="w-full bg-emerald-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-emerald-400 hover:shadow transition-all {{ submitDim }}">
+          <button onclick="{{ submit() }}" class="w-full bg-brand-500 text-white dark:text-slate-950 rounded-xl py-2.5 font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all {{ submitDim }}">
             {{ submitLabel }}
           </button>
 
           <p class="text-sm text-slate-500 text-center mt-6">
-            Already have an account? <a href="/login" class="text-emerald-700 dark:text-emerald-400 hover:underline">Log in</a>
+            Already have an account? <a href="/login" class="text-brand-700 dark:text-brand-400 hover:underline">Log in</a>
           </p>
 {{/if}}
         </div>

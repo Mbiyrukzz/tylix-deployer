@@ -16,7 +16,7 @@ template
       <p class="text-amber-800/80 dark:text-amber-400/80 text-xs">{{ Billing.message }}</p>
     </div>
   </div>
-  <a href="/settings/billing" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">
+  <a href="/settings/billing" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
     Pay to continue
   </a>
 </div>

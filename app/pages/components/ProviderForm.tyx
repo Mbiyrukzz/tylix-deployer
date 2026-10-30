@@ -192,7 +192,7 @@ action
         id: "linode",
         name: "Linode",
         sub: "Akamai",
-        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center font-bold",
+        tileClass: "w-9 h-9 shrink-0 rounded-lg bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center font-bold",
         letter: "L"
       },
       {
@@ -351,14 +351,14 @@ template
   </button>
 {{/if}}
 {{#if not provider}}
-  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+  <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
     <IconPlus class="w-4 h-4" /> Connect provider
   </button>
 {{/if}}
 
 {{#if showModal}}
   <div role="dialog" aria-modal="true" aria-labelledby="provider-form-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
@@ -387,7 +387,7 @@ template
       <div class="grid grid-cols-2 gap-3 mb-5">
 {{#each k in kinds}}
 {{#if kind is k.id}}
-        <button onclick="{{ pick(k.id) }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3 text-left transition-colors">
+        <button onclick="{{ pick(k.id) }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-left transition-colors">
           <span class="{{ k.tileClass }}">{{ k.letter }}</span>
           <span class="min-w-0">
             <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
@@ -396,7 +396,7 @@ template
         </button>
 {{/if}}
 {{#if kind is not k.id}}
-        <button onclick="{{ pick(k.id) }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 px-4 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+        <button onclick="{{ pick(k.id) }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-line px-4 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
           <span class="{{ k.tileClass }}">{{ k.letter }}</span>
           <span class="min-w-0">
             <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
@@ -415,7 +415,7 @@ template
         autofocus
         value="{{ label }}"
         oninput="{{ label = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="e.g. Production account"
       />
 {{#if labelError}}
@@ -431,7 +431,7 @@ template
         spellcheck="false"
         value="{{ apiToken }}"
         oninput="{{ apiToken = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if tokenError}}
@@ -448,7 +448,7 @@ template
         spellcheck="false"
         value="{{ username }}"
         oninput="{{ username = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if usernameError}}
@@ -463,7 +463,7 @@ template
         spellcheck="false"
         value="{{ password }}"
         oninput="{{ password = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if passwordError}}
@@ -480,7 +480,7 @@ template
         spellcheck="false"
         value="{{ clientId }}"
         oninput="{{ clientId = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if clientIdError}}
@@ -495,7 +495,7 @@ template
         spellcheck="false"
         value="{{ clientSecret }}"
         oninput="{{ clientSecret = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if clientSecretError}}
@@ -510,7 +510,7 @@ template
         spellcheck="false"
         value="{{ apiUser }}"
         oninput="{{ apiUser = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if apiUserError}}
@@ -525,7 +525,7 @@ template
         spellcheck="false"
         value="{{ apiPassword }}"
         oninput="{{ apiPassword = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if apiPasswordError}}
@@ -542,7 +542,7 @@ template
         spellcheck="false"
         value="{{ accessKeyId }}"
         oninput="{{ accessKeyId = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if accessKeyError}}
@@ -557,7 +557,7 @@ template
         spellcheck="false"
         value="{{ secretKey }}"
         oninput="{{ secretKey = $event.target.value }}"
-        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+        class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         placeholder="{{ tokenPlaceholder }}"
       />
 {{#if secretKeyError}}
@@ -566,11 +566,11 @@ template
 {{/if}}
 
 {{#if not provider}}
-      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4 mt-4">
+      <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 p-4 mt-4">
 {{#if kind is "linode"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Linode token</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://cloud.linode.com/profile/tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Profile &rarr; API Tokens</a> in Linode Cloud Manager.</li>
+          <li>Open <a href="https://cloud.linode.com/profile/tokens" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Profile &rarr; API Tokens</a> in Linode Cloud Manager.</li>
           <li>Create a personal access token.</li>
           <li>Give it <span class="font-mono">Linodes: Read/Write</span> to create servers, <span class="font-mono">Domains: Read/Write</span> to manage DNS, and <span class="font-mono">Account: Read Only</span> to see billing. Everything else can stay on No Access.</li>
         </ol>
@@ -578,7 +578,7 @@ template
 {{#if kind is "hetzner"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Hetzner token</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open your project in the <a href="https://console.hetzner.cloud/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Hetzner Cloud Console</a>.</li>
+          <li>Open your project in the <a href="https://console.hetzner.cloud/" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Hetzner Cloud Console</a>.</li>
           <li>Go to Security &rarr; API tokens and generate one.</li>
           <li>Give it <span class="font-mono">Read &amp; Write</span> permission. A Read-only token connects fine but can't create servers.</li>
         </ol>
@@ -586,7 +586,7 @@ template
 {{#if kind is "digitalocean"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a DigitalOcean token</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://cloud.digitalocean.com/account/api/tokens" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">API &rarr; Tokens</a> in the DigitalOcean control panel.</li>
+          <li>Open <a href="https://cloud.digitalocean.com/account/api/tokens" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">API &rarr; Tokens</a> in the DigitalOcean control panel.</li>
           <li>Generate a new personal access token.</li>
           <li>Give it <span class="font-mono">Full Access</span>, or a custom scope that can create, read and delete droplets and read regions, sizes and images. A read-only token connects fine but can't create servers.</li>
         </ol>
@@ -594,7 +594,7 @@ template
 {{#if kind is "vultr"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create a Vultr API key</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://my.vultr.com/settings/#settingsapi" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; API</a> and enable the API.</li>
+          <li>Open <a href="https://my.vultr.com/settings/#settingsapi" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Account &rarr; API</a> and enable the API.</li>
           <li>Copy the API key.</li>
           <li>Under Access Control, allow this deployer's server IP, or choose Allow all IPv4. Otherwise Vultr rejects every request.</li>
         </ol>
@@ -602,7 +602,7 @@ template
 {{#if kind is "aws"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create an AWS access key</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://console.aws.amazon.com/iam/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">IAM</a> and create a user. It does not need console access.</li>
+          <li>Open <a href="https://console.aws.amazon.com/iam/" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">IAM</a> and create a user. It does not need console access.</li>
           <li>Attach a policy that allows the EC2 actions listed below.</li>
           <li>Open the user, go to Security credentials and create an access key for an application running outside AWS.</li>
           <li>Paste the Access key ID and the Secret access key here. AWS shows the secret only once.</li>
@@ -614,7 +614,7 @@ template
 {{#if kind is "upcloud"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Create an UpCloud API account</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://hub.upcloud.com/" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">UpCloud Control Panel</a> and go to People. Create a sub-account just for the deployer.</li>
+          <li>Open <a href="https://hub.upcloud.com/" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">UpCloud Control Panel</a> and go to People. Create a sub-account just for the deployer.</li>
           <li>Allow API connections for it, and give it access to servers and storage.</li>
           <li>Under allowed IP addresses, add this deployer's server IP. Otherwise UpCloud rejects every request.</li>
           <li>Paste the sub-account's username and password here.</li>
@@ -623,7 +623,7 @@ template
 {{#if kind is "contabo"}}
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1.5">Get your Contabo API credentials</p>
         <ol class="list-decimal pl-4 space-y-1 text-slate-500 text-xs">
-          <li>Open <a href="https://my.contabo.com/api/details" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 hover:underline">Account &rarr; Security &amp; Access &rarr; API</a> in the Contabo Customer Control Panel.</li>
+          <li>Open <a href="https://my.contabo.com/api/details" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 hover:underline">Account &rarr; Security &amp; Access &rarr; API</a> in the Contabo Customer Control Panel.</li>
           <li>Copy the Client ID and Client Secret.</li>
           <li>The API user is your account email. Set an API password there; it is separate from your login password.</li>
         </ol>
@@ -638,7 +638,7 @@ template
 {{/if}}
 
 {{#if codeOpen}}
-      <div class="mt-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4">
+      <div class="mt-5 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/60 p-4">
         <label for="step-up-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
         <p class="text-slate-500 text-xs mb-2">Replacing credentials needs a second-factor code.</p>
         <input
@@ -649,7 +649,7 @@ template
           maxlength="12"
           value="{{ code }}"
           oninput="{{ code = $event.target.value }}"
-          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors"
+          class="w-full sm:w-56 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
         />
 {{#if tfTotp}}
         <p class="text-slate-500 text-xs mt-2">Enter a code from your authenticator app, or a recovery code.</p>
@@ -658,7 +658,7 @@ template
         <p class="text-slate-500 text-xs mt-2">Enter the code texted to {{ smsHint }}.</p>
 {{/if}}
 {{#if smsNotice}}
-        <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ smsNotice }}</p>
+        <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ smsNotice }}</p>
 {{/if}}
 {{#if codeError}}
         <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
@@ -683,12 +683,12 @@ template
           Cancel
         </button>
 {{#if saving}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">
+        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">
           Verifying…
         </button>
 {{/if}}
 {{#if not saving}}
-        <button onclick="{{ submit() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+        <button onclick="{{ submit() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
           Save
         </button>
 {{/if}}

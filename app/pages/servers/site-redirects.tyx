@@ -157,7 +157,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
@@ -170,15 +170,15 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-8 text-center">
         <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
@@ -194,7 +194,7 @@ template
 
         <div class="min-w-0 flex-1">
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Add a redirect</h2>
             <p class="text-slate-500 text-sm mb-5">Send visitors from an old address on this site to a new one. The query string is kept. Every change is tested with <span class="font-mono">nginx -t</span> before nginx reloads, and rolled back if the test fails.</p>
 
@@ -211,7 +211,7 @@ template
                   value="{{ fromPath }}"
                   oninput="{{ fromPath = $event.target.value }}"
                   spellcheck="false"
-                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                   placeholder="/old-page"
                 />
               </div>
@@ -222,7 +222,7 @@ template
                   value="{{ toTarget }}"
                   oninput="{{ toTarget = $event.target.value }}"
                   spellcheck="false"
-                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                   placeholder="/new-page or https://example.com/page"
                 />
               </div>
@@ -231,7 +231,7 @@ template
                 <select
                   value="{{ matchType }}"
                   onchange="{{ matchType = $event.target.value }}"
-                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                 >
                   <option value="exact">Exact path only</option>
                   <option value="prefix">This path and everything under it</option>
@@ -242,7 +242,7 @@ template
                 <select
                   value="{{ codeText }}"
                   onchange="{{ codeText = $event.target.value }}"
-                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                 >
                   <option value="301">301 Permanent</option>
                   <option value="302">302 Temporary</option>
@@ -263,7 +263,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ add() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+              <button onclick="{{ add() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
                 {{#if saving}}Testing and saving…{{/if}}{{#if not saving}}Add redirect{{/if}}
               </button>
 {{/if}}
@@ -276,12 +276,12 @@ template
 {{/if}}
 
 {{#if message}}
-            <p role="status" class="text-emerald-700 dark:text-emerald-500 text-sm mt-4">{{ message }}</p>
+            <p role="status" class="text-brand-700 dark:text-brand-500 text-sm mt-4">{{ message }}</p>
 {{/if}}
 {{/if}}
           </div>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Active redirects</h2>
             <p class="text-slate-500 text-sm mb-5">{{ redirects.length }} of {{ limit }} used.</p>
 
@@ -304,7 +304,7 @@ template
               <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2 mb-2">
-                    <span class="text-[11px] font-semibold font-mono text-emerald-700 dark:text-emerald-500">{{ r.code }}</span>
+                    <span class="text-[11px] font-semibold font-mono text-brand-700 dark:text-brand-500">{{ r.code }}</span>
                     <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{{ r.kind }}</span>
                   </div>
                   <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ r.fromText }}</p>

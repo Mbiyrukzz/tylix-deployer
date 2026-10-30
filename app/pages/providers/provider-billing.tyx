@@ -393,13 +393,13 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
   <Sidebar active="providers" />
   <ProviderSidebar active="billing" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/providers/provider-detail?id=' + providerId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Provider
       </a>
 
@@ -429,25 +429,25 @@ template
 {{/if}}
 
 {{#if mode is "link"}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none mb-8">
+      <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none mb-8">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Pay your {{ providerLabel }} bill</h2>
         <p class="text-slate-500 text-sm mb-4">Payments for {{ providerLabel }} are made on its own billing page.</p>
-        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Open {{ providerLabel }} billing</a>
+        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Open {{ providerLabel }} billing</a>
       </div>
 {{/if}}
 
 {{#if mode is "pay"}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none mb-8">
+      <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none mb-8">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Make a payment</h2>
         <p class="text-slate-500 text-sm mb-5">Charges a payment method saved on your {{ providerLabel }} account.</p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-          <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+          <div class="rounded-xl border border-line px-4 py-3">
             <p class="text-slate-500 text-xs mb-1">Amount due</p>
             <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold">{{ amountDueText }}</p>
           </div>
 {{#if hasCredit}}
-          <div class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+          <div class="rounded-xl border border-line px-4 py-3">
             <p class="text-slate-500 text-xs mb-1">Credit on the account</p>
             <p class="text-slate-900 dark:text-slate-100 text-xl font-semibold">{{ creditText }}</p>
           </div>
@@ -456,7 +456,7 @@ template
 
 {{#if not hasPayable}}
         <p class="text-slate-500 text-sm mb-2">No saved payment method can be charged from here. Add or use one on {{ providerLabel }}'s billing page.</p>
-        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium">Open {{ providerLabel }} billing</a>
+        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">Open {{ providerLabel }} billing</a>
 {{/if}}
 
 {{#if hasPayable}}
@@ -465,13 +465,13 @@ template
 {{#each m in methodRows}}
 {{#if m.payable}}
 {{#if m.selected}}
-          <button onclick="{{ pickMethod(m.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-emerald-500 bg-emerald-500/10 text-slate-900 dark:text-slate-100">
+          <button onclick="{{ pickMethod(m.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-brand-500 bg-brand-500/10 text-slate-900 dark:text-slate-100">
             <span>{{ m.label }}</span>
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Selected</span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">Selected</span>
           </button>
 {{/if}}
 {{#if not m.selected}}
-          <button onclick="{{ pickMethod(m.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">
+          <button onclick="{{ pickMethod(m.id) }}" class="flex items-center justify-between text-left rounded-xl border px-4 py-3 text-sm transition-colors border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">
             <span>{{ m.label }}</span>
 {{#if m.isDefault}}
             <span class="text-[11px] uppercase tracking-wider text-slate-500">Default</span>
@@ -480,7 +480,7 @@ template
 {{/if}}
 {{/if}}
 {{#if not m.payable}}
-          <div class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-400 dark:text-slate-600 cursor-not-allowed select-none">
+          <div class="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-sm text-slate-400 dark:text-slate-600 cursor-not-allowed select-none">
             <span>{{ m.label }}</span>
             <span class="text-[11px] uppercase tracking-wider">Pay on {{ providerLabel }}</span>
           </div>
@@ -492,7 +492,7 @@ template
           <div>
             <label for="pay-amount" class="block text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Amount (USD)</label>
             <div class="flex items-center gap-2">
-              <input id="pay-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+              <input id="pay-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500" />
               <button onclick="{{ fillDue() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Amount due</button>
             </div>
           </div>
@@ -500,7 +500,7 @@ template
 {{#if needsCvv}}
           <div>
             <label for="pay-cvv" class="block text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Card security code (CVV)</label>
-            <input id="pay-cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="CVV" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+            <input id="pay-cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="CVV" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500" />
             <p class="text-slate-500 text-[11px] mt-1.5">Sent to {{ providerLabel }} with this payment only. It isn't saved.</p>
           </div>
 {{/if}}
@@ -508,7 +508,7 @@ template
 {{#if needsCode}}
           <div>
             <label for="pay-code" class="block text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Two-factor code</label>
-            <input id="pay-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+            <input id="pay-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500" />
           </div>
 {{/if}}
         </div>
@@ -525,11 +525,11 @@ template
 {{/if}}
 
 {{#if payOk}}
-        <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ payOk }}</p>
+        <p class="text-brand-700 dark:text-brand-500 text-sm mb-4">{{ payOk }}</p>
 {{/if}}
 
 {{#if paying}}
-        <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Paying…</button>
+        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Paying…</button>
 {{/if}}
 
 {{#if not paying}}
@@ -547,12 +547,12 @@ template
 {{#if confirming}}
         <div class="flex items-center gap-3 flex-wrap">
           <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ confirmText }}</p>
-          <button onclick="{{ pay() }}" class="text-sm text-white bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-full px-4 py-2 transition">Yes, pay now</button>
+          <button onclick="{{ pay() }}" class="text-sm text-white bg-brand-600 hover:bg-brand-500 font-semibold rounded-full px-4 py-2 transition">Yes, pay now</button>
           <button onclick="{{ cancelPay() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
         </div>
 {{/if}}
 {{#if not confirming}}
-        <button onclick="{{ askPay() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Review payment</button>
+        <button onclick="{{ askPay() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Review payment</button>
 {{/if}}
 {{/if}}
 {{/if}}
@@ -561,7 +561,7 @@ template
 
 {{#if paymentLog.length is not 0}}
       <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Payments started here</h2>
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
+      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
 {{#each l in paymentLog}}
         <div class="px-5 py-3">
           <div class="flex items-center justify-between gap-4">
@@ -570,8 +570,8 @@ template
               <p class="text-slate-500 text-xs">{{ l.date }}</p>
             </div>
 {{#if l.status is "paid"}}
-            <span class="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ l.statusText }}
+            <span class="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> {{ l.statusText }}
             </span>
 {{/if}}
 {{#if l.status is "failed"}}
@@ -605,17 +605,17 @@ template
 {{#if loaded}}
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 {{#if hasBalance}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Balance</p>
           <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ balanceText }}</p>
         </div>
 {{/if}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">{{ currentLabel }}</p>
           <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ currentText }}</p>
         </div>
 {{#if hasTransfer}}
-        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs mb-1">Network transfer this month</p>
           <p class="text-slate-900 dark:text-slate-100 text-2xl font-semibold">{{ transferText }}</p>
         </div>
@@ -626,7 +626,7 @@ template
 
 {{#if items.length is not 0}}
       <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Servers in this project</h2>
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
+      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
 {{#each i in items}}
         <div class="flex items-center justify-between gap-4 px-5 py-3">
           <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ i.label }}</p>
@@ -638,7 +638,7 @@ template
 
 {{#if invoices.length is not 0}}
       <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Recent invoices</h2>
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
+      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none mb-8">
 {{#each i in invoices}}
         <div>
           <button onclick="{{ toggleInvoice(i.id) }}" class="w-full flex items-center justify-between gap-4 px-5 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -675,7 +675,7 @@ template
 
 {{#if payments.length is not 0}}
       <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">Recent payments</h2>
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
 {{#each p in payments}}
         <div class="flex items-center justify-between gap-4 px-5 py-3">
           <p class="text-slate-500 text-sm">{{ p.date }}</p>

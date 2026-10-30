@@ -179,7 +179,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-200 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
@@ -192,15 +192,15 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-8 text-center">
         <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
@@ -216,7 +216,7 @@ template
 
         <div class="min-w-0 flex-1">
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Run a command</h2>
             <p class="text-slate-500 text-sm mb-5">Runs on the server in the site folder as <span class="font-mono">{{ site.isolated_user }}</span>, never as root. One command at a time, stopped after 10 minutes.</p>
 
@@ -237,7 +237,7 @@ template
                 value="{{ command }}"
                 oninput="{{ command = $event.target.value }}"
                 spellcheck="false"
-                class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                 placeholder="Command, for example: npm run build"
               />
               <div class="flex flex-wrap items-center gap-3">
@@ -246,7 +246,7 @@ template
                   value="{{ directory }}"
                   oninput="{{ directory = $event.target.value }}"
                   spellcheck="false"
-                  class="min-w-0 flex-1 sm:flex-none sm:w-64 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  class="min-w-0 flex-1 sm:flex-none sm:w-64 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                   placeholder="Folder (optional), e.g. client"
                 />
 {{#if Billing.locked}}
@@ -259,7 +259,7 @@ template
                 </button>
 {{/if}}
 {{#if not Billing.locked}}
-                <button onclick="{{ run() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+                <button onclick="{{ run() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
                   {{#if starting}}Starting…{{/if}}{{#if not starting}}Run{{/if}}
                 </button>
 {{/if}}
@@ -272,7 +272,7 @@ template
 {{/if}}
           </div>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Recent runs</h2>
             <p class="text-slate-500 text-sm mb-5">The last 20 runs for this site. History is cleared when the app restarts.</p>
 
@@ -286,8 +286,8 @@ template
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2 mb-1">
 {{#if r.isSuccess}}
-                    <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Done
+                    <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+                      <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Done
                     </span>
 {{/if}}
 {{#if r.isRunning}}

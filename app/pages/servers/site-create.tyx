@@ -98,8 +98,8 @@ action
   tileFor(runtime) {
     const base = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold "
     const tones = [
-      ["node", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"],
-      ["mern", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"],
+      ["node", "bg-brand-500/10 text-brand-700 dark:text-brand-500"],
+      ["mern", "bg-brand-500/10 text-brand-700 dark:text-brand-500"],
       ["php", "bg-violet-500/10 text-violet-600 dark:text-violet-400"],
       ["dotnet", "bg-violet-500/10 text-violet-600 dark:text-violet-400"],
       ["static", "bg-sky-500/10 text-sky-600 dark:text-sky-400"],
@@ -416,7 +416,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
@@ -429,50 +429,50 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-6 sm:p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if server}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-5">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-5">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
       <LockedBanner />
 
-      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-8 sm:py-10 mb-6 sm:mb-8">
+      <div class="relative overflow-hidden rounded-2xl border border-line bg-panel px-5 sm:px-8 py-8 sm:py-10 mb-6 sm:mb-8">
         <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:items-end">
           <div class="min-w-0">
-            <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
-              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-4 max-w-full">
+              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500 animate-pulse"></span>
               <span class="truncate">New site on {{ server.name }}</span>
             </span>
             <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900 dark:text-slate-100 mb-3">
               Launch a site,
               <br class="hidden sm:block" />
-              <span class="text-emerald-500">any stack</span>
+              <span class="text-brand-500">any stack</span>
             </h1>
             <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-xl leading-relaxed">Pick a stack, point a domain at it and connect a repository. The user, build, service and nginx are set up for you over SSH.</p>
           </div>
 
-          <div class="min-w-0 lg:w-80 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/70 backdrop-blur overflow-hidden shadow-sm dark:shadow-none">
-            <div class="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 dark:border-slate-800">
+          <div class="min-w-0 lg:w-80 rounded-xl border border-line bg-white/80 dark:bg-slate-950/70 backdrop-blur overflow-hidden shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-1.5 px-3 py-2 border-b border-line">
               <span class="w-2 h-2 rounded-full bg-rose-400/80"></span>
               <span class="w-2 h-2 rounded-full bg-amber-400/80"></span>
-              <span class="w-2 h-2 rounded-full bg-emerald-400/80"></span>
+              <span class="w-2 h-2 rounded-full bg-brand-400/80"></span>
             </div>
             <div class="px-3 py-3">
               <p class="flex items-center gap-2 text-sm font-mono text-slate-800 dark:text-slate-200 min-w-0">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-500">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 shrink-0 text-brand-600 dark:text-brand-500">
                   <rect x="4" y="9" width="12" height="8" rx="2" />
                   <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
                 </svg>
                 <span class="truncate">{{ domain ? domain : "your-domain.com" }}</span>
               </p>
               <div class="flex items-center justify-between gap-2 mt-2.5">
-                <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{{ typeLabel }}</span>
+                <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-400">{{ typeLabel }}</span>
                 <span class="text-slate-500 text-xs truncate">{{ repository ? repository : "no repository yet" }}</span>
               </div>
             </div>
@@ -484,9 +484,9 @@ template
 
         <div class="min-w-0 space-y-4 sm:space-y-5">
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">1</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">1</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">What are you deploying?</h2>
             </div>
 
@@ -500,7 +500,7 @@ template
             <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
 {{#each t in types}}
 {{#if type is t.id}}
-              <button onclick="{{ setType(t.id) }}" aria-pressed="true" class="min-h-[64px] flex items-center gap-3 text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3 py-2.5 transition-colors">
+              <button onclick="{{ setType(t.id) }}" aria-pressed="true" class="min-h-[64px] flex items-center gap-3 text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-3 py-2.5 transition-colors">
                 <span class="{{ t.tile }}">{{ t.letter }}</span>
                 <span class="min-w-0">
                   <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ t.short }}</span>
@@ -509,7 +509,7 @@ template
               </button>
 {{/if}}
 {{#if type is not t.id}}
-              <button onclick="{{ setType(t.id) }}" aria-pressed="false" class="min-h-[64px] flex items-center gap-3 text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3 py-2.5 transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ setType(t.id) }}" aria-pressed="false" class="min-h-[64px] flex items-center gap-3 text-left rounded-xl border-2 border-line px-3 py-2.5 transition-colors hover:border-brand-500/40">
                 <span class="{{ t.tile }}">{{ t.letter }}</span>
                 <span class="min-w-0">
                   <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ t.short }}</span>
@@ -521,7 +521,7 @@ template
             </div>
 
 {{#if typeDesc}}
-            <div class="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 px-4 py-3">
+            <div class="mt-4 rounded-xl border border-line bg-slate-50 dark:bg-slate-950/50 px-4 py-3">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ typeFull }}</p>
               <p class="text-slate-500 text-sm mt-0.5 break-words">{{ typeDesc }}</p>
 {{#if needsText}}
@@ -531,27 +531,27 @@ template
 {{/if}}
           </section>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">2</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">2</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Domain and access</h2>
             </div>
 
             <label for="site-domain" class="block text-slate-500 text-xs font-medium mb-1.5">Domain</label>
-            <input id="site-domain" type="text" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ domain }}" oninput="{{ domain = $event.target.value }}" placeholder="example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-domain" type="text" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ domain }}" oninput="{{ domain = $event.target.value }}" placeholder="example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.domain}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.domain }}</p>
 {{/if}}
 
             <label for="site-aliases" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Aliases</label>
-            <input id="site-aliases" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ aliasText }}" oninput="{{ aliasText = $event.target.value }}" placeholder="www.example.com, app.example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-aliases" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ aliasText }}" oninput="{{ aliasText = $event.target.value }}" placeholder="www.example.com, app.example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.aliases}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.aliases }}</p>
 {{/if}}
             <p class="text-slate-500 text-xs mt-1.5">Separate aliases with commas.</p>
 
             <label for="site-user" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Isolated user</label>
-            <input id="site-user" type="text" name="site_unix_user" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ isolatedUser }}" oninput="{{ isolatedUser = $event.target.value }}" placeholder="e.g. mysite" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-user" type="text" name="site_unix_user" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ isolatedUser }}" oninput="{{ isolatedUser = $event.target.value }}" placeholder="e.g. mysite" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.isolated_user}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.isolated_user }}</p>
 {{/if}}
@@ -559,7 +559,7 @@ template
 
 {{#if usesPhp}}
             <label for="site-php" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">PHP version</label>
-            <select id="site-php" onchange="{{ phpVersion = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors">
+            <select id="site-php" onchange="{{ phpVersion = $event.target.value }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors">
               <option value="8.5">8.5</option>
               <option value="8.4" selected>8.4</option>
               <option value="8.3">8.3</option>
@@ -574,7 +574,7 @@ template
 
 {{#if usesApp}}
             <label for="site-port" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">App port</label>
-            <input id="site-port" type="text" inputmode="numeric" autocomplete="off" value="{{ port }}" oninput="{{ port = $event.target.value }}" placeholder="Auto (first free port from 3000)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-port" type="text" inputmode="numeric" autocomplete="off" value="{{ port }}" oninput="{{ port = $event.target.value }}" placeholder="Auto (first free port from 3000)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.port}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.port }}</p>
 {{/if}}
@@ -582,9 +582,9 @@ template
 {{/if}}
           </section>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">3</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">3</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Source</h2>
             </div>
 
@@ -594,7 +594,7 @@ template
 
 {{#if usesRepo}}
             <label for="site-source" class="block text-slate-500 text-xs font-medium mb-1.5">Source control</label>
-            <select id="site-source" onchange="{{ pickConnection($event.target.value) }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors">
+            <select id="site-source" onchange="{{ pickConnection($event.target.value) }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors">
               <option value="0">None</option>
 {{#each sc in sourceControls}}
 {{#if sc.key is sourceControlId}}
@@ -631,20 +631,20 @@ template
 {{#if repos.length is not 0}}
 {{#if repository is ""}}
             <label for="site-repo-filter" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Repository ({{ repos.length }} total, showing {{ visibleRepos.length }})</label>
-            <input id="site-repo-filter" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ repoFilter }}" oninput="{{ applyRepoFilter($event.target.value) }}" placeholder="Filter repositories…" class="w-full mb-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-repo-filter" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ repoFilter }}" oninput="{{ applyRepoFilter($event.target.value) }}" placeholder="Filter repositories…" class="w-full mb-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
             <div class="max-h-64 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#if visibleRepos.length is 0}}
               <p class="px-4 py-3 text-slate-500 text-sm">No repositories match.</p>
 {{/if}}
 {{#each r in visibleRepos}}
-              <button onclick="{{ pickRepo(r.full_name) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">{{ r.full_name }}</button>
+              <button onclick="{{ pickRepo(r.full_name) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all text-slate-800 dark:text-slate-200 hover:bg-brand-500/10 transition-colors">{{ r.full_name }}</button>
 {{/each}}
             </div>
 {{/if}}
 {{#if repository is not ""}}
             <p class="text-slate-500 text-xs font-medium mt-4 mb-1.5">Repository</p>
-            <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3">
-              <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ repository }}</span>
+            <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3">
+              <span class="text-sm font-mono text-brand-700 dark:text-brand-400 truncate">{{ repository }}</span>
               <button onclick="{{ changeRepo() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Change</button>
             </div>
 {{/if}}
@@ -653,8 +653,8 @@ template
 {{#if repository is not ""}}
             <p class="text-slate-500 text-xs font-medium mt-4 mb-1.5">Branch</p>
 {{#if branchPicked}}
-            <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-4 py-3">
-              <span class="text-sm font-mono text-emerald-700 dark:text-emerald-400 truncate">{{ branch }}</span>
+            <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3">
+              <span class="text-sm font-mono text-brand-700 dark:text-brand-400 truncate">{{ branch }}</span>
               <button onclick="{{ changeBranch() }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Change</button>
             </div>
 {{/if}}
@@ -666,10 +666,10 @@ template
             <div class="max-h-48 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
 {{#each b in branches}}
 {{#if b is branch}}
-              <button onclick="{{ pickBranch(b) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">{{ b }}</button>
+              <button onclick="{{ pickBranch(b) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all bg-brand-500/10 text-brand-700 dark:text-brand-400">{{ b }}</button>
 {{/if}}
 {{#if b is not branch}}
-              <button onclick="{{ pickBranch(b) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10 transition-colors">{{ b }}</button>
+              <button onclick="{{ pickBranch(b) }}" class="block w-full min-h-[44px] text-left px-3.5 py-3 text-sm font-mono break-all text-slate-800 dark:text-slate-200 hover:bg-brand-500/10 transition-colors">{{ b }}</button>
 {{/if}}
 {{/each}}
             </div>
@@ -685,15 +685,15 @@ template
           </section>
 
 {{#if hasBuild}}
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 flex items-center justify-center text-xs font-bold">4</span>
+              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">4</span>
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Build and run</h2>
             </div>
 
 {{#if showWebDir}}
             <label for="site-webdir" class="block text-slate-500 text-xs font-medium mb-1.5">Web directory</label>
-            <input id="site-webdir" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ webDirectory }}" oninput="{{ webDirectory = $event.target.value }}" placeholder="e.g., public, www, dist (leave empty for root)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-webdir" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ webDirectory }}" oninput="{{ webDirectory = $event.target.value }}" placeholder="e.g., public, www, dist (leave empty for root)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.web_directory}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.web_directory }}</p>
 {{/if}}
@@ -713,13 +713,13 @@ template
 {{#if sourceControlId is not "0"}}
 {{#if usesPhp}}
             <label class="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200 mt-4">
-              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-emerald-500" />
+              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
               <span>Run <code class="font-mono">composer install --no-dev</code></span>
             </label>
 {{/if}}
 {{#if usesNode}}
             <label class="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200 mt-4">
-              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-emerald-500" />
+              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
               <span>Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)</span>
             </label>
 {{/if}}
@@ -727,14 +727,14 @@ template
 
 {{#if isMern}}
             <label for="site-client" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Client folder</label>
-            <input id="site-client" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ appDirectory }}" oninput="{{ appDirectory = $event.target.value }}" placeholder="client" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-client" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ appDirectory }}" oninput="{{ appDirectory = $event.target.value }}" placeholder="client" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.app_directory}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.app_directory }}</p>
 {{/if}}
             <p class="text-slate-500 text-xs mt-1.5">The React app. The build command runs here and nginx serves its dist or build output.</p>
 
             <label for="site-api" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">API folder</label>
-            <input id="site-api" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ backendDirectory }}" oninput="{{ backendDirectory = $event.target.value }}" placeholder="server" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-api" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ backendDirectory }}" oninput="{{ backendDirectory = $event.target.value }}" placeholder="server" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.backend_directory}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.backend_directory }}</p>
 {{/if}}
@@ -743,7 +743,7 @@ template
 
 {{#if usesApp}}
             <label for="site-build" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Build command</label>
-            <input id="site-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.build_command}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.build_command }}</p>
 {{/if}}
@@ -761,7 +761,7 @@ template
 {{/if}}
 
             <label for="site-start" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Start command</label>
-            <input id="site-start" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ startCommand }}" oninput="{{ startCommand = $event.target.value }}" placeholder="npm start" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-start" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ startCommand }}" oninput="{{ startCommand = $event.target.value }}" placeholder="npm start" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.start_command}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.start_command }}</p>
 {{/if}}
@@ -777,13 +777,13 @@ template
 {{#if isSpa}}
 {{#if sourceControlId is not "0"}}
             <label class="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200 mt-4">
-              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-emerald-500" />
+              <input type="checkbox" checked="{{ installDeps }}" onchange="{{ installDeps = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
               <span>Run <code class="font-mono">npm ci</code> (or <code class="font-mono">npm install</code> without a lockfile)</span>
             </label>
 {{/if}}
 
             <label for="site-spa-build" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Build command</label>
-            <input id="site-spa-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="npm run build" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-spa-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="npm run build" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.build_command}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.build_command }}</p>
 {{/if}}
@@ -791,7 +791,7 @@ template
 
 {{#if type is "laravel"}}
             <label for="site-laravel-build" class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Build command</label>
-            <input id="site-laravel-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm ci && npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="site-laravel-build" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ buildCommand }}" oninput="{{ buildCommand = $event.target.value }}" placeholder="e.g. npm ci && npm run build (leave empty to skip)" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
 {{#if fe.build_command}}
             <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ fe.build_command }}</p>
 {{/if}}
@@ -816,7 +816,7 @@ template
           </div>
 {{/if}}
 
-          <div class="sticky bottom-0 z-30 -mx-4 sm:-mx-6 lg:mx-0 px-4 sm:px-6 lg:px-0 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-slate-200 dark:border-slate-800 lg:border-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+          <div class="sticky bottom-0 z-30 -mx-4 sm:-mx-6 lg:mx-0 px-4 sm:px-6 lg:px-0 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-line lg:border-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
             <a href="{{ '/servers/server-sites?id=' + serverId }}" class="text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
 {{#if Billing.locked}}
             <button disabled title="Pay to continue" class="inline-flex items-center justify-center gap-1.5 min-h-[48px] text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
@@ -829,10 +829,10 @@ template
 {{/if}}
 {{#if not Billing.locked}}
 {{#if submitting}}
-            <button disabled class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
+            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
 {{/if}}
 {{#if not submitting}}
-            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create site</button>
+            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create site</button>
 {{/if}}
 {{/if}}
           </div>
@@ -840,7 +840,7 @@ template
         </div>
 
         <aside class="hidden lg:block lg:sticky lg:top-6 space-y-4">
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your site</h2>
             <dl class="space-y-3 text-sm">
               <div>
@@ -883,27 +883,27 @@ template
             </dl>
           </div>
 
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">What happens next</h2>
             <ol class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Creates the isolated user and folder</li>
+              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Creates the isolated user and folder</li>
 {{#if repository}}
-              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Clones {{ branch }} from your repository</li>
+              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Clones {{ branch }} from your repository</li>
 {{/if}}
 {{#if type is "wordpress"}}
-              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Downloads WordPress and creates its database</li>
+              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Downloads WordPress and creates its database</li>
 {{/if}}
 {{#if repository}}
 {{#if hasBuild}}
-              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Installs dependencies and builds</li>
+              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Installs dependencies and builds</li>
 {{/if}}
 {{#if usesApp}}
-              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Sets up the app service</li>
+              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Sets up the app service</li>
 {{/if}}
 {{/if}}
-              <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-500">&#10003;</span> Configures and reloads nginx</li>
+              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Configures and reloads nginx</li>
             </ol>
-            <p class="text-slate-500 text-xs mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">Add HTTPS from the site's page once the domain points at this server.</p>
+            <p class="text-slate-500 text-xs mt-4 pt-3 border-t border-line">Add HTTPS from the site's page once the domain points at this server.</p>
           </div>
         </aside>
 

@@ -90,9 +90,9 @@ action
     const tones = {
       online: {
         label: "Online",
-        pill: base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
-        dot: "w-1.5 h-1.5 rounded-full bg-emerald-500",
-        solid: "bg-emerald-500"
+        pill: base + "bg-brand-500/10 text-brand-700 dark:text-brand-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-brand-500",
+        solid: "bg-brand-500"
       },
       offline: {
         label: "Offline",
@@ -117,9 +117,9 @@ action
     const tones = {
       done: {
         label: "Ready",
-        pill: base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
-        dot: "w-1.5 h-1.5 rounded-full bg-emerald-500",
-        bar: "h-1.5 rounded-full bg-emerald-500"
+        pill: base + "bg-brand-500/10 text-brand-700 dark:text-brand-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-brand-500",
+        bar: "h-1.5 rounded-full bg-brand-500"
       },
       failed: {
         label: "Failed",
@@ -131,13 +131,13 @@ action
         label: "Setting up",
         pill: base + "bg-amber-500/10 text-amber-600 dark:text-amber-500",
         dot: "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse",
-        bar: "h-1.5 rounded-full bg-emerald-500 transition-all duration-500"
+        bar: "h-1.5 rounded-full bg-brand-500 transition-all duration-500"
       },
       pending: {
         label: "Queued",
         pill: base + "bg-amber-500/10 text-amber-600 dark:text-amber-500",
         dot: "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse",
-        bar: "h-1.5 rounded-full bg-emerald-500 transition-all duration-500"
+        bar: "h-1.5 rounded-full bg-brand-500 transition-all duration-500"
       }
     }
 
@@ -235,7 +235,7 @@ action
 
     this.stats = [
       { label: "Servers", value: Servers.data.length, cls: "text-slate-900 dark:text-slate-100" },
-      { label: "Online", value: online, cls: "text-emerald-700 dark:text-emerald-500" },
+      { label: "Online", value: online, cls: "text-brand-700 dark:text-brand-500" },
       { label: "Setting up", value: this.busyCount, cls: this.busyCount is 0 ? "text-slate-900 dark:text-slate-100" : "text-amber-600 dark:text-amber-500" },
       { label: "Sites", value: Servers.siteServerIds.length, cls: "text-slate-900 dark:text-slate-100" }
     ]
@@ -447,12 +447,12 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
     <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Dashboard
       </a>
 
@@ -482,14 +482,14 @@ template
 {{/if}}
 {{#if not Billing.locked}}
           <ServerForm onSaved="{{ addServer }}" />
-          <a href="/servers/create" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Create server</a>
+          <a href="/servers/create" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</a>
 {{/if}}
         </div>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800 overflow-hidden shadow-sm dark:shadow-none mb-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl border border-line bg-slate-200 dark:bg-slate-800 overflow-hidden shadow-sm dark:shadow-none mb-8">
 {{#each st in stats}}
-        <div class="bg-white dark:bg-slate-900 px-5 py-4">
+        <div class="bg-panel px-5 py-4">
           <p class="text-2xl font-semibold tabular-nums {{ st.cls }}">{{ st.value }}</p>
           <p class="text-slate-500 text-sm mt-0.5">{{ st.label }}</p>
         </div>
@@ -516,11 +516,11 @@ template
 
         <div class="space-y-3">
 {{#each pr in setupRows}}
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
 {{#if pr.server_id is not 0}}
-                <a href="{{ '/servers/server-detail?id=' + pr.server_id }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 hover:underline transition-colors">{{ pr.name }}</a>
+                <a href="{{ '/servers/server-detail?id=' + pr.server_id }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 hover:underline transition-colors">{{ pr.name }}</a>
 {{/if}}
 {{#if pr.server_id is 0}}
                 <h3 class="text-slate-900 dark:text-slate-100 font-semibold">{{ pr.name }}</h3>
@@ -552,7 +552,7 @@ template
 {{/if}}
 
 {{#if pr.status is not "running"}}
-            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
+            <div class="mt-4 pt-4 border-t border-line flex flex-wrap items-center gap-3">
 {{#if pr.status is "failed"}}
               <button disabled="{{ Billing.locked }}" title="{{ Billing.locked ? 'Pay to continue' : '' }}" onclick="{{ retryProvision(pr.id) }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Retry</button>
 {{/if}}
@@ -583,7 +583,7 @@ template
 {{/if}}
 
 {{#if Servers.loading}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
         <div class="flex items-center gap-4 px-5 py-5 animate-pulse">
           <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
           <div class="flex-1 space-y-2">
@@ -611,16 +611,16 @@ template
 {{#if not Servers.loading}}
 {{#if Servers.data.length is 0}}
 {{#if setupRows.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-12 text-center">
-        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-          <IconDatabase class="w-6 h-6 text-emerald-700 dark:text-emerald-500" />
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-12 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4">
+          <IconDatabase class="w-6 h-6 text-brand-700 dark:text-brand-500" />
         </div>
         <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No servers yet</h3>
         <p class="text-slate-500 text-sm max-w-sm mx-auto mb-6">
           Create a machine at your cloud provider, or add an existing server with its SSH details.
         </p>
 {{#if not Billing.locked}}
-        <a href="/servers/create" class="inline-flex items-center text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">Create your first server</a>
+        <a href="/servers/create" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">Create your first server</a>
 {{/if}}
       </div>
 {{/if}}
@@ -647,7 +647,7 @@ template
             oninput="{{ setQuery($event.target.value) }}"
             placeholder="Search by name, host or user"
             aria-label="Search servers"
-            class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm pl-9 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            class="w-full rounded-xl border border-line bg-panel text-slate-900 dark:text-slate-100 text-sm pl-9 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
           />
 {{#if query}}
           <button onclick="{{ clearQuery() }}" aria-label="Clear search" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -658,7 +658,7 @@ template
       </div>
 
 {{#if cards.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center">
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-10 text-center">
         <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No servers match</p>
         <p class="text-slate-500 text-sm mb-4">Try a different search or filter.</p>
         <button onclick="{{ resetFilters() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Clear filters</button>
@@ -666,7 +666,7 @@ template
 {{/if}}
 
 {{#if cards.length is not 0}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dark:shadow-none overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
 
         <div class="hidden md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] gap-4 px-5 py-3 bg-slate-50 dark:bg-slate-950/40 text-xs text-slate-500">
           <span>Server</span>
@@ -681,12 +681,12 @@ template
 
           <div class="flex items-center justify-between gap-3 min-w-0">
             <div class="flex items-center gap-3.5 min-w-0">
-              <div class="relative w-10 h-10 shrink-0 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <IconDatabase class="w-4 h-4 text-emerald-700 dark:text-emerald-500" />
+              <div class="relative w-10 h-10 shrink-0 rounded-xl bg-brand-500/10 flex items-center justify-center">
+                <IconDatabase class="w-4 h-4 text-brand-700 dark:text-brand-500" />
                 <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 {{ s.solidCls }}"></span>
               </div>
               <div class="min-w-0">
-                <a href="{{ s.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-emerald-700 dark:hover:text-emerald-500 transition-colors after:absolute after:inset-0">{{ s.name }}</a>
+                <a href="{{ s.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 transition-colors after:absolute after:inset-0">{{ s.name }}</a>
                 <p class="text-slate-500 text-xs font-mono truncate">{{ s.host }}</p>
               </div>
             </div>
@@ -713,10 +713,10 @@ template
           <div class="relative z-10 flex items-center gap-1 md:justify-end">
             <button onclick="{{ copySsh(s.id, s.ssh) }}" title="{{ s.ssh }}" aria-label="Copy SSH command" class="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
 {{#if copiedId is s.id}}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-emerald-600 dark:text-emerald-500">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-500">
                 <path d="M5 12l5 5L20 7" />
               </svg>
-              <span class="text-emerald-700 dark:text-emerald-500">Copied</span>
+              <span class="text-brand-700 dark:text-brand-500">Copied</span>
 {{/if}}
 {{#if copiedId is not s.id}}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
@@ -754,11 +754,11 @@ template
 
 {{#if modal is not ""}}
     <div role="dialog" aria-modal="true" aria-labelledby="modal-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4 py-6">
-      <div class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
+      <div class="w-full max-w-md overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
 
         <div class="flex items-start justify-between gap-4 p-6 pb-4">
           <div class="flex items-center gap-3 min-w-0">
-            <div class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center {{ modal is 'delete' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-500' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-500' }}">
+            <div class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center {{ modal is 'delete' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-500' : 'bg-brand-500/10 text-brand-700 dark:text-brand-500' }}">
 {{#if modal is "delete"}}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                 <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
@@ -810,7 +810,7 @@ template
 {{#if targetIp}}
           <p class="text-slate-500 text-xs mb-1.5">Connect with</p>
           <div class="rounded-xl bg-slate-950 px-4 py-3 mb-4">
-            <code class="block text-emerald-400 text-sm font-mono break-all"><span class="text-slate-600 select-none">$ </span>ssh root@{{ targetIp }}</code>
+            <code class="block text-brand-400 text-sm font-mono break-all"><span class="text-slate-600 select-none">$ </span>ssh root@{{ targetIp }}</code>
           </div>
 {{/if}}
           <p class="text-slate-500 text-xs mb-1.5">Password</p>
@@ -843,11 +843,11 @@ template
               maxlength="12"
               value="{{ code }}"
               oninput="{{ code = $event.target.value }}"
-              class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+              class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
             />
             <p class="text-slate-500 text-xs mt-2">{{ TwoFactor.totp ? "Enter a code from your authenticator app, or a recovery code." : "Enter the code texted to " + TwoFactor.smsHint + "." }}</p>
 {{#if TwoFactor.notice}}
-            <p role="status" class="text-emerald-700 dark:text-emerald-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
+            <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
 {{/if}}
 {{#if codeError}}
             <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
@@ -863,7 +863,7 @@ template
 {{/if}}
         </div>
 
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-line bg-slate-50 dark:bg-slate-950/40">
 {{#if modal is "delete"}}
           <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
           <button disabled="{{ deleteBlocked }}" onclick="{{ confirmDelete() }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed">{{ ProvisionActions.busy ? "Deleting…" : "Delete server" }}</button>
@@ -871,12 +871,12 @@ template
 {{#if modal is "password"}}
 {{#if pwValue}}
           <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Close</button>
-          <button onclick="{{ copyPassword() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all">{{ pwCopied ? "Copied" : "Copy password" }}</button>
+          <button onclick="{{ copyPassword() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">{{ pwCopied ? "Copied" : "Copy password" }}</button>
 {{/if}}
 {{#if not pwValue}}
           <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{#if askCode}}
-          <button disabled="{{ ProvisionActions.busy }}" onclick="{{ revealPassword() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-emerald-400 transition-all disabled:opacity-50">{{ ProvisionActions.busy ? "Verifying…" : "Verify and show" }}</button>
+          <button disabled="{{ ProvisionActions.busy }}" onclick="{{ revealPassword() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all disabled:opacity-50">{{ ProvisionActions.busy ? "Verifying…" : "Verify and show" }}</button>
 {{/if}}
 {{/if}}
 {{/if}}

@@ -1,14 +1,14 @@
 component DeployPreview
 
 template
-  <div class="relative max-w-5xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-900 shadow-sm dark:shadow-none p-6 text-left">
+  <div class="relative max-w-5xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel shadow-sm dark:shadow-none p-6 text-left">
 
     <div class="flex items-start justify-between gap-4 mb-6">
       <div class="min-w-0">
         <div class="flex items-center gap-3 mb-1.5">
           <h3 class="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">prod-web-01</h3>
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Online
           </span>
         </div>
         <p class="text-slate-500 text-xs font-mono">deploy@203.0.113.24:22 / nairobi / 4 GB / up 12d 4h</p>
@@ -64,12 +64,12 @@ template
 
     <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 p-4 font-mono text-xs leading-relaxed">
       <p class="text-slate-500 mb-2 uppercase tracking-wider text-[11px] font-sans font-medium">Latest deploy</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-emerald-600 dark:text-emerald-500">✓</span> SSH connected</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-emerald-600 dark:text-emerald-500">✓</span> Pulled main @ 9f3c2ab</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-emerald-600 dark:text-emerald-500">✓</span> composer install --no-dev</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-emerald-600 dark:text-emerald-500">✓</span> php artisan migrate --force</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-emerald-600 dark:text-emerald-500">✓</span> Reloaded php-fpm</p>
-      <p class="text-emerald-700 dark:text-emerald-400 font-semibold mt-1">● Live in 38s</p>
+      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> SSH connected</p>
+      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> Pulled main @ 9f3c2ab</p>
+      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> composer install --no-dev</p>
+      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> php artisan migrate --force</p>
+      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> Reloaded php-fpm</p>
+      <p class="text-brand-700 dark:text-brand-400 font-semibold mt-1">● Live in 38s</p>
     </div>
 
   </div>

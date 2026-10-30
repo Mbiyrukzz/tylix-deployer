@@ -12,22 +12,22 @@ state
   topCls: "hidden lg:flex items-center mb-1 justify-between px-3"
   titleCls: "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
   toolsCls: "hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3"
-  onCls: "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-  offCls: "group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+  onCls: "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+  offCls: "group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
   disCls: "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
-  badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+  badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
   labelCls: ""
   chevCls: "w-4 h-4 transition-transform"
 
 action
   applyLayout() {
     const navBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 pb-2 lg:pb-0 lg:transition-[width] lg:duration-200 lg:sticky lg:top-6 lg:self-start"
-    const on = "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-    const off = "group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-300/50 dark:hover:bg-slate-900/70 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+    const on = "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
+    const off = "group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
     const dis = "shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
     const title = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
     const tools = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-3"
-    const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+    const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
 
     if this.collapsed {
       this.navCls = navBase + " lg:w-12"
@@ -74,7 +74,7 @@ template
 
   <div class="{{ topCls }}">
     <p class="{{ titleCls }}">This site</p>
-    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-300/50 dark:hover:bg-slate-900/70 transition-colors">
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
         <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
@@ -83,81 +83,81 @@ template
 
 {{#if active is "application"}}
   <a href="{{ '/servers/site-detail?id=' + siteId }}" title="Application" aria-current="page" class="{{ onCls }}">
-    <IconCube class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Application</span>
+    <IconCube class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Application</span>
   </a>
 {{/if}}
 {{#if active is not "application"}}
   <a href="{{ '/servers/site-detail?id=' + siteId }}" title="Application" class="{{ offCls }}">
-    <IconCube class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Application</span>
+    <IconCube class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Application</span>
   </a>
 {{/if}}
 
 {{#if active is "deployment"}}
   <a href="{{ '/servers/site-deploy?id=' + siteId }}" title="Deployment" aria-current="page" class="{{ onCls }}">
-    <IconBolt class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Deployment</span>
+    <IconBolt class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Deployment</span>
   </a>
 {{/if}}
 {{#if active is not "deployment"}}
   <a href="{{ '/servers/site-deploy?id=' + siteId }}" title="Deployment" class="{{ offCls }}">
-    <IconBolt class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Deployment</span>
+    <IconBolt class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Deployment</span>
   </a>
 {{/if}}
 
 {{#if active is "ssl"}}
   <a href="{{ '/servers/site-ssl?id=' + siteId }}" title="SSL" aria-current="page" class="{{ onCls }}">
-    <IconLockClosed class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">SSL</span>
+    <IconLockClosed class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">SSL</span>
   </a>
 {{/if}}
 {{#if active is not "ssl"}}
   <a href="{{ '/servers/site-ssl?id=' + siteId }}" title="SSL" class="{{ offCls }}">
-    <IconLockClosed class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">SSL</span>
+    <IconLockClosed class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">SSL</span>
   </a>
 {{/if}}
 
-  <div class="hidden lg:block h-px bg-slate-300 dark:bg-slate-800 my-2 mx-3"></div>
+  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-2 mx-3"></div>
   <p class="{{ toolsCls }}">Tools</p>
 
 {{#if active is "commands"}}
   <a href="{{ '/servers/site-commands?id=' + siteId }}" title="Commands" aria-current="page" class="{{ onCls }}">
-    <IconTerminal class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Commands</span>
+    <IconTerminal class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Commands</span>
   </a>
 {{/if}}
 {{#if active is not "commands"}}
   <a href="{{ '/servers/site-commands?id=' + siteId }}" title="Commands" class="{{ offCls }}">
-    <IconTerminal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Commands</span>
+    <IconTerminal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Commands</span>
   </a>
 {{/if}}
 
 {{#if active is "redirects"}}
   <a href="{{ '/servers/site-redirects?id=' + siteId }}" title="Redirects" aria-current="page" class="{{ onCls }}">
-    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Redirects</span>
+    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Redirects</span>
   </a>
 {{/if}}
 {{#if active is not "redirects"}}
   <a href="{{ '/servers/site-redirects?id=' + siteId }}" title="Redirects" class="{{ offCls }}">
-    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Redirects</span>
+    <IconSwitchHorizontal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Redirects</span>
   </a>
 {{/if}}
 
   {{#if active is "logs"}}
   <a href="{{ '/servers/site-logs?id=' + siteId }}" title="Logs" aria-current="page" class="{{ onCls }}">
-    <IconDocumentText class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Logs</span>
+    <IconDocumentText class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Logs</span>
   </a>
 {{/if}}
 {{#if active is not "logs"}}
   <a href="{{ '/servers/site-logs?id=' + siteId }}" title="Logs" class="{{ offCls }}">
-    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Logs</span>
+    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Logs</span>
   </a>
 {{/if}}
 
 {{#if active is "settings"}}
   <a href="{{ '/servers/site-settings?id=' + siteId }}" title="Settings" aria-current="page" class="{{ onCls }}">
-    <IconAdjustments class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> <span class="{{ labelCls }}">Settings</span>
+    <IconAdjustments class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Settings</span>
   </a>
 {{/if}}
 {{#if active is not "settings"}}
   <a href="{{ '/servers/site-settings?id=' + siteId }}" title="Settings" class="{{ offCls }}">
-    <IconAdjustments class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" /> <span class="{{ labelCls }}">Settings</span>
+    <IconAdjustments class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Settings</span>
   </a>
 {{/if}}
 

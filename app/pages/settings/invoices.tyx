@@ -14,7 +14,7 @@ state
 action
   badgeFor(status) {
     if status is "paid" {
-      return "inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500"
+      return "inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500"
     }
     if status is "failed" {
       return "inline-flex items-center rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500"
@@ -54,7 +54,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="settings" />
     <SettingsSidebar active="invoices" />
     <div class="min-w-0">
@@ -79,7 +79,7 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
 {{#if rows.length is 0}}
         <p class="text-slate-500 text-sm">No invoices yet. They appear here after your first payment.</p>
 {{/if}}

@@ -206,13 +206,13 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
   <Sidebar active="registrars" />
   <RegistrarSidebar active="domains" registrarId="{{ registrarId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="{{ '/registrars/registrar-domains?id=' + registrarId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/registrars/registrar-domains?id=' + registrarId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Domains
       </a>
 
@@ -231,7 +231,7 @@ template
 {{/if}}
 
 {{#if nameservers.length is not 0}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-5 mb-6 shadow-sm dark:shadow-none">
         <div class="flex items-center justify-between gap-4 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm">Nameservers</h2>
 {{#if nsEditable}}
@@ -246,7 +246,7 @@ template
 
 {{#if nsOpen}}
       <div role="dialog" aria-modal="true" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-6">
-        <div class="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-6">
+        <div class="w-full max-w-md rounded-2xl border border-line bg-panel shadow-xl p-6">
           <h3 class="text-slate-900 dark:text-slate-100 font-medium mb-1">Change nameservers</h3>
           <p class="text-rose-500 text-xs mb-4">Wrong nameservers take this domain's website and email offline until they're fixed.</p>
           <label class="block text-slate-500 text-xs font-medium mb-1.5">One per line</label>
@@ -254,7 +254,7 @@ template
             rows="4"
             value="{{ nsText }}"
             oninput="{{ nsText = $event.target.value }}"
-            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
           ></textarea>
           <label class="block text-slate-500 text-xs font-medium mt-4 mb-1.5">Type {{ domainName }} to confirm</label>
           <input
@@ -274,7 +274,7 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 mb-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-5 mb-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm mb-3">
 {{#if editId}}
           Edit record
@@ -287,7 +287,7 @@ template
           <select
             value="{{ rType }}"
             onchange="{{ rType = $event.target.value }}"
-            class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
           >
             <option value="A">A</option>
             <option value="AAAA">AAAA</option>
@@ -296,18 +296,18 @@ template
             <option value="TXT">TXT</option>
             <option value="NS">NS</option>
           </select>
-          <input type="text" value="{{ rName }}" oninput="{{ rName = $event.target.value }}" placeholder="Name (@ for root)" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <input type="text" value="{{ rValue }}" oninput="{{ rValue = $event.target.value }}" placeholder="Value" class="md:col-span-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <input type="text" value="{{ rTtl }}" oninput="{{ rTtl = $event.target.value }}" placeholder="TTL" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <input type="text" value="{{ rName }}" oninput="{{ rName = $event.target.value }}" placeholder="Name (@ for root)" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40" />
+          <input type="text" value="{{ rValue }}" oninput="{{ rValue = $event.target.value }}" placeholder="Value" class="md:col-span-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40" />
+          <input type="text" value="{{ rTtl }}" oninput="{{ rTtl = $event.target.value }}" placeholder="TTL" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40" />
 {{#if rType is "MX"}}
-          <input type="text" value="{{ rPriority }}" oninput="{{ rPriority = $event.target.value }}" placeholder="Priority" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
+          <input type="text" value="{{ rPriority }}" oninput="{{ rPriority = $event.target.value }}" placeholder="Priority" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40" />
 {{/if}}
         </div>
 {{#if formError}}
         <p role="alert" class="text-rose-500 text-xs mt-3">{{ formError }}</p>
 {{/if}}
         <div class="flex items-center gap-3 mt-4">
-          <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-emerald-400 transition-all">
+          <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
 {{#if editId}}
             Save changes
 {{/if}}
@@ -327,13 +327,13 @@ template
 
 {{#if not loading}}
 {{#if records.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-8 text-center">
         <p class="text-slate-500 text-sm">No DNS records yet.</p>
       </div>
 {{/if}}
 
 {{#if records.length is not 0}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800 shadow-sm dark:shadow-none">
 {{#each r in records}}
         <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
           <div class="min-w-0 flex items-center gap-3">

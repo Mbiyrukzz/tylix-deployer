@@ -102,7 +102,7 @@ action
     const pill = "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold "
     let tone = "bg-amber-500/10 text-amber-700 dark:text-amber-400"
     if site.status is "ready" {
-      tone = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+      tone = "bg-brand-500/10 text-brand-700 dark:text-brand-400"
     } else if site.status is "failed" {
       tone = "bg-rose-500/10 text-rose-600 dark:text-rose-400"
     }
@@ -170,11 +170,11 @@ action
     const base = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold "
     const tones = [
       ["Laravel", "bg-rose-500/10 text-rose-600 dark:text-rose-400"],
-      ["Tylix", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"],
+      ["Tylix", "bg-brand-500/10 text-brand-700 dark:text-brand-500"],
       ["Web server", "bg-sky-500/10 text-sky-600 dark:text-sky-400"],
       ["App services", "bg-amber-500/10 text-amber-600 dark:text-amber-400"],
       ["Next.js", "bg-violet-500/10 text-violet-600 dark:text-violet-400"],
-      ["Nuxt", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"]
+      ["Nuxt", "bg-brand-500/10 text-brand-700 dark:text-brand-500"]
     ]
     const hit = tones.find((t) => t[0] is group)
     return base + (hit ? hit[1] : "bg-slate-500/10 text-slate-600 dark:text-slate-400")
@@ -709,7 +709,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
@@ -722,25 +722,25 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-6 sm:p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
       <LockedBanner />
 
-      <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-7 sm:py-9 mb-6 sm:mb-8">
+      <div class="relative overflow-hidden rounded-2xl border border-line bg-panel px-5 sm:px-8 py-7 sm:py-9 mb-6 sm:mb-8">
         <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div class="min-w-0">
-            <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-4 max-w-full">
-              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500"></span>
+            <span class="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-4 max-w-full">
+              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500"></span>
               <span class="truncate">{{ typeLabel }} site settings</span>
             </span>
             <h1 class="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-slate-900 dark:text-slate-100 break-all sm:break-normal sm:truncate mb-2">{{ site.domain }}</h1>
@@ -760,9 +760,9 @@ template
 
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
 {{#each group in groups}}
-            <section class="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+            <section class="min-w-0 rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
               <div class="flex items-center gap-3 mb-4 sm:mb-5">
-                <span class="w-1.5 h-5 shrink-0 rounded-full bg-emerald-500"></span>
+                <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
                 <h2 class="text-slate-900 dark:text-slate-100 font-semibold">{{ group.title }}</h2>
               </div>
               <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
@@ -782,17 +782,17 @@ template
 {{/each}}
           </div>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div class="min-w-0">
                 <div class="flex items-center gap-3 mb-1.5">
-                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-emerald-500"></span>
+                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
                   <h2 class="text-slate-900 dark:text-slate-100 font-semibold">nginx configuration</h2>
                 </div>
                 <p class="text-slate-500 text-sm">This site's nginx config. It opens in a full-size editor so it isn't changed by accident.</p>
               </div>
 {{#if nginxReady}}
-              <button onclick="{{ openNginx() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 sm:py-2 hover:border-emerald-500/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <button onclick="{{ openNginx() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 sm:py-2 hover:border-brand-500/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
                   <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
@@ -807,15 +807,15 @@ template
 
 {{#if nginxReady}}
             <p class="text-slate-500 text-xs font-mono mt-5 break-all">{{ nginxFile }}</p>
-            <p class="text-slate-500 text-xs mt-2">Just need to send an old address somewhere else? Use <a href="{{ '/servers/site-redirects?id=' + siteId }}" class="text-emerald-700 dark:text-emerald-500 hover:underline">Redirects</a> instead of editing the config.</p>
+            <p class="text-slate-500 text-xs mt-2">Just need to send an old address somewhere else? Use <a href="{{ '/servers/site-redirects?id=' + siteId }}" class="text-brand-700 dark:text-brand-500 hover:underline">Redirects</a> instead of editing the config.</p>
 {{/if}}
           </section>
 
-          <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
               <div class="min-w-0">
                 <div class="flex items-center gap-3 mb-1.5">
-                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-emerald-500"></span>
+                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
                   <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Plugins</h2>
                 </div>
                 <p class="text-slate-500 text-sm">Extras for this {{ typeLabel }} site. Each one installs over SSH, and you can remove it again.</p>
@@ -830,7 +830,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ openInstaller() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 sm:py-2 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">
+              <button onclick="{{ openInstaller() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 sm:py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                   <path d="M10 4v12M4 10h12" stroke-linecap="round" />
                 </svg>
@@ -857,7 +857,7 @@ template
 
 {{#each p in plugins}}
 {{#if p.shown}}
-            <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4 sm:p-5 mb-3">
+            <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/40 p-4 sm:p-5 mb-3">
               <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                 <div class="min-w-0 flex items-start gap-3">
                   <span class="{{ p.tile }}">{{ p.letter }}</span>
@@ -866,8 +866,8 @@ template
                       <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ p.name }}</h3>
                       <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{{ p.group }}</span>
 {{#if p.isInstalled}}
-                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
+                        <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Installed
                       </span>
 {{/if}}
 {{#if p.busy}}
@@ -902,7 +902,7 @@ template
 {{/if}}
 {{#if not Billing.locked}}
 {{#if p.isFailed}}
-                  <button onclick="{{ retry(p.id, p.status) }}" class="min-h-[40px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 sm:py-1.5 shadow-sm hover:bg-emerald-400 transition-all">Retry</button>
+                  <button onclick="{{ retry(p.id, p.status) }}" class="min-h-[40px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 sm:py-1.5 shadow-sm hover:bg-brand-400 transition-all">Retry</button>
 {{/if}}
                   <button onclick="{{ remove(p.id) }}" class="min-h-[40px] sm:min-h-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-2 sm:py-1.5 hover:bg-rose-500/5 transition-colors">Remove</button>
 {{/if}}
@@ -919,7 +919,7 @@ template
               <p class="text-slate-500 text-xs mt-3 break-words">&bull; {{ n }}</p>
 {{/each}}
 {{#if p.log}}
-              <div class="mt-4 max-h-72 sm:max-h-80 overflow-y-auto rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 sm:p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ p.log }}</div>
+              <div class="mt-4 max-h-72 sm:max-h-80 overflow-y-auto rounded-lg bg-white dark:bg-slate-950 border border-line p-3 sm:p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ p.log }}</div>
 {{/if}}
 {{/if}}
             </div>
@@ -934,7 +934,7 @@ template
       <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
         <div onclick="{{ closeInstaller() }}" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
 
-        <div role="dialog" aria-modal="true" aria-label="Add a plugin" class="relative flex flex-col w-full sm:max-w-3xl h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
+        <div role="dialog" aria-modal="true" aria-label="Add a plugin" class="relative flex flex-col w-full sm:max-w-3xl h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl border border-line bg-panel shadow-2xl overflow-hidden">
 
           <div class="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
             <div class="min-w-0">
@@ -949,7 +949,7 @@ template
           </div>
 
           <div class="px-4 sm:px-6 pb-3">
-            <input id="installer-filter" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ installerFilter }}" oninput="{{ applyInstallerFilter($event.target.value) }}" placeholder="Search plugins…" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors" />
+            <input id="installer-filter" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ installerFilter }}" oninput="{{ applyInstallerFilter($event.target.value) }}" placeholder="Search plugins…" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm px-3.5 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
           </div>
 
           <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 pb-4">
@@ -967,7 +967,7 @@ template
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 {{#each i in g.items}}
 {{#if selected is i.id}}
-              <button onclick="{{ pickPlugin(i.id) }}" aria-pressed="true" class="min-h-[64px] flex items-start gap-3 text-left rounded-xl border-2 border-emerald-500 bg-emerald-500/5 px-3 py-2.5 transition-colors">
+              <button onclick="{{ pickPlugin(i.id) }}" aria-pressed="true" class="min-h-[64px] flex items-start gap-3 text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-3 py-2.5 transition-colors">
                 <span class="{{ i.tile }}">{{ i.letter }}</span>
                 <span class="min-w-0">
                   <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100">{{ i.name }}</span>
@@ -979,7 +979,7 @@ template
               </button>
 {{/if}}
 {{#if selected is not i.id}}
-              <button onclick="{{ pickPlugin(i.id) }}" aria-pressed="false" class="min-h-[64px] flex items-start gap-3 text-left rounded-xl border-2 border-slate-200 dark:border-slate-800 px-3 py-2.5 transition-colors hover:border-emerald-500/40">
+              <button onclick="{{ pickPlugin(i.id) }}" aria-pressed="false" class="min-h-[64px] flex items-start gap-3 text-left rounded-xl border-2 border-line px-3 py-2.5 transition-colors hover:border-brand-500/40">
                 <span class="{{ i.tile }}">{{ i.letter }}</span>
                 <span class="min-w-0">
                   <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100">{{ i.name }}</span>
@@ -996,7 +996,7 @@ template
           </div>
 
 {{#if picked}}
-          <div class="shrink-0 max-h-[34vh] overflow-y-auto overscroll-contain border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 px-4 sm:px-6 py-3">
+          <div class="shrink-0 max-h-[34vh] overflow-y-auto overscroll-contain border-t border-line bg-slate-50 dark:bg-slate-950/50 px-4 sm:px-6 py-3">
             <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ picked?.name }}</p>
             <p class="text-slate-500 text-sm mt-0.5 break-words">{{ picked?.description }}</p>
 {{#if picked?.blocked}}
@@ -1009,17 +1009,17 @@ template
 {{/if}}
 
 {{#if installerError}}
-          <p role="alert" class="shrink-0 px-4 sm:px-6 py-2 text-rose-500 text-sm break-words border-t border-slate-200 dark:border-slate-800">{{ installerError }}</p>
+          <p role="alert" class="shrink-0 px-4 sm:px-6 py-2 text-rose-500 text-sm break-words border-t border-line">{{ installerError }}</p>
 {{/if}}
 
-          <div class="shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+          <div class="shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 border-t border-line" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
             <button onclick="{{ closeInstaller() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
 {{#if Billing.locked}}
             <button disabled title="Pay to continue" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">Install</button>
 {{/if}}
 {{#if not Billing.locked}}
 {{#if installBusy}}
-            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Installing…</button>
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Installing…</button>
 {{/if}}
 {{#if not installBusy}}
 {{#if picked}}
@@ -1027,7 +1027,7 @@ template
               <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">Unavailable</button>
 {{/if}}
 {{#if not picked?.blocked}}
-              <button onclick="{{ installPicked() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-emerald-400 hover:shadow transition-all">Install {{ picked?.name }}</button>
+              <button onclick="{{ installPicked() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Install {{ picked?.name }}</button>
 {{/if}}
 {{/if}}
 {{#if not picked}}
@@ -1049,7 +1049,7 @@ template
 
           <div class="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-slate-800 bg-slate-900/80">
             <div class="flex items-center gap-3 min-w-0">
-              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-950 text-emerald-400">
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-950 text-brand-400">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4.5 h-4.5">
                   <path d="M6 3h6l4 4v10H6V3zM12 3v4h4M8.5 11h5M8.5 14h3" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
@@ -1065,8 +1065,8 @@ template
 {{/if}}
 {{#if nginxText is nginxOriginal}}
 {{#if nginxLoaded}}
-              <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In sync with server
+              <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 text-brand-400 text-xs font-medium px-2.5 py-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> In sync with server
               </span>
 {{/if}}
 {{/if}}
@@ -1074,7 +1074,7 @@ template
 
             <div class="flex items-center gap-2">
               <button onclick="{{ reloadNginx() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-2 sm:py-1.5 transition-colors">Reload<span class="hidden sm:inline"> from server</span></button>
-              <button onclick="{{ closeNginx() }}" title="Close (Esc)" aria-label="Close the nginx editor" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500/60 rounded-full px-3 py-2 sm:py-1.5 transition-colors">
+              <button onclick="{{ closeNginx() }}" title="Close (Esc)" aria-label="Close the nginx editor" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-brand-500/60 rounded-full px-3 py-2 sm:py-1.5 transition-colors">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
                   <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
@@ -1092,8 +1092,8 @@ template
 {{/if}}
 
 {{#if nginxMessage}}
-          <div role="status" class="mx-4 sm:mx-5 mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
-            <p class="text-emerald-400 text-sm">{{ nginxMessage }}</p>
+          <div role="status" class="mx-4 sm:mx-5 mt-4 rounded-xl border border-brand-500/30 bg-brand-500/5 px-4 py-3">
+            <p class="text-brand-400 text-sm">{{ nginxMessage }}</p>
           </div>
 {{/if}}
 
@@ -1109,7 +1109,7 @@ template
 {{#if nginxLoaded}}
 {{#if not nginxLoading}}
           <div class="flex-1 min-h-0 flex flex-col px-3 sm:px-5 pt-4 pb-4">
-            <div class="flex-1 min-h-0 flex rounded-xl border border-slate-800 bg-slate-950 overflow-hidden focus-within:border-emerald-500/50 transition-colors">
+            <div class="flex-1 min-h-0 flex rounded-xl border border-slate-800 bg-slate-950 overflow-hidden focus-within:border-brand-500/50 transition-colors">
               <div
                 id="nginx-gutter"
                 aria-hidden="true"
@@ -1147,7 +1147,7 @@ template
 {{#if nginxText is not nginxOriginal}}
               <button onclick="{{ discardNginx() }}" class="flex-1 sm:flex-none text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-2.5 sm:py-2 hover:bg-slate-800 transition-colors">Discard</button>
 {{/if}}
-              <button onclick="{{ saveNginx() }}" class="flex-1 sm:flex-none text-sm bg-emerald-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 sm:py-2 shadow-sm hover:bg-emerald-400 transition-all">
+              <button onclick="{{ saveNginx() }}" class="flex-1 sm:flex-none text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 sm:py-2 shadow-sm hover:bg-brand-400 transition-all">
                 {{#if nginxSaving}}Testing and saving…{{/if}}{{#if not nginxSaving}}Test and save{{/if}}
               </button>
             </div>
@@ -1162,7 +1162,7 @@ template
       <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6">
         <div onclick="{{ closeCode() }}" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
 
-        <div role="dialog" aria-modal="true" aria-label="Two-factor code" class="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
+        <div role="dialog" aria-modal="true" aria-label="Two-factor code" class="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-line bg-panel p-5 sm:p-6 shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom))">
           <h3 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ codeTitle }}</h3>
           <p class="text-slate-500 text-sm mb-4">Enter the code from your authenticator app or the SMS we sent you.</p>
 
@@ -1177,7 +1177,7 @@ template
             value="{{ codeValue }}"
             oninput="{{ codeValue = $event.target.value }}"
             placeholder="123456"
-            class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-base tracking-widest font-mono px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-base tracking-widest font-mono px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
           />
 
 {{#if codeError}}
@@ -1187,10 +1187,10 @@ template
           <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
             <button onclick="{{ closeCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
 {{#if codeBusy}}
-            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
 {{/if}}
 {{#if not codeBusy}}
-            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-emerald-400 transition-all">Confirm</button>
+            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Confirm</button>
 {{/if}}
           </div>
         </div>

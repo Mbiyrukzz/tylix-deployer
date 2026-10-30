@@ -275,7 +275,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-slate-100 dark:bg-slate-950 transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
     <Sidebar active="servers" />
 {{#if serverId}}
     <ServerSidebar active="firewall" serverId="{{ serverId }}" />
@@ -288,14 +288,14 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
-        <a href="/servers" class="text-emerald-700 dark:text-emerald-500 text-sm hover:underline">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
       </div>
 {{/if}}
 
 {{#if server}}
-      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-500 text-sm hover:underline font-medium mb-6">
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
@@ -344,7 +344,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ sync() }}" class="text-sm border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl px-4 py-2 hover:border-emerald-500/50">Sync</button>
+          <button onclick="{{ sync() }}" class="text-sm border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl px-4 py-2 hover:border-brand-500/50">Sync</button>
 {{/if}}
 {{/if}}
 {{#if Billing.locked}}
@@ -357,7 +357,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ newRule() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Create</button>
+          <button onclick="{{ newRule() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Create</button>
 {{/if}}
         </div>
       </div>
@@ -370,11 +370,11 @@ template
       <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
 {{/if}}
 {{#if note}}
-      <p class="text-emerald-700 dark:text-emerald-500 text-sm mb-4">{{ note }}</p>
+      <p class="text-brand-700 dark:text-brand-500 text-sm mb-4">{{ note }}</p>
 {{/if}}
 
 {{#if showForm}}
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
 {{#if editId is 0}}
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">New rule</h2>
 {{/if}}
@@ -388,16 +388,16 @@ template
         <p class="text-slate-500 text-xs mb-2">Type</p>
         <div class="grid grid-cols-2 gap-2 mb-4 max-w-xs">
 {{#if ruleType is "allow"}}
-          <button onclick="{{ pickType('allow') }}" class="rounded-xl border px-4 py-2 text-sm border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">Allow</button>
+          <button onclick="{{ pickType('allow') }}" class="rounded-xl border px-4 py-2 text-sm border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">Allow</button>
 {{/if}}
 {{#if ruleType is not "allow"}}
-          <button onclick="{{ pickType('allow') }}" class="rounded-xl border px-4 py-2 text-sm border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">Allow</button>
+          <button onclick="{{ pickType('allow') }}" class="rounded-xl border px-4 py-2 text-sm border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">Allow</button>
 {{/if}}
 {{#if ruleType is "deny"}}
           <button onclick="{{ pickType('deny') }}" class="rounded-xl border px-4 py-2 text-sm border-rose-500 bg-rose-500/10 text-slate-800 dark:text-slate-200">Deny</button>
 {{/if}}
 {{#if ruleType is not "deny"}}
-          <button onclick="{{ pickType('deny') }}" class="rounded-xl border px-4 py-2 text-sm border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-rose-500/40">Deny</button>
+          <button onclick="{{ pickType('deny') }}" class="rounded-xl border px-4 py-2 text-sm border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-rose-500/40">Deny</button>
 {{/if}}
         </div>
 
@@ -411,16 +411,16 @@ template
             <p class="text-slate-500 text-xs mb-1">Protocol</p>
             <div class="grid grid-cols-2 gap-2">
 {{#if protocol is "tcp"}}
-              <button onclick="{{ pickProtocol('tcp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">tcp</button>
+              <button onclick="{{ pickProtocol('tcp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">tcp</button>
 {{/if}}
 {{#if protocol is not "tcp"}}
-              <button onclick="{{ pickProtocol('tcp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">tcp</button>
+              <button onclick="{{ pickProtocol('tcp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">tcp</button>
 {{/if}}
 {{#if protocol is "udp"}}
-              <button onclick="{{ pickProtocol('udp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-emerald-500 bg-emerald-500/10 text-slate-800 dark:text-slate-200">udp</button>
+              <button onclick="{{ pickProtocol('udp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">udp</button>
 {{/if}}
 {{#if protocol is not "udp"}}
-              <button onclick="{{ pickProtocol('udp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-emerald-500/40">udp</button>
+              <button onclick="{{ pickProtocol('udp') }}" class="rounded-xl border px-3 py-2 text-sm font-mono border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-400 hover:border-brand-500/40">udp</button>
 {{/if}}
             </div>
           </div>
@@ -435,7 +435,7 @@ template
 {{/if}}
         <div class="flex items-center gap-3">
 {{#if busy}}
-          <button disabled class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Applying…</button>
+          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Applying…</button>
 {{/if}}
 {{#if not busy}}
 {{#if editId is 0}}
@@ -449,7 +449,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Add rule</button>
+          <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Add rule</button>
 {{/if}}
 {{/if}}
 {{#if editId is not 0}}
@@ -463,7 +463,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ save() }}" class="text-sm bg-emerald-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-emerald-400 transition-all">Save changes</button>
+          <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Save changes</button>
 {{/if}}
 {{/if}}
 {{/if}}
@@ -472,7 +472,7 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none overflow-x-auto">
+      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none overflow-x-auto">
 {{#if rules.length is 0}}
         <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
           <p class="text-slate-500 text-sm">No rules yet.</p>
@@ -493,11 +493,11 @@ template
           </thead>
           <tbody>
 {{#each r in rules}}
-            <tr class="border-t border-slate-200 dark:border-slate-800">
+            <tr class="border-t border-line">
               <td class="py-3 pr-4 text-slate-900 dark:text-slate-100 font-medium">{{ r.name }}</td>
               <td class="py-3 pr-4">
 {{#if r.type is "allow"}}
-                <span class="text-emerald-700 dark:text-emerald-500">allow</span>
+                <span class="text-brand-700 dark:text-brand-500">allow</span>
 {{/if}}
 {{#if r.type is "deny"}}
                 <span class="text-rose-600 dark:text-rose-500">deny</span>
@@ -508,7 +508,7 @@ template
               <td class="py-3 pr-4 font-mono text-slate-600 dark:text-slate-400">{{ r.port }}</td>
               <td class="py-3 pr-4">
 {{#if r.status is "ready"}}
-                <span class="text-xs rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2 py-0.5">ready</span>
+                <span class="text-xs rounded-full bg-brand-500/15 text-brand-700 dark:text-brand-400 px-2 py-0.5">ready</span>
 {{/if}}
 {{#if r.status is "pending"}}
                 <span class="text-xs rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2 py-0.5">pending</span>
@@ -533,7 +533,7 @@ template
                 </span>
 {{/if}}
 {{#if not Billing.locked}}
-                <button onclick="{{ startEdit(r.id) }}" class="text-xs text-slate-600 dark:text-slate-300 hover:text-emerald-600 px-2 py-1">Edit</button>
+                <button onclick="{{ startEdit(r.id) }}" class="text-xs text-slate-600 dark:text-slate-300 hover:text-brand-600 px-2 py-1">Edit</button>
 {{/if}}
 {{#if Billing.locked}}
                 <span title="Pay to continue" class="inline-flex items-center gap-1 text-xs text-slate-400 select-none px-2 py-1">
