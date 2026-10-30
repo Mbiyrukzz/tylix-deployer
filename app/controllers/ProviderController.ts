@@ -27,6 +27,8 @@
  *     user out for a while, so this can't be used to test stolen tokens
  *   - adding, replacing credentials on and deleting a connection are written
  *     to the log (never the credentials themselves)
+ *   - lists are filtered in the database (WHERE team_id = ?), never by
+ *     loading every team's rows and filtering in memory
  *
  * All routes sit behind requireAuth ("auth": true in feature.json).
  */
@@ -92,6 +94,14 @@ function sealed(kind: string, secret: string): { api_token: string; credentials:
         : { api_token: encrypted, credentials: "" };
 }
 
+/** All of one team's connections, filtered in the database. */
+async function rowsForTeam(teamId: number): Promise<ProviderRow[]> {
+    return (await Provider.query()
+        .where("team_id", teamId)
+        .orderBy("created_at", "DESC")
+        .get()) as ProviderRow[];
+}
+
 /** Loads a connection and answers 404 itself if it is missing or not on the caller's team. */
 async function findOwned(req: TylixRequest, res: TylixResponse): Promise<ProviderRow | null> {
     const teamId = requireTeam(req, res);
@@ -113,12 +123,9 @@ async function isDuplicateLabel(
     label: string,
     exceptId?: number,
 ): Promise<boolean> {
-    const providers = (await Provider.all()) as ProviderRow[];
+    const providers = await rowsForTeam(teamId);
     return providers.some(
-        (p) =>
-            Number(p.team_id) === teamId &&
-            p.label.toLowerCase() === label.toLowerCase() &&
-            p.id !== exceptId,
+        (p) => p.label.toLowerCase() === label.toLowerCase() && p.id !== exceptId,
     );
 }
 
@@ -199,10 +206,7 @@ export class ProviderController {
         const teamId = requireTeam(req, res);
         if (!teamId) return;
 
-        const providers = (await Provider.all()) as ProviderRow[];
-        const own = providers
-            .filter((p) => Number(p.team_id) === teamId)
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const own = await rowsForTeam(teamId);
 
         return res.json(own.map(toPublic));
     }
@@ -311,7 +315,6 @@ export class ProviderController {
             patch.status = "connected";
         }
 
-        // ASSUMPTION: Model exposes update(id, data), same as ServerController.
         await Provider.update(provider.id, patch);
         const fresh = (await Provider.find(provider.id)) as ProviderRow | null;
 
@@ -344,17 +347,17 @@ export class ProviderController {
 
         // "Has a machine" means "has a reference" (Vultr ids are UUIDs and AWS
         // refs are region/id, so Number(instance_id) > 0 would miss them).
-        const provisions = (await Provision.all()) as {
+        // Only this connection's provisions are loaded.
+        const provisions = (await Provision.query()
+            .where("provider_id", provider.id)
+            .get()) as {
             provider_id: number;
             instance_id: number;
             instance_ref?: string;
             status: string;
         }[];
         const inUse = provisions.some(
-            (p) =>
-                Number(p.provider_id) === provider.id &&
-                instanceRefOf(p) !== "" &&
-                p.status !== "deleted",
+            (p) => instanceRefOf(p) !== "" && p.status !== "deleted",
         );
         if (inUse) {
             res.status(409);

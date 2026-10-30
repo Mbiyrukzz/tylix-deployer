@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tylix dev",
     "build": "tylix build",
-    "start": "tylix start",
+    "start": "NODE_ENV=production tylix start",
     "migrate": "tylix migrate",
     "css:build": "tailwindcss -i ./app/tailwind-input.css -o ./public/tailwind.css",
     "css:watch": "tailwindcss -i ./app/tailwind-input.css -o ./public/tailwind.css --watch",

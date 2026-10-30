@@ -83,7 +83,6 @@ export function renderVerifyPage(state: VerifyState, email?: string): string {
     padding: 24px; gap: 28px; color: var(--text);
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background:
-      radial-gradient(600px 300px at 50% 0%, var(--glow), transparent 70%),
       var(--bg);
     -webkit-font-smoothing: antialiased;
   }
