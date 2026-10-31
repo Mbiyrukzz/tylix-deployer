@@ -121,6 +121,24 @@ template
   </a>
 {{/if}}
 
+{{#if active is "team"}}
+  <a href="/team" title="Team" aria-current="page" class="{{ onCls }}">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <span class="{{ chipOnCls }}">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4"><circle cx="8" cy="6.5" r="2.5" /><path d="M13 16v-1a3 3 0 00-3-3H6a3 3 0 00-3 3v1" stroke-linecap="round" stroke-linejoin="round" /><path d="M13.5 4.2a2.5 2.5 0 010 4.6M17 16v-1a3 3 0 00-2.2-2.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </span>
+    <span class="{{ labelCls }}">Team</span>
+  </a>
+{{/if}}
+{{#if active is not "team"}}
+  <a href="/team" title="Team" class="{{ offCls }}">
+    <span class="{{ chipOffCls }}">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4"><circle cx="8" cy="6.5" r="2.5" /><path d="M13 16v-1a3 3 0 00-3-3H6a3 3 0 00-3 3v1" stroke-linecap="round" stroke-linejoin="round" /><path d="M13.5 4.2a2.5 2.5 0 010 4.6M17 16v-1a3 3 0 00-2.2-2.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </span>
+    <span class="{{ labelCls }}">Team</span>
+  </a>
+{{/if}}
+
   <div class="{{ divCls }}"></div>
   <p class="{{ secCls }}">Connections</p>
 

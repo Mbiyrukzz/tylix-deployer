@@ -1,0 +1,238 @@
+page TeamActivity
+
+title "Team activity"
+
+needs
+  Auth
+
+state
+  loading: true
+  scope: "team"
+  members: []
+  events: []
+  userId: ""
+  page: 1
+  pages: 1
+  total: 0
+  hasPrev: false
+  hasNext: false
+  rangeText: ""
+  paging: false
+
+action
+  readValue(id) {
+    const el = document.getElementById(id)
+    if not el {
+      return ""
+    }
+    return String(Reflect.get(el, "value"))
+  }
+
+  ago(iso) {
+    if not iso {
+      return "Never"
+    }
+    const t = new Date(iso).getTime()
+    if Number.isNaN(t) {
+      return "Unknown"
+    }
+    const s = Math.floor((Date.now() - t) / 1000)
+    if s < 60 {
+      return "Just now"
+    }
+    const m = Math.floor(s / 60)
+    if m < 60 {
+      return m + "m ago"
+    }
+    const h = Math.floor(m / 60)
+    if h < 24 {
+      return h + "h ago"
+    }
+    const d = Math.floor(h / 24)
+    if d < 30 {
+      return d + "d ago"
+    }
+    return String(iso).slice(0, 10)
+  }
+
+  decorateEvent(e) {
+    return {
+      id: e.id,
+      who: e.user_name,
+      initial: String(e.user_name).slice(0, 1).toUpperCase(),
+      verb: e.verb,
+      label: e.label,
+      when: this.ago(e.at),
+      exact: String(e.at).slice(0, 16).replace("T", " "),
+      href: "/team/member?id=" + e.user_id
+    }
+  }
+
+  async loadEvents(page) {
+    let url = "/api/team/activity?per_page=25&page=" + page
+    if this.userId {
+      url = url + "&user=" + this.userId
+    }
+
+    const act = await useApi(url)
+
+    if act.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if not act.ok {
+      return null
+    }
+
+    const d = act.data
+    this.scope = d.scope
+    this.events = d.events.map((e) => this.decorateEvent(e))
+    this.page = d.page
+    this.pages = d.pages
+    this.total = d.total
+    this.hasPrev = d.page > 1
+    this.hasNext = d.page < d.pages
+
+    if d.total is 0 {
+      this.rangeText = ""
+    } else {
+      const from = (d.page - 1) * d.per_page + 1
+      const to = Math.min(d.page * d.per_page, d.total)
+      this.rangeText = from + "–" + to + " of " + d.total
+    }
+
+    return d
+  }
+
+  async load() {
+    const list = await useApi("/api/team/members")
+
+    if list.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if list.ok {
+      this.members = list.data.members.map((m) => ({ id: m.id, name: m.name }))
+    }
+
+    await this.loadEvents(1)
+    this.loading = false
+  }
+
+  async applyFilter() {
+    this.userId = this.readValue("activity-user")
+    this.paging = true
+    await this.loadEvents(1)
+    this.paging = false
+  }
+
+  async prev() {
+    if this.paging or not this.hasPrev {
+      return null
+    }
+    this.paging = true
+    await this.loadEvents(this.page - 1)
+    this.paging = false
+  }
+
+  async next() {
+    if this.paging or not this.hasNext {
+      return null
+    }
+    this.paging = true
+    await this.loadEvents(this.page + 1)
+    this.paging = false
+  }
+
+onMount
+  async {
+    await this.load()
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+    <Sidebar active="team" />
+    <div class="min-w-0">
+    <div class="max-w-4xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/team" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 mb-6 transition-colors">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        Back to team
+      </a>
+
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+        <div>
+{{#if scope is "team"}}
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Team activity</h1>
+          <p class="text-slate-500 text-sm">Everything members have added to the team.</p>
+{{/if}}
+{{#if scope is "self"}}
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Your activity</h1>
+          <p class="text-slate-500 text-sm">Everything you've added to the team.</p>
+{{/if}}
+        </div>
+
+{{#if scope is "team"}}
+        <div class="sm:w-56">
+          <label for="activity-user" class="block text-slate-500 text-xs font-medium uppercase tracking-wider mb-1.5">Member</label>
+          <select id="activity-user" onchange="{{ applyFilter() }}" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+            <option value="">Everyone</option>
+{{#each m in members}}
+            <option value="{{ m.id }}">{{ m.name }}</option>
+{{/each}}
+          </select>
+        </div>
+{{/if}}
+      </div>
+
+{{#if loading}}
+      <p class="text-slate-500 text-sm">Loading…</p>
+{{/if}}
+
+{{#if not loading}}
+      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+{{#if events.length is 0}}
+        <p class="px-6 py-10 text-slate-500 text-sm text-center">No activity found.</p>
+{{/if}}
+        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each e in events}}
+          <div class="flex items-center gap-3 px-6 py-3">
+            <span class="w-8 h-8 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 text-xs font-semibold flex items-center justify-center">{{ e.initial }}</span>
+            <p class="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-400 truncate">
+              <a href="{{ e.href }}" class="font-medium text-slate-900 dark:text-slate-100 hover:underline">{{ e.who }}</a>
+              {{ e.verb }}
+              <span class="font-mono text-slate-900 dark:text-slate-100">{{ e.label }}</span>
+            </p>
+            <span class="text-slate-500 text-xs shrink-0" title="{{ e.exact }}">{{ e.when }}</span>
+          </div>
+{{/each}}
+        </div>
+
+{{#if total is not 0}}
+        <div class="flex items-center justify-between gap-4 px-6 py-3 border-t border-line">
+          <p class="text-slate-500 text-xs">{{ rangeText }}</p>
+          <div class="flex items-center gap-2">
+{{#if hasPrev}}
+            <button onclick="{{ prev() }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Previous</button>
+{{/if}}
+{{#if not hasPrev}}
+            <button disabled class="text-xs text-slate-400 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 opacity-50">Previous</button>
+{{/if}}
+            <span class="text-slate-500 text-xs px-1">Page {{ page }} of {{ pages }}</span>
+{{#if hasNext}}
+            <button onclick="{{ next() }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Next</button>
+{{/if}}
+{{#if not hasNext}}
+            <button disabled class="text-xs text-slate-400 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 opacity-50">Next</button>
+{{/if}}
+          </div>
+        </div>
+{{/if}}
+      </div>
+{{/if}}
+
+    </div>
+    </div>
+  </div>

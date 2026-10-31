@@ -1,0 +1,398 @@
+page TeamMember
+
+title "Team member"
+
+needs
+  Auth
+
+state
+  loading: true
+  paging: false
+  notFound: false
+  forbidden: false
+  memberId: ""
+  name: ""
+  email: ""
+  role: ""
+  joined: ""
+  initial: ""
+  isMe: false
+  total: "0"
+  lastActive: "Never"
+  kinds: []
+  kind: ""
+  kindLabel: ""
+  groups: []
+  page: 1
+  pages: 1
+  count: 0
+  hasPrev: false
+  hasNext: false
+  rangeText: ""
+
+action
+  ago(iso) {
+    if not iso {
+      return "Never"
+    }
+    const t = new Date(iso).getTime()
+    if Number.isNaN(t) {
+      return "Unknown"
+    }
+    const s = Math.floor((Date.now() - t) / 1000)
+    if s < 60 {
+      return "Just now"
+    }
+    const m = Math.floor(s / 60)
+    if m < 60 {
+      return m + "m ago"
+    }
+    const h = Math.floor(m / 60)
+    if h < 24 {
+      return h + "h ago"
+    }
+    const d = Math.floor(h / 24)
+    if d < 30 {
+      return d + "d ago"
+    }
+    return String(iso).slice(0, 10)
+  }
+
+  dayLabel(iso) {
+    const d = new Date(iso)
+    const today = new Date()
+    const yesterday = new Date(Date.now() - 86400000)
+    if d.toDateString() is today.toDateString() {
+      return "Today"
+    }
+    if d.toDateString() is yesterday.toDateString() {
+      return "Yesterday"
+    }
+    return d.toDateString()
+  }
+
+  groupEvents(list) {
+    const groups = []
+    list.forEach((e) => {
+      const day = this.dayLabel(e.at)
+      let g = groups.find((x) => x.day is day)
+      if not g {
+        g = { day: day, items: [] }
+        groups.push(g)
+      }
+      g.items.push({
+        id: e.id,
+        verb: e.verb,
+        label: e.label,
+        tag: e.kind_label,
+        time: new Date(e.at).toTimeString().slice(0, 5),
+        when: this.ago(e.at)
+      })
+    })
+    return groups
+  }
+
+  decorateKinds(list, active) {
+    let max = 1
+    list.forEach((k) => {
+      if k.count > max {
+        max = k.count
+      }
+    })
+    return list.map((k) => ({
+      kind: k.kind,
+      label: k.label,
+      count: k.count,
+      width: "width: " + Math.max(6, Math.round((k.count / max) * 100)) + "%",
+      rowCls: k.kind is active
+        ? "w-full text-left rounded-xl px-3 py-2.5 bg-brand-500/10 ring-1 ring-brand-500/30 transition-colors"
+        : "w-full text-left rounded-xl px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
+    }))
+  }
+
+  async loadPage(page) {
+    let url = "/api/team/members/" + this.memberId + "?per_page=15&page=" + page
+    if this.kind {
+      url = url + "&kind=" + this.kind
+    }
+
+    const result = await useApi(url)
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.status is 404 {
+      this.notFound = true
+      return null
+    }
+
+    if result.status is 403 {
+      this.forbidden = true
+      return null
+    }
+
+    if not result.ok {
+      this.notFound = true
+      return null
+    }
+
+    const d = result.data
+    this.name = d.member.name
+    this.email = d.member.email
+    this.role = d.member.role
+    this.joined = d.member.joined
+    this.isMe = d.member.is_me
+    this.initial = String(d.member.name).slice(0, 1).toUpperCase()
+    this.total = String(d.stats.total)
+    this.lastActive = this.ago(d.stats.last_active)
+    this.kinds = this.decorateKinds(d.stats.by_kind, this.kind)
+
+    const active = d.stats.by_kind.find((k) => k.kind is this.kind)
+    this.kindLabel = active ? active.label : ""
+
+    this.groups = this.groupEvents(d.events)
+    this.page = d.page
+    this.pages = d.pages
+    this.count = d.total
+    this.hasPrev = d.page > 1
+    this.hasNext = d.page < d.pages
+
+    if d.total is 0 {
+      this.rangeText = ""
+    } else {
+      const from = (d.page - 1) * d.per_page + 1
+      const to = Math.min(d.page * d.per_page, d.total)
+      this.rangeText = from + "–" + to + " of " + d.total
+    }
+  }
+
+  async load() {
+    const id = new URLSearchParams(window.location.search).get("id")
+    if not id {
+      this.notFound = true
+      this.loading = false
+      return null
+    }
+
+    this.memberId = id
+    await this.loadPage(1)
+    this.loading = false
+  }
+
+  async pickKind(k) {
+    if this.paging {
+      return null
+    }
+    this.kind = this.kind is k ? "" : k
+    this.paging = true
+    await this.loadPage(1)
+    this.paging = false
+  }
+
+  async clearKind() {
+    if this.paging {
+      return null
+    }
+    this.kind = ""
+    this.paging = true
+    await this.loadPage(1)
+    this.paging = false
+  }
+
+  async prev() {
+    if this.paging or not this.hasPrev {
+      return null
+    }
+    this.paging = true
+    await this.loadPage(this.page - 1)
+    this.paging = false
+  }
+
+  async next() {
+    if this.paging or not this.hasNext {
+      return null
+    }
+    this.paging = true
+    await this.loadPage(this.page + 1)
+    this.paging = false
+  }
+
+onMount
+  async {
+    await this.load()
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+    <Sidebar active="team" />
+    <div class="min-w-0">
+    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+
+      <a href="/team" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 mb-6 transition-colors">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        Back to team
+      </a>
+
+{{#if loading}}
+      <div class="space-y-4">
+        <div class="h-40 rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if notFound}}
+      <div class="rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
+        <p class="text-slate-900 dark:text-slate-100 font-medium mb-1">Member not found</p>
+        <p class="text-slate-500 text-sm">They may have left the team.</p>
+      </div>
+{{/if}}
+
+{{#if forbidden}}
+      <div class="rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
+        <p class="text-slate-900 dark:text-slate-100 font-medium mb-1">Not available</p>
+        <p class="text-slate-500 text-sm">Only team owners and admins can see other members' activity.</p>
+      </div>
+{{/if}}
+
+{{#if not loading}}
+{{#if not notFound}}
+{{#if not forbidden}}
+
+      <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">
+        <div class="h-20 bg-gradient-to-r from-brand-500/25 via-brand-500/10 to-transparent"></div>
+        <div class="px-6 sm:px-8 pb-6 -mt-10">
+          <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+            <span class="w-20 h-20 shrink-0 rounded-2xl bg-brand-500 text-white text-3xl font-bold flex items-center justify-center ring-4 ring-white dark:ring-slate-900 shadow-lg">{{ initial }}</span>
+            <div class="min-w-0 flex-1 sm:pb-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ name }}</h1>
+                <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">{{ role }}</span>
+{{#if isMe}}
+                <span class="inline-flex items-center rounded-full bg-slate-200/70 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">You</span>
+{{/if}}
+              </div>
+              <p class="text-slate-500 text-sm font-mono truncate mt-0.5">{{ email }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Total actions</p>
+          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ total }}</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Last active</p>
+          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ lastActive }}</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Member since</p>
+          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ joined }}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
+
+        <div class="rounded-3xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
+          <div class="flex items-center justify-between px-3 pt-2 pb-3">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm">What they've added</h2>
+{{#if kind}}
+            <button onclick="{{ clearKind() }}" class="text-xs text-brand-700 dark:text-brand-400 font-semibold hover:underline">Show all</button>
+{{/if}}
+          </div>
+{{#if kinds.length is 0}}
+          <p class="px-3 pb-3 text-slate-500 text-sm">Nothing yet.</p>
+{{/if}}
+          <div class="space-y-1">
+{{#each k in kinds}}
+            <button onclick="{{ pickKind(k.kind) }}" class="{{ k.rowCls }}">
+              <span class="flex items-center justify-between text-sm mb-1.5">
+                <span class="text-slate-700 dark:text-slate-300">{{ k.label }}</span>
+                <span class="font-semibold text-slate-900 dark:text-slate-100">{{ k.count }}</span>
+              </span>
+              <span class="block h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800 overflow-hidden">
+                <span class="block h-full rounded-full bg-brand-500" style="{{ k.width }}"></span>
+              </span>
+            </button>
+{{/each}}
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+          <div class="flex items-center justify-between gap-3 px-6 py-4 border-b border-line">
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Activity</h2>
+{{#if kind}}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400">
+              {{ kindLabel }}
+              <button onclick="{{ clearKind() }}" aria-label="Clear filter" class="hover:text-brand-900 dark:hover:text-brand-200">&times;</button>
+            </span>
+{{/if}}
+          </div>
+
+{{#if groups.length is 0}}
+          <p class="px-6 py-12 text-slate-500 text-sm text-center">No activity yet.</p>
+{{/if}}
+
+          <div class="px-6 py-2">
+{{#each g in groups}}
+            <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider pt-4 pb-2">{{ g.day }}</p>
+            <div class="relative pl-6 border-l border-slate-200 dark:border-slate-800 ml-1.5 space-y-4 pb-2">
+{{#each e in g.items}}
+              <div class="relative">
+                <span class="absolute -left-[1.78rem] top-1.5 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-white dark:ring-slate-900"></span>
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-sm text-slate-600 dark:text-slate-400">
+                      {{ e.verb }}
+                      <span class="font-mono font-medium text-slate-900 dark:text-slate-100">{{ e.label }}</span>
+                    </p>
+                    <span class="inline-flex mt-1 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] text-slate-500">{{ e.tag }}</span>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <p class="text-slate-700 dark:text-slate-300 text-xs font-medium">{{ e.time }}</p>
+                    <p class="text-slate-500 text-[11px]">{{ e.when }}</p>
+                  </div>
+                </div>
+              </div>
+{{/each}}
+            </div>
+{{/each}}
+          </div>
+
+{{#if count is not 0}}
+          <div class="flex items-center justify-between gap-4 px-6 py-3 border-t border-line">
+            <p class="text-slate-500 text-xs">{{ rangeText }}</p>
+            <div class="flex items-center gap-2">
+{{#if hasPrev}}
+              <button onclick="{{ prev() }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Previous</button>
+{{/if}}
+{{#if not hasPrev}}
+              <button disabled class="text-xs text-slate-400 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 opacity-50">Previous</button>
+{{/if}}
+              <span class="text-slate-500 text-xs px-1">Page {{ page }} of {{ pages }}</span>
+{{#if hasNext}}
+              <button onclick="{{ next() }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Next</button>
+{{/if}}
+{{#if not hasNext}}
+              <button disabled class="text-xs text-slate-400 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 opacity-50">Next</button>
+{{/if}}
+            </div>
+          </div>
+{{/if}}
+        </div>
+
+      </div>
+{{/if}}
+{{/if}}
+{{/if}}
+
+    </div>
+    </div>
+  </div>
