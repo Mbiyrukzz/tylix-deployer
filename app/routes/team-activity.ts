@@ -6,6 +6,8 @@
  *       page      1-based page number (default 1)
  *       per_page  rows per page (default 10, max 100)
  *       user      only this member's activity (optional)
+ * DELETE /api/team/activity/:eventId   delete one entry            (owner, admin)
+ * DELETE /api/team/activity?user=5      delete everything, or one member's (owner, admin)
  * GET /api/team/members/:userId?page=1&per_page=15&kind=server
  *     one member's details, totals and a paginated activity list
  *       kind  only this kind of activity (optional, see TeamActivityService)
@@ -17,6 +19,7 @@
 import type { Router } from "@tylix/core";
 import { TeamService } from "../services/TeamService.js";
 import { TeamActivityService } from "../services/TeamActivityService.js";
+import { ActivityFeedService } from "../services/ActivityFeedService.js";
 
 type Handler = Parameters<Router["get"]>[1];
 
@@ -45,7 +48,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             const members = await TeamService.members(ctx.team.id);
             const names = new Map(members.map((m) => [m.id, m.name]));
 
-            let events = await TeamActivityService.collect(ctx.team.id);
+            const feedData = await ActivityFeedService.forTeam(ctx.team.id);
+            let events = feedData.events;
             if (!seesAll) events = events.filter((e) => e.user_id === actorId);
 
             // Totals always cover everything the caller may see, not just this page.
@@ -59,8 +63,12 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             const pages = Math.max(1, Math.ceil(total / perPage));
             const page = Math.min(intOf(req, "page", 1, 1, 100000), pages);
 
+            const kindLabels = new Map(TeamActivityService.kinds().map((k) => [k.kind, k.plural]));
+
             return res.json({
                 scope: seesAll ? "team" : "self",
+                can_delete: seesAll,
+                retention: { mode: feedData.retention.mode, label: feedData.retention.label },
                 summary,
                 page,
                 per_page: perPage,
@@ -69,8 +77,53 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 events: feed.slice((page - 1) * perPage, page * perPage).map((e) => ({
                     ...e,
                     user_name: names.get(e.user_id) ?? "Former member",
+                    kind_label: kindLabels.get(e.kind) ?? e.kind,
                 })),
             });
+        }),
+    );
+
+    // Delete one entry. Only entries in the team's own visible feed can be deleted.
+    router.delete(
+        "/api/team/activity/:eventId",
+        auth(async (req, res) => {
+            const actorId = Number(req.user!.userId);
+            const ctx = await TeamService.contextFor(actorId);
+            if (!ctx) return res.status(404).json({ error: "Account not found." });
+
+            if (!TeamService.can(ctx.role, "admin")) {
+                return res.status(403).json({ error: "Only team owners and admins can delete activity." });
+            }
+
+            const eventId = String(req.params.eventId ?? "");
+            const { events } = await ActivityFeedService.forTeam(ctx.team.id);
+            if (!events.some((e) => e.id === eventId)) {
+                return res.status(404).json({ error: "Activity not found." });
+            }
+
+            await ActivityFeedService.dismiss(ctx.team.id, actorId, [eventId]);
+            return res.json({ ok: true, deleted: 1 });
+        }),
+    );
+
+    // Delete everything in the feed, or just one member's with ?user=ID.
+    router.delete(
+        "/api/team/activity",
+        auth(async (req, res) => {
+            const actorId = Number(req.user!.userId);
+            const ctx = await TeamService.contextFor(actorId);
+            if (!ctx) return res.status(404).json({ error: "Account not found." });
+
+            if (!TeamService.can(ctx.role, "admin")) {
+                return res.status(403).json({ error: "Only team owners and admins can delete activity." });
+            }
+
+            const user = intOf(req, "user", 0, 0, Number.MAX_SAFE_INTEGER);
+            const { events } = await ActivityFeedService.forTeam(ctx.team.id);
+            const ids = events.filter((e) => user === 0 || e.user_id === user).map((e) => e.id);
+
+            const deleted = await ActivityFeedService.dismiss(ctx.team.id, actorId, ids);
+            return res.json({ ok: true, deleted });
         }),
     );
 
@@ -98,8 +151,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             const member = members.find((m) => m.id === targetId);
             if (!member) return res.status(404).json({ error: "Member not found." });
 
-            const all = await TeamActivityService.collect(ctx.team.id);
-            const events = all.filter((e) => e.user_id === targetId);
+            const feedData = await ActivityFeedService.forTeam(ctx.team.id);
+            const events = feedData.events.filter((e) => e.user_id === targetId);
             const summary = TeamActivityService.summarize(events)[String(targetId)];
 
             const by_kind = TeamActivityService.kinds()
@@ -130,6 +183,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                     last_active: summary?.last_at ?? null,
                     by_kind,
                 },
+                can_delete: TeamService.can(ctx.role, "admin"),
+                retention: { mode: feedData.retention.mode, label: feedData.retention.label },
                 page,
                 per_page: perPage,
                 total,

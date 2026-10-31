@@ -96,13 +96,46 @@ const SOURCES: ActivitySource[] = [
 /** Fields that are safe to show as a short label. Never add secrets here. */
 const LABEL_FIELDS = ["name", "domain", "hostname", "host", "label", "title", "branch"];
 
-function labelOf(row: ActivityRow): string {
+/**
+ * A deployment has no name of its own, only a branch, so it is labelled with
+ * the site it deployed: "example.com (main)". Deployment rows are expected to
+ * carry site_id. If a site was deleted, the entry says so.
+ */
+function labelOf(row: ActivityRow, kind: string, siteNames: Map<number, string>): string {
+    if (kind === "deployment") {
+        const siteId = Number(row.site_id);
+        if (Number.isInteger(siteId) && siteId > 0) {
+            const domain = siteNames.get(siteId) ?? "a deleted site";
+            const branch = typeof row.branch === "string" && row.branch.trim() ? ` (${row.branch.trim()})` : "";
+            return `${domain}${branch}`.slice(0, 80);
+        }
+    }
+
     for (const field of LABEL_FIELDS) {
         const value = row[field];
         if (typeof value === "string" && value.trim()) return value.trim().slice(0, 80);
     }
     return `#${row.id}`;
 }
+
+/** Accepts Date objects, ISO or SQL timestamps, and epoch seconds or milliseconds. */
+function toDate(value: unknown): Date | null {
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+    if (typeof value === "number") {
+        const d = new Date(value < 1e12 ? value * 1000 : value);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const text = String(value ?? "").trim();
+    if (!text) return null;
+    if (/^\d+$/.test(text)) return toDate(Number(text));
+
+    const d = new Date(text.includes("T") ? text : text.replace(" ", "T"));
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const debug = () => process.env.ACTIVITY_DEBUG === "1";
 
 export const TeamActivityService = {
     kinds(): { kind: string; plural: string }[] {
@@ -111,27 +144,71 @@ export const TeamActivityService = {
 
     /** Every event for a team, newest first. */
     async collect(teamId: number): Promise<ActivityEvent[]> {
+        const siteNames = new Map<number, string>();
+        try {
+            const siteRows = (await Site.query().where("team_id", teamId).get()) as ActivityRow[];
+            for (const row of siteRows) {
+                const name = String(row.domain ?? row.name ?? "").trim();
+                if (name) siteNames.set(Number(row.id), name);
+            }
+        } catch (error) {
+            console.error("[activity] couldn't read sites for labels:", error);
+        }
+
         const batches = await Promise.all(
             SOURCES.map(async (src): Promise<ActivityEvent[]> => {
                 try {
                     const rows = (await src.model.query().where("team_id", teamId).get()) as ActivityRow[];
                     const out: ActivityEvent[] = [];
 
+                    // Sites that aren't stamped with this team_id are missing from the map above,
+                    // so look up any site a deployment points at directly by id.
+                    if (src.kind === "deployment") {
+                        const missing = [
+                            ...new Set(
+                                rows
+                                    .map((r) => Number(r.site_id))
+                                    .filter((id) => Number.isInteger(id) && id > 0 && !siteNames.has(id)),
+                            ),
+                        ];
+
+                        for (const id of missing) {
+                            const site = (await Site.find(id)) as ActivityRow | null;
+                            const name = site ? String(site.domain ?? site.name ?? "").trim() : "";
+                            if (name) siteNames.set(id, name);
+                            else if (debug()) console.log(`[activity] deployment points at site ${id}, which no longer exists`);
+                        }
+                    }
+                    let noUser = 0;
+                    let noDate = 0;
+
                     for (const row of rows) {
                         const userId = Number(row.user_id);
-                        if (!Number.isInteger(userId) || userId < 1) continue;
+                        if (!Number.isInteger(userId) || userId < 1) {
+                            noUser += 1;
+                            continue;
+                        }
 
-                        const date = new Date(String(row.created_at));
-                        if (Number.isNaN(date.getTime())) continue;
+                        const date = toDate(row.created_at);
+                        if (!date) {
+                            noDate += 1;
+                            continue;
+                        }
 
                         out.push({
                             id: `${src.kind}:${row.id}`,
                             user_id: userId,
                             kind: src.kind,
                             verb: src.verb,
-                            label: labelOf(row),
+                            label: labelOf(row, src.kind, siteNames),
                             at: date.toISOString(),
                         });
+                    }
+
+                    if (debug()) {
+                        console.log(
+                            `[activity] team ${teamId} ${src.kind}: ${rows.length} rows, ${out.length} usable, ${noUser} without user_id, ${noDate} without a readable created_at`,
+                        );
                     }
 
                     return out;
