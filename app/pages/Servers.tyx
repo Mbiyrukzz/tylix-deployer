@@ -235,7 +235,7 @@ action
 
     this.stats = [
       { label: "Servers", value: Servers.data.length, cls: "text-slate-900 dark:text-slate-100" },
-      { label: "Online", value: online, cls: "text-brand-700 dark:text-brand-500" },
+      { label: "Online", value: online, cls: "text-brand-700 dark:text-brand-400" },
       { label: "Setting up", value: this.busyCount, cls: this.busyCount is 0 ? "text-slate-900 dark:text-slate-100" : "text-amber-600 dark:text-amber-500" },
       { label: "Sites", value: Servers.siteServerIds.length, cls: "text-slate-900 dark:text-slate-100" }
     ]
@@ -452,46 +452,50 @@ template
     <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 
-      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
-        <IconArrowLeft class="w-4 h-4" /> Dashboard
-      </a>
-
       <LockedBanner />
 
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8">
-        <div>
-          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Servers</h1>
-          <p class="text-slate-500 text-sm mt-1.5">The machines your sites deploy to.</p>
-        </div>
-        <div class="flex items-center gap-3">
+      <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">
+        <div class="h-20 bg-gradient-to-r from-brand-500/25 via-brand-500/10 to-transparent"></div>
+        <div class="px-6 sm:px-8 pb-6 -mt-10">
+          <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+            <span class="w-20 h-20 shrink-0 rounded-2xl bg-brand-500 text-white flex items-center justify-center ring-4 ring-white dark:ring-slate-900 shadow-lg">
+              <IconDatabase class="w-9 h-9" />
+            </span>
+            <div class="min-w-0 flex-1 sm:pb-1">
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">Servers</h1>
+              <p class="text-slate-500 text-sm mt-0.5">The machines your sites deploy to.</p>
+            </div>
+            <div class="flex items-center gap-3 sm:pb-1">
 {{#if Billing.locked}}
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            Create server
-          </button>
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            Add server
-          </button>
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Create server
+              </button>
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+                  <rect x="4" y="9" width="12" height="8" rx="2" />
+                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+                </svg>
+                Add server
+              </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <ServerForm onSaved="{{ addServer }}" />
-          <a href="/servers/create" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</a>
+              <ServerForm onSaved="{{ addServer }}" />
+              <a href="/servers/create" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</a>
 {{/if}}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl border border-line bg-slate-200 dark:bg-slate-800 overflow-hidden shadow-sm dark:shadow-none mb-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 {{#each st in stats}}
-        <div class="bg-panel px-5 py-4">
-          <p class="text-2xl font-semibold tabular-nums {{ st.cls }}">{{ st.value }}</p>
-          <p class="text-slate-500 text-sm mt-0.5">{{ st.label }}</p>
+        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">{{ st.label }}</p>
+          <p class="text-3xl font-bold tracking-tight tabular-nums {{ st.cls }}">{{ st.value }}</p>
         </div>
 {{/each}}
       </div>
@@ -501,11 +505,11 @@ template
 {{/if}}
 
 {{#if setupRows.length is not 0}}
-      <div class="mb-10">
-        <div class="flex items-center justify-between gap-4 mb-4">
+      <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-6">
+        <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-line">
           <div>
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Setting up</h2>
-            <p class="text-slate-500 text-sm mt-0.5">This page updates on its own while servers are created.</p>
+            <p class="text-slate-500 text-xs mt-0.5">This page updates on its own while servers are created.</p>
           </div>
 {{#if busyCount is not 0}}
           <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-500">
@@ -514,9 +518,9 @@ template
 {{/if}}
         </div>
 
-        <div class="space-y-3">
+        <div class="p-4 space-y-3">
 {{#each pr in setupRows}}
-          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line p-5">
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
 {{#if pr.server_id is not 0}}
@@ -583,22 +587,22 @@ template
 {{/if}}
 
 {{#if Servers.loading}}
-      <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
-        <div class="flex items-center gap-4 px-5 py-5 animate-pulse">
+      <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+        <div class="flex items-center gap-4 px-6 py-5 animate-pulse">
           <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
           <div class="flex-1 space-y-2">
             <div class="h-3 w-40 rounded bg-slate-200 dark:bg-slate-800"></div>
             <div class="h-3 w-28 rounded bg-slate-100 dark:bg-slate-800/60"></div>
           </div>
         </div>
-        <div class="flex items-center gap-4 px-5 py-5 animate-pulse">
+        <div class="flex items-center gap-4 px-6 py-5 animate-pulse">
           <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
           <div class="flex-1 space-y-2">
             <div class="h-3 w-48 rounded bg-slate-200 dark:bg-slate-800"></div>
             <div class="h-3 w-24 rounded bg-slate-100 dark:bg-slate-800/60"></div>
           </div>
         </div>
-        <div class="flex items-center gap-4 px-5 py-5 animate-pulse">
+        <div class="flex items-center gap-4 px-6 py-5 animate-pulse">
           <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
           <div class="flex-1 space-y-2">
             <div class="h-3 w-32 rounded bg-slate-200 dark:bg-slate-800"></div>
@@ -611,7 +615,7 @@ template
 {{#if not Servers.loading}}
 {{#if Servers.data.length is 0}}
 {{#if setupRows.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-12 text-center">
+      <div class="rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
         <div class="w-14 h-14 rounded-2xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4">
           <IconDatabase class="w-6 h-6 text-brand-700 dark:text-brand-500" />
         </div>
@@ -627,125 +631,128 @@ template
 {{/if}}
 
 {{#if Servers.data.length is not 0}}
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <div class="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-200/70 dark:bg-slate-900 p-1 self-start">
+      <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-line">
+          <div class="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-200/70 dark:bg-slate-900 p-1 self-start">
 {{#each t in tabs}}
-          <button onclick="{{ setFilter(t.key) }}" class="{{ t.cls }}">
-            {{ t.label }}
-            <span class="text-xs opacity-60 tabular-nums">{{ t.count }}</span>
-          </button>
+            <button onclick="{{ setFilter(t.key) }}" class="{{ t.cls }}">
+              {{ t.label }}
+              <span class="text-xs opacity-60 tabular-nums">{{ t.count }}</span>
+            </button>
 {{/each}}
-        </div>
-        <div class="relative sm:w-72">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
-            type="text"
-            value="{{ query }}"
-            oninput="{{ setQuery($event.target.value) }}"
-            placeholder="Search by name, host or user"
-            aria-label="Search servers"
-            class="w-full rounded-xl border border-line bg-panel text-slate-900 dark:text-slate-100 text-sm pl-9 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
-          />
+          </div>
+          <div class="relative sm:w-72">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input
+              type="text"
+              value="{{ query }}"
+              oninput="{{ setQuery($event.target.value) }}"
+              placeholder="Search by name, host or user"
+              aria-label="Search servers"
+              class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm pl-9 pr-9 py-2 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            />
 {{#if query}}
-          <button onclick="{{ clearQuery() }}" aria-label="Clear search" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <IconX class="w-3.5 h-3.5" />
-          </button>
+            <button onclick="{{ clearQuery() }}" aria-label="Clear search" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <IconX class="w-3.5 h-3.5" />
+            </button>
 {{/if}}
+          </div>
         </div>
-      </div>
 
 {{#if cards.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-10 text-center">
-        <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No servers match</p>
-        <p class="text-slate-500 text-sm mb-4">Try a different search or filter.</p>
-        <button onclick="{{ resetFilters() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Clear filters</button>
-      </div>
+        <div class="p-12 text-center">
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No servers match</p>
+          <p class="text-slate-500 text-sm mb-4">Try a different search or filter.</p>
+          <button onclick="{{ resetFilters() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Clear filters</button>
+        </div>
 {{/if}}
 
 {{#if cards.length is not 0}}
-      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+        <div class="divide-y divide-slate-100 dark:divide-slate-800">
 
-        <div class="hidden md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] gap-4 px-5 py-3 bg-slate-50 dark:bg-slate-950/40 text-xs text-slate-500">
-          <span>Server</span>
-          <span>Status</span>
-          <span>Location</span>
-          <span>Sites</span>
-          <span></span>
-        </div>
+          <div class="hidden md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-950/40 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Server</span>
+            <span>Status</span>
+            <span>Location</span>
+            <span>Sites</span>
+            <span></span>
+          </div>
 
 {{#each s in cards}}
-        <div class="relative flex flex-col gap-3 px-5 py-4 md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] md:items-center md:gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+          <div class="relative flex flex-col gap-3 px-6 py-4 md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] md:items-center md:gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
 
-          <div class="flex items-center justify-between gap-3 min-w-0">
-            <div class="flex items-center gap-3.5 min-w-0">
-              <div class="relative w-10 h-10 shrink-0 rounded-xl bg-brand-500/10 flex items-center justify-center">
-                <IconDatabase class="w-4 h-4 text-brand-700 dark:text-brand-500" />
-                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 {{ s.solidCls }}"></span>
+            <div class="flex items-center justify-between gap-3 min-w-0">
+              <div class="flex items-center gap-3.5 min-w-0">
+                <div class="relative w-10 h-10 shrink-0 rounded-xl bg-brand-500/10 flex items-center justify-center">
+                  <IconDatabase class="w-4 h-4 text-brand-700 dark:text-brand-500" />
+                  <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 {{ s.solidCls }}"></span>
+                </div>
+                <div class="min-w-0">
+                  <a href="{{ s.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 transition-colors after:absolute after:inset-0">{{ s.name }}</a>
+                  <p class="text-slate-500 text-xs font-mono truncate">{{ s.host }}</p>
+                </div>
               </div>
-              <div class="min-w-0">
-                <a href="{{ s.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 transition-colors after:absolute after:inset-0">{{ s.name }}</a>
-                <p class="text-slate-500 text-xs font-mono truncate">{{ s.host }}</p>
-              </div>
+              <span class="md:hidden {{ s.pillCls }}">
+                <span class="{{ s.dotCls }}"></span> {{ s.label }}
+              </span>
             </div>
-            <span class="md:hidden {{ s.pillCls }}">
-              <span class="{{ s.dotCls }}"></span> {{ s.label }}
-            </span>
-          </div>
 
-          <div class="hidden md:block">
-            <span class="{{ s.pillCls }}">
-              <span class="{{ s.dotCls }}"></span> {{ s.label }}
-            </span>
-          </div>
+            <div class="hidden md:block">
+              <span class="{{ s.pillCls }}">
+                <span class="{{ s.dotCls }}"></span> {{ s.label }}
+              </span>
+            </div>
 
-          <div class="min-w-0 text-sm">
-            <p class="text-slate-900 dark:text-slate-100 font-mono truncate">{{ s.region }}</p>
-            <p class="text-slate-500 text-xs font-mono truncate">{{ s.plan }}</p>
-          </div>
+            <div class="min-w-0 text-sm">
+              <p class="text-slate-900 dark:text-slate-100 font-mono truncate">{{ s.region }}</p>
+              <p class="text-slate-500 text-xs font-mono truncate">{{ s.plan }}</p>
+            </div>
 
-          <p class="text-slate-900 dark:text-slate-100 text-sm font-mono tabular-nums">
-            {{ s.sites }}<span class="md:hidden text-slate-500 font-sans"> {{ s.sites is 1 ? "site" : "sites" }}</span>
-          </p>
+            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono tabular-nums">
+              {{ s.sites }}<span class="md:hidden text-slate-500 font-sans"> {{ s.sites is 1 ? "site" : "sites" }}</span>
+            </p>
 
-          <div class="relative z-10 flex items-center gap-1 md:justify-end">
-            <button onclick="{{ copySsh(s.id, s.ssh) }}" title="{{ s.ssh }}" aria-label="Copy SSH command" class="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <div class="relative z-10 flex items-center gap-1 md:justify-end">
+              <button onclick="{{ copySsh(s.id, s.ssh) }}" title="{{ s.ssh }}" aria-label="Copy SSH command" class="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
 {{#if copiedId is s.id}}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-500">
-                <path d="M5 12l5 5L20 7" />
-              </svg>
-              <span class="text-brand-700 dark:text-brand-500">Copied</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-500">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                <span class="text-brand-700 dark:text-brand-500">Copied</span>
 {{/if}}
 {{#if copiedId is not s.id}}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                <rect x="9" y="9" width="11" height="11" rx="2" />
-                <path d="M5 15V6a2 2 0 012-2h9" />
-              </svg>
-              <span>SSH</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <path d="M5 15V6a2 2 0 012-2h9" />
+                </svg>
+                <span>SSH</span>
 {{/if}}
-            </button>
+              </button>
 {{#if s.hasRootPassword}}
-            <button onclick="{{ openPassword(s.provId, s.name, s.ip) }}" title="Root password" aria-label="Show root password" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                <circle cx="8" cy="15" r="4" />
-                <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
-              </svg>
-            </button>
+              <button onclick="{{ openPassword(s.provId, s.name, s.ip) }}" title="Root password" aria-label="Show root password" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                  <circle cx="8" cy="15" r="4" />
+                  <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
+                </svg>
+              </button>
 {{/if}}
 {{#if s.managed}}
-            <button disabled="{{ Billing.locked }}" onclick="{{ openDelete(s.provId, s.name, s.hasInstance) }}" title="{{ Billing.locked ? 'Pay to continue' : 'Delete server' }}" aria-label="Delete server" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
-              </svg>
-            </button>
+              <button disabled="{{ Billing.locked }}" onclick="{{ openDelete(s.provId, s.name, s.hasInstance) }}" title="{{ Billing.locked ? 'Pay to continue' : 'Delete server' }}" aria-label="Delete server" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
+                </svg>
+              </button>
 {{/if}}
+            </div>
           </div>
-        </div>
 {{/each}}
-      </div>
+        </div>
 {{/if}}
+      </div>
 {{/if}}
 {{/if}}
 
@@ -754,7 +761,7 @@ template
 
 {{#if modal is not ""}}
     <div role="dialog" aria-modal="true" aria-labelledby="modal-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4 py-6">
-      <div class="w-full max-w-md overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+      <div class="w-full max-w-md overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
 
         <div class="flex items-start justify-between gap-4 p-6 pb-4">
           <div class="flex items-center gap-3 min-w-0">
