@@ -523,12 +523,12 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-page transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 
     <Sidebar active="overview" />
 
     <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
-    <div class="max-w-7xl mx-auto">
+    <div class="max-w-[1600px] mx-auto">
 
       <LockedBanner />
 

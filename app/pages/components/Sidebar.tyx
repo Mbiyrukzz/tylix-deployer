@@ -5,94 +5,179 @@ import { IconBolt, IconViewGrid, IconServer, IconCloud, IconCode, IconAdjustment
 props
   active: String
 
-template
-<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
+state
+  collapsed: false
+  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:p-4 lg:w-64"
+  brandCls: "hidden lg:flex items-center gap-3 mb-6 px-1"
+  brandTextCls: "flex flex-col leading-tight"
+  topCls: "hidden lg:flex items-center justify-between px-3 mb-1"
+  titleCls: "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
+  secCls: "hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1"
+  divCls: "hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"
+  onCls: "relative shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-slate-900 dark:text-slate-100 text-sm font-medium"
+  offCls: "group shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+  chipOnCls: "flex items-center justify-center w-7 h-7 shrink-0 rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-brand-500/30"
+  chipOffCls: "flex items-center justify-center w-7 h-7 shrink-0 rounded-lg bg-stone-200/50 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 group-hover:bg-brand-500/10 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"
+  labelCls: ""
+  chevCls: "w-4 h-4 transition-transform"
 
-  <div class="hidden lg:flex items-center gap-3 mb-7 px-1">
-    <div class="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-sm dark:shadow-brand-500/30 ring-1 ring-inset ring-white/20">
+action
+  applyLayout() {
+    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
+    const on = "relative shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-slate-900 dark:text-slate-100 text-sm font-medium"
+    const off = "group shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+    const title = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
+    const sec = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1"
+
+    if this.collapsed {
+      this.asideCls = asideBase + " lg:px-3 lg:py-4 lg:w-[76px]"
+      this.brandCls = "hidden lg:flex items-center justify-center mb-5"
+      this.brandTextCls = "hidden"
+      this.topCls = "hidden lg:flex items-center justify-center mb-1"
+      this.titleCls = "hidden"
+      this.secCls = "hidden"
+      this.divCls = "hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-2"
+      this.onCls = on + " lg:justify-center lg:px-0"
+      this.offCls = off + " lg:justify-center lg:px-0"
+      this.labelCls = "lg:hidden"
+      this.chevCls = "w-4 h-4 transition-transform rotate-180"
+    } else {
+      this.asideCls = asideBase + " lg:p-4 lg:w-64"
+      this.brandCls = "hidden lg:flex items-center gap-3 mb-6 px-1"
+      this.brandTextCls = "flex flex-col leading-tight"
+      this.topCls = "hidden lg:flex items-center justify-between px-3 mb-1"
+      this.titleCls = title
+      this.secCls = "hidden lg:block " + sec
+      this.divCls = "hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"
+      this.onCls = on
+      this.offCls = off
+      this.labelCls = ""
+      this.chevCls = "w-4 h-4 transition-transform"
+    }
+  }
+
+  toggle() {
+    this.collapsed = not this.collapsed
+    this.applyLayout()
+    window.localStorage.setItem("tylix-sidebar", this.collapsed ? "1" : "0")
+  }
+
+onMount
+  async {
+    const saved = window.localStorage.getItem("tylix-sidebar")
+    if saved is "1" {
+      this.collapsed = true
+      this.applyLayout()
+    }
+  }
+
+template
+<aside class="{{ asideCls }}">
+
+  <div class="{{ brandCls }}">
+    <div class="w-9 h-9 shrink-0 rounded-xl bg-brand-500 flex items-center justify-center shadow-sm dark:shadow-brand-500/30 ring-1 ring-inset ring-white/20">
       <IconBolt class="w-[18px] h-[18px] text-white" />
     </div>
-    <div class="flex flex-col leading-tight">
+    <div class="{{ brandTextCls }}">
       <span class="text-slate-800 dark:text-slate-100 font-semibold text-sm">tylix-deploy</span>
       <span class="text-slate-500 text-[11px]">Server &amp; deploy manager</span>
     </div>
   </div>
 
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1">Workspace</p>
+  <div class="{{ topCls }}">
+    <p class="{{ titleCls }}">Workspace</p>
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
+        <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  </div>
 
 {{#if active is "overview"}}
-  <a href="/dashboard" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/dashboard" title="Overview" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconViewGrid class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Overview
+    <span class="{{ chipOnCls }}"><IconViewGrid class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 {{#if active is not "overview"}}
-  <a href="/dashboard" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconViewGrid class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Overview
+  <a href="/dashboard" title="Overview" class="{{ offCls }}">
+    <span class="{{ chipOffCls }}"><IconViewGrid class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 
 {{#if active is "servers"}}
-  <a href="/servers" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/servers" title="Servers" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconServer class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Servers
+    <span class="{{ chipOnCls }}"><IconServer class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Servers</span>
   </a>
 {{/if}}
 {{#if active is not "servers"}}
-  <a href="/servers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconServer class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Servers
+  <a href="/servers" title="Servers" class="{{ offCls }}">
+    <span class="{{ chipOffCls }}"><IconServer class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Servers</span>
   </a>
 {{/if}}
 
-  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"></div>
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1">Connections</p>
+  <div class="{{ divCls }}"></div>
+  <p class="{{ secCls }}">Connections</p>
 
 {{#if active is "providers"}}
-  <a href="/providers" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/providers" title="Providers" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconCloud class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Providers
+    <span class="{{ chipOnCls }}"><IconCloud class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Providers</span>
   </a>
 {{/if}}
 {{#if active is not "providers"}}
-  <a href="/providers" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconCloud class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Providers
+  <a href="/providers" title="Providers" class="{{ offCls }}">
+    <span class="{{ chipOffCls }}"><IconCloud class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Providers</span>
   </a>
 {{/if}}
 
 {{#if active is "registrars"}}
-  <a href="/registrars" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/registrars" title="Registrars" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconGlobe class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Registrars
+    <span class="{{ chipOnCls }}"><IconGlobe class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Registrars</span>
   </a>
 {{/if}}
 {{#if active is not "registrars"}}
-  <a href="/registrars" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconGlobe class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Registrars
+  <a href="/registrars" title="Registrars" class="{{ offCls }}">
+    <span class="{{ chipOffCls }}"><IconGlobe class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Registrars</span>
   </a>
 {{/if}}
 
 {{#if active is "source-control"}}
-  <a href="/source-control" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/source-control" title="Source control" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconCode class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Source control
+    <span class="{{ chipOnCls }}"><IconCode class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Source control</span>
   </a>
 {{/if}}
 {{#if active is not "source-control"}}
-  <a href="/source-control" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconCode class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Source control
+  <a href="/source-control" title="Source control" class="{{ offCls }}">
+    <span class="{{ chipOffCls }}"><IconCode class="w-4 h-4" /></span>
+    <span class="{{ labelCls }}">Source control</span>
   </a>
 {{/if}}
 
   <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line">
 {{#if active is "settings"}}
-    <a href="/settings" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+    <a href="/settings" title="Settings" aria-current="page" class="{{ onCls }}">
       <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-      <IconAdjustments class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Settings
+      <span class="{{ chipOnCls }}"><IconAdjustments class="w-4 h-4" /></span>
+      <span class="{{ labelCls }}">Settings</span>
     </a>
 {{/if}}
 {{#if active is not "settings"}}
-    <a href="/settings" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-      <IconAdjustments class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Settings
+    <a href="/settings" title="Settings" class="{{ offCls }}">
+      <span class="{{ chipOffCls }}"><IconAdjustments class="w-4 h-4" /></span>
+      <span class="{{ labelCls }}">Settings</span>
     </a>
 {{/if}}
   </div>
