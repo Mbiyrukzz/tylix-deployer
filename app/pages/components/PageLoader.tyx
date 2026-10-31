@@ -6,44 +6,66 @@ props
 
 template
 {{#if bare}}
-<div role="status" aria-live="polite" style="min-height: calc(100vh - 4rem)" class="flex items-center justify-center bg-slate-200 dark:bg-slate-950">
+<div role="status" aria-live="polite" style="min-height: calc(100vh - 4rem)" class="flex items-center justify-center bg-page transition-colors">
   <div class="flex flex-col items-center justify-center py-14">
-    <div class="relative w-14 h-14 flex items-center justify-center">
-      <span class="absolute inset-0 rounded-full bg-brand-500/30 animate-ping"></span>
-      <img src="/logo-mark.png" alt="" class="relative w-12 h-12" />
+    <div class="relative w-20 h-20 flex items-center justify-center">
+      <span class="absolute inset-0 rounded-3xl bg-brand-500/20 animate-ping"></span>
+      <span class="relative w-20 h-20 rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none flex items-center justify-center">
+        <img src="/logo-mark.png" alt="" class="w-10 h-10" />
+      </span>
     </div>
-    <p class="text-slate-600 dark:text-slate-300 text-sm font-medium mt-5">{{ label }}</p>
-    <div class="w-40 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden mt-3">
+    <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold mt-6">{{ label }}</p>
+    <div class="w-44 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mt-3">
       <div class="w-2/3 h-full rounded-full bg-brand-500 animate-pulse"></div>
     </div>
   </div>
 </div>
 {{/if}}
 {{#if not bare}}
-<div role="status" aria-live="polite" style="min-height: calc(100vh - 4rem)" class="grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-slate-200 dark:bg-slate-950">
-  <div class="hidden lg:block border-r border-slate-300 dark:border-slate-800 p-5 space-y-3">
-    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
-    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
-    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
-    <div class="h-9 rounded-xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+<div role="status" aria-live="polite" style="min-height: calc(100vh - 4rem)" class="grid grid-cols-1 lg:grid-cols-[240px_1fr] bg-page transition-colors">
+
+  <div class="hidden lg:block border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-5">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-9 h-9 shrink-0 rounded-xl bg-slate-200/70 dark:bg-slate-800 animate-pulse"></div>
+      <div class="flex-1 space-y-2">
+        <div class="h-3 w-24 rounded-md bg-slate-200/70 dark:bg-slate-800 animate-pulse"></div>
+        <div class="h-2.5 w-32 rounded-md bg-slate-200/70 dark:bg-slate-800 animate-pulse"></div>
+      </div>
+    </div>
+    <div class="space-y-2">
+      <div class="h-9 rounded-xl bg-brand-500/10 animate-pulse"></div>
+      <div class="h-9 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 animate-pulse"></div>
+      <div class="h-9 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 animate-pulse"></div>
+      <div class="h-9 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 animate-pulse"></div>
+    </div>
   </div>
-  <div class="min-w-0 px-6 lg:px-10 py-10">
+
+  <div class="min-w-0 px-6 lg:px-12 py-10">
     <div class="max-w-5xl mx-auto">
-      <div class="flex flex-col items-center justify-center py-14">
-        <div class="relative w-14 h-14 flex items-center justify-center">
-          <span class="absolute inset-0 rounded-full bg-brand-500/30 animate-ping"></span>
-          <img src="/logo-mark.png" alt="" class="relative w-12 h-12" />
+
+      <div class="flex flex-col items-center justify-center pb-8">
+        <div class="relative w-16 h-16 flex items-center justify-center">
+          <span class="absolute inset-0 rounded-2xl bg-brand-500/20 animate-ping"></span>
+          <span class="relative w-16 h-16 rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none flex items-center justify-center">
+            <img src="/logo-mark.png" alt="" class="w-8 h-8" />
+          </span>
         </div>
-        <p class="text-slate-600 dark:text-slate-300 text-sm font-medium mt-5">{{ label }}</p>
-        <div class="w-40 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden mt-3">
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold mt-5">{{ label }}</p>
+        <div class="w-44 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mt-3">
           <div class="w-2/3 h-full rounded-full bg-brand-500 animate-pulse"></div>
         </div>
       </div>
+
       <div class="space-y-4">
-        <div class="h-24 rounded-2xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
-        <div class="h-16 rounded-2xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
-        <div class="h-16 rounded-2xl bg-slate-300/50 dark:bg-slate-900 animate-pulse"></div>
+        <div class="h-40 rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        </div>
+        <div class="h-48 rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
       </div>
+
     </div>
   </div>
 </div>

@@ -72,13 +72,12 @@ action
   }
 
   groupEvents(list) {
-    const groups = []
-    list.forEach((e) => {
+    const groups = list.reduce((acc, e) => {
       const day = this.dayLabel(e.at)
-      let g = groups.find((x) => x.day is day)
+      let g = acc.find((x) => x.day is day)
       if not g {
         g = { day: day, items: [] }
-        groups.push(g)
+        acc.push(g)
       }
       g.items.push({
         id: e.id,
@@ -88,7 +87,8 @@ action
         time: new Date(e.at).toTimeString().slice(0, 5),
         when: this.ago(e.at)
       })
-    })
+      return acc
+    }, [])
     return groups
   }
 
@@ -225,15 +225,11 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_1fr] bg-page transition-colors">
     <Sidebar active="team" />
+    <TeamSidebar active="members" />
     <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
-
-      <a href="/team" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 mb-6 transition-colors">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        Back to team
-      </a>
 
 {{#if loading}}
       <div class="space-y-4">

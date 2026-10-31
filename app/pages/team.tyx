@@ -158,8 +158,9 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_1fr] bg-page transition-colors">
     <Sidebar active="team" />
+    <TeamSidebar active="members" />
     <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
 

@@ -5,86 +5,164 @@ import { IconCog, IconKey, IconShieldCheck } from "tylix-icons"
 props
   active: String
 
-template
-<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:p-5 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)]">
+state
+  collapsed: false
+  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:p-5"
+  topCls: "hidden lg:flex items-center justify-between gap-2 mb-5"
+  titleCls: "min-w-0"
+  btnCls: "flex items-center justify-center w-6 h-6 shrink-0 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/70 dark:hover:bg-white/[0.06] transition-colors"
+  headCls: "hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-3"
+  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+  offCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+  labelCls: ""
+  chevCls: "w-4 h-4 transition-transform"
 
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Your account</p>
+action
+  applyLayout() {
+    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
+    const on = "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+    const off = "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+    const head = "hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-3"
+
+    if this.collapsed {
+      this.asideCls = asideBase + " lg:w-16 lg:p-2.5"
+      this.topCls = "hidden lg:flex flex-col items-center gap-3 mb-5"
+      this.titleCls = "hidden"
+      this.headCls = "hidden"
+      this.onCls = on + " lg:justify-center lg:px-0"
+      this.offCls = off + " lg:justify-center lg:px-0"
+      this.labelCls = "lg:hidden"
+      this.chevCls = "w-4 h-4 transition-transform rotate-180"
+    } else {
+      this.asideCls = asideBase + " lg:w-[240px] lg:p-5"
+      this.topCls = "hidden lg:flex items-center justify-between gap-2 mb-5"
+      this.titleCls = "min-w-0"
+      this.headCls = head
+      this.onCls = on
+      this.offCls = off
+      this.labelCls = ""
+      this.chevCls = "w-4 h-4 transition-transform"
+    }
+  }
+
+  toggle() {
+    this.collapsed = not this.collapsed
+    this.applyLayout()
+
+    if this.collapsed {
+      window.localStorage.setItem("tylix-settings-sidebar", "1")
+    } else {
+      window.localStorage.setItem("tylix-settings-sidebar", "0")
+    }
+  }
+
+onMount
+  async {
+    const saved = window.localStorage.getItem("tylix-settings-sidebar")
+    if saved is "1" {
+      this.collapsed = true
+      this.applyLayout()
+    }
+  }
+
+template
+<aside class="{{ asideCls }}">
+
+  <div class="{{ topCls }}">
+    <div class="flex items-center gap-3 min-w-0">
+      <span class="w-9 h-9 shrink-0 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm">
+        <IconCog class="w-5 h-5" />
+      </span>
+      <div class="{{ titleCls }}">
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight truncate">Settings</p>
+        <p class="text-slate-500 text-xs leading-tight truncate">Account and team</p>
+      </div>
+    </div>
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="{{ btnCls }}">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
+        <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  </div>
+
+  <p class="{{ headCls }}">Your account</p>
 
 {{#if active is "account"}}
-  <a href="/settings" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/settings" title="Account" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconCog class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Account
+    <IconCog class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Account</span>
   </a>
 {{/if}}
 {{#if active is not "account"}}
-  <a href="/settings" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconCog class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Account
+  <a href="/settings" title="Account" class="{{ offCls }}">
+    <IconCog class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Account</span>
   </a>
 {{/if}}
 
-  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"></div>
-  <p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Security</p>
+  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-1"></div>
+  <p class="{{ headCls }}">Security</p>
 
 {{#if active is "password"}}
-  <a href="/settings/password" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/settings/password" title="Password" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconKey class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Password
+    <IconKey class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Password</span>
   </a>
 {{/if}}
 {{#if active is not "password"}}
-  <a href="/settings/password" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconKey class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Password
+  <a href="/settings/password" title="Password" class="{{ offCls }}">
+    <IconKey class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Password</span>
   </a>
 {{/if}}
 
 {{#if active is "two-factor"}}
-  <a href="/settings/two-factor" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
+  <a href="/settings/two-factor" title="Two-factor" aria-current="page" class="{{ onCls }}">
     <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconShieldCheck class="w-4 h-4 text-brand-600 dark:text-brand-400" /> Two-factor
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Two-factor</span>
   </a>
 {{/if}}
 {{#if active is not "two-factor"}}
-  <a href="/settings/two-factor" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-    <IconShieldCheck class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> Two-factor
+  <a href="/settings/two-factor" title="Two-factor" class="{{ offCls }}">
+    <IconShieldCheck class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Two-factor</span>
   </a>
 {{/if}}
 
-<div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"></div>
-<p class="hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1 px-1">Team</p>
+  <div class="hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-1"></div>
+  <p class="{{ headCls }}">Team</p>
 
 {{#if active is "team"}}
-<a href="/settings/team" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-<span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> Members
-</a>
+  <a href="/settings/team" title="Members" aria-current="page" class="{{ onCls }}">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> <span class="{{ labelCls }}">Members</span>
+  </a>
 {{/if}}
 {{#if active is not "team"}}
-<a href="/settings/team" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> Members
-</a>
+  <a href="/settings/team" title="Members" class="{{ offCls }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> <span class="{{ labelCls }}">Members</span>
+  </a>
 {{/if}}
 
 {{#if active is "billing"}}
-<a href="/settings/billing" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-<span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-400"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg> Billing
-</a>
+  <a href="/settings/billing" title="Billing" aria-current="page" class="{{ onCls }}">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg> <span class="{{ labelCls }}">Billing</span>
+  </a>
 {{/if}}
 {{#if active is not "billing"}}
-<a href="/settings/billing" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg> Billing
-</a>
+  <a href="/settings/billing" title="Billing" class="{{ offCls }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg> <span class="{{ labelCls }}">Billing</span>
+  </a>
 {{/if}}
+
 {{#if active is "invoices"}}
-<a href="/settings/invoices" aria-current="page" class="relative shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium">
-<span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-400"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="16" y2="17" /></svg> Invoices
-</a>
+  <a href="/settings/invoices" title="Invoices" aria-current="page" class="{{ onCls }}">
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="16" y2="17" /></svg> <span class="{{ labelCls }}">Invoices</span>
+  </a>
 {{/if}}
 {{#if active is not "invoices"}}
-<a href="/settings/invoices" class="group shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="16" y2="17" /></svg> Invoices
-</a>
+  <a href="/settings/invoices" title="Invoices" class="{{ offCls }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="16" y2="17" /></svg> <span class="{{ labelCls }}">Invoices</span>
+  </a>
 {{/if}}
 
 </aside>

@@ -8,11 +8,12 @@ props
 
 state
   collapsed: false
-  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[230px] lg:p-5"
-  topCls: "hidden lg:flex items-center mb-1 justify-between px-1"
-  titleCls: "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
-  onCls: "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-  offCls: "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:p-5"
+  topCls: "hidden lg:flex items-center justify-between gap-2 mb-5"
+  titleCls: "min-w-0"
+  btnCls: "flex items-center justify-center w-6 h-6 shrink-0 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/70 dark:hover:bg-white/[0.06] transition-colors"
+  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+  offCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
   footCls: "shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line"
   labelCls: ""
   chevCls: "w-4 h-4 transition-transform"
@@ -20,27 +21,23 @@ state
 action
   applyLayout() {
     const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
-    const on = "relative shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl bg-panel border border-line shadow-sm dark:shadow-none text-slate-900 dark:text-slate-100 text-sm font-medium"
-    const off = "group shrink-0 flex items-center gap-2.5 px-1 py-1 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-    const foot = "shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line"
-    const title = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
+    const on = "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+    const off = "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 
     if this.collapsed {
       this.asideCls = asideBase + " lg:w-16 lg:p-2.5"
-      this.topCls = "hidden lg:flex items-center mb-1 justify-center"
+      this.topCls = "hidden lg:flex flex-col items-center gap-3 mb-5"
       this.titleCls = "hidden"
-      this.onCls = on + " lg:justify-center"
-      this.offCls = off + " lg:justify-center"
-      this.footCls = foot
+      this.onCls = on + " lg:justify-center lg:px-0"
+      this.offCls = off + " lg:justify-center lg:px-0"
       this.labelCls = "lg:hidden"
       this.chevCls = "w-4 h-4 transition-transform rotate-180"
     } else {
-      this.asideCls = asideBase + " lg:w-[230px] lg:p-5"
-      this.topCls = "hidden lg:flex items-center mb-1 justify-between px-1"
-      this.titleCls = title
+      this.asideCls = asideBase + " lg:w-[240px] lg:p-5"
+      this.topCls = "hidden lg:flex items-center justify-between gap-2 mb-5"
+      this.titleCls = "min-w-0"
       this.onCls = on
       this.offCls = off
-      this.footCls = foot
       this.labelCls = ""
       this.chevCls = "w-4 h-4 transition-transform"
     }
@@ -49,7 +46,12 @@ action
   toggle() {
     this.collapsed = not this.collapsed
     this.applyLayout()
-    window.localStorage.setItem("tylix-registrar-sidebar", this.collapsed ? "1" : "0")
+
+    if this.collapsed {
+      window.localStorage.setItem("tylix-registrar-sidebar", "1")
+    } else {
+      window.localStorage.setItem("tylix-registrar-sidebar", "0")
+    }
   }
 
 onMount
@@ -65,8 +67,16 @@ template
 <aside class="{{ asideCls }}">
 
   <div class="{{ topCls }}">
-    <p class="{{ titleCls }}">This provider</p>
-    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
+    <div class="flex items-center gap-3 min-w-0">
+      <span class="w-9 h-9 shrink-0 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm">
+        <IconGlobe class="w-5 h-5" />
+      </span>
+      <div class="{{ titleCls }}">
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight truncate">Domain provider</p>
+        <p class="text-slate-500 text-xs leading-tight truncate">Manage this provider</p>
+      </div>
+    </div>
+    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="{{ btnCls }}">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
         <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
