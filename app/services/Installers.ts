@@ -84,7 +84,8 @@ echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/ub
 $APT update
 $APT install mysql-server
 systemctl enable --now mysql
-[[ "$(mysqld --version)" == *"Ver 8.4"* ]]`,
+MV="$(mysqld --version 2>&1)"
+[[ "$MV" == *"Ver 8.4"* ]] || { echo "Expected MySQL 8.4, but mysqld reports: $MV"; exit 1; }`,
 );
 
 const REDIS = once(
@@ -131,7 +132,8 @@ const NODE = once(
     "Installing Node.js 22",
     `curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 $APT install nodejs
-[[ "$(node --version)" == v22* ]]`,
+NV="$(node --version 2>&1)"
+[[ "$NV" == v22* ]] || { echo "Expected Node 22, but node reports: $NV"; exit 1; }`,
 );
 
 const TOOLS = once("tools", "Installing git and build tools", `$APT install git build-essential`);
@@ -150,11 +152,18 @@ python3 -c "import venv, ensurepip"`,
 
 // OpenJDK 21 (the JDK, not just the JRE, so Maven/Gradle can compile) and Maven.
 // Spring projects that ship mvnw or gradlew use their wrapper; unzip is needed by gradlew.
+// Another JDK may already be the default, so Java 21 is made the default before checking.
 const JAVA = once(
     "java",
     "Installing Java 21 and Maven",
     `$APT install openjdk-21-jdk-headless maven unzip
-[[ "$(javac -version 2>&1)" == *"21"* ]]`,
+JDK21=$(ls -d /usr/lib/jvm/java-21-openjdk-* 2>/dev/null | head -n 1)
+if [ -z "$JDK21" ]; then echo "OpenJDK 21 not found in /usr/lib/jvm after install."; exit 1; fi
+update-alternatives --set java "$JDK21/bin/java" || true
+update-alternatives --set javac "$JDK21/bin/javac" || true
+command -v javac >/dev/null || { echo "javac not found after install."; exit 1; }
+JV="$(javac -version 2>&1)"
+[[ "$JV" == *" 21"* ]] || { echo "Expected Java 21, but javac reports: $JV"; exit 1; }`,
 );
 
 // Go from Ubuntu's own repository (1.22 on noble, 1.18 on jammy). Sites that need a
