@@ -1,0 +1,108 @@
+component DocsSidebar
+
+import { IconDocumentText } from "tylix-icons"
+
+props
+  active: String
+
+state
+  openKeys: []
+  closedKeys: []
+  top: [
+    { id: "overview", label: "Overview", href: "/docs" },
+    { id: "getting-started", label: "Getting started", href: "/docs/getting-started" },
+    { id: "registration", label: "Registration", href: "/docs/registration" },
+    { id: "dashboard", label: "Dashboard", href: "/docs/dashboard" }
+  ]
+  groups: [
+    {
+      key: "servers",
+      label: "Servers",
+      items: [
+        { id: "servers", label: "Servers page", href: "/docs/servers" },
+        { id: "create-server", label: "Creating a server", href: "/docs/servers/create" },
+        { id: "add-server", label: "Adding your own server", href: "/docs/servers/add-your-own" },
+        { id: "setting-up", label: "Setting up a server", href: "/docs/servers/setting-up" }
+      ]
+    }
+  ]
+  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+  offCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+  subOnCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold lg:ml-3"
+  subOffCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors lg:ml-3"
+  groupCls: "hidden lg:flex w-full items-center justify-between px-3 py-2 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+
+action
+  // A group is open when you opened it, or when the page you are on belongs to it,
+  // unless you closed it yourself.
+  groupOpen(g, current) {
+    if this.closedKeys.includes(g.key) {
+      return false
+    }
+    if this.openKeys.includes(g.key) {
+      return true
+    }
+    return g.items.some((i) => i.id is current)
+  }
+
+  toggleGroup(g, current) {
+    const key = g.key
+
+    if this.groupOpen(g, current) {
+      this.openKeys = this.openKeys.filter((k) => k is not key)
+      this.closedKeys = this.closedKeys.concat([key])
+    } else {
+      this.closedKeys = this.closedKeys.filter((k) => k is not key)
+      this.openKeys = this.openKeys.concat([key])
+    }
+  }
+
+template
+<aside class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:w-[240px] lg:p-5">
+
+  <div class="hidden lg:flex items-center gap-3 mb-5">
+    <span class="w-9 h-9 shrink-0 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm">
+      <IconDocumentText class="w-5 h-5" />
+    </span>
+    <div class="min-w-0">
+      <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight truncate">Documentation</p>
+      <p class="text-slate-500 text-xs leading-tight truncate">Tylix Deploy guides</p>
+    </div>
+  </div>
+
+{{#each item in top}}
+  <a href="{{ item.href }}" class="{{ item.id is active ? onCls : offCls }}">
+{{#if item.id is active}}
+    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+{{/if}}
+    <span>{{ item.label }}</span>
+  </a>
+{{/each}}
+
+{{#each g in groups}}
+  <div class="contents lg:flex lg:flex-col lg:gap-1">
+    <button onclick="{{ toggleGroup(g, active) }}" aria-expanded="{{ groupOpen(g, active) }}" class="{{ groupCls }}">
+      <span>{{ g.label }}</span>
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform {{ groupOpen(g, active) ? 'rotate-90' : '' }}">
+        <path d="M7.5 5l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+    <div class="{{ groupOpen(g, active) ? 'contents lg:flex lg:flex-col lg:gap-1' : 'contents lg:hidden' }}">
+{{#each sub in g.items}}
+      <a href="{{ sub.href }}" class="{{ sub.id is active ? subOnCls : subOffCls }}">
+{{#if sub.id is active}}
+        <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
+{{/if}}
+        <span>{{ sub.label }}</span>
+      </a>
+{{/each}}
+    </div>
+  </div>
+{{/each}}
+
+  <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line">
+    <a href="https://tylix.dev/docs" target="_blank" rel="noopener" class="{{ offCls }}">
+      <span>Framework docs &rarr;</span>
+    </a>
+  </div>
+</aside>

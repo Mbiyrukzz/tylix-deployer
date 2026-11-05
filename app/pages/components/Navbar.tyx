@@ -123,7 +123,7 @@ template
       <div class="hidden md:block w-px h-5 bg-line"></div>
 
       <div class="hidden md:flex items-center gap-1">
-        <a href="https://tylix.dev/docs" target="_blank" rel="noopener" class="{{ desktopLink('') }}">Docs</a>
+        <a href="/docs" onclick="{{ go('/docs') }}" class="{{ desktopLink('/docs') }}">Docs</a>
       </div>
     </div>
 
@@ -230,7 +230,7 @@ template
       <a href="/dashboard" onclick="{{ closeMobileMenu() }}" class="block text-base font-semibold text-brand-700 dark:text-brand-400 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] rounded-2xl px-4 py-3 transition-colors">Dashboard</a>
 {{/if}}
 {{/if}}
-      <a href="https://tylix.dev/docs" target="_blank" rel="noopener" onclick="{{ closeMobileMenu() }}" class="{{ mobileLink('') }}">Docs</a>
+      <a href="/docs" onclick="{{ go('/docs') }}" class="{{ mobileLink('/docs') }}">Docs</a>
     </div>
 
 {{#if Auth.user}}

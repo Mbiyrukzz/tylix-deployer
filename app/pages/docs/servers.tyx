@@ -1,0 +1,132 @@
+page DocsServers
+
+title "Servers - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="servers" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Servers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">The Servers page</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Servers are the machines your sites deploy to. The Servers page lists all of them in one place. Open it from the sidebar, or choose Manage all on the dashboard.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Adding a server</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Create server</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Creates a brand new machine at one of your connected cloud providers. Tylix Deploy builds it, installs the software and then connects to it. You can follow this live: see <a href="/docs/servers/setting-up" class="text-brand-600 dark:text-brand-500 hover:underline">Setting up a server</a>.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Add server</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Connects a machine you already have, using its SSH details. In the list, its location shows as "Custom".</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">When your account is locked</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">If your account is locked for payment, both buttons are greyed out and say "Pay to continue" when you hover over them. Deleting a server and retrying a failed one are disabled too. You can still look at everything.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The numbers at the top</h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Servers</p>
+          <p class="text-zinc-500 text-xs mt-1">All connected servers.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Online</p>
+          <p class="text-zinc-500 text-xs mt-1">Servers that can be reached right now.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Setting up</p>
+          <p class="text-zinc-500 text-xs mt-1">Servers still being created. It turns amber when this is more than zero.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Sites</p>
+          <p class="text-zinc-500 text-xs mt-1">Sites across all your servers.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Finding a server</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Above the list there are four tabs, each with a count: All, Online, Not tested and Offline. Pick one to narrow the list by status.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Next to them is a search box. It matches the server's name, its host and its SSH user, and you can combine it with a tab. If nothing matches, the list says "No servers match", and Clear filters resets the search and the tab.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-8">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the statuses mean</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Online:</strong> the server answered.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Offline:</strong> the server could not be reached. It also shows up under Needs attention on the dashboard.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-slate-400"></span><span><strong>Not tested:</strong> the connection has not been checked yet.</span></li>
+        </ul>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-4">Each row is one server. Select the row, or its name, to open that server.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Server</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The name, the host address, and a coloured dot for its status.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Status</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Online, Offline or Not tested.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Location</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The region and plan of a server you created through Tylix Deploy. A server you connected yourself shows "Custom".</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Sites</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many sites are on the server.</p>
+        </div>
+
+      </div>
+
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Buttons on each row</h3>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-4">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">SSH</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Copies the SSH command for the server to your clipboard, so you can paste it into a terminal. The button says "Copied" for a moment. The port is added to the command only when it is not 22.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Root password (key icon)</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shown only for servers created through Tylix Deploy at Linode or Hetzner. It reveals the root password after a security check.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Delete (bin icon)</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shown only for servers created through Tylix Deploy. It asks you to confirm first. A server you connected yourself has no delete button here, because Tylix Deploy did not create the machine.</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mt-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Before you have any servers, the page shows "No servers yet" with a button to create your first one.</p>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/dashboard" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Dashboard</a>
+        <a href="/docs/servers/setting-up" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Setting up a server &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

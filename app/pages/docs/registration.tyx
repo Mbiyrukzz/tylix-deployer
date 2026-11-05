@@ -1,0 +1,179 @@
+page Registration
+
+title "Registration - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="registration" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Registration</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Creating an account takes about a minute. You agree to our legal terms when you sign up, and you must verify your email address before you can log in.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Sign up</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Open the sign-up page</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Go to <a href="/register" class="text-brand-600 dark:text-brand-500 hover:underline">Create account</a>. If you are already signed in, the page says so and sends you to the dashboard instead.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Enter your name and email</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Use an email address you can open right now. The verification link is sent there.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Choose a password</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Your password needs all of these:</p>
+            <ul class="mt-2 space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500"></span>At least 10 characters</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500"></span>A letter</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500"></span>A number</li>
+              <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500"></span>A symbol</li>
+            </ul>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">As you type, a strength bar and a checklist tick off each rule. Use Show to see what you typed. Then type the same password again in Confirm password. You will see "Passwords match." when they agree.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">4</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Agree to the Terms and Privacy Policy</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Tick the box under the password fields. You cannot create an account without it. Both documents open in a new tab, so you can read them first. The next section sums up the main points.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">5</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Create the account</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">If a verification challenge appears above the button, complete it first. Then select Create account.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Verify your email</h2>
+
+      <div class="space-y-7 mb-6">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">6</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Check your inbox</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The page changes to "Check your email" and we send a verification link to the address you entered. The link is valid for 24 hours. If you don't see the message, look in your spam folder.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">7</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Click the link</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">A page confirms "Email verified". Select Continue to sign in.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">8</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Log in</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Go to <a href="/login" class="text-brand-600 dark:text-brand-500 hover:underline">Log in</a> with your email and password. You land on the dashboard, where the Get deployed checklist is waiting.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-10">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">You cannot log in until your email is verified. If the verification email could not be sent, the page tells you that your account was created and explains what to do next.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-2">What you agree to</h2>
+      <p class="text-zinc-500 text-sm mb-5">These are the points new users most often ask about. The full documents are the ones that count.</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">Terms of Service</h3>
+          <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-4">
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>You must be 18 or older.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>Keep your password private. One person per login, so invite teammates instead of sharing.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>Plans renew monthly until you cancel, and are paid through Paystack in Kenyan shillings.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>Servers and domains you create belong to your own provider accounts, and that provider bills you for them.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>Tylix Deploy is not a backup service. Keep your own backups.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>If a subscription lapses, the team becomes view only until you pay.</li>
+          </ul>
+          <a href="/terms" target="_blank" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Read the full Terms &rarr;</a>
+        </div>
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">Privacy Policy</h3>
+          <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-4">
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>At sign-up we collect your name, your email and your password, which is stored only as a hash.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>SSH keys, provider tokens and database passwords you save are encrypted.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>We do not sell your personal data.</li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span>You can ask to see, correct or delete your data by emailing privacy@tylix.dev.</li>
+          </ul>
+          <a href="/privacy" target="_blank" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Read the full Privacy Policy &rarr;</a>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter your name and email.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">One of the first two fields is empty. Fill both in.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Password must be 10 or more characters with a letter, a number and a symbol.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Check the checklist under the password field. Every line needs a tick.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Passwords don't match.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Retype both fields. Use Show to check for typos.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Please agree to the Terms of Service to continue.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Tick the agreement box.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Please complete the verification challenge.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Finish the challenge above the Create account button, then try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">"This link has expired" after clicking the email link</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The link is invalid, older than 24 hours, or replaced by a newer one. Log in and we send you a fresh link. Only the newest link works.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">"Already verified"</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Your email was confirmed earlier. Nothing more to do, just log in.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/getting-started" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Getting started</a>
+        <a href="/docs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Overview &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

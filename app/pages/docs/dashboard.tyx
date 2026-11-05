@@ -1,0 +1,139 @@
+page DocsDashboard
+
+title "Dashboard - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="dashboard" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Dashboard</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">When you log in, you land on the dashboard. It gives you a quick read on your servers, sites, domains and team. This guide follows the page from top to bottom.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Greeting and health</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Under today's date you see a greeting with your name, and a one-line health summary:</p>
+          <ul class="mt-2 space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-zinc-400"></span><span><strong>No servers connected yet</strong> when you have not added a server.</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-yellow-400"></span><span><strong>1 issue needs attention</strong> (or more) when a server is offline or a site failed to deploy.</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>All systems operational</strong> when nothing is wrong.</span></li>
+          </ul>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">New server and New site</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">New server opens the Servers page. New site goes straight to that server's sites if you have just one server, and to the Servers page if you have more, so you can pick where the site goes.</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-2">If your account is locked for payment, both buttons are greyed out and say "Pay to continue" when you hover over them. The rest of the dashboard stays readable.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Needs attention</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">This panel only appears when something needs you. It lists up to eight items, and each one is a link to the thing itself:</p>
+          <ul class="mt-2 space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A server is offline. The hint says "Check connectivity".</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A site failed to deploy. The hint says "View the deployment log".</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A domain expires within 30 days, or has already expired. The hint tells you which registrar to renew it at.</span></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The overview</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Fleet flow</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">A picture of where your servers are put to work. Your connected servers sit on the left, with a line to each of Sites (total and live), Domains (total and expiring), Cloud providers (connected, with your registrar count) and Team (members, with how many are owners or admins). A thin grey line means you have none of that yet, and a thick line means you do. Underneath, two big numbers show servers online and sites live.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Fleet status</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">A ring chart of all your servers, split into Online, Offline and Untested. A server is untested until its connection has been checked.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Details</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Six small tiles with the numbers that matter most:</p>
+          <ul class="mt-2 space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Online:</strong> servers online out of all servers.</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Sites live:</strong> sites that are ready out of all sites.</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Building:</strong> sites that are being created or waiting in the queue.</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Failed:</strong> sites that failed to deploy.</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Expiring domains:</strong> how many expire within 30 days, and how many have already expired. Select it to open your registrars.</span></li>
+            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Unread mail:</strong> shown when mail is set up. Otherwise the tile shows who you are signed in as.</span></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Servers and sites</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Servers</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Every connected server, with its name, its SSH address (user, host and port), how many sites it hosts, and its status: Online, Offline or Not tested. Select a server to open it. Manage all takes you to the Servers page. With no servers, this panel invites you to add your first one.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Recent sites</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Your five latest sites, each with its framework, the server it runs on and its status: Ready, Failed, Creating or Queued. A bar above the list shows the share of sites that are live, building and failed. Select a site to open it.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Get deployed</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">A three-step checklist for new accounts: connect a server, create a site, and deploy and add SSL. Each step gets a tick as you complete it, and the counter and bar show your progress. The third step is ticked once at least one site is Ready. When all three are done, the checklist disappears.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Fleet insights</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shows the share of your servers that are online, which server hosts the most sites, and which servers are idle with no sites. Use Show all to see every server with its status and site count.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Providers, domains and team</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Cloud providers</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">One card per connected provider, showing how many servers you created there. Open a card to see that provider's machines, volumes, IP addresses and spend. With none connected, this panel offers to connect one.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Domains</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Domains from all your connected registrars in one list, closest to expiry first. Each row shows the expiry date, the days left, and a badge: Active, Expiring (within 30 days) or Expired. A summary line counts how many are expired, expiring and healthy. The panel shows five rows, and Show all expands it.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Registrars</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">One card per connected registrar with its domain count. A yellow "due" badge shows how many of its domains expire soon. If a registrar's domains cannot be loaded, the card says so, and opening it lets you check the connection.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Team</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Up to six team members with their email and role. If you are the only member, a note reminds you that you can invite people from the Team page.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/registration" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Registration</a>
+        <a href="/docs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Overview &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

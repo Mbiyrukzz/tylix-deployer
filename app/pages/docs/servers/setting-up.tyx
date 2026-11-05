@@ -1,0 +1,128 @@
+page DocsSettingUp
+
+title "Setting up a server - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="setting-up" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Servers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Setting up a server</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">When you create a server, Tylix Deploy builds the machine at your cloud provider and, depending on the template you chose, installs software on it. This takes a few minutes. You can watch it in two places: the progress page for that server, and the Setting up panel on the Servers page.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The progress page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Right after you create a server, you land here. It shows:</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The server's name, a status badge (Setting up, Ready or Failed) and its IP address once it has one.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>What it is doing right now, with a percentage, and a bar that fills in as it goes.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A list of every step. Each is marked done, in progress, failed or waiting.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A "Live" note at the bottom while it is connected. If the connection drops, it says "Reconnecting…" and picks up again by itself.</span></li>
+      </ul>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The page updates on its own. When the server is ready, it says "Your server is ready. Opening it…" and takes you to the server. If something fails, the error appears in red above the steps.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The Setting up panel</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">At the top of the Servers page, each server that is still being built has a card with its name, region, plan and template, and its IP address once it has one. The page refreshes by itself every few seconds. While anything is still being built, a "Live" badge shows in the panel's header.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The link on each card goes to the progress page ("View progress"), to the finished server ("Open server") or to the failure ("View details").</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The four statuses</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Queued</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The server is waiting its turn to start.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Setting up</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The machine is being built and the software installed. The progress bar moves forward.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Ready</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The server is built and connected. It appears in the main list on the Servers page.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Failed</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Something went wrong. The card shows the error message.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What happens, step by step</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-4">The current step is written above the progress bar. Every server starts the same way:</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-3">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">Building the machine</h3>
+        <ol class="space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300 list-decimal pl-5">
+          <li>Queued</li>
+          <li>Creating machine: the server is requested from your provider.</li>
+          <li>Booting</li>
+          <li>Waiting for SSH: Tylix Deploy waits until it can log in.</li>
+        </ol>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed my-4">Then the installing steps depend on the template you picked on the Create server page.</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-2">Tylix</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed">Base packages, nginx, MySQL 8.4, Redis, Supervisor, PostgreSQL, MongoDB, Node.js 22, git and build tools, firewall, then a check of the services.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-2">Standard</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed">The same, without PostgreSQL, MongoDB, Node.js and the git and build tools.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-2">Bare</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed">No software is installed. You add packages later from the server's Packages page.</p>
+        </div>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Every server finishes with Provisioned, at 100%.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Read the error</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">A failed card shows the reason in red. Select View details to open the progress page and see which step failed.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Retry</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">A failed server has a Retry button that starts the setup again. If the retry cannot start, a red message at the top of the Servers page tells you why. Retry is disabled when your account is locked for payment.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Delete</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Cards that are not in the Setting up stage also have a Delete button, if you would rather give up. Deleting a server is explained in its own guide.</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">The root password button can appear on a card even while the server is still being set up. It is only available for servers at Linode and Hetzner.</p>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/add-your-own" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Adding your own server</a>
+        <a href="/docs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Overview &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

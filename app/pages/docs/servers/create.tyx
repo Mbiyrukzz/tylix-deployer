@@ -1,0 +1,143 @@
+page DocsCreateServer
+
+title "Creating a server - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="create-server" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Servers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Creating a server</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Create server page builds a new machine at one of your cloud providers. You answer six short questions, and Tylix Deploy does the rest. Open it with Create server on the Servers page.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">You need a connected cloud provider first. If you have none, the page says so and links to Connect a provider. You can still add a machine you already have: see <a href="/docs/servers/add-your-own" class="text-brand-600 dark:text-brand-500 hover:underline">Adding your own server</a>.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">The form, step by step</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Where is the server?</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Pick one of your connected providers. Each card shows the connection's name and the provider behind it. If you have only one provider, it is already selected for you.</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">The last card, Custom server, is for a machine that already exists elsewhere.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Region</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Choose where in the world the machine runs. The list comes live from your provider. Plans and prices depend on the region, so you pick the region before the plan. If you change the region later, the plan you chose is cleared.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Template</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">A template decides what is installed on the new server.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+              <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Tylix</p>
+                <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed mt-1">Everything in Standard, plus PostgreSQL, MongoDB, Node.js 22 LTS, git and build tools. Needs 4 GB of RAM or more.</p>
+              </div>
+              <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Standard</p>
+                <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed mt-1">nginx, MySQL 8.4, Redis, Supervisor, UFW and remote-monitor. No Node.js.</p>
+              </div>
+              <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Bare</p>
+                <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed mt-1">Just the operating system and SSH access. Add packages later from the server's Packages page.</p>
+              </div>
+            </div>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-3">Tylix is selected by default. While it is selected, the plan list only shows plans with 4 GB of RAM or more. Switching template clears the plan you chose.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">4</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Plan</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The size of the machine. Each plan shows its memory, number of vCPUs, disk size and monthly price in your provider's currency. For a provider that does not publish prices in its catalog, the line says "pricing in the provider console". The page asks you to choose a region first, because it cannot list plans before that.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">5</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Operating system</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Pick the image to install. The first one in the provider's list is selected for you.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">6</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Server name</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Use lowercase letters, numbers and hyphens, for example <span class="font-mono text-xs">web-1</span>.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">While you fill it in</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">On wide screens, a summary card on the right, called Your server, keeps track of your choices: provider, region, template, plan and name. Anything you have not chosen yet reads "Not chosen" or "Not entered".</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The Create server button stays at the bottom of the screen as you scroll. If your account is locked for payment, the button is greyed out and says "Pay to continue" when you hover over it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The verification code</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If you have two-factor sign-in turned on, creating a server needs a verification code. The summary card reminds you of this. When you press Create server, a Verification code box appears instead of creating right away:</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>With an authenticator app, enter the current code from the app, or one of your recovery codes.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>With SMS only, a code is texted to your phone straight away. Use Text me a code to send another.</span></li>
+      </ul>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Type the code and press Create server again.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">After you press Create server</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">You are taken straight to the progress page for the new server, where you can watch it being built. If for some reason the new server cannot be shown, you land on the Servers page instead, where it appears under Setting up. Both are explained in <a href="/docs/servers/setting-up" class="text-brand-600 dark:text-brand-500 hover:underline">Setting up a server</a>.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load regions and plans from the provider. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box at the top of the page. The provider did not answer, or its credentials are no longer valid. Try again, and check the connection on the Cloud providers page if it keeps happening.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message under one field</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Provider, region, plan, operating system, template or name has a problem. The message sits right under that field.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter a verification code to continue.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The code box is open but empty, or the code was wrong. Enter a fresh code.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't create the server. Check the form and try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A general error with no detail. Review each step, then try again.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; The Servers page</a>
+        <a href="/docs/servers/add-your-own" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Adding your own server &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

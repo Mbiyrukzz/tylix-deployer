@@ -1,0 +1,98 @@
+page DocsAddServer
+
+title "Adding your own server - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="add-server" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Servers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Adding your own server</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Already have a machine, at any company, that you can reach over SSH? You can connect it to Tylix Deploy instead of creating a new one. Tylix Deploy then manages it the same way.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Two ways to start</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">Add server</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The button at the top of the Servers page. It opens a popup form. When you save, the server appears in your list.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">Custom server</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The last card on the Create server page. It shows the same details on the page itself. When you save, you return to the Servers page.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What to fill in</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Name</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Whatever helps you recognise it, for example "production-web".</p>
+        </div>
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Host or IP address</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">An IP address such as 203.0.113.10, or a name such as server.example.com.</p>
+        </div>
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">SSH port</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">22 unless your server uses another port.</p>
+        </div>
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">SSH user</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">The account Tylix Deploy logs in as. It starts as "root".</p>
+        </div>
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">SSH private key</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Paste the private key that lets that user in. It starts with "-----BEGIN OPENSSH PRIVATE KEY-----".</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Use a dedicated key without a passphrase. Tylix Deploy stores it encrypted and never shows it again.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Editing a server later</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Open the server and choose Edit. The same form appears with the current name, host, port and user filled in. Change what you need and select Save changes.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The key box starts empty. Leave it empty to keep the current key, or paste a new one to replace it. When your account is locked for payment, Edit is greyed out.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message under a field</p>
+          <p class="text-zinc-500 text-xs mt-0.5">That field's value was rejected: name, host, port, user or key. Fix it and save again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the server. Check the form and try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The popup's general error. Check every field, especially the key.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't add the server. Check the form and try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The same error on the Create server page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter a verification code to continue.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">With two-factor sign-in on, adding a server from the Create server page asks for a code, in the same way as <a href="/docs/servers/create" class="text-brand-600 dark:text-brand-500 hover:underline">creating a server</a>.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/create" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Creating a server</a>
+        <a href="/docs/servers/setting-up" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Setting up a server &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

@@ -1,0 +1,69 @@
+page GettingStarted
+
+title "Getting started - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="getting-started" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Getting started</h1>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mt-8 mb-3">What is Tylix Deploy?</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Tylix Deploy is one place to run your servers and the sites on them. You create or connect a server, deploy your code to it, secure it with SSL, and keep an eye on it afterwards, without logging in to each machine and typing the commands yourself.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Everything works through your own accounts. Your servers stay at your cloud provider and your domains stay at your registrar. Tylix Deploy connects to them and does the work for you.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What it does</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">Servers</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Create a server at Linode, Hetzner, DigitalOcean, Vultr or UpCloud, or connect any machine of your own over SSH. Install the software it needs, and watch its status and logs.</p>
+        </div>
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">Sites</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Pick a framework and a Git repository, set your environment variables and deploy script, then deploy. Tylix, Laravel, PHP, Node.js, Next.js, WordPress, MERN, Angular, FastAPI, Django, Java, Go, Ruby, .NET, Rust and static sites are supported.</p>
+        </div>
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">SSL</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Turn on a free Let's Encrypt certificate for a site so it is served over HTTPS.</p>
+        </div>
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">Domains and DNS</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Connect a registrar such as Porkbun, Cloudflare or GoDaddy to see your domains, their expiry dates and their DNS next to your servers.</p>
+        </div>
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">Server tools</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Manage databases, cron jobs, workers, packages, the firewall and SSH keys for each server, and open a terminal in your browser.</p>
+        </div>
+
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1.5">Team and billing</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Invite teammates with roles, and manage your subscription from one place.</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Ready to begin? Start by creating your account. Each part above has its own guide in the sidebar.</p>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Overview</a>
+        <a href="/docs/registration" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Registration &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>
