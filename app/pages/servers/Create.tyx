@@ -10,6 +10,7 @@ needs
 uses
   Providers
   Billing
+  Logos
 
 background
   Billing
@@ -171,7 +172,7 @@ action
     this.codeError = data.error or "Enter a verification code to continue."
   }
 
-  // Adds the display name for a connection's provider.
+  // Adds the display name and the logo for a connection's provider.
   decorateProvider(p) {
     let kindName = "Linode (Akamai)"
     if p.kind is "hetzner" {
@@ -196,7 +197,7 @@ action
     if p.kind is "contabo" {
       kindName = "Contabo"
     }
-    return { id: p.id, label: p.label, kind: p.kind, kindName: kindName }
+    return { id: p.id, label: p.label, kind: p.kind, kindName: kindName, logo: Logos.url(p.kind) }
   }
 
   // Forgets everything that came from the previously chosen provider.
@@ -521,14 +522,32 @@ template
 {{#each p in providerCards}}
 {{#if providerId is p.id}}
               <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="true" class="min-h-[56px] text-left rounded-xl border-2 border-brand-500 bg-brand-500/5 px-4 py-3 text-sm transition-colors">
-                <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
-                <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
+                <span class="flex items-center gap-3">
+{{#if p.logo}}
+                  <span class="w-9 h-9 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+                    <img src="{{ p.logo }}" alt="" class="w-5 h-5" />
+                  </span>
+{{/if}}
+                  <span class="min-w-0">
+                    <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
+                    <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
+                  </span>
+                </span>
               </button>
 {{/if}}
 {{#if providerId is not p.id}}
               <button onclick="{{ pickProvider(p.id, p.kind) }}" aria-pressed="false" class="min-h-[56px] text-left rounded-xl border-2 border-line px-4 py-3 text-sm transition-colors hover:border-brand-500/40">
-                <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
-                <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
+                <span class="flex items-center gap-3">
+{{#if p.logo}}
+                  <span class="w-9 h-9 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+                    <img src="{{ p.logo }}" alt="" class="w-5 h-5" />
+                  </span>
+{{/if}}
+                  <span class="min-w-0">
+                    <span class="block font-semibold text-slate-900 dark:text-slate-100 truncate">{{ p.label }}</span>
+                    <span class="block text-xs text-slate-500 truncate">{{ p.kindName }}</span>
+                  </span>
+                </span>
               </button>
 {{/if}}
 {{/each}}

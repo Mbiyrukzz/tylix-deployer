@@ -5,6 +5,8 @@
  *   SiteDestroyer.start(siteId, force)
  *
  * What the provisioner creates, and the step that removes it:
+ *   del_docker     the app's container, compose project (containers, networks,
+ *                  volumes) and images (docker sites only)
  *   del_services   systemd unit app-<user> (node and mern sites)
  *   del_webserver  /etc/nginx/sites-available|enabled/<domain>.conf and the
  *                  <domain>-access/error logs, then nginx -t + reload
@@ -34,7 +36,7 @@ import { teamIdOfRow } from "./TeamScope.js";
 
 interface SiteRow {
     id: number;
-    user_id: number; 
+    user_id: number;
     team_id?: number | null;
     server_id: number;
     type: string;
@@ -45,7 +47,7 @@ interface SiteRow {
 
 interface ServerRow {
     id: number;
-    user_id: number; 
+    user_id: number;
     team_id?: number | null;
     ssh_user: string;
 }
@@ -55,6 +57,54 @@ const USER = /^[a-z][a-z0-9_-]{0,31}$/;
 // "www" is here because the default PHP-FPM pool is www.conf and must never be matched.
 const RESERVED_USERS = ["root", "www", "www-data", "nginx", "ubuntu", "admin", "tylix", "mysql", "postgres", "redis"];
 const LOG_MARK = "\n\n--- Delete ";
+
+/**
+ * Removes a docker site's container and everything compose created for it.
+ * Names match SiteDeployer: container and compose project app-<user>, images
+ * tylix-<user>:new|latest|previous (Dockerfile sites) or app-<user>-<service>
+ * (compose builds). The compose project's volumes are deleted too: leaving them
+ * would hand the old data to any new site that later reuses the same user name.
+ * Skipped without an error if Docker isn't installed or its daemon is stopped.
+ */
+const DOCKER = String.raw`
+[ -n "$U" ] || exit 1
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker not installed, skipping"
+  exit 0
+fi
+if ! docker info >/dev/null 2>&1; then
+  echo "docker daemon not running, skipping"
+  exit 0
+fi
+NAME="app-$U"
+IMAGE="tylix-$U"
+ids=$(docker ps -aq --filter "label=com.docker.compose.project=$NAME")
+if [ -n "$ids" ]; then
+  docker rm -f $ids >/dev/null 2>&1 || true
+  echo "removed compose containers"
+fi
+if docker rm -f "$NAME" >/dev/null 2>&1; then
+  echo "removed container $NAME"
+fi
+nets=$(docker network ls -q --filter "label=com.docker.compose.project=$NAME")
+if [ -n "$nets" ]; then
+  docker network rm $nets >/dev/null 2>&1 || true
+  echo "removed compose networks"
+fi
+vols=$(docker volume ls -q --filter "label=com.docker.compose.project=$NAME")
+if [ -n "$vols" ]; then
+  docker volume rm $vols >/dev/null 2>&1 || true
+  echo "removed compose volumes"
+fi
+for t in new latest previous; do
+  docker rmi -f "$IMAGE:$t" >/dev/null 2>&1 && echo "removed image $IMAGE:$t" || true
+done
+imgs=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -E "^$NAME-" || true)
+for i in $imgs; do
+  docker rmi -f "$i" >/dev/null 2>&1 && echo "removed image $i" || true
+done
+exit 0
+`;
 
 /** Stops and removes the app's systemd unit. */
 const SERVICES = String.raw`
@@ -224,11 +274,11 @@ export class SiteDestroyer {
         } else {
             const server = (await Server.find(site.server_id)) as ServerRow | null;
 
-          if (!server) {
-    say("The server record no longer exists, so there is nothing to clean up.");
-} else if ((await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
-    return fail('This site\'s server is on a different team, so server cleanup was refused. Use "Delete anyway" to remove just the record.');
-} else {
+            if (!server) {
+                say("The server record no longer exists, so there is nothing to clean up.");
+            } else if ((await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+                return fail('This site\'s server is on a different team, so server cleanup was refused. Use "Delete anyway" to remove just the record.');
+            } else {
                 const domain = String(site.domain || "");
                 const user = String(site.isolated_user || "");
 
@@ -250,6 +300,7 @@ export class SiteDestroyer {
                 const vars = `U='${user}'; D='${domain}';`;
 
                 const steps: Step[] = [
+                    { step: "del_docker", label: "Removing the container", script: DOCKER, timeoutMs: 90_000, run: site.type === "docker" },
                     { step: "del_services", label: "Stopping the app", script: SERVICES, timeoutMs: 45_000, run: true },
                     { step: "del_webserver", label: "Removing the nginx site", script: WEBSERVER, timeoutMs: 45_000, run: true },
                     { step: "del_php", label: "Removing the PHP pool", script: PHP, timeoutMs: 45_000, run: true },
@@ -279,7 +330,7 @@ export class SiteDestroyer {
             }
         }
 
-                say("Removing the site record.");
+        say("Removing the site record.");
         for (const row of (await SitePlugin.all()) as { id: number; site_id: number }[]) {
             if (Number(row.site_id) === site.id) await SitePlugin.delete(row.id);
         }

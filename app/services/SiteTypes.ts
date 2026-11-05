@@ -13,9 +13,23 @@
  *   ruby    Bundler gems + puma (or any Rack server) on a port behind an nginx proxy (ruby)
  *   dotnet  dotnet publish output on a port behind an nginx proxy (dotnet)
  *   rust    a binary built with cargo build --release, on a port behind an nginx proxy (rust)
+ *   docker  a container (Dockerfile or docker compose) published on 127.0.0.1:<port>
+ *           behind an nginx proxy. Docker owns the process, so there is no systemd
+ *           app service and no start command.
  */
 
-export type Runtime = "php" | "node" | "mern" | "static" | "python" | "java" | "go" | "ruby" | "dotnet" | "rust";
+export type Runtime =
+    | "php"
+    | "node"
+    | "mern"
+    | "static"
+    | "python"
+    | "java"
+    | "go"
+    | "ruby"
+    | "dotnet"
+    | "rust"
+    | "docker";
 
 export interface SiteTypeDefaults {
     web_directory: string;
@@ -172,6 +186,15 @@ export const SITE_TYPES: SiteTypeInfo[] = [
         }),
     },
     {
+        id: "docker",
+        label: "Docker",
+        description:
+            "Any app with a Dockerfile or compose file. One-click deploy builds the image and swaps the container. The app listens on $PORT, published on 127.0.0.1 behind nginx.",
+        runtime: "docker",
+        usesRepository: true,
+        defaults: defaults({}),
+    },
+    {
         id: "wordpress",
         label: "WordPress",
         description: "Downloads the latest WordPress and creates its database.",
@@ -220,8 +243,8 @@ export const SITE_TYPES: SiteTypeInfo[] = [
 
 export const PHP_VERSIONS = ["8.1", "8.2", "8.3", "8.4", "8.5"];
 
-/** Runtimes that run a process on a port behind an nginx proxy (mern's API included). */
-const APP_RUNTIMES: Runtime[] = ["node", "mern", "python", "java", "go", "ruby", "dotnet", "rust"];
+/** Runtimes that run a process on a port behind an nginx proxy (mern's API and docker included). */
+const APP_RUNTIMES: Runtime[] = ["node", "mern", "python", "java", "go", "ruby", "dotnet", "rust", "docker"];
 
 export function getType(id: string): SiteTypeInfo | undefined {
     return SITE_TYPES.find((t) => t.id === id);
@@ -233,12 +256,15 @@ export const isPython = (id: string) => getType(id)?.runtime === "python";
 
 export const isJava = (id: string) => getType(id)?.runtime === "java";
 
+/** Docker sites: Docker owns the process, so there is no app-<user> systemd service. */
+export const isDocker = (id: string) => getType(id)?.runtime === "docker";
+
 /** Single-page apps: nginx falls back to /index.html for unknown paths. */
 export const isSpa = (id: string) => id === "angular" || id === "vue";
 
 export const isAppRuntime = (runtime: Runtime) => APP_RUNTIMES.includes(runtime);
 
-/** Types that run a process on a port (node, mern API, python, java, go, ruby, dotnet, rust). */
+/** Types that run a process on a port (node, mern API, python, java, go, ruby, dotnet, rust, docker). */
 export const needsPort = (id: string) => {
     const runtime = getType(id)?.runtime;
     return runtime !== undefined && isAppRuntime(runtime);

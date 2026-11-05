@@ -6,12 +6,13 @@
  *   clone      git clone from GitHub or GitLab
  *   wordpress  download WordPress (wordpress type only)
  *   database   MySQL database + wp-config.php (wordpress type only)
- *   install    composer install / npm install (python, java, go, ruby, dotnet
- *              and rust: toolchain check only)
+ *   install    composer install / npm install (python, java, go, ruby, dotnet,
+ *              rust and docker: toolchain check only)
  *   build      npm build (angular, mern client, tylix, nextjs)
  *   service    systemd unit running the app (node, mern, python, java, go, ruby,
  *              dotnet and rust types). Node apps are started now; the others are
- *              built and started by the first deploy.
+ *              built and started by the first deploy. Docker sites get no unit:
+ *              Docker owns the process and the first deploy builds and starts it.
  *   webserver  php-fpm pool (php types) + nginx vhost, tested before reload
  *
  * Every script is idempotent, so a failed site can be re-run later.
@@ -192,6 +193,7 @@ function vhost(site: SiteRow, aliases: string[]): string {
     }
 
     // Every runtime that runs one process on a port (mern is handled below: its API lives under /api/).
+    // Docker lands here too: the container is published on 127.0.0.1:<port>.
     if (isAppRuntime(runtime) && runtime !== "mern") {
         // Django collects static files into web_directory (STATIC_ROOT); nginx serves them directly.
         const statics =
@@ -268,6 +270,7 @@ const TOOLCHAINS: Record<string, { label: string; check: string; show: string }>
  * go, rust, ruby and dotnet have no dotenv convention, so systemd loads the
  * site's .env for them (the leading "-" makes a missing file harmless; the
  * first deploy writes it).
+ * There is no entry for docker: Docker sites have no systemd app service.
  */
 const UNIT_ENV: Record<string, string> = {
     node: "Environment=NODE_ENV=production",
@@ -407,8 +410,8 @@ echo "Database $DB_NAME ready and wp-config.php written"`,
         });
     }
 
-    // ---- python / java / go / ruby / dotnet / rust: only check the runtime here.
-    // The first deploy does the virtualenv, pip, bundle and build work, because
+    // ---- python / java / go / ruby / dotnet / rust / docker: only check the runtime here.
+    // The first deploy does the virtualenv, pip, bundle, build and image work, because
     // that needs the .env to exist. ----
 
     if (runtime === "python" && hasRepo) {
@@ -451,6 +454,43 @@ if ! ( ${tool.check} ) >/dev/null 2>&1; then
   exit 1
 fi
 ${tool.show}`,
+            ),
+        });
+    }
+
+    // Docker: the daemon must be installed and running. Docker is always driven
+    // through sudo by the deployer, never through the docker group: that group is
+    // root-equivalent and would defeat the isolated user. A missing Dockerfile is
+    // only a warning here; the first deploy fails with a clear message if it is
+    // still missing.
+    if (runtime === "docker" && hasRepo) {
+        phases.push({
+            step: "install",
+            title: "Checking Docker",
+            script: script(
+                base,
+                `
+command -v docker >/dev/null 2>&1 || { echo "Docker isn't installed on this server. Install it from the Packages page, then create the site again." >&2; exit 1; }
+$SUDO docker info >/dev/null 2>&1 || { echo "Docker is installed but its daemon isn't running. Start it with: systemctl enable --now docker" >&2; exit 1; }
+$SUDO docker --version
+if $SUDO docker compose version >/dev/null 2>&1; then
+  $SUDO docker compose version
+else
+  echo "The Docker Compose plugin isn't installed. Only Dockerfile projects will deploy."
+fi
+WORK="$SITE_ROOT"
+if [ -n "$APP_DIR" ]; then WORK="$SITE_ROOT/$APP_DIR"; fi
+if [ -d "$WORK" ]; then
+  if [ -f "$WORK/compose.yaml" ] || [ -f "$WORK/compose.yml" ] || [ -f "$WORK/docker-compose.yml" ] || [ -f "$WORK/docker-compose.yaml" ]; then
+    echo "Found a compose file in $WORK"
+  elif [ -f "$WORK/Dockerfile" ]; then
+    echo "Found a Dockerfile in $WORK"
+  else
+    echo "WARNING: no Dockerfile or compose file in $WORK. Add one to the repository before the first deploy."
+  fi
+else
+  echo "WARNING: folder '$APP_DIR' was not found in the repository."
+fi`,
             ),
         });
     }
@@ -513,8 +553,10 @@ fi`,
     }
 
     // ---- app service (node, mern, python, java, go, ruby, dotnet, rust) ----
+    // Docker is excluded on purpose: even if a start command reaches the API,
+    // a systemd unit would fight the container for the port.
 
-    const appRuntime = isAppRuntime(runtime);
+    const appRuntime = isAppRuntime(runtime) && runtime !== "docker";
 
     if (appRuntime && hasRepo && s(site.start_command) !== "") {
         const workSnippet = runtime === "mern" ? BACKEND_WORK : APP_WORK;

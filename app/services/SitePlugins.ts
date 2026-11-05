@@ -57,7 +57,7 @@ export interface PluginDef {
 // Every site type the deployer can create (see SiteTypes.ts).
 const ALL = [
     "tylix", "laravel", "php", "nodejs", "nextjs", "nuxt", "wordpress",
-    "fastapi", "django", "java", "go", "ruby", "dotnet", "rust",
+    "fastapi", "django", "java", "go", "ruby", "dotnet", "rust", "docker",
     "mern", "angular", "vue", "static",
 ];
 
@@ -65,6 +65,7 @@ const ALL = [
 const NGINX_SERVED = ["angular", "vue", "static", "mern"];
 
 // Every type that runs an app-<user> systemd service on a port.
+// Docker is not here on purpose: its container is not a systemd unit.
 const NODE_TYPES = [
     "tylix", "nodejs", "nextjs", "nuxt", "mern",
     "fastapi", "django", "java", "go", "ruby", "dotnet", "rust",

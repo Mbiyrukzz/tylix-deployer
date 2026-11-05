@@ -4,8 +4,17 @@
  *   pull     git pull --ff-only (token passed through git's env config)
  *   env      writes the saved env to the site's .env (mode 600)
  *   script   runs the deployment script as the isolated user
+ *            (docker sites: as the ssh user through sudo, because Docker needs root)
  *   restart  restarts the app service (node, mern, python, java, go, ruby,
- *            dotnet, rust), or reloads php-fpm
+ *            dotnet, rust), or reloads php-fpm. Docker sites have no service:
+ *            the deployment script itself swaps the container.
+ *
+ * Docker deploys:
+ *   compose file  docker compose -p app-<user> up -d --build --remove-orphans
+ *                 (your compose file must publish 127.0.0.1:${PORT}:<container port>)
+ *   Dockerfile    build the image first, then replace the container; the old
+ *                 container is only removed after the build succeeds, and the
+ *                 previous image is restored if the new container doesn't stay up.
  *
  * run() never throws; failures are saved on the row.
  */
@@ -73,7 +82,8 @@ function envDirFor(site: DeployRow): string | null {
         runtime === "go" ||
         runtime === "ruby" ||
         runtime === "dotnet" ||
-        runtime === "rust"
+        runtime === "rust" ||
+        runtime === "docker"
     ) {
         return s(site.app_directory);
     }
@@ -91,7 +101,7 @@ export function envPathFor(site: DeployRow): string {
 /**
  * Wraps deploy steps so a failure rolls the code back to the previous commit
  * and re-runs the same steps there. (Node, static, python, java, go, ruby,
- * dotnet and rust deploys.)
+ * dotnet and rust deploys. Docker has its own rollback, see dockerDeployScript.)
  */
 function guarded(steps: string[]): string {
     const body = steps.join("\n");
@@ -116,6 +126,88 @@ rollback() {
 trap 'rc=$?; cmd=$BASH_COMMAND; rollback "$rc" "$cmd"' ERR
 
 redo`;
+}
+
+/**
+ * The default script for a docker site. It runs as root (see the script phase),
+ * with SITE_USER, SITE_ROOT, APP_DIR and PORT in the environment.
+ *
+ * A failed build never touches what is running. Only the Dockerfile path needs
+ * an explicit rollback, because it replaces the container by hand.
+ * Avoid "$" followed by "{" in this text: it sits inside a template literal.
+ */
+function dockerDeployScript(): string {
+    return `cd "$SITE_ROOT"
+WORK="$SITE_ROOT"
+if [ -n "$APP_DIR" ]; then WORK="$SITE_ROOT/$APP_DIR"; fi
+[ -d "$WORK" ] || { echo "Folder '$APP_DIR' was not found in the repository." >&2; exit 1; }
+cd "$WORK"
+
+command -v docker >/dev/null 2>&1 || { echo "Docker is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }
+docker info >/dev/null 2>&1 || { echo "The Docker daemon is not running. Start it with: systemctl enable --now docker" >&2; exit 1; }
+
+NAME="app-$SITE_USER"
+IMAGE="tylix-$SITE_USER"
+
+COMPOSE=""
+for f in compose.yaml compose.yml docker-compose.yml docker-compose.yaml; do
+  if [ -f "$f" ]; then COMPOSE="$f"; break; fi
+done
+
+if [ -n "$COMPOSE" ]; then
+  docker compose version >/dev/null 2>&1 || { echo "The Docker Compose plugin is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }
+  echo "Using $COMPOSE (project $NAME, app port $PORT)"
+  PORT="$PORT" docker compose -p "$NAME" -f "$COMPOSE" up -d --build --remove-orphans
+  sleep 5
+  if [ -z "$(docker compose -p "$NAME" -f "$COMPOSE" ps -q)" ]; then
+    docker compose -p "$NAME" -f "$COMPOSE" logs --tail 30 >&2 || true
+    echo "No container is running after docker compose up. Check that your compose file publishes 127.0.0.1:$PORT." >&2
+    exit 1
+  fi
+  echo "Compose project $NAME is up"
+else
+  [ -f Dockerfile ] || { echo "There is no Dockerfile or compose file in $WORK." >&2; exit 1; }
+
+  echo "Building the image (the running container is untouched until this succeeds)"
+  docker build -t "$IMAGE:new" .
+
+  ENVARG=""
+  if [ -f .env ]; then ENVARG="--env-file .env"; fi
+
+  if docker image inspect "$IMAGE:latest" >/dev/null 2>&1; then
+    docker tag "$IMAGE:latest" "$IMAGE:previous"
+  fi
+  docker tag "$IMAGE:new" "$IMAGE:latest"
+
+  start_container() {
+    docker run -d --name "$NAME" --restart unless-stopped $ENVARG -e PORT="$PORT" -p "127.0.0.1:$PORT:$PORT" "$1" >/dev/null
+  }
+
+  healthy() {
+    sleep 5
+    [ "$(docker inspect -f '{{.State.Running}} {{.RestartCount}}' "$NAME" 2>/dev/null)" = "true 0" ]
+  }
+
+  docker rm -f "$NAME" >/dev/null 2>&1 || true
+
+  if start_container "$IMAGE:latest" && healthy; then
+    echo "Container $NAME is running on 127.0.0.1:$PORT"
+  else
+    echo "The new container did not stay up. Last log lines:" >&2
+    docker logs --tail 30 "$NAME" >&2 || true
+    docker rm -f "$NAME" >/dev/null 2>&1 || true
+    if docker image inspect "$IMAGE:previous" >/dev/null 2>&1; then
+      echo "Restoring the previous version." >&2
+      docker tag "$IMAGE:previous" "$IMAGE:latest"
+      start_container "$IMAGE:latest" || true
+    fi
+    echo "The new container did not stay up. Make sure the app listens on the PORT variable. The previous version was restored if there was one." >&2
+    exit 1
+  fi
+fi
+
+docker image prune -f >/dev/null 2>&1 || true
+echo "Deployment completed."`;
 }
 
 export function defaultDeployScript(site: DeployRow): string {
@@ -178,6 +270,10 @@ echo "Deployment completed."`;
 
     if (site.type === "wordpress") {
         return `echo "Nothing to deploy for this site type."`;
+    }
+
+    if (runtime === "docker") {
+        return dockerDeployScript();
     }
 
     if (runtime === "php") {
@@ -441,11 +537,30 @@ cd "$SITE_ROOT"
 command -v "php$PHP_VERSION" >/dev/null 2>&1 || { echo "PHP $PHP_VERSION is not installed on this server. Install it from the server's Packages page, then deploy again." >&2; exit 1; }`
             : "";
 
-    phases.push({
-        title: "Running the deployment script",
-        script: shellScript(
-            { ...base, SCRIPT_B64: Buffer.from(runner, "utf8").toString("base64") },
-            `${phpCheck}
+    if (runtime === "docker") {
+        // Docker needs root, so this script runs as the ssh user through sudo, not as
+        // the isolated user. It is written to a private temp file (not into the site's
+        // home) so the site user can never edit what root is about to run.
+        phases.push({
+            title: "Building and starting the container",
+            script: shellScript(
+                { ...base, SCRIPT_B64: Buffer.from(runner, "utf8").toString("base64") },
+                `
+RUNNER="$(mktemp)"
+trap 'rm -f "$RUNNER"' EXIT
+printf %s "$SCRIPT_B64" | base64 -d > "$RUNNER"
+chmod 700 "$RUNNER"
+cd "$SITE_ROOT"
+$SUDO env SITE_USER="$SITE_USER" SITE_ROOT="$SITE_ROOT" DOMAIN="$DOMAIN" BRANCH="$BRANCH" APP_DIR="$APP_DIR" BACKEND_DIR="$BACKEND_DIR" PORT="$PORT" bash "$RUNNER"
+echo "Deployment script finished"`,
+            ),
+        });
+    } else {
+        phases.push({
+            title: "Running the deployment script",
+            script: shellScript(
+                { ...base, SCRIPT_B64: Buffer.from(runner, "utf8").toString("base64") },
+                `${phpCheck}
 RUNNER="/home/$SITE_USER/.deploy-$SITE_USER.sh"
 printf %s "$SCRIPT_B64" | base64 -d | $SUDO tee "$RUNNER" >/dev/null
 $SUDO chown "$SITE_USER:$SITE_USER" "$RUNNER"
@@ -453,11 +568,13 @@ $SUDO chmod 700 "$RUNNER"
 cd "$SITE_ROOT"
 as_user env SITE_ROOT="$SITE_ROOT" DOMAIN="$DOMAIN" PHP_VERSION="$PHP_VERSION" BRANCH="$BRANCH" APP_DIR="$APP_DIR" BACKEND_DIR="$BACKEND_DIR" PORT="$PORT" bash "$RUNNER"
 echo "Deployment script finished"`,
-        ),
-    });
+            ),
+        });
+    }
 
     // ---- restart ----
-    const appRuntime = isAppRuntime(runtime);
+    // Docker sites have no systemd service: the script above already swapped the container.
+    const appRuntime = isAppRuntime(runtime) && runtime !== "docker";
 
     if (appRuntime && s(site.start_command) !== "") {
         phases.push({

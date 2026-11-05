@@ -1,0 +1,16 @@
+capability Logos
+
+action
+  // Returns the SVG path for a brand id, or "" when there is no file.
+  // Files live in public/logos/<id>.svg (made by scripts/generate-logos.js).
+  // Add an id here when you add a file, e.g. "tylix".
+  url(id) {
+    const have = [
+      "laravel", "php", "nodejs", "nextjs", "nuxt", "vue", "wordpress", "mern",
+      "angular", "fastapi", "django", "java", "go", "ruby", "dotnet", "rust",
+      "docker", "static",
+      "hetzner", "digitalocean", "vultr", "upcloud",
+      "porkbun", "cloudflare", "godaddy", "namecheap"
+    ]
+    return have.includes(id) ? "/logos/" + id + ".svg" : ""
+  }

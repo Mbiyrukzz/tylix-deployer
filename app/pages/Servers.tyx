@@ -170,6 +170,18 @@ action
     const step = found ? found[1] : null
     const tone = this.provisionTone(p.status)
 
+    // A server that is still being set up has no server page yet, so it opens the
+    // provisioning view (?provision=). Once it is ready it opens the real server page.
+    let href = "/servers/server-detail?provision=" + p.id
+    let linkText = "View progress"
+
+    if p.status is "done" and p.server_id {
+      href = "/servers/server-detail?id=" + p.server_id
+      linkText = "Open server"
+    } else if p.status is "failed" {
+      linkText = "View details"
+    }
+
     // has_instance is true for numeric ids and UUIDs alike (Vultr's old instance_id was 0).
     // has_root_password is only true on Linode and Hetzner.
     return {
@@ -179,7 +191,9 @@ action
       statusLabel: tone.label,
       pillCls: tone.pill,
       dotCls: tone.dot,
-      barCls: tone.bar
+      barCls: tone.bar,
+      href: href,
+      linkText: linkText
     }
   }
 
@@ -523,20 +537,18 @@ template
           <div class="rounded-2xl border border-line p-5">
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
-{{#if pr.server_id is not 0}}
-                <a href="{{ '/servers/server-detail?id=' + pr.server_id }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 hover:underline transition-colors">{{ pr.name }}</a>
-{{/if}}
-{{#if pr.server_id is 0}}
-                <h3 class="text-slate-900 dark:text-slate-100 font-semibold">{{ pr.name }}</h3>
-{{/if}}
+                <a href="{{ pr.href }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 hover:underline transition-colors">{{ pr.name }}</a>
                 <p class="text-slate-500 text-xs font-mono mt-1 truncate">{{ pr.region }} / {{ pr.plan }} / {{ pr.template }}</p>
 {{#if pr.ip}}
                 <p class="text-slate-500 text-xs font-mono">{{ pr.ip }}</p>
 {{/if}}
               </div>
-              <span class="{{ pr.pillCls }}">
-                <span class="{{ pr.dotCls }}"></span> {{ pr.statusLabel }}
-              </span>
+              <div class="flex flex-col items-end gap-2 shrink-0">
+                <span class="{{ pr.pillCls }}">
+                  <span class="{{ pr.dotCls }}"></span> {{ pr.statusLabel }}
+                </span>
+                <a href="{{ pr.href }}" class="inline-flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-500 hover:underline">{{ pr.linkText }} &rarr;</a>
+              </div>
             </div>
 
 {{#if pr.status is not "done"}}

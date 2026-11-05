@@ -220,15 +220,41 @@ const DOTNET = once(
 dotnet --version`,
 );
 
-// Docker Engine from Ubuntu's repository. Note: ports published with -p bypass UFW,
-// so bind containers to 127.0.0.1 (-p 127.0.0.1:3000:3000) and let nginx proxy to them.
+// The Docker Compose v2 plugin ("docker compose"). Ubuntu's docker.io package does not
+// include it. Tries Ubuntu's own docker-compose-v2 package first; if that isn't available
+// on this release, downloads the official plugin binary from Docker's GitHub releases
+// into the system-wide plugin folder. Safe to run again: it does nothing when
+// "docker compose" already works. Used by both the Docker step and the standalone
+// Compose package (servers whose Docker step already ran skip the Docker step).
+const COMPOSE_BODY = `if ! docker compose version >/dev/null 2>&1; then
+  $APT install docker-compose-v2 || true
+fi
+if ! docker compose version >/dev/null 2>&1; then
+  ARCH="$(uname -m)"
+  case "$ARCH" in
+    x86_64|aarch64) ;;
+    *) echo "No Docker Compose plugin download for $ARCH."; exit 1 ;;
+  esac
+  install -d -m 0755 /usr/local/lib/docker/cli-plugins
+  curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$ARCH" -o /usr/local/lib/docker/cli-plugins/docker-compose
+  chmod 755 /usr/local/lib/docker/cli-plugins/docker-compose
+fi
+docker compose version`;
+
+// Docker Engine from Ubuntu's repository, plus the Compose plugin. Note: ports published
+// with -p bypass UFW, so bind containers to 127.0.0.1 (-p 127.0.0.1:3000:3000) and let
+// nginx proxy to them. The deployer does this for Docker sites.
 const DOCKER = once(
     "docker",
     "Installing Docker",
     `$APT install docker.io
 systemctl enable --now docker
-docker --version`,
+docker --version
+${COMPOSE_BODY}`,
 );
+
+// Compose on its own, for servers where Docker was installed before Compose was added.
+const DOCKER_COMPOSE = once("docker-compose", "Installing Docker Compose", COMPOSE_BODY);
 
 // UFW goes last. The server's real SSH port is allowed before the firewall is
 // switched on (servers added by hand may not use 22).
@@ -377,6 +403,7 @@ export const PACKAGES: PackageDef[] = [
     { id: "supervisor", label: "Supervisor", group: "Tools", needs: ["base"], step: SUPERVISOR },
     { id: "tools", label: "git and build tools", group: "Tools", needs: ["base"], step: TOOLS },
     { id: "docker", label: "Docker", group: "Tools", needs: ["base"], step: DOCKER },
+    { id: "docker-compose", label: "Docker Compose plugin", group: "Tools", needs: ["base", "docker"], step: DOCKER_COMPOSE },
     { id: "ufw", label: "Firewall (UFW)", group: "Tools", needs: ["base"], step: UFW },
 ];
 
@@ -444,6 +471,7 @@ const CHECKS: Record<string, string> = {
     supervisor: "command -v supervisord",
     tools: "command -v git && command -v gcc",
     docker: "command -v docker",
+    "docker-compose": "docker compose version",
     ufw: "command -v ufw",
 };
 

@@ -15,6 +15,7 @@ uses
   Mail
   Billing
   Insights
+  Logos
 
 background
   Mail
@@ -230,6 +231,7 @@ action
       kindName: style.name,
       tileLetter: style.letter,
       tileClass: style.cls,
+      logo: Logos.url(p.kind),
       href: "/providers/provider-detail?id=" + p.id,
       createdText: this.plural(created, "server") + " created here"
     }
@@ -336,6 +338,7 @@ action
         label: name,
         tileLetter: String(name).charAt(0).toUpperCase(),
         tileClass: this.registrarTile(i),
+        logo: Logos.url(r.kind),
         href: "/registrars",
         countText: this.plural(rows.length, "domain"),
         failed: not l.res.ok,
@@ -1172,7 +1175,14 @@ template
 {{#each c in providerCards}}
           <a href="{{ c.href }}" class="group flex items-center justify-between gap-3 rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-colors">
             <div class="flex items-center gap-3 min-w-0">
+{{#if c.logo}}
+              <span class="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
+                <img src="{{ c.logo }}" alt="" class="w-6 h-6" />
+              </span>
+{{/if}}
+{{#if not c.logo}}
               <span class="{{ c.tileClass }}">{{ c.tileLetter }}</span>
+{{/if}}
               <div class="min-w-0">
                 <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold truncate">{{ c.label }}</h3>
                 <p class="text-zinc-500 text-xs truncate">{{ c.kindName }} · {{ c.createdText }}</p>
@@ -1287,7 +1297,14 @@ template
 {{#each r in registrarCards}}
             <a href="{{ r.href }}" class="flex items-center justify-between gap-3 rounded-2xl bg-stone-50 dark:bg-white/[0.03] px-3 py-3 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-colors">
               <div class="flex items-center gap-3 min-w-0">
+{{#if r.logo}}
+                <span class="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
+                  <img src="{{ r.logo }}" alt="" class="w-6 h-6" />
+                </span>
+{{/if}}
+{{#if not r.logo}}
                 <span class="{{ r.tileClass }}">{{ r.tileLetter }}</span>
+{{/if}}
                 <div class="min-w-0">
                   <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold truncate">{{ r.label }}</p>
 {{#if r.failed}}
