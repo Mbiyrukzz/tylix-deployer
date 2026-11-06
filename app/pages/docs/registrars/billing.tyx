@@ -1,0 +1,83 @@
+page DocsRegistrarBilling
+
+title "Billing - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="registrar-billing" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Domain providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Billing</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">This is what your domain provider has charged you, read from the provider itself. It is separate from your own Tylix Deploy plan, which lives under Settings. Open it with Billing in the menu next to a provider's pages.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Not every provider shares billing with other apps. What you see depends on the provider: a full history, only the account balance, or nothing at all.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The title is Billing, with the name you gave the connection and the provider's name under it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When the provider supports billing</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Account balance</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">A card with the credit the account holds, with its currency. It shows only when the provider reports a balance.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">History</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">One row per charge: what it was for, the date, and the amount with its currency on the right.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Balance only</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Some providers report only the balance. The page then shows the balance card and says "This provider reports the account balance only, not a billing history."</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When the provider has no billing API</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The page says the provider has no billing API, and gives you two buttons:</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>View renewals:</strong> opens the <a href="/docs/registrars/renewals" class="text-brand-600 dark:text-brand-500 hover:underline">Renewals</a> page, so you can still see what expires and what will renew.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Open the provider:</strong> opens the provider's own account page in a new tab, where its invoices live.</span></li>
+      </ul>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No billing history yet.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Nothing has been charged, or the provider has nothing to show. A button opens the provider's own account page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load billing.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box with the reason the provider gave. Reload the page, and if it stays, check the connection's credentials with Edit on the Domain providers page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The stored credentials may not include billing access.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">An extra line under the red box. The key works for domains but is not allowed to read billing. Create a key that is, and paste it with Edit. For Route 53 this means an IAM user that is allowed to call <span class="font-mono">route53domains:ViewBilling</span>.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/registrars/renewals" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Renewals</a>
+        <a href="/docs/source-control" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Source control &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

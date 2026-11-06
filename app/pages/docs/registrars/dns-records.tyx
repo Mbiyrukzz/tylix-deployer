@@ -1,0 +1,143 @@
+page DocsRegistrarDns
+
+title "DNS records - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="registrar-dns" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Domain providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">DNS records</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">DNS records tell the internet where your domain's website and email live. This page shows the nameservers and the records of one domain, and lets you change them. Open it by selecting a domain name, or DNS, on the Domains page.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Changes are made at the provider straight away. A wrong record can take a website or email offline, and other people's computers may keep the old answer for as long as the TTL says.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The domain name is the title, with "DNS records" under it. The link above goes back to the Domains page.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Nameservers</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If the provider reports them, a card lists the domain's nameservers. These are the servers that answer for the domain, so they decide which DNS records count.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">A Change button shows only when the provider lets you edit them. It opens a window:</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Write one nameserver per line. The box starts with the current ones.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Type the domain name in the second box to confirm. This is on purpose: wrong nameservers take the website and email offline until they are fixed.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Select Change nameservers, or Cancel to back out.</span></li>
+      </ul>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Once a domain uses another company's nameservers, the records stored at this provider stop counting. Make the DNS changes at wherever the nameservers point.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Adding a record</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The card at the top of the page is titled Add a record. Fill it in and select Add record.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A, AAAA, CNAME, MX, TXT or NS.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Name</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The host part, such as www. Use <span class="font-mono">@</span> for the domain itself. If you leave it empty, <span class="font-mono">@</span> is used.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Value</p>
+          <p class="text-zinc-500 text-xs mt-0.5">What the record points to, such as an IP address or another domain name.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">TTL</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many seconds other computers may remember the answer. It starts at 600.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Priority</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Only appears when the type is MX. A lower number is tried first.</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-8">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the types are for</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>A:</strong> points a name at an IPv4 address, such as your server.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>AAAA:</strong> the same, for an IPv6 address.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>CNAME:</strong> makes one name an alias of another name.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>MX:</strong> says which mail server receives email for the domain.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>TXT:</strong> free text, often used to prove you own the domain or to set up email checks.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>NS:</strong> hands a name over to other nameservers.</span></li>
+        </ul>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The records</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each row shows the type in a small badge, the name, the value and the TTL.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Edit</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Loads the record into the form at the top, which now says Edit record. Change what you need and select Save changes, or Cancel to go back to adding.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Delete</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Asks you to confirm: select Yes, delete, or Cancel. Deleting cannot be undone, so copy the value somewhere first if you might need it again.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, an amber message appears at the top of the page. Pay on the Billing page and the records load again.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No DNS records yet.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The domain has no records. Add the first one with the form above.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the DNS records. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message. The provider did not answer. Reload the page, and if it stays, check the connection's credentials with Edit on the Domain providers page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A red line under the form, or Couldn't save the record.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider rejected the record, and the line says why: usually a value in the wrong shape for the type, or a name that clashes with another record. Fix it and save again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't delete the record.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The record is still there. Try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type the domain name to confirm.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown in the nameservers window when the confirmation box is empty or does not match the domain name exactly.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't change the nameservers.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider refused the change, or one of the names is not valid. Nothing changed. Check each line and try again.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/registrars/domains" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Domains</a>
+        <a href="/docs/registrars/email-forwarding" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Email forwarding &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

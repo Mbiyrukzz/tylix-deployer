@@ -1,0 +1,107 @@
+page DocsRegistrarDomains
+
+title "Domains - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="registrar-domains" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Domain providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Domains</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Domains page lists every domain in one connected account, shows when each expires, and lets you change auto-renew and the transfer lock. Open it with Manage on a connection card.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The title is Domains, with the name you gave the connection underneath. The link above it takes you back to the Domain providers page. The menu next to the page switches between the pages of this provider.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Finding a domain</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Once the account has domains, a search box appears above the list. It matches any part of the domain name and narrows the list as you type.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-4">Each row is one domain.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Domain name</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A link. Select it to open the DNS records for that domain.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Expires</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The expiry date and how many days are left. A dash means the provider does not report it.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Auto-renew</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A button that says Auto-renew: On or Auto-renew: Off. Select it to switch.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Lock</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A button that says Locked or Unlocked. Select it to switch.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">DNS</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Opens the DNS records for that domain.</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-8">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the expiry colours mean</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-slate-400"></span><span><strong>Grey:</strong> more than 30 days left.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Amber:</strong> fewer than 30 days left. Renew soon.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Red:</strong> the date has passed and the line says "expired".</span></li>
+        </ul>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Auto-renew and the transfer lock</h2>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Auto-renew</strong> decides whether the provider renews the domain for you before it expires. Turn it off only if you mean to let the domain go.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>The transfer lock</strong> stops the domain from being moved to another registrar. Leave it on. Unlock it only when you are about to transfer the domain away.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A click changes the setting straight away, with no confirmation step, and then the list loads again.</span></li>
+      </ul>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">These two buttons only show up when the provider supports them and reports the current value for that domain. If you do not see them, change those settings in the provider's own dashboard.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, an amber message appears at the top and the domains do not load. Pay on the Billing page and the list comes back.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No domains found</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The account has no domains the API can see. Some providers only list domains that have API access switched on, so check that setting in the provider's dashboard.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the domains. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message. The provider did not answer, or the credentials no longer work. Reload the page, and if it stays, use Edit on the connection to paste a fresh key.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't change auto-renew. / Couldn't change the transfer lock.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider refused the change. The setting stays as it was. Try again, or change it in the provider's dashboard.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/registrars" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Domain providers page</a>
+        <a href="/docs/registrars/dns-records" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">DNS records &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

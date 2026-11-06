@@ -12,7 +12,8 @@ state
     { id: "overview", label: "Overview", href: "/docs" },
     { id: "getting-started", label: "Getting started", href: "/docs/getting-started" },
     { id: "registration", label: "Registration", href: "/docs/registration" },
-    { id: "dashboard", label: "Dashboard", href: "/docs/dashboard" }
+    { id: "dashboard", label: "Dashboard", href: "/docs/dashboard" },
+    { id: "source-control", label: "Source control", href: "/docs/source-control" }
   ]
   groups: [
     {
@@ -76,6 +77,18 @@ state
       ]
     },
     {
+      key: "registrar",
+      label: "Domain providers",
+      items: [
+        { id: "registrars", label: "Domain providers page", href: "/docs/registrars" },
+        { id: "registrar-domains", label: "Domains", href: "/docs/registrars/domains" },
+        { id: "registrar-dns", label: "DNS records", href: "/docs/registrars/dns-records" },
+        { id: "registrar-email", label: "Email forwarding", href: "/docs/registrars/email-forwarding" },
+        { id: "registrar-renewals", label: "Renewals", href: "/docs/registrars/renewals" },
+        { id: "registrar-billing", label: "Billing", href: "/docs/registrars/billing" }
+      ]
+    },
+    {
       key: "team",
       label: "Teams",
       items: [
@@ -83,6 +96,17 @@ state
         { id: "team-activity", label: "Team activity", href: "/docs/team/activity" },
         { id: "team-member", label: "A member's activity", href: "/docs/team/member" },
         { id: "team-invites", label: "Invites and roles", href: "/docs/team/invites" }
+      ]
+    },
+    {
+      key: "settings",
+      label: "Settings",
+      items: [
+        { id: "settings-members", label: "Members", href: "/docs/settings/members" },
+        { id: "settings-password", label: "Password", href: "/docs/settings/password" },
+        { id: "settings-two-factor", label: "Two-factor", href: "/docs/settings/two-factor" },
+        { id: "settings-billing", label: "Billing", href: "/docs/settings/billing" },
+        { id: "settings-invoices", label: "Invoices", href: "/docs/settings/invoices" }
       ]
     }
   ]

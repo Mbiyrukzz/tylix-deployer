@@ -1,0 +1,118 @@
+page DocsRegistrars
+
+title "Domain providers - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="registrars" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Domain providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">The Domain providers page</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">A domain provider is the company where you bought a domain, or the one that hosts its DNS. Connect them here and you can manage every domain from Tylix Deploy. Open the page with Domain providers in the sidebar.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Domain providers are not the same as cloud providers. A cloud provider gives you servers. A domain provider gives you domain names. Some companies, such as Cloudflare, can be both, but you connect them separately.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Who you can connect</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Porkbun, Cloudflare, GoDaddy, Namecheap, Dynadot, Name.com, Spaceship and Route 53. Each one shows a coloured tile with its first letter, so you can tell them apart at a glance. You can connect the same provider more than once, for example two Cloudflare accounts.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Connecting a provider</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The connect button is at the top right of the page. Before you have any, it is also in the middle of the page. You give the connection a label and paste the API credentials that the provider gave you.</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Create the API key in the provider's own dashboard first. What it asks for differs from one provider to the next.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Some providers only let a key work from an address you have approved. Namecheap is one: add your server's IP address to its whitelist.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>If you want to see billing, make sure the key you create is allowed to read it. Some providers keep that as a separate permission.</span></li>
+      </ul>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The numbers at the top</h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Connections</p>
+          <p class="text-zinc-500 text-xs mt-1">Every account you have connected.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Providers</p>
+          <p class="text-zinc-500 text-xs mt-1">How many different companies they come from. Two Cloudflare accounts count as one.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">DNS editing</p>
+          <p class="text-zinc-500 text-xs mt-1">Connections where you can add, change and delete DNS records.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">With billing</p>
+          <p class="text-zinc-500 text-xs mt-1">Connections that can show a balance or billing history.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">A connection card</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each connection is a card. At the top is the tile, the label you chose, the provider's name and a green status badge. Under it is a row of small tags, and the date it was connected.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-8">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the tags mean</h3>
+        <p class="text-zinc-500 text-xs mb-3">The tags show what Tylix Deploy can do with this provider. Not every provider supports everything, so the tags differ from card to card.</p>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Domains:</strong> lists the domains in the account.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>DNS:</strong> add, change and delete DNS records.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Nameservers:</strong> change the nameservers of a domain.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Renew &amp; lock:</strong> switch auto-renew and the transfer lock on or off.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Email forwarding:</strong> forward addresses on your domain to another inbox.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Billing:</strong> show the account balance or billing history.</span></li>
+        </ul>
+      </div>
+
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Buttons on each card</h3>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Manage</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Opens the provider. You land on its list of domains, and the menu next to the page gives you the other pages for that provider. See <a href="/docs/registrars/domains" class="text-brand-600 dark:text-brand-500 hover:underline">Domains</a>.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Edit</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Opens the same form you used to connect the provider, so you can rename it or paste new credentials. Use it when you have rotated a key.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Remove</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Asks you to confirm: select Yes, remove, or Cancel to back out. It disconnects the account from Tylix Deploy. Your domains stay with the provider and are not changed.</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Before you have connected anything, the page shows "No domain providers connected" with the list of supported providers and a button to connect your first one.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't remove that connection.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message at the top of the list. Nothing was removed. Try again, and if it keeps happening, reload the page.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/providers/billing" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Provider billing</a>
+        <a href="/docs/registrars/domains" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Domains &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

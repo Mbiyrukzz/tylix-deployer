@@ -1,0 +1,84 @@
+page DocsRegistrarEmail
+
+title "Email forwarding - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="registrar-email" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Domain providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Email forwarding</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Email forwarding sends mail that arrives at an address on your domain, such as info@yourdomain.com, to an inbox you already use. It is a forward, not a mailbox: nothing is stored on the domain itself.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Forwarding is only available for providers that offer an email API, which today means Cloudflare (Email Routing). For any other provider the page says so, and you set up forwarding or mailboxes in that provider's or your email host's own panel.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Choosing a domain</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A Domain menu at the top lists every domain in the account, and the first one is picked for you. Choose another and its rules load straight away. If the account has no domains, the page says "No domains in this account."</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Adding a forwarding address</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The card Add a forwarding address has two boxes. Select Add rule when both are filled.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The first box</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The address on your domain that people write to, for example info@yourdomain.com.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The second box</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The inbox the mail is sent on to, for example you@gmail.com.</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">The destination address must already be verified in Cloudflare, under Email Routing and then Destination addresses. If it is not, the rule is refused. Verify it there first, then come back and add the rule.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The rules</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Every rule is a row that reads from address, an arrow, then the address it goes to. Each row has a Delete button. Select it, then Yes, delete to confirm, or Cancel to back out. Deleting a rule stops the forwarding at once.</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">When the domain has no rules, the page says "No forwarding rules for this domain."</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">This provider has no email API we can use.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider does not support forwarding here. Use its own panel, or your email host's.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't add the rule.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red line under the form says why. Most often an address is spelled wrong, or the destination has not been verified in Cloudflare yet.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the forwarding rules. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message. Reload the page. If it stays, check the connection's credentials. The key needs permission to read Email Routing.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't delete the rule.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The rule is still there. Try again.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/registrars/dns-records" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; DNS records</a>
+        <a href="/docs/registrars/renewals" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Renewals &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

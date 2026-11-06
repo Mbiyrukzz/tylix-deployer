@@ -1,0 +1,81 @@
+page DocsRegistrarRenewals
+
+title "Renewals - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="registrar-renewals" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Domain providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Renewals</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Renewals page shows when each domain in the account expires and whether it will renew by itself, so a domain never lapses by surprise.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Registrars do not give out invoices through their APIs, so this page cannot take payment or show what you paid. It only shows what expires and when. To renew or pay, use the registrar's own dashboard.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Expiring within 30 days</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A small card at the top counts the domains with fewer than 30 days left. A domain that has already expired counts too. A number above zero is your cue to act.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-4">Each row is one domain.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">On the left</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The domain name, then its expiry date and whether it renews.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">On the right</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many days are left, or "Expired".</p>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-8">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">The renewal wording</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Auto-renews:</strong> the provider will renew it before it expires, provided the payment method on that account still works.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Won't auto-renew:</strong> it will expire unless you renew it yourself. Switch auto-renew on from the Domains page, or renew at the registrar.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-slate-400"></span><span><strong>Unknown:</strong> the provider does not say. Look in its dashboard.</span></li>
+        </ul>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The days-left number uses the same colours as the Domains page: grey above 30 days, amber under 30, red once it has expired.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, an amber message appears at the top and the list stays empty. Pay on the Billing page and it comes back.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No expiry dates to show.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider does not report expiry dates. Cloudflare is one of them. Check the dates in its dashboard.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load renewals. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message. Reload the page. If it stays, use Edit on the connection to paste a fresh key.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/registrars/email-forwarding" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Email forwarding</a>
+        <a href="/docs/registrars/billing" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Billing &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>
