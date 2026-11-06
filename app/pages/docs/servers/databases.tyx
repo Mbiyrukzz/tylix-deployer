@@ -1,0 +1,138 @@
+page DocsServerDatabases
+
+title "Database - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-databases" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Database</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Database page manages MySQL on one server. Open it with Database in the menu on the left. It has two lists: the database users, and the databases they own. Create a user first, then a database owned by that user.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Database users</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">A database user is the account your site logs in to MySQL with. Passwords are generated for you and stored encrypted, so you never have to invent one.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Create user</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Opens a box asking for the user name. Use lowercase letters, digits and underscores, for example <span class="font-mono text-xs">safari</span>. A strong password is made for you.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Show password</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Opens the credentials box for that user, so you can read the password again whenever you need it.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Reset password</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Sets a new generated password and shows it in the credentials box. Anything still using the old password, such as a site's .env file, needs the new one.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Delete</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Select Delete, then Delete user to confirm. Cancel backs out.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Each row shows the user's name and the host it connects from, written as @host.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Databases</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Create database is greyed out until you have at least one user, and the card says "Create a database user first." Once you do, select it and fill in the box:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Database name</p>
+          <p class="text-zinc-500 text-xs mt-0.5">For example <span class="font-mono">safarihub</span>.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Character set</p>
+          <p class="text-zinc-500 text-xs mt-0.5">utf8mb4 is selected for you and is right for almost every app. latin1 is there for older ones.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Collation</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How text is sorted and compared. With utf8mb4 you can pick utf8mb4_unicode_ci (the default), utf8mb4_general_ci, utf8mb4_0900_ai_ci or utf8mb4_bin. With latin1 you can pick latin1_swedish_ci or latin1_general_ci. Changing the character set changes the choices.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Owner</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The user that gets full access to this database and nothing else. If you have only one user, it is already chosen.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Each database in the list shows its name, its owner, and its character set and collation.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The credentials box</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">A box opens after you create a user or a database, reset a password, or choose Show password or Connection details. It shows the database (when there is one), the user and the password.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Under them is a block ready to paste into a site's .env file:</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-3">
+        <pre class="text-xs font-mono text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=safarihub
+DB_USERNAME=safari
+DB_PASSWORD=...</pre>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Copy password copies just the password. Copy .env copies the whole block. The box says "Copied." when it works. The DB_DATABASE line is left out when the box is for a user rather than a database.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Deleting a database</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select Delete on the database. A box appears asking you to type the database's name. Type it exactly, then select Delete for good.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Deleting drops the database and all its data on the server. It cannot be undone. Take a backup first: see <a href="/docs/servers/backups" class="text-brand-600 dark:text-brand-500 hover:underline">Backups</a>.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, creating, resetting and deleting are greyed out and say "Pay to continue" when you hover over them. You can still open Show password and Connection details.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the databases.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box at the top. Tylix Deploy could not read MySQL on the server. Check that the server is online and that MySQL is installed, then reload the page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message in the Create box</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The name was rejected, for example because it uses characters that are not allowed or is already taken. Fix it and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't create the user. / Couldn't create the database.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A general error with no detail. Check the server is online and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type the database name to confirm.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">What you typed does not match the database's name. Type it exactly.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't delete the user. / Couldn't delete the database.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server refused. Read the message for the reason.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/sites" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Sites</a>
+        <a href="/docs/servers/backups" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Backups &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

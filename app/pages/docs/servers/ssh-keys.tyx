@@ -1,0 +1,111 @@
+page DocsServerSshKeys
+
+title "SSH Keys - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-ssh-keys" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">SSH Keys</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The SSH Keys page gives people or machines SSH access to this server, as any user on it. Open it with SSH Keys in the menu on the left. A key is a pair: the public half goes on the server, and the private half stays with whoever logs in.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">This page is for your team's keys. It is not the key Tylix Deploy itself uses to log in. That one is the deploy key, covered in <a href="/docs/servers/settings" class="text-brand-600 dark:text-brand-500 hover:underline">Server settings</a>.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Deploying a key</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Pick the key</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Two tabs:</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Existing key</p>
+                <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed mt-1">Choose from keys you saved before. Keys belong to your account, so the same key can be put on more than one server. This tab only appears once you have saved a key.</p>
+              </div>
+              <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">New key</p>
+                <p class="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed mt-1">Give it a name, for example "Tylix's laptop". Then either paste a public key, or leave the box empty to have a new pair made for you. Before you have saved any key, this tab is the only one.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Deploy for user</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Choose which account on the server the key may log in as. If the list of users cannot be read, an amber note says so and only the SSH user is offered.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Deploy key</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The button says "Deploying…" while the key is put on the server. When it finishes, the key appears under Deployed keys.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">A generated key</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If you left the public key empty, a pair is made and the private half is shown once, in an amber box that says "Save the private key now."</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Select Download to save it as a file named <span class="font-mono text-xs">id_ed25519_</span> followed by the key's name.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Select I've saved it when you have it, to hide the box.</span></li>
+      </ul>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">This is the only time the private key is shown, and it is not stored anywhere. If you lose it, make a new key.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Deployed keys</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Lists every key that can log in to this server. Each row shows the key's name, the user it logs in as, written as name → user, and its fingerprint, a short label that identifies the key. Before you have any, the card says "No keys deployed yet."</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Remove takes that key off the server, so it can no longer log in. The key stays saved in your account and can be deployed again later.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Deploy key and Remove are greyed out and say "Pay to continue". You can still see which keys are deployed.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the key.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The public key you pasted was rejected, or the name is empty. A public key starts with something like "ssh-ed25519" or "ssh-rsa". Never paste the private half.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't deploy the key.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The key was saved but could not be put on the server. Check that the server is online. It stays under Existing key, so you can try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't remove the key.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server did not answer. Check that it is online and try again.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/firewall" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Firewall</a>
+        <a href="/docs/servers/logs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Logs &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

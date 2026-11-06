@@ -24,6 +24,40 @@ state
         { id: "add-server", label: "Adding your own server", href: "/docs/servers/add-your-own" },
         { id: "setting-up", label: "Setting up a server", href: "/docs/servers/setting-up" }
       ]
+    },
+    {
+      key: "server",
+      label: "Inside a server",
+      items: [
+        { id: "server-overview", label: "Overview", href: "/docs/servers/overview" },
+        { id: "server-packages", label: "Packages", href: "/docs/servers/packages" },
+        { id: "server-sites", label: "Sites", href: "/docs/servers/sites" },
+        { id: "server-databases", label: "Database", href: "/docs/servers/databases" },
+        { id: "server-backups", label: "Backups", href: "/docs/servers/backups" },
+        { id: "server-cron", label: "CronJobs", href: "/docs/servers/cron-jobs" },
+        { id: "server-workers", label: "Workers", href: "/docs/servers/workers" },
+        { id: "server-firewall", label: "Firewall", href: "/docs/servers/firewall" },
+        { id: "server-ssh-keys", label: "SSH Keys", href: "/docs/servers/ssh-keys" },
+        { id: "server-logs", label: "Logs", href: "/docs/servers/logs" },
+        { id: "server-terminal", label: "Terminal", href: "/docs/servers/terminal" },
+        { id: "server-settings", label: "Settings", href: "/docs/servers/settings" },
+        { id: "server-settings-system", label: "System and power", href: "/docs/servers/settings-system" }
+      ]
+    },
+        {
+      key: "site",
+      label: "Inside a site",
+      items: [
+        { id: "site-create", label: "Creating a site", href: "/docs/sites/create" },
+        { id: "site-application", label: "Application", href: "/docs/sites/application" },
+        { id: "site-deployment", label: "Deployment", href: "/docs/sites/deployment" },
+        { id: "site-ssl", label: "SSL", href: "/docs/sites/ssl" },
+        { id: "site-commands", label: "Commands", href: "/docs/sites/commands" },
+        { id: "site-redirects", label: "Redirects", href: "/docs/sites/redirects" },
+        { id: "site-logs", label: "Logs", href: "/docs/sites/logs" },
+        { id: "site-terminal", label: "Terminal", href: "/docs/sites/terminal" },
+        { id: "site-settings", label: "Settings", href: "/docs/sites/settings" }
+      ]
     }
   ]
   onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"

@@ -1,0 +1,189 @@
+page DocsServerPackages
+
+title "Packages - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-packages" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Packages</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Packages page installs software on a server, such as PHP, Node.js or Python, so it is ready for the apps you want to host. Open it with Packages in the menu on the left of any server. It is the right place to start when you created a server with the Bare template.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Installing needs the admin role. Everything runs over SSH, one step at a time, so the SSH user must be root or have sudo that does not ask for a password.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The numbers at the top</h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Installed</p>
+          <p class="text-zinc-500 text-xs mt-1">How many packages are already on the server, out of all the packages on the list, with a bar.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Selected</p>
+          <p class="text-zinc-500 text-xs mt-1">How many you have picked to install, with their names underneath.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Last install</p>
+          <p class="text-zinc-500 text-xs mt-1">The result of the most recent install or update: Queued, Working, Done or Failed.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Installing, step by step</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">What will you host?</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The quickest way. Tap a stack and it selects everything that stack needs which is not on the server yet. Packages already installed are skipped.</p>
+            <div class="rounded-2xl border border-line overflow-hidden mt-3">
+              <div class="px-5 py-3.5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Laravel</p>
+                <p class="text-zinc-500 text-xs mt-0.5">PHP 8.4, Composer, Node.js, git.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Node, Next, Nuxt, Vue</p>
+                <p class="text-zinc-500 text-xs mt-0.5">Node.js 22, git and build tools.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">FastAPI and Django</p>
+                <p class="text-zinc-500 text-xs mt-0.5">Python 3, git and build tools.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Java API</p>
+                <p class="text-zinc-500 text-xs mt-0.5">Java 21 and Maven.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Go</p>
+                <p class="text-zinc-500 text-xs mt-0.5">Go, git and build tools.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Ruby and Rails</p>
+                <p class="text-zinc-500 text-xs mt-0.5">Ruby, Bundler, git.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">.NET</p>
+                <p class="text-zinc-500 text-xs mt-0.5">.NET 8 SDK, git.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Rust</p>
+                <p class="text-zinc-500 text-xs mt-0.5">rustup and cargo, git.</p>
+              </div>
+            </div>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-3">Each card has a tag and a small bar. The tag says how many packages are still to add, Selected once you have picked it, or Ready when the server already has everything. The bar shows how much of the stack is already installed. Tap a selected stack again to unselect it.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Or pick packages</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Prefer to choose one by one? Every package is listed here, grouped by kind. Each group shows how many of its packages are installed, for example "2 of 5 installed".</p>
+            <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mt-3">
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-slate-400"></span><span><strong>Add:</strong> not on the server. Tap to select it.</span></li>
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Selected:</strong> it will be installed. Tap again to unselect it.</span></li>
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Installed:</strong> already on the server. It cannot be selected.</span></li>
+            </ul>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-3">The search box narrows the list by package name or group. If nothing matches, the page says "No packages match your search."</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Install</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">On wide screens, a card on the right called Your install shows the server, how many packages are installed and what you have selected. On a phone the same button stays at the bottom of the screen as you scroll.</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">The button counts what you picked, for example "Install 3 packages". Clear selection empties your choices. The button is greyed out when nothing is selected, while an install is already running, and when your account is locked for payment, where it says "Pay to continue".</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The verification code</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">With two-factor sign-in turned on, a box asks for a code before an install or an update starts.</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Enter the code from your authenticator app, or the code we sent you by SMS.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Press Confirm, or Enter on your keyboard. Cancel, or Escape, closes the box without installing.</span></li>
+      </ul>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If the code is wrong, the box stays open with a message, and you can try again.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Watching an install</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">As soon as you start, a Last install card appears at the top of the list. It names the packages and shows one of four states:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-3">
+
+        <div class="px-5 py-4">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Queued</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Waiting its turn to start.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Working</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Installing now. The card shows a moving bar and the step it is on.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Done</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Finished. The list refreshes and the new packages show as Installed.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Failed</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Something went wrong. The error is shown in red, with a Retry button.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">An install can take several minutes. You can leave the page and it keeps running on the server. Come back later and the card shows where it got to. The page checks for progress every few seconds.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Keeping packages up to date</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The last card, Keep it up to date, brings everything already on the server to its latest version. Select Update packages, then Yes, update now to confirm. Cancel, or Escape, backs out.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Services restart briefly while they update, so choose a quiet moment for a server with live sites.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">An update shows in Last install as "Update of installed packages". If it fails, Retry runs the update again.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't check this server.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box at the top. Tylix Deploy could not read what is installed. Check that the server is online, then choose Try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't start the install. / Couldn't start the update.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The request was refused. Installing needs the admin role, and the SSH user needs root or passwordless sudo.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A failed install with an error in red</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Read the message, fix the cause, then press Retry. Packages that did install are skipped, so a retry only does what is left.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Pay to continue installing packages.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Your account is locked for payment. You can still look at the page, but installing and updating are switched off.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/overview" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Server overview</a>
+        <a href="/docs/servers/sites" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Sites &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

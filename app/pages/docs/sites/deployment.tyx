@@ -1,0 +1,143 @@
+page DocsSiteDeployment
+
+title "Deployment - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-deployment" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Deployment</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Deployment page puts new code on the site and keeps a record of every deploy. Open it with Deployment in the menu on the left of any site.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Deployment is for sites that have a repository. A site without one shows "This site has no repository, so there is nothing to deploy." Docker sites deploy from here too: every deploy pulls the code, builds the image and swaps the container.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The domain at the top is a link that opens the live site in a new tab. On the right, a badge shows the state of the last deploy: Deployed, Failed, Deploying, or Not deployed if it has never run.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Deploy now</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Deploy now saves your script and environment, then starts a deploy. On the server it pulls the latest code, writes the environment file, runs the deployment script and restarts the app. While it runs the button says Deploying…, and the card names the stage it is on. A coloured line along the top of the card shows the state of the last deploy, and pulses while one is running.</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Four tiles sit under it:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Last deployed</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The date and time of the last deploy, in UTC. "Never" if there has not been one.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Branch</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The branch that gets pulled.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Last duration</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How long the most recent finished deploy took, such as 1m 12s.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Success rate</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many deploys passed and failed, with a bar. Only finished deploys are counted.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Latest deployment</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">A dark panel follows the newest deploy. While it runs, a Live badge shows and the page checks every two seconds. It has:</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Counters for stages, warnings and errors, and a Full log button that opens the whole log.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A row of chips, one for each recent stage, up to twelve. The last one pulses while the deploy is running and turns red if it failed.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>When a deploy fails, a red box with the last error line.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Once it is finished, a short Highlights list. If there were errors it shows the errors and warnings. If not, it shows warnings, successes and step markers. Under it, "N more lines in the full log" and View full log.</span></li>
+      </ul>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The deployment script</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select Deployment script, then Edit. The box holds the commands that run after the latest code is pulled. They run as the site's isolated user, starting in the site folder, and a command that fails stops the deploy. These variables are available:</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3"><span class="font-mono text-xs">$SITE_ROOT $DOMAIN $BRANCH $PHP_VERSION $APP_DIR $BACKEND_DIR $PORT</span></p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Reset to default puts back the default script for this site. Save keeps your changes without deploying, and the page says "Saved." Deploy now saves it as well.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The environment</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A second card, Environment, shows the path of the environment file, for example the site's .env. It is only there for sites that have one. Edit opens a box where you write one KEY=value per line. On every deploy the box is written to that file, with permissions 600. It is stored encrypted. Leave the box empty to keep the file on the server exactly as it is.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Deployment history</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Every deploy is a row with a label, its date and time in UTC, the branch and how long it took. Each row has a View log button.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-4">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">The labels</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Active:</strong> the newest successful deploy, which is the code the site is running.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-slate-400"></span><span><strong>Previous:</strong> an older successful deploy.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Failed:</strong> the deploy stopped with an error.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Deploying:</strong> it is running now. View log opens the live log.</span></li>
+        </ul>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The buttons All, Successful and Failed narrow the list, and each shows how many deploys it holds. When none match, it says "No deployments to show."</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Reading a log</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">View log, Full log and View full log all open the same window. Its title shows the state, and a thin bar moves while the deploy is running.</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Filters: All, Errors, Warnings and Stages, each with a count. Stages are the section headings and step markers.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Jump to first error appears when there is one. Copy log copies the whole log, and the button says Copied for a moment.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Each line has a number and an icon: &#10005; error, ! warning, &#10003; success, $ command, &#9095; git and &bull; a tool such as composer or npm. A legend sits above the log on wide screens.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A Jump to bottom button appears when you scroll up. The window keeps the newest 3,000 lines. Press Esc or Close to leave.</span></li>
+      </ul>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">The colours come from the words in each line. A harmless line that contains the word "error" is shown as an error, so read the line before you worry. Lines that say "0 errors" or "no error" are left alone.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Deploy now and Save are greyed out and say "Pay to continue". You can still read the history and every log.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The script or environment was rejected. A red message in the box says why, and the box stays open.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't start the deployment.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown at the top of the page. Nothing started. Read the message and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A deploy shows Failed</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Open its log, select Jump to first error, and read the lines just above it. A command in the script that failed is the usual cause.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load this log.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown inside the log window when an old log cannot be read. Close it and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">$ no deployment yet</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The site has never been deployed. Press Deploy now.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/application" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Application</a>
+        <a href="/docs/sites/ssl" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">SSL &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

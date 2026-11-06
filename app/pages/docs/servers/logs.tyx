@@ -1,0 +1,84 @@
+page DocsServerLogs
+
+title "Logs - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-logs" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Logs</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Logs page is the history of one server: when it was created, edited or rebooted, and which actions were blocked. Open it with Logs in the menu on the left. Newest events come first, and keys and passwords are never recorded.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">These are Tylix Deploy's own records about the server. They are not the server's system logs, such as nginx errors. For those, use the quick checks on the <a href="/docs/servers/terminal" class="text-brand-600 dark:text-brand-500 hover:underline">Terminal</a> page.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Reading an event</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each event is one row, with a coloured dot on the left. Under the message, in small type, are its level, its name and the time it happened, written in UTC.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-4">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">The four levels</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-sky-500"></span><span><strong>Info:</strong> something happened that is worth knowing.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Success:</strong> something finished well.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Warning:</strong> it worked, but something needs your attention.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Error:</strong> something failed or was blocked.</span></li>
+        </ul>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Some events have extra information. They show a Details button, which opens it underneath as formatted text. Select Details again to close it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Narrowing the list</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Level buttons</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">All, Info, Success, Warning and Error. Pick one to show only that level.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Area buttons</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">All events, or Firewall only. You can combine an area with a level, for example errors in the firewall.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Refresh</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Reads the list again. The page does not update by itself, so press it when you are waiting for something to show up.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The page shows the latest 200 events that match. When nothing matches, it says "No events yet."</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the logs.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message at the top. Select Refresh to try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No events yet.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Nothing matches the buttons you picked. Choose All for both level and area to see everything.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/ssh-keys" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; SSH Keys</a>
+        <a href="/docs/servers/terminal" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Terminal &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

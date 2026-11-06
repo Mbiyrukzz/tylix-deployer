@@ -1,0 +1,153 @@
+page DocsServerSettings
+
+title "Server settings - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-settings" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Server settings</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Settings page controls how Tylix Deploy reaches this server and how it knows the server is the real one. This guide covers the top of the page, General, the Deploy key and the Host key. The rest of the page is in <a href="/docs/servers/settings-system" class="text-brand-600 dark:text-brand-500 hover:underline">System and power</a>.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The server's name sits at the top with its SSH command underneath. Choose Copy to put the command on your clipboard, then paste it into a terminal. The port is added to the command only when it is not 22.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">On the right is a status badge. Online is green, Offline is red, and anything else, such as a server that was never tested, is amber. Next to it is Test connection, which logs in to the server and updates the badge.</p>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Last checked</p>
+          <p class="text-zinc-500 text-xs mt-1">When the connection was last tested. "Never" if it has not been.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Uptime</p>
+          <p class="text-zinc-500 text-xs mt-1">How long the server has been running since its last restart.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Memory</p>
+          <p class="text-zinc-500 text-xs mt-1">The share of memory in use.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Disk</p>
+          <p class="text-zinc-500 text-xs mt-1">The share of disk space in use.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">General</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The details Tylix Deploy uses to reach the server: Name, SSH user, Host and SSH port. Change what you need and select Save changes.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-4">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Saving does not check the new details. After you change the host, port or user, press Test connection to be sure they work.</p>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Under the form are a few facts about the server:</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>When it was last checked and when it was added.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The last connection error, in red, if the most recent attempt to connect failed.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>For a server you created through Tylix Deploy, the provider, region and plan.</span></li>
+      </ul>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Deploy key</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The deploy key is the SSH key Tylix Deploy logs in with. The private half is stored encrypted and is never shown. What you can see is its fingerprint, a short label that identifies the key.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Reveal the fingerprint</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">The fingerprint is hidden behind dots. Select Reveal to show it. With two-factor sign-in on, you are asked for a code first. Copy copies it, and Hide covers it again. It hides itself after a minute.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Last replaced</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">The date the key was last changed. A key that was never changed says "Not replaced since it was added".</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Rotate key</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Replaces the key with a fresh one. Tylix Deploy installs the new key, checks that it can log in, saves it, and only then removes the old one, so it cannot lock itself out. Select Rotate key, then Replace key to confirm. If the old key could not be removed from the server, you are told in the message.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Paste my own key</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">For a server you added yourself. Paste a private key without a passphrase and select Save key. The matching public key must already be on the server. Then press Test connection to check that it works.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If the stored key cannot be read, the card says so in amber: "The stored key couldn't be read. Replace it." Rotate it, or paste your own.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Host key</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The host key is the server's own identity. Tylix Deploy uses it to make sure it is talking to your server and not to someone pretending to be it. A badge in the corner of the card shows where things stand.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-4">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the badge means</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Not pinned:</strong> no host key is saved yet, so Tylix Deploy trusts whatever key the server shows on first contact.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Pinned:</strong> the key is saved. Every connection, including the terminal, is checked against it and refused if it differs.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Key changed:</strong> the server showed a different key than the saved one, so Tylix Deploy refused to connect.</span></li>
+        </ul>
+      </div>
+
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Pinning the key</h3>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select Pin host key. Tylix Deploy connects once, reads the key from the same session that logs in, and saves it. After that you can reveal the fingerprint and compare it with the one in your provider's console, if you want to be sure.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-6">Once pinned, the card also shows the key's type, the date it was pinned, and a Reveal button that works like the one for the deploy key.</p>
+
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">When the key changes</h3>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">A red box appears at the top of the page, "This server's host key changed", with a Review and trust new key button. The Host key card shows the same warning.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-4">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Trust the new key only if you know why it changed, for example you rebuilt or reinstalled the server. If you did not expect a change, do not trust it: someone may be intercepting the connection.</p>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select Trust new key, then confirm. With two-factor sign-in on, you are asked for a code too. Afterwards, press Test connection to check it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The verification code</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Several actions on this page ask for a code when two-factor sign-in is on: revealing a fingerprint, rotating the deploy key, trusting a new host key, and the reboot and delete actions in <a href="/docs/servers/settings-system" class="text-brand-600 dark:text-brand-500 hover:underline">System and power</a>. A box opens. Enter the code from your authenticator app, or the one sent by SMS, then select Confirm. If it is wrong, the box stays open with a message and you can try again.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't connect: and a reason</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Test connection failed. Read the reason, then check the host, port, user and key. The same reason is kept under General as the last connection error.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the server.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">One of the General fields was rejected. The message says which, so fix it and save again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Paste the private key first.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">You selected Save key with the box empty.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">This server's host key changed</p>
+          <p class="text-zinc-500 text-xs mt-0.5">See "When the key changes" above. Do not trust the new key unless you know why it changed.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter your code. / That code didn't work. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The verification box was empty, or the code was wrong. Enter a fresh code.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/terminal" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Terminal</a>
+        <a href="/docs/servers/settings-system" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">System and power &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

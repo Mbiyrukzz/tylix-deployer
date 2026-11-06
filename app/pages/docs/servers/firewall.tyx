@@ -1,0 +1,131 @@
+page DocsServerFirewall
+
+title "Firewall - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-firewall" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Firewall</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Firewall page controls which connections may reach this server. Open it with Firewall in the menu on the left. Rules are applied with UFW over SSH, and each one decides whether a port is open to everyone, to one address, or to no one.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">The first time you open this page for a server that has no rules, Tylix Deploy sets up the defaults for you: SSH, HTTP and HTTPS. This is how servers you added yourself get a firewall.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The buttons at the top</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Create</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Opens the form for a new rule. See below.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Sync</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Applies every rule on the list to the server and turns the firewall on. A message says "Firewall synced and enabled." Use it if a rule shows pending or failed, or if you think the server has drifted from the list.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Reset to defaults</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Removes every rule except SSH, HTTP and HTTPS. Select it, read the warning, then choose Yes, reset. Cancel backs out. Only rules listed on this page are removed.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Adding a rule</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Name</p>
+          <p class="text-zinc-500 text-xs mt-0.5">For you, for example "Postgres from office".</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Allow lets the connection in. Deny blocks it. Allow is selected for you.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Source</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Who the rule applies to: "any" for everyone, a single IP address, or a range written as a CIDR, such as 203.0.113.0/24.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Protocol</p>
+          <p class="text-zinc-500 text-xs mt-0.5">tcp or udp. Most services, including websites and databases, use tcp.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Port</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A single port such as 5432, or a range such as 6000:6010.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select Add rule. The button says "Applying…" while the rule is sent to the server. When it works, a message says "Rule added." and the rule appears in the list.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Be careful with Deny rules. Tylix Deploy itself connects over SSH, so blocking the SSH port stops it reaching the server.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">One row per rule, showing Name, Type, Source, Protocol, Port and Status. Underneath, "Showing 5 rules" tells you how many there are.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-4">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the status means</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>ready:</strong> the rule is on the server.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>pending:</strong> not applied yet. Press Sync.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>failed:</strong> the server refused it. The reason is written under the row in red.</span></li>
+        </ul>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each row has Edit and Delete. Edit opens the same form with the rule's values filled in, and the button reads Save changes. Delete asks you to confirm with Yes, delete, and Cancel backs out.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Before there are any rules, the page says "No rules yet."</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Create, Sync, Reset to defaults, Edit, Delete and the form's save button are greyed out and say "Pay to continue". You can still see every rule.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message in the form</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A field was rejected, usually the source or the port. Fix it and save again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the rule.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A general error with no detail. Check that the server is online and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't sync the firewall. / Couldn't reset the firewall.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown at the top of the page. The server did not answer, or UFW is not installed. Check that it is online.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Reset, but some rules couldn't be removed.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The page tells you how many. They stay in the list as failed rows, with the reason underneath.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't remove the rule.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server refused. Press Sync, then try again.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/workers" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Workers</a>
+        <a href="/docs/servers/ssh-keys" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">SSH Keys &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

@@ -1,0 +1,160 @@
+page DocsServerOverview
+
+title "Server overview - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-overview" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Server overview</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Open any server from the Servers page and you land here. It shows whether the machine is healthy right now, how to log in to it, which sites run on it, and lets you reboot or delete it. The other pages for this server are in the menu on the left.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The server's name sits at the top, with a status badge next to it and the SSH details underneath, written as user@host:port.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-4">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the badge means</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Online:</strong> the server answered.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Not tested:</strong> the connection has not been checked yet.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Offline:</strong> the server could not be reached.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-sky-500"></span><span><strong>Rebooting:</strong> you asked for a restart and the server is coming back.</span></li>
+        </ul>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">On the right is the Edit button. It opens the same form you used to add the server: see <a href="/docs/servers/add-your-own" class="text-brand-600 dark:text-brand-500 hover:underline">Adding your own server</a>. When your account is locked for payment, Edit is greyed out and everything on this page becomes view only.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Messages that can appear</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Rebooting</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">A blue box. The server will be unreachable for about a minute. You do not need to refresh: the page picks it up again by itself.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">High usage</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">An amber box that names what is running hot. It appears when CPU reaches 85%, or when memory or disk reaches 90%.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">A red message</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Tylix Deploy could not read the server's numbers, and the badge turns to Offline. Check that the machine is on and that the SSH details are still right.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The four small cards</h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Uptime</p>
+          <p class="text-zinc-500 text-xs mt-1">How long the server has been running since its last restart.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Load average</p>
+          <p class="text-zinc-500 text-xs mt-1">How busy the machine has been over the last 1, 5 and 15 minutes.</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Region</p>
+          <p class="text-zinc-500 text-xs mt-1">Where a server you created runs. A server you connected yourself shows "Custom".</p>
+        </div>
+        <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Plan</p>
+          <p class="text-zinc-500 text-xs mt-1">The size you chose when you created it. Blank for a server you connected yourself.</p>
+        </div>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Uptime and load show a dash until the first reading arrives, which takes a moment after the page opens.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">CPU, memory and disk</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Three cards show how much of each the server is using right now.</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>CPU</strong> and <strong>Memory</strong> each show a percentage, a bar and a small line graph of the most recent readings. Memory also shows how much is used out of the total.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Disk</strong> shows a ring with the percentage in the middle, and how much space is used out of the total.</span></li>
+      </ul>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The colour warns you before there is a problem. It changes to amber at 75% and to red at 90%.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Under the cards a small note says "Live" with the time of the last update. The numbers arrive over a live connection, so you do not need to refresh. If the connection drops, the note says "Reconnecting…" and it tries again every few seconds.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Connect</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">This card has the command to open a shell on the server from your own machine. Choose Copy and paste it into a terminal. The port is added to the command only when it is not 22.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Below the command are the host, SSH port, SSH user, and the dates the server was added and last updated. The SSH key shows "Stored encrypted": Tylix Deploy never shows it again after you save it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Sites</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Lists the apps deployed on this server. Select one to open it. New site, at the top of the card, starts a new deployment here. Before you have any, the card says "Nothing deployed here yet" with a Create a site button.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Reboot server</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Restarts the machine over SSH. Sites and services on it are offline for about a minute. Select Reboot server, then Yes, reboot now to confirm. Cancel backs out.</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The SSH user must be root, or have sudo that does not ask for a password.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The badge shows Rebooting and the button says "Rebooting…" until the server answers again.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>If it has not come back after about three minutes, the badge changes to Offline.</span></li>
+      </ul>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If the reboot cannot start, a red message appears above the button.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Delete server</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Removes the server from Tylix Deploy, together with its stored SSH key. Your machine itself is not touched.</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Select Delete server, then Yes, delete it. Cancel backs out.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>With two-factor sign-in on, a Verification code box appears first. With an authenticator app, enter its current code or a recovery code. With SMS only, a code is texted to you straight away, and Text me a code sends another.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>When it works you return to the Servers page.</span></li>
+      </ul>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Deleting cannot be undone. Make sure nothing on the server still needs Tylix Deploy before you confirm.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Server not found</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server was deleted, or the link is wrong. Go back to the Servers page and open it from the list.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The badge says Offline</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server did not answer. Check that it is switched on and that the host, port, user and key are still correct. Use Edit to fix them.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The graphs stay empty</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The first reading has not arrived yet. If a red message is showing, the server could not be read: see Offline above.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't reboot that server.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Most often the SSH user is not root and needs a password for sudo. Use root, or set up passwordless sudo for that user.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter a verification code to delete this server.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The code box is open but empty, or the code was wrong. Enter a fresh code.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/setting-up" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Setting up a server</a>
+        <a href="/docs/servers/packages" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Packages &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

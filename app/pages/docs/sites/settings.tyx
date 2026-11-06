@@ -1,0 +1,184 @@
+page DocsSiteSettings
+
+title "Site settings - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-settings" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Site settings</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Settings page shows the details of one site, and holds its nginx configuration and its plugins. Open it with Settings under Tools in the menu on the left of any site.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">This is the site's settings page. The settings of the server itself, such as its SSH details and host key, are in <a href="/docs/servers/settings" class="text-brand-600 dark:text-brand-500 hover:underline">Server settings</a>.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The details</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The top of the page shows the site's domain and a status badge. Below it the details are grouped into cards. They are for reading only, and a row is left out when it has no value.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">General</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Type, Status, Domain, Aliases, Isolated user, Site folder, PHP version, App port, Created and Last updated.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Source</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Repository, Branch and whether dependencies are installed on deploy.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Directories and commands</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Web directory, App folder, API folder, Build command and Start command.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Deployment</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The deploy status and when the site was last deployed.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">HTTPS</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The method, its status and the expiry date. Change it on the <a href="/docs/sites/ssl" class="text-brand-600 dark:text-brand-500 hover:underline">SSL</a> page.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">nginx configuration</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The site's nginx file lives at <span class="font-mono text-xs">/etc/nginx/sites-available/domain.conf</span>. Select Edit to open it in a full-size editor. It opens in its own window so it cannot be changed by accident. It is only available once the site is Ready.</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If you only want to send an old address somewhere else, use <a href="/docs/sites/redirects" class="text-brand-600 dark:text-brand-500 hover:underline">Redirects</a> instead of editing the file.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The editor</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Line numbers run down the left. A badge says "In sync with server" or "Unsaved changes". The Tab key inserts four spaces.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Test and save</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Press the button, or Ctrl+S (Cmd+S on a Mac). The config is tested with nginx -t first, and the old version is restored if the test fails. On success the editor says "Saved. nginx accepted the config and was reloaded."</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Discard</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Appears when you have unsaved changes. Puts the text back to what was last saved.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Reload from server</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Reads the file from the server again. If you have unsaved changes it asks first, because they will be lost.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Close</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Closes the editor. Press Esc, too. If you have unsaved changes it asks before throwing them away.</p>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Keep the include line in place. Plugins and redirects keep their settings in separate files that this config pulls in, and they stop working without it. Certificates added by HTTPS also live here, and recreating the site or changing its HTTPS settings can rewrite this file, so changes you make by hand may be lost.</p>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">With two-factor sign-in on, saving can ask for a code. A box titled "Confirm to save the nginx config" opens. Enter a code from your authenticator app or the SMS, then select Confirm. A wrong code keeps the box open.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Plugins</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Plugins are extras for this type of site. Each one installs over SSH, and you can remove it again. The card lists the ones you have added, and says "Nothing added yet" with how many are available if there are none.</p>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Add plugin</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Opens a box with a search field. Plugins are grouped, and each shows a name and a description. Select one to see its description and any notes under the list. One that cannot be installed is marked Unavailable and says why.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Install</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Select Install followed by the plugin's name. The button says Installing… and the box closes. With two-factor sign-in on, a box asks you to confirm with a code first, titled "Confirm to install this plugin".</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">When every plugin for the site has been added, the box says so.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Watch it</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The plugin shows in the list with a status that updates by itself every few seconds while it works.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-4">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the status means</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Installed:</strong> it is on the server and working.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Working:</strong> it is being installed or removed.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Failed:</strong> the install or the removal did not finish. The reason is written under the plugin.</span></li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Details</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Opens the plugin's notes and the log of what was done on the server. Select it again to close.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Retry</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Only on a Failed plugin. Tries the install, or the removal, again.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Remove</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Asks "Remove this plugin from the site? Its service and nginx settings will be taken off the server." Confirm, and with two-factor sign-in on, enter a code.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A plugin that runs as a service may show a local port. That is the port on the server that it listens on.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Add plugin, Install and Remove are greyed out and say "Pay to continue", and Test and save in the nginx editor does nothing. You can still read the details and open the editor to look.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Not saved</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box in the nginx editor with nginx's own message. Your text is still there. Fix the line it names, and save again. The site keeps working with the old version.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the nginx config.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The file could not be read. Check that the server is online and use Reload from server.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Choose a plugin first.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">You pressed Install without selecting one.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't install that plugin. / Couldn't remove that plugin.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server refused. Read the message, then use Retry on the plugin.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter your code. / That code didn't work. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The verification box was empty, or the code was wrong. Enter a fresh code.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/terminal" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Terminal</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

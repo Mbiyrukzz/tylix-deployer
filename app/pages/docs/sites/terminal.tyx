@@ -1,0 +1,154 @@
+page DocsSiteTerminal
+
+title "Terminal - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-terminal" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Terminal</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Terminal page opens a shell inside one site's folder, right in your browser. Open it with the Terminal button at the top right of the <a href="/docs/sites/application" class="text-brand-600 dark:text-brand-500 hover:underline">Application</a> page. The button appears once the site is Ready.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">This shell is the site's, not the server's. You are the site's isolated user, not root, and you start in the site folder. For work on the whole server, use the server's <a href="/docs/servers/terminal" class="text-brand-600 dark:text-brand-500 hover:underline">Terminal</a> page.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Opening a session</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Connect</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The page opens with a card that says which folder you will start in, /home/user/domain, and which user you will be. It also says sessions close after 15 minutes without typing. Select Connect. It shows "Opening a shell…" for a moment, then you have a prompt.</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">The terminal is loaded from the internet the first time you connect, so you need a working connection.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Confirm it is you</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">With two-factor sign-in on, a "Confirm it's you" box appears instead. Enter a code from your authenticator app, a recovery code, or the code from a text message, then select Verify and connect. If you have SMS set up, Text me a code sends one and tells you where it went. Cancel goes back.</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">If the code is wrong, the box stays open with a message so you can try again.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Visit site at the top right opens the site in a new tab, using https when HTTPS is on and http when it is not.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Using the terminal</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The bar above the terminal shows user@domain and a badge: Connecting, Connected, Verification needed or Disconnected. While you are connected it also has these buttons:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Copy</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Copies the text you selected in the terminal. It says "Copied" for a moment.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Paste</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Types what is on your clipboard into the terminal.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Clear</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Wipes the screen. The session carries on.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Disconnect</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Ends the session.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Expand</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Makes the terminal larger, over the rest of the page. Choose Collapse, press Escape, or click outside it to go back.</p>
+        </div>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">When a session ends for any reason, the badge turns to Disconnected and a Reconnect button appears.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The idle limit</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A session closes after 15 minutes without typing. A thin bar along the top of the terminal shows how much of that time is left, and at the bottom you see how long you have been connected, and the idle limit. When two minutes are left, the bar turns amber and the note says "Closing in … without typing". Typing anything starts the 15 minutes again.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Quick checks</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Below the terminal, a Quick checks card has one button for each common command. While you are connected, select one and it runs in your open session. Hover over a button to see the exact command. When the terminal is expanded the same buttons sit along its bottom edge. Before you connect, the card says to connect first.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">List files</p>
+          <p class="text-zinc-500 text-xs mt-0.5"><span class="font-mono text-xs">ls -la</span></p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Git status</p>
+          <p class="text-zinc-500 text-xs mt-0.5"><span class="font-mono text-xs">git status</span></p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Recent commits</p>
+          <p class="text-zinc-500 text-xs mt-0.5"><span class="font-mono text-xs">git log --oneline -n 10</span></p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Folder sizes</p>
+          <p class="text-zinc-500 text-xs mt-0.5"><span class="font-mono text-xs">du -sh * 2&gt;/dev/null | sort -h</span></p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Disk space</p>
+          <p class="text-zinc-500 text-xs mt-0.5"><span class="font-mono text-xs">df -h .</span></p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Node version</p>
+          <p class="text-zinc-500 text-xs mt-0.5"><span class="font-mono text-xs">node -v &amp;&amp; npm -v</span></p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">PHP version</p>
+          <p class="text-zinc-500 text-xs mt-0.5"><span class="font-mono text-xs">php -v</span></p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Connect and Reconnect are greyed out and say "Pay to continue", and the quick checks and the Terminal button on the Application page are off.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't open a terminal.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box with Try again. Read the message. Check that the server is online.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the terminal library. Check your internet connection and try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The terminal could not be downloaded to your browser. Check your connection.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter your verification code. / That code didn't work.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The code box was empty, or the code was wrong. Enter a fresh code. Too many wrong tries lock the prompt for a while.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Disconnected</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The session ended, often because of the idle limit. Select Reconnect to start a new one.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The terminal area isn't on the page yet. Reload and try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The page was not ready when you connected. Reload it.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/logs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Logs</a>
+        <a href="/docs/sites/settings" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Settings &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

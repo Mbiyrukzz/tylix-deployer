@@ -1,0 +1,117 @@
+page DocsSiteRedirects
+
+title "Redirects - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-redirects" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Redirects</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Redirects page sends an old address on a site somewhere else. Open it with Redirects under Tools in the menu on the left of any site.</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A redirect sends visitors from an old address on this site to a new one. It is written into the site's nginx configuration for you. Before anything is applied, Tylix Deploy tests the change with <span class="font-mono text-xs">nginx -t</span>, and if the test fails the change is rolled back, so a mistake cannot take the site down. The query string, the part after a question mark, is kept. The page is available once the site is Ready.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Adding a redirect</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Old address</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The path on this site that should be redirected, for example <span class="font-mono text-xs">/old-page</span>.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Send to</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Where it should go. Either another path on this site, such as <span class="font-mono text-xs">/new-page</span>, or a full address such as <span class="font-mono text-xs">https://example.com/page</span>.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Matches</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Choose how the old address is matched:</p>
+            <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mt-3">
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Exact path only</strong> redirects that one path.</span></li>
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>This path and everything under it</strong> redirects the path and every address below it. The list shows these with /… on the end.</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">4</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Type</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The kind of redirect, 301 by default:</p>
+            <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mt-3">
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>301 Permanent</strong> and <strong>308 Permanent</strong> tell browsers and search engines the move is for good.</span></li>
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>302 Temporary</strong> and <strong>307 Temporary</strong> say it is only for now.</span></li>
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>308 and 307 keep the request method, so a form that was sent with POST is sent to the new address with POST.</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">5</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Add redirect</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The button says Testing and saving… while nginx checks it. On success a message says "Added. nginx accepted the change and was reloaded." and the old and new addresses are cleared so you can add another.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Active redirects</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Under the heading, "N of 100 used" shows how many you have and the most you can add. Each redirect is one card with its type, how it matches, the old address and, under it, an arrow and the new address. Remove asks "Remove the redirect for ...?" Confirm and a message says "Removed. nginx was reloaded." Before you have any, the page says "No redirects yet."</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Redirects are kept in a separate file that the site's nginx configuration includes. If you edit that configuration by hand in <a href="/docs/sites/settings" class="text-brand-600 dark:text-brand-500 hover:underline">Settings</a>, keep the include line, or the redirects stop working.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Add redirect and Remove are greyed out and say "Pay to continue". You can still see every redirect.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Fill in both the old address and where it should go.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">One of the two boxes was empty.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A red box with text in a code font</p>
+          <p class="text-zinc-500 text-xs mt-0.5">nginx or Tylix Deploy refused the redirect, and the box shows why. Nothing was changed. Correct the address and add it again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the redirect. / Couldn't remove the redirect.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A general error with no detail. Check that the server is online and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the redirects.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown above the list. Reload the page. If the server is offline, bring it back first.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/commands" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Commands</a>
+        <a href="/docs/sites/logs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Logs &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

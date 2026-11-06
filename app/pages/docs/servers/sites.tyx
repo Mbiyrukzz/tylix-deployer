@@ -1,0 +1,107 @@
+page DocsServerSites
+
+title "Sites - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-sites" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Sites</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Sites page lists the websites and apps that run on one server. Open it with Sites in the menu on the left of any server. It is where you create a new site and where you find an existing one.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Everything you can do with one site has its own guides, starting with <a href="/docs/sites/create" class="text-brand-600 dark:text-brand-500 hover:underline">Creating a site</a>.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What the page shows</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">At the top, the server's name links back to its overview. Below it is the heading, and on the right the Create site button, which starts a new site on this server. This page only lists sites on the server you opened. Sites on your other servers are not shown.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Before you have any sites, the page says "No sites yet" and explains what a site does: it sets up a domain, clones your code and serves it with nginx.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-4">Each site is one card. Select the card to open that site.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Domain</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The name visitors type to reach the site, shown in large text.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type and user</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Underneath the domain, in small type, written as type / user. The type is the kind of app, and the user is the separate account on the server that the site runs as, so one site cannot touch another's files.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Status</p>
+          <p class="text-zinc-500 text-xs mt-0.5">On the right of the card. See the four statuses below.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The four statuses</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-3">
+
+        <div class="px-5 py-4">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Queued</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The site is waiting its turn to be set up.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Creating</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The site is being set up on the server right now.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Ready</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The site is set up and running.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <div class="flex items-center gap-2 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Failed</h3></div>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Something went wrong while setting it up. Open the site to see the details.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The list refreshes by itself every few seconds, so a Queued or Creating site changes to Ready or Failed without you reloading the page. Queued and Creating have a pulsing dot to show they are still moving.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, a banner appears at the top and Create site is greyed out. It says "Pay to continue" when you hover over it. You can still see every site and open it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Server not found</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server was deleted, or the link is wrong. Go back to the Servers page and open it from the list.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A site shows Failed</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Select the card to open the site and read the reason. Fix the cause there.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A site you expect is missing</p>
+          <p class="text-zinc-500 text-xs mt-0.5">This page lists only the sites on this server. Check that you opened the right server.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/packages" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Packages</a>
+        <a href="/docs/servers/databases" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Database &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

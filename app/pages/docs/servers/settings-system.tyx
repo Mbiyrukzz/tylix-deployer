@@ -1,0 +1,118 @@
+page DocsServerSettingsSystem
+
+title "System and power - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-settings-system" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">System and power</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The lower half of the Settings page. It shows what the server is running, lets you change a few system settings, restart services, reboot the machine and delete the server. The connection details and keys are in <a href="/docs/servers/settings" class="text-brand-600 dark:text-brand-500 hover:underline">Server settings</a>.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">System</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Everything on this card is read live over SSH, so it is always current. Select Refresh to read it again.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Operating system and kernel</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The version of Linux the server runs.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Uptime and load</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How long it has been running, and how busy it has been over the last 1, 5 and 15 minutes.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Memory and disk</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A bar and a percentage for each, with the amount used out of the total. The bar turns amber at 75% and red at 90%.</p>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If the server has installed updates that need a restart to finish, an amber note says so. Reboot the server when it suits you.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-6">If the server cannot be read, a red message replaces the details: "Couldn't read the server's details." Check that it is online.</p>
+
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Settings you can change</h3>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Timezone</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Type a timezone such as Africa/Nairobi, or select Use mine to fill in your own, then select Save. Cron jobs on the server follow this timezone, so set it before you schedule anything.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Hostname</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">The machine's own name. Type a new one and select Save.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Automatic security updates</h4>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">When on, the server installs security patches by itself. Select Turn on or Turn off. Turning it on installs the unattended-upgrades package if it is missing. This works on Debian and Ubuntu servers only. On any other system the card says so.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Services and power</h2>
+
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Services</h3>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each known service on the server has a row with a coloured dot, its name, a state badge and a Restart button. Active is green. Any other state is red. If none are found, the card says "No known services were found on this server."</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select Restart and confirm. Sites that use the service may drop connections for a moment. The button says "Restarting…" until it finishes, and the card refreshes afterwards.</p>
+
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Reboot server</h3>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Restarts the whole machine. Every site on it is offline for a minute or two. Select Reboot, then Reboot now to confirm. With two-factor sign-in on, you are asked for a code.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The message afterwards tells you to press Test connection in a minute or two. Do that to bring the status badge up to date. For a live view of the server coming back, use the reboot button on the <a href="/docs/servers/overview" class="text-brand-600 dark:text-brand-500 hover:underline">Server overview</a>.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Danger zone</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Delete server removes the server's record and its saved details from Tylix Deploy. The machine itself is not touched.</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Select Delete server, then Delete server again in the box that opens.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>With two-factor sign-in on, you are asked for a code before it goes ahead.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>When it works you return to the Servers page.</span></li>
+      </ul>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Some servers cannot be deleted yet. Instead of the button, the card says "This server can't be deleted yet:" and lists each reason. Where sites are in the way, they appear as links, so you can open them and sort them out first.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't read the server's details.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The System card could not read the machine. Check that it is online, then select Refresh.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">That change didn't work.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The timezone, hostname, updates or restart was refused. If the message gives a reason, such as an unknown timezone, fix that and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't schedule the reboot.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Most often the SSH user is not root and needs a password for sudo. Use root, or set up passwordless sudo for that user.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't delete the server.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Read the message. If a code is needed, enter a fresh one in the box that opens.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/settings" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Server settings</a>
+        <a href="/docs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Overview &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

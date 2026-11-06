@@ -1,0 +1,62 @@
+page Docs
+
+title "Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="overview" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <div class="mb-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation</p>
+      <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
+        Tylix <span class="text-brand-500">Deploy</span>
+      </h1>
+      <p class="text-zinc-500 text-sm mt-4 max-w-xl">Guides for connecting servers, creating sites and keeping them running. Start at the top and work down.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+      <a href="/docs/getting-started" class="group rounded-3xl border border-line bg-panel p-6 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
+        <p class="text-brand-500 text-xs font-mono mb-3">01</p>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-2">Getting started</h2>
+        <p class="text-zinc-500 text-sm">What Tylix Deploy is and what it can do, from provisioning a server to DNS.</p>
+        <p class="text-brand-600 dark:text-brand-500 text-sm mt-4 group-hover:underline">Read the guide &rarr;</p>
+      </a>
+
+      <a href="/docs/registration" class="group rounded-3xl border border-line bg-panel p-6 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
+        <p class="text-brand-500 text-xs font-mono mb-3">02</p>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-2">Registration</h2>
+        <p class="text-zinc-500 text-sm">Create your account, agree to the legal terms and verify your email.</p>
+        <p class="text-brand-600 dark:text-brand-500 text-sm mt-4 group-hover:underline">Read the guide &rarr;</p>
+      </a>
+
+      <a href="/docs/dashboard" class="group rounded-3xl border border-line bg-panel p-6 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
+        <p class="text-brand-500 text-xs font-mono mb-3">03</p>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-2">Dashboard</h2>
+        <p class="text-zinc-500 text-sm">What you see after you log in, and what each panel means.</p>
+        <p class="text-brand-600 dark:text-brand-500 text-sm mt-4 group-hover:underline">Read the guide &rarr;</p>
+      </a>
+
+      <a href="/docs/servers" class="group rounded-3xl border border-line bg-panel p-6 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
+        <p class="text-brand-500 text-xs font-mono mb-3">04</p>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-2">Servers</h2>
+        <p class="text-zinc-500 text-sm">Create, connect and manage the machines your sites run on.</p>
+        <p class="text-brand-600 dark:text-brand-500 text-sm mt-4 group-hover:underline">Read the guide &rarr;</p>
+      </a>
+
+      <a href="/docs/sites/create" class="group rounded-3xl border border-line bg-panel p-6 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
+        <p class="text-brand-500 text-xs font-mono mb-3">05</p>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-2">Sites</h2>
+        <p class="text-zinc-500 text-sm">Create a site, deploy new code, add HTTPS and find out why something fails.</p>
+        <p class="text-brand-600 dark:text-brand-500 text-sm mt-4 group-hover:underline">Read the guide &rarr;</p>
+      </a>
+
+    </div>
+
+  </div>
+  </div>
+</div>

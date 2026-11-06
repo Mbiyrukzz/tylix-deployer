@@ -1,0 +1,165 @@
+page DocsSiteApplication
+
+title "Application - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-application" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Application</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Application page is the home of one site. It shows how the site is set up, follows its creation and removal, and holds the menu to every other site guide.</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select a site on the <a href="/docs/servers/sites" class="text-brand-600 dark:text-brand-500 hover:underline">Sites</a> page to open it. The top of the page has the domain in large type and the site's status, and under it the type and the isolated user, written as type / user. The left of the page is the site's own menu, and below it are the setup progress, the details, the log and the delete box.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The menu on the left</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Under This site are Application, Deployment and SSL. Under Tools are Commands, Redirects, Logs and Settings. Every site guide opens from here. On wide screens a small arrow collapses the menu to icons, and the page remembers your choice in this browser. On a phone the menu becomes a row you can slide sideways.</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">When the site is Ready, a Terminal button also appears at the top right. It opens a shell in the site's folder. See <a href="/docs/sites/terminal" class="text-brand-600 dark:text-brand-500 hover:underline">Terminal</a>.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The six statuses</h2>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-3">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the badge next to the domain means</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Queued:</strong> the site is waiting its turn. The page says "Queued, starting shortly".</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Creating:</strong> it is being set up now. A "Current step" box names the step.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Ready:</strong> it is set up and running.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Failed:</strong> a step failed. A red box says which step and why.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Deleting:</strong> it is being removed. A box shows the step.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>Delete failed:</strong> the removal stopped part way. See Deleting a site below.</span></li>
+        </ul>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">While a site is Queued, Creating or Deleting, the page refreshes by itself every three seconds. The steps, in order, are: Queued, Creating user and folders, Cloning repository, Downloading WordPress, Creating the database, Installing dependencies, Building the app, Starting the app, Configuring nginx and Done. A site only goes through the ones that apply to it.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">A failed site has no retry button. Read the reason in the red box, fix its cause, then delete the site and create it again.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The Application card</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Shows how the site was set up. Only the details that apply to this site are listed, and none of them can be edited here.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type, Isolated user and Site folder</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The stack, the account the site runs as, and where its files are, always /home/user/domain.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Aliases, PHP version and App port</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The extra names, the PHP version for PHP sites, and the port for app sites.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Repository and Branch</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Only for sites created from a repository.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Web directory, App folder and API folder</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The folders you chose when you created the site.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Build command and Start command</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The commands you chose when you created the site.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Created</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The date the site was created.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Deployment log</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The output of the setup, as it ran on the server. Before anything has been logged it says "Nothing logged yet." Later deploys have their own log on the <a href="/docs/sites/deployment" class="text-brand-600 dark:text-brand-500 hover:underline">Deployment</a> page.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Deleting a site</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The Delete site box at the bottom appears when the site is Ready, Failed or Delete failed. It removes the app service, the nginx site, the PHP pool, the SSL certificate, any WordPress database, the isolated user and every file under /home/user. It cannot be undone, so take a backup of anything you need first.</p>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Ask to delete</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Select Delete site.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Verify yourself</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">With two-factor sign-in on, a Verification code box appears. Enter a code from your authenticator app or a recovery code. If you have SMS set up, a code is texted to you, and Text me a code sends another.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Type the domain</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Type the domain exactly as it is written, then select Delete for good. Cancel backs out.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">4</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Wait</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The badge changes to Deleting and the box lists each step: Stopping the app, Removing the nginx site, Removing the PHP pool, Removing the certificate, Removing the database and Removing the user and files. When it is done, you are taken back to the Sites page.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If a step fails, the site shows Delete failed and a red box says where it stopped. You can try Delete for good again. If the server cannot be reached and you still want the site gone, Delete anyway (skip server cleanup) removes it from Tylix Deploy without cleaning the server, so its files and services may be left behind.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, the Terminal button and Delete site are greyed out and say "Pay to continue". You can still read everything on the page.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Site not found</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The site was deleted, or the link is wrong. Go back to the Servers page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Failed at: a step</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Read the reason underneath. Fix the cause, delete the site and create it again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type the domain exactly to confirm.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">What you typed does not match the site's domain.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter a verification code to delete this site.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Two-factor sign-in is on and the code box was empty. A wrong code keeps the box open with a message.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't delete that site.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The request was refused. Read the message for the reason.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't finish deleting</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown with Delete failed. Try Delete for good again, or Delete anyway if the server is gone.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/create" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Creating a site</a>
+        <a href="/docs/sites/deployment" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Deployment &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

@@ -1,0 +1,96 @@
+page DocsSiteCommands
+
+title "Commands - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-commands" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Commands</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Commands page runs one-off commands in the site's folder and keeps their output. Open it with Commands under Tools in the menu on the left of any site. It is for jobs like a migration or a build. For a long session with several commands, use the <a href="/docs/sites/terminal" class="text-brand-600 dark:text-brand-500 hover:underline">Terminal</a>.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Commands run on the live site. A command that changes data, such as a migration, changes it for real. The page is available once the site is Ready. Before that it says "Commands can be run once the site has finished creating."</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Running a command</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Pick a preset, or not</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The buttons above the box fill in a command for you. Hover over one to see the exact command. You can edit it afterwards, or ignore the presets and type your own.</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">Laravel sites get Migrate, Clear caches, Cache config and routes, Restart queue workers, Link storage and Install Composer packages. They use the site's PHP version. Tylix, Node.js, Next.js, MERN, React and Angular sites get Install dependencies and Build. Every site gets List files and Disk usage.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Command and folder</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Type the command. The optional Folder box runs it in a folder inside the site, for example client. Leave it empty to run in the site folder itself.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Run</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Select Run. It says Starting… for a moment, then the command appears under Recent runs. Commands run on the server as the site's isolated user, never as root. Only one command runs at a time, and one that is still going after 10 minutes is stopped.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Recent runs</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Lists the last 20 runs for this site, newest first. The history is cleared when the app restarts. Each run shows:</p>
+
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>A status: Done, Running or Failed, then when it started and its exit code, written as exit 0.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The command, and the folder it ran in.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Output, which opens what the command printed. While it is still running, it says the output appears when the command finishes. A command that printed nothing says "The command printed nothing."</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Use again, which puts the command and folder back in the boxes so you can run it again or change it.</span></li>
+      </ul>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">While anything is running, the list checks again every two seconds. Before the first run it says "Nothing has been run yet."</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Run is greyed out and says "Pay to continue". You can still read earlier runs.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Type a command first.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">You selected Run with the command box empty.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't run that command.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The command could not be started. Read the message. If there is none, check that the server is online and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A run shows Failed</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Open Output and read the last lines. The exit code is not 0. A command that needs software the server does not have, such as npm without Node.js, is a common cause. See <a href="/docs/servers/packages" class="text-brand-600 dark:text-brand-500 hover:underline">Packages</a>.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/ssl" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; SSL</a>
+        <a href="/docs/sites/redirects" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Redirects &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

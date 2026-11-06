@@ -1,0 +1,149 @@
+page DocsServerBackups
+
+title "Backups - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-backups" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Backups</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Backups page schedules MySQL backups for this server. Open it with Backups in the menu on the left. The schedule runs on the server itself, so it keeps working even when Tylix Deploy is offline.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">You need at least one database first. If there are none, the page says so and points you to the <a href="/docs/servers/databases" class="text-brand-600 dark:text-brand-500 hover:underline">Database</a> page.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Scheduling a backup</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Name and databases</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Give the backup a name, for example "Nightly databases". Then choose what to back up. Every database starts selected. Tap one to unselect it, and tap again to select it back.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Schedule and retention</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The schedule is five fields: minute, hour, day of the month, month and day of the week, using the server's time. The default <span class="font-mono text-xs">0 2 * * *</span> means 02:00 every day. The buttons under the box fill it in for you:</p>
+            <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mt-3">
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Hourly</strong>, <strong>Every 6 hours</strong>, <strong>Daily 02:00</strong>, <strong>Weekly (Sun 02:00)</strong> and <strong>Monthly</strong>.</span></li>
+            </ul>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-3">Backups to keep per database is how many copies to hold, from 1 to 60. It starts at 7. After each run, older ones are deleted.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Where to store them</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Choose This server only, or one of your Dropbox connections. Files are always kept on the server in <span class="font-mono text-xs">/var/backups/tylix/</span> so you can download them here. Choosing Dropbox adds a second copy there.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">4</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Schedule backup</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Press Schedule backup. A message says "Backup scheduled." and the backup appears in the list below. Nothing is taken yet: it waits for its first scheduled time. Use Run now to take one straight away.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Connecting Dropbox</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select Connect Dropbox and fill in the form. You need an app on Dropbox first:</p>
+
+      <ol class="space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300 list-decimal pl-5 mb-3">
+        <li>Create an app at dropbox.com/developers/apps.</li>
+        <li>Turn on the permissions <span class="font-mono text-xs">files.content.write</span> and <span class="font-mono text-xs">files.metadata.read</span>.</li>
+        <li>Generate a refresh token with offline access.</li>
+      </ol>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Then enter a Connection name, the App key, the App secret and the Refresh token, and select Connect. The button says "Checking with Dropbox…" while it tests them. When it works, the connection appears in the list and is already chosen for this backup.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-3">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Use a refresh token, not a plain access token. A plain access token stops working after a few hours and would break your scheduled backups.</p>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Each connection is listed under the storage choices with a Remove link.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Scheduled backups</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-4">Each backup is one card. It shows the name and schedule, the databases it covers, where it stores copies, and how many it keeps per database.</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Run now</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Starts the backup on the server straight away and opens its log so you can follow it. Then open Files to download the result.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Files</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Lists the backup files on the server, each with its size and date in UTC. Download saves a file to your computer. Delete, then Delete for good, removes it from the server. If there are none, the card says "No backup files yet."</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Log</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shows what the backup script printed. Select Log again to close it.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Delete</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Stops the schedule. Backup files already on the server are kept, so delete them from Files first if you want them gone. Select Delete, then Yes, delete it.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, scheduling, running, deleting and connecting Dropbox are greyed out and say "Pay to continue". You can still read logs and download files. Backups already scheduled keep running on the server.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">This server has no databases yet.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">An amber note above the database choices. Create a database on the Database page first.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't create the backup.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Read the message. The most common cause is a schedule that is not valid. Check it has five fields.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't connect Dropbox.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Dropbox refused the details. Check the app key, secret and refresh token, and that both permissions are on.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't start the backup. / Couldn't read the log.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server did not answer. Check that it is online and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't list the backup files. / Couldn't delete the file.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown at the top of the page. Check that the server is online and try again.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/databases" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Database</a>
+        <a href="/docs/servers/cron-jobs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">CronJobs &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

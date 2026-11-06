@@ -1,0 +1,156 @@
+page DocsServerWorkers
+
+title "Workers - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="server-workers" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Workers</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">A worker is a command that must keep running all the time, such as a queue worker or a websocket server. The Workers page keeps them alive with Supervisor: if one crashes, it is started again. Open it with Workers in the menu on the left.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Supervisor must be on the server. Servers built from the Standard or Tylix template already have it. See <a href="/docs/servers/create" class="text-brand-600 dark:text-brand-500 hover:underline">Creating a server</a>.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Creating a worker</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Start from a preset</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Three buttons fill in the name and command for you:</p>
+            <div class="rounded-2xl border border-line overflow-hidden mt-3">
+              <div class="px-5 py-3.5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Laravel queue</p>
+                <p class="text-zinc-500 text-xs mt-0.5 font-mono">php artisan queue:work --sleep=3 --tries=3 --max-time=3600</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Laravel Reverb</p>
+                <p class="text-zinc-500 text-xs mt-0.5 font-mono">php artisan reverb:start</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Tylix queue</p>
+                <p class="text-zinc-500 text-xs mt-0.5 font-mono">npx tylix queue:work</p>
+              </div>
+            </div>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-3">You can edit what a preset filled in, or skip them and type your own.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Fill in the details</h3>
+            <div class="rounded-2xl border border-line overflow-hidden mt-3">
+              <div class="px-5 py-3.5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Name</p>
+                <p class="text-zinc-500 text-xs mt-0.5">Whatever helps you recognise it.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Command</p>
+                <p class="text-zinc-500 text-xs mt-0.5">What to keep running.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Directory</p>
+                <p class="text-zinc-500 text-xs mt-0.5">The folder the command runs in, for example your site's <span class="font-mono">current</span> folder.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Run as user</p>
+                <p class="text-zinc-500 text-xs mt-0.5">The account on the server that runs it. Use the site's own user. If the list cannot be read, an amber note says so and only the SSH user is offered.</p>
+              </div>
+              <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Processes</p>
+                <p class="text-zinc-500 text-xs mt-0.5">How many copies run at once, from 1 to 20. A busy queue may want more than one.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Create worker</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The worker appears in the list below and starts running.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Active workers</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each worker is one card with its name, status, command, user, directory and number of processes. The status refreshes by itself every 15 seconds, and Refresh checks straight away.</p>
+
+      <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-5 mb-4">
+        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-3">What the status means</h3>
+        <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Running 2/2:</strong> every process is running.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-amber-500"></span><span><strong>Running 1/2:</strong> some are running and some are not. In amber.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-rose-500"></span><span><strong>A word such as stopped or fatal:</strong> none are running. In red. Open the log to see why.</span></li>
+          <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-slate-400"></span><span><strong>Not loaded:</strong> the status has not been read yet.</span></li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Restart, Stop and Start</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Control the worker's processes. Restart is what you want after you deploy new code, so the worker picks it up. The status updates when it is done.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Log</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shows what the worker has printed. Select Log again to close it.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Delete</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Stops the worker and removes it. Select Delete, then Yes, delete it. Cancel backs out.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Create worker, Restart, Stop, Start and Delete do nothing, and Create worker and Delete say "Pay to continue". You can still read logs and see the status. Workers already running keep running.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't create the worker.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message above the form. Read it. Supervisor missing from the server is a common cause.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't read worker status.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">An amber message above the list. Check that the server is online. It retries every 15 seconds.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A worker keeps stopping</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Open its log. Usually the command, the directory or the user is wrong, or the app itself fails on start.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't restart, stop or start the worker. / Couldn't remove the worker.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server did not answer. Check that it is online and try again.</p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/cron-jobs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; CronJobs</a>
+        <a href="/docs/servers/firewall" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Firewall &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

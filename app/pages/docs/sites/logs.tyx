@@ -1,0 +1,147 @@
+page DocsSiteLogs
+
+title "Logs - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-logs" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Logs</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Logs page helps you find out why a site is failing. Open it with Logs under Tools in the menu on the left of any site. It reads the site's logs from the server, picks out the errors, and lets you open and copy each one.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">These are the site's own logs, read from the server. They are not the same as the server's <a href="/docs/servers/logs" class="text-brand-600 dark:text-brand-500 hover:underline">Logs</a> page, which records what Tylix Deploy did to the server. Only team admins can open site logs, and the page is available once the site is Ready.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The page</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">A button at the top, Open log terminal, opens the viewer. Below it:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Errors found</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many errors are in the log you are looking at, and which log it is.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Lines scanned</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many lines were read from the end of the log, newest first.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Last checked</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The time the page last read the log from the server.</p>
+        </div>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Under the tiles, Log sources has one button for each log this site has. Select one to open it in the viewer. Latest errors lists up to five recent errors. Each has a level, its message, its time and how many extra lines it has, with View to open it in full and Copy to copy it. See All opens the viewer.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The log sources</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The sources shown depend on the site. Each one is a different place to look:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">App</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Output from the app's systemd service: crashes, unhandled errors and anything the app prints.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Laravel</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">The newest file in storage/logs, with each stack trace kept together as one entry.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">nginx</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Errors nginx recorded for this domain, such as failures reaching the app, permission problems and bad configuration.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">PHP-FPM</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Warnings and errors from this site's PHP-FPM pool.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Failed requests</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Requests the site answered with a 5xx status, read from the nginx access log.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Using the viewer</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The viewer opens over the page. A line at the top shows the equivalent command for what you are reading, such as <span class="font-mono text-xs">tail -n 1000 storage/logs/laravel.log</span>. Tabs switch between sources. The controls are:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-4">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">grep…</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Type to show only entries that contain that text in their message, details or level.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Errors only</p>
+          <p class="text-zinc-500 text-xs mt-0.5">On by default. Turn it off to see warnings and ordinary lines as well.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">500, 1000, 3000</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many lines to scan from the end of the log. 1000 is the default.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Refresh</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Reads the log again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Live</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Reads the log again every 10 seconds. It switches itself off when you close the viewer.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Expand and Collapse</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Open or close every entry at once. You can also select one entry to open its details, such as the full stack trace.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Copy all</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Copies the newest 50 entries you can see, with a header giving the site, the source and the time. The small copy button on an entry copies just that one.</p>
+        </div>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">At the bottom you see how many entries are shown, how many are errors, how many lines were scanned and when the page was updated. Press Esc, select Close or click outside the viewer to leave.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Passwords, tokens and keys are hidden on a best-effort basis. Read an entry before you paste it somewhere public.</p>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Only team admins can view site logs.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Your account is not an admin on this team. Ask an admin to look, or to change your role.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the logs.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red message above the tiles, or "Couldn't read the log" inside the viewer. Check that the server is online and select Refresh.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No log file yet</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The log has not been created on the server, which usually means nothing has been written to it. In the viewer it says "No such file."</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No recent errors / Nothing to show in the last N lines.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Nothing matched. Turn off Errors only, clear the grep box or scan more lines.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/redirects" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Redirects</a>
+        <a href="/docs/sites/terminal" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Terminal &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

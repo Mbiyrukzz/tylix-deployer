@@ -119,7 +119,7 @@ template
 
       <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
         <a href="/docs/servers/add-your-own" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Adding your own server</a>
-        <a href="/docs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Overview &rarr;</a>
+        <a href="/docs/servers/overview" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Server overview &rarr;</a>
       </div>
     </article>
 

@@ -1,0 +1,166 @@
+page DocsSiteCreate
+
+title "Creating a site - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-create" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Creating a site</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Create site page sets up a new website or app on one server. Open it with Create site on the <a href="/docs/servers/sites" class="text-brand-600 dark:text-brand-500 hover:underline">Sites</a> page. You pick a stack, enter a domain and, if you want, connect a repository. Tylix Deploy then does the rest over SSH: the isolated user, the build, the app service and nginx.</p>
+
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">The server needs the software your stack runs on, such as Node.js or PHP. The page tells you what is needed once you pick a stack. If it is missing, add it from the server's <a href="/docs/servers/packages" class="text-brand-600 dark:text-brand-500 hover:underline">Packages</a> page first.</p>
+      </div>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The page is four numbered cards and a bar at the bottom with Cancel and Create site. At the top, a preview shows the domain, stack and repository you have chosen so far. On wide screens a panel on the right sums up your site and lists what will happen next.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Filling in the form</h2>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">What are you deploying?</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Select a tile. Tylix is selected to begin with. The stacks are Tylix, Laravel, PHP, Node.js, Next.js, Nuxt, Vue, WordPress, MERN, Angular, FastAPI, Django, Java, Go, Ruby, .NET, Rust, Docker and Static. Under the tiles, a box describes the stack you picked.</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">The same box says what the server needs before the site can run, for example Node.js, PHP, Python 3, Java 21 and Maven, Go, Ruby and Bundler, the .NET 8 SDK, Rust or Docker. Vue and Angular need Node.js to build. A plain Static site needs nothing extra.</p>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-2">Choosing a stack fills in sensible defaults for its folders and commands. You can change them in step 4.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Domain and access</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">The details that identify the site:</p>
+        <div class="rounded-2xl border border-line overflow-hidden mb-0 mt-3">
+          <div class="px-5 py-3.5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Domain</p>
+            <p class="text-zinc-500 text-xs mt-0.5">The name visitors will type, for example example.com.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Aliases</p>
+            <p class="text-zinc-500 text-xs mt-0.5">Other names for the same site, separated by commas, for example www.example.com, app.example.com.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Isolated user</p>
+            <p class="text-zinc-500 text-xs mt-0.5">The separate account on the server that the site runs as. It must be unique on the server and must not be a system name such as root or tylix. Leave it blank and the first part of the domain is used.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">PHP version</p>
+            <p class="text-zinc-500 text-xs mt-0.5">Only for PHP stacks. Choose 8.5, 8.4 (the default), 8.3, 8.2 or 8.1. PHP-FPM for that version must already be installed on the server.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">App port</p>
+            <p class="text-zinc-500 text-xs mt-0.5">Only for stacks that run as an app. Leave it empty for an automatic port, the first free one from 3000. Your app receives it as the PORT variable and nginx forwards visitors to it on 127.0.0.1. For Docker the container is published on 127.0.0.1 only.</p>
+          </div>
+        </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Source</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Choose Source control. None is the first choice. The others are source control connections you have already added, each written as name (kind). Stacks that do not use a repository say "No repository needed for this site type."</p>
+            <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mt-3">
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Pick a connection and your repositories load. The list shows up to 50 at a time, and the box above it filters them by name. Select one.</span></li>
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The branch starts as the repository's default branch. Choose another from the Branch list, or use Change next to the repository or branch to pick again.</span></li>
+              <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Without a repository, an app stack still gets nginx, but there is nothing to run yet. An amber note says so.</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">4</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Build and run</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">This card appears for stacks that build or run, and its fields depend on the stack:</p>
+        <div class="rounded-2xl border border-line overflow-hidden mb-0 mt-3">
+          <div class="px-5 py-3.5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Web directory</p>
+            <p class="text-zinc-500 text-xs mt-0.5">Static, PHP and Django sites. The path of the website inside the site folder, for example public, www or dist. Empty means the folder itself. For Vue and Angular, empty means the build output (dist or build) is found automatically. For Django it is your STATIC_ROOT, which nginx serves at /static/.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Run composer install / npm ci</p>
+            <p class="text-zinc-500 text-xs mt-0.5">A tick box, shown when you chose a repository. PHP sites run <span class="font-mono text-xs">composer install --no-dev</span>. Node, Vue and Angular sites run <span class="font-mono text-xs">npm ci</span>, or <span class="font-mono text-xs">npm install</span> when there is no lockfile. It is ticked by default.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Build command</p>
+            <p class="text-zinc-500 text-xs mt-0.5">Runs on every deploy. Leave it empty to skip it. Laravel uses it for Vite assets, for example <span class="font-mono text-xs">npm ci &amp;&amp; npm run build</span>, and needs Node.js. Java finds mvnw, gradlew or mvn by itself when it is empty. Python runs it after pip install, inside the site folder, so use <span class="font-mono text-xs">.venv/bin/python</span>. Ruby runs it after bundle install. Rust can take several minutes the first time.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Start command</p>
+            <p class="text-zinc-500 text-xs mt-0.5">Runs as the isolated user under systemd and is restarted if it crashes. Your app must listen on $PORT. For .NET replace YourApp.dll with your project's DLL, and for Rust replace your-app with your binary's name.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Client folder and API folder</p>
+            <p class="text-zinc-500 text-xs mt-0.5">MERN only. The React app, where the build command runs and whose dist or build output nginx serves, and the Node API, where the start command runs. Add the API's .env on the server after the site is created.</p>
+          </div>
+          <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">App folder</p>
+            <p class="text-zinc-500 text-xs mt-0.5">Docker only. The folder with your Dockerfile or compose file. Leave it empty when it is in the repository root.</p>
+          </div>
+        </div>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-3">Docker sites have no build or start command, because your Dockerfile decides. Every deploy pulls the code, builds the image and swaps the container, and the running one is replaced only after the build succeeds. With a Dockerfile your app must listen on the PORT variable. With a compose file, publish the port as <span class="font-mono text-xs">127.0.0.1:$&#123;PORT&#125;:&lt;container port&gt;</span>. Add your environment variables on the <a href="/docs/sites/deployment" class="text-brand-600 dark:text-brand-500 hover:underline">Deployment</a> page, written as KEY=value without quotes.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What happens when you press Create site</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The button changes to Creating… and you are taken to the new site's <a href="/docs/sites/application" class="text-brand-600 dark:text-brand-500 hover:underline">Application</a> page, where you can watch the setup. It does these things, depending on the stack: creates the isolated user and folder, clones your branch, downloads WordPress and creates its database, installs dependencies and builds, sets up the app service, checks that Docker is running, and configures and reloads nginx. A Docker site builds and starts its container on the first deploy.</p>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Add HTTPS afterwards, once the domain points at this server. See <a href="/docs/sites/ssl" class="text-brand-600 dark:text-brand-500 hover:underline">SSL</a>.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, a banner appears at the top and Create site is greyed out. It says "Pay to continue" when you hover over it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Server not found</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The server was deleted, or the link is wrong. Go back to the Servers page and open it from the list.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the site types. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box in step 1 with a Try again button. Select it. If it keeps failing, reload the page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load repositories. / Couldn't load branches.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown in the Source card with the reason. Check that the connection still works, then pick it again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A red note under a field</p>
+          <p class="text-zinc-500 text-xs mt-0.5">That field was rejected, and the note says why. Below the form, "N fields need attention" counts them. Fix them and press Create site again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A red box above the buttons</p>
+          <p class="text-zinc-500 text-xs mt-0.5">An error that does not belong to one field. Read the message. If there is none, it says "Couldn't create the site."</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The site shows Failed after creating</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The setup started but a step failed. Open the site to see which step and why. See <a href="/docs/sites/application" class="text-brand-600 dark:text-brand-500 hover:underline">Application</a>.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/servers/sites" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Sites</a>
+        <a href="/docs/sites/application" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Application &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

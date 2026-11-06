@@ -1,0 +1,141 @@
+page DocsSiteSsl
+
+title "SSL - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="site-ssl" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">SSL</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The SSL page turns on HTTPS for one site. Open it with SSL in the menu on the left of any site. You can get a free certificate from Let's Encrypt, or install one you already have.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What the page shows</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The domain at the top has a badge: Working while a change is being made, Secured when HTTPS is on, Failed when the last change did not work. Below it, the HTTPS card lists:</p>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Method</p>
+          <p class="text-zinc-500 text-xs mt-0.5">None, Let's Encrypt or Custom certificate.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Domains</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The domain and every alias the certificate covers.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Expires</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The date, and how many days are left. Only shown when there is a certificate.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Renewal</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Automatic. Only shown for Let's Encrypt.</p>
+        </div>
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The buttons</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+
+        <div class="px-5 py-4">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Let's Encrypt</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Gets a free certificate. See below.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Custom certificate</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Installs a certificate you bought or were given. See below.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Disable HTTPS</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Only shown once a method is set. Asks "Turn HTTPS off for this site? It will be served over HTTP only." Confirm and the site goes back to plain HTTP.</p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
+          <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">SSL log</h3>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Opens the log of the last change. It always works, even when nothing has been run.</p>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Getting a Let's Encrypt certificate</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Before you start, check two things. The domain and every alias must already point at this server in DNS, and port 80 must be reachable. If you have changed the <a href="/docs/servers/firewall" class="text-brand-600 dark:text-brand-500 hover:underline">Firewall</a>, make sure HTTP is still allowed.</p>
+
+      <div class="space-y-7 mb-10">
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">1</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Open the box</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Select Let's Encrypt. The box says which names the one certificate will cover.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">2</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Enter an email</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Enter the email for expiry notices. It is filled in with the one used before, if any.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500 text-white text-xs font-semibold flex items-center justify-center">3</span>
+          <div class="min-w-0">
+            <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold">Get certificate</h3>
+            <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mt-1">Select Get certificate. The SSL log opens and shows each step while the badge says Working. When it finishes, the badge turns to Secured and the HTTPS card shows the expiry date. The certificate renews by itself.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Installing a custom certificate</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select Custom certificate and paste two things, both in PEM format: the certificate, with your own certificate first and then any intermediates, and its private key. Select Install certificate. The server checks that the two match before anything is switched on. The key is sent to the server and Tylix Deploy does not keep it. A custom certificate does not renew by itself, so replace it before the date shown under Expires.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The SSL log</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Shows what the server did, with the badge Working, Secured or Failed. Before anything has run it says "Nothing logged yet." While a change is running the page checks every two seconds.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">When your account is locked</h2>
+
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If your account is locked for payment, Let's Encrypt, Custom certificate, Disable HTTPS and the buttons inside the boxes are greyed out and say "Pay to continue". You can still open the SSL log.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+
+      <div class="rounded-2xl border border-line overflow-hidden">
+
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">The last SSL change failed</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box with the reason. Open the SSL log for the details. For Let's Encrypt, check the DNS and port 80 conditions above first.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A red message inside the box</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A field was rejected. Read the message, fix it and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Something went wrong.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A general error with no detail. Check that the server is online and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Failed after a custom install</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Open the SSL log for the reason. The server refuses a certificate and key that do not match, so check that you pasted the whole of both.</p>
+        </div>
+
+      </div>
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/deployment" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Deployment</a>
+        <a href="/docs/sites/commands" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Commands &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>
