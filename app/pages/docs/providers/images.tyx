@@ -1,0 +1,54 @@
+page DocsProviderImages
+
+title "Images - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="provider-images" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Images</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Your own images, to restore a server from or clone it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The top shows how many images you have and their total size. Each card shows the name, where it came from, its size and the date.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Create an image</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select <strong>Create image</strong>, pick the server, give the image a name such as web-1-before-upgrade, and create it. What it captures depends on the provider:</p>
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Linode</strong>: the server's largest disk. An image can be at most 6 GB. A running server is captured as it is, so shut it down first for a clean copy.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Hetzner</strong>: a snapshot of the whole server. Hetzner bills snapshots per GB each month while they exist.</span></li>
+      </ul>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">While it is being made the badge shows it is creating.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Rename and delete</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8"><strong>Rename</strong> opens a box for the new name. Select Save name. <strong>Delete</strong> asks you to confirm with Yes, delete.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't create the image. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider refused it. On Linode a disk above 6 GB is the usual cause.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't rename the image. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Try a different name.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't delete that image.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Read the message and try again.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If the API token is missing a permission this page needs, a message at the top says which one and how to fix it. Add the permission to the token at the provider, then reload.</p>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/providers/volumes" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Volumes</a>
+        <a href="/docs/providers/ips" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">IP addresses &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

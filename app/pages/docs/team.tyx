@@ -1,0 +1,104 @@
+page DocsTeam
+
+title "Team page"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="team-members" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-3xl mx-auto">
+
+    <div class="mb-10">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Teams</p>
+      <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
+        Team <span class="text-brand-500">page</span>
+      </h1>
+      <p class="text-zinc-500 text-sm mt-4 max-w-xl">Everyone on your team in one list, with a short feed of what they have been doing. Open it from Team in the main sidebar.</p>
+    </div>
+
+    <div class="space-y-10">
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The header</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          Under the page title you see your team's name and your own role in it. Your role decides how much of the team's activity you can see. This is explained further down.
+        </p>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          On the right is an <span class="font-semibold text-zinc-900 dark:text-zinc-100">Invites and roles</span> button. It takes you to the team settings, where you invite people and change their roles.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Members</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">Each row is one person on the team.</p>
+
+        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Name and email</p>
+            <p class="text-zinc-500 text-sm">Who the person is. The circle on the left shows the first letter of their name.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Role</p>
+            <p class="text-zinc-500 text-sm">The badge shows the person's role in the team. It is hidden on very small screens.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Actions</p>
+            <p class="text-zinc-500 text-sm">How many things this person has added to the team in total, such as servers and sites.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Last active</p>
+            <p class="text-zinc-500 text-sm">When they last did something, for example "Just now", "3h ago" or "2d ago". A person who has done nothing yet shows "No activity".</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">View</p>
+            <p class="text-zinc-500 text-sm">Opens that person's own activity page. See <a href="/docs/team/member" class="text-brand-600 dark:text-brand-500 hover:underline">A member's activity</a>.</p>
+          </div>
+        </div>
+
+        <p class="text-zinc-500 text-xs mt-3">The Actions and Last active columns are hidden on small screens to keep the list readable.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Recent activity</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          Below the members is a feed of the latest things done on the team. Each line reads like a sentence: who did it, what they did, and what it was done to. For example, a person's name, then "added", then the name of a server.
+        </p>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          The feed shows ten lines at a time. Use <span class="font-semibold text-zinc-900 dark:text-zinc-100">Previous</span> and <span class="font-semibold text-zinc-900 dark:text-zinc-100">Next</span> underneath to move through it. The small text on the left of the buttons tells you where you are, for example "1&ndash;10 of 42".
+        </p>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          Click a person's name in the feed to open their activity page. <span class="font-semibold text-zinc-900 dark:text-zinc-100">View all</span> at the top right of the feed opens the full <a href="/docs/team/activity" class="text-brand-600 dark:text-brand-500 hover:underline">Team activity</a> page.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Who can see what</h2>
+        <div class="rounded-3xl border border-line bg-panel p-6">
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+            <span class="font-semibold text-zinc-900 dark:text-zinc-100">Owners and admins</span> see the whole team. The feed is titled "Recent team activity", and every member has a View button.
+          </p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            <span class="font-semibold text-zinc-900 dark:text-zinc-100">Everyone else</span> sees only their own activity. The feed is titled "Your recent activity", and only your own row has a View button. The other members' numbers show a dash.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Team size</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          How many people can join depends on your plan: 1 on Personal, 5 on Pro and 15 on Business. If your subscription ends, the team becomes view only. You can still read everything here, but nothing can be created, changed or deleted until you pay.
+        </p>
+      </section>
+
+    </div>
+
+    <div class="mt-12 pt-6 border-t border-line flex items-center justify-between gap-4">
+      <a href="/docs/sites/settings" class="text-zinc-500 text-sm hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">&larr; Site settings</a>
+      <a href="/docs/team/activity" class="text-brand-600 dark:text-brand-500 text-sm font-medium hover:underline">Team activity &rarr;</a>
+    </div>
+
+  </div>
+  </div>
+</div>

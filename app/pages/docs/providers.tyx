@@ -1,0 +1,72 @@
+page DocsProviders
+
+title "Providers page - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="providers" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Providers page</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Connect your cloud accounts and see which ones your servers use.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What is on the page</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each cloud account you connect is a <strong>connection</strong>. The deployer uses it to create servers, and for Linode and Hetzner it also lets you manage the rest of the account. Open <strong>Cloud providers</strong> from the main sidebar.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The row of numbers at the top counts your connections, how many you have at each provider, and how many servers the deployer has created in total. The providers are Linode, Hetzner, DigitalOcean, Vultr, AWS, UpCloud and Contabo.</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Connection card</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A coloured letter for the provider, your label for the connection, the provider's name and a status badge.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Servers</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many servers created from this connection still exist. &ldquo;No servers yet&rdquo; if none.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Connected</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The date you added the connection.</p>
+        </div>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Buttons on a card</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Manage</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Opens the provider's own pages: <a href="/docs/providers/overview" class="text-brand-600 dark:text-brand-500 hover:underline">Overview</a>, Machines, Firewalls, Volumes, Images, IP addresses, Domains and Billing.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Edit</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Changes the label or the credentials of the connection. Use it when a token is rotated or replaced.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Remove</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Deletes the connection from Tylix Deploy. It does not touch anything at the provider.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If your Tylix Deploy subscription needs payment, the page turns view only. Buttons that change something are greyed out and read &ldquo;Pay to continue&rdquo;. You can still look at everything.</p>
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">A connection that still has servers cannot be removed. The card says &ldquo;Delete its servers to remove this connection.&rdquo; instead of showing Remove. Once the servers are gone, select Remove, then Yes, remove.</p>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What you can do per provider</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Creating servers works for every provider listed above. The management pages in this section, such as Machines and Firewalls, are built for <strong>Linode</strong> and <strong>Hetzner</strong>. For the others, Manage opens a page that says the rest is coming and shows how many servers you created from it.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't remove that connection.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The deployer could not delete it. Read the message under the page title and try again.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/sites/settings" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Site settings</a>
+        <a href="/docs/providers/overview" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Provider overview &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

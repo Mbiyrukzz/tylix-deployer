@@ -1,0 +1,55 @@
+page DocsProviderDnsRecords
+
+title "DNS records - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="provider-dns-records" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">DNS records</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The records inside one domain: add, edit and delete them.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Use the tabs to filter by type: <strong>All, A, AAAA, CNAME, MX, TXT, NS, SRV, CAA</strong>. Each row shows a coloured type badge, the name and the value. SRV records show priority, weight, port and target. Records the provider manages itself are marked and cannot be edited or deleted.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Add and edit</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select <strong>Add record</strong>, or <strong>Edit</strong> on a row. The form asks for the fields the chosen type needs. Changes take effect at the provider straight away, but other networks may keep the old answer until its TTL runs out.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Delete a record</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select <strong>Delete</strong>, then <strong>Yes, delete</strong>. With two-factor sign-in on, enter a code first, the same way as when deleting a domain.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Domain settings (Linode)</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">On Linode, <strong>Edit settings</strong> changes the SOA email and the default TTL. The TTL choices are Default, 5 min, 1 hour, 4 hours, 1 day and 1 week. Select Save settings.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the records. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider did not answer. Reload.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter a verification code to delete this record.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Two-factor is on. Enter a fresh code.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't delete that record.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Read the message under the page title.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the settings. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Check the SOA email and the TTL.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If the API token is missing a permission this page needs, a message at the top says which one and how to fix it. Add the permission to the token at the provider, then reload.</p>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/providers/domains" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Domains</a>
+        <a href="/docs/providers/billing" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Billing &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

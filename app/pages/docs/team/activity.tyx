@@ -1,0 +1,125 @@
+page DocsTeamActivity
+
+title "Team activity"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="team-activity" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-3xl mx-auto">
+
+    <div class="mb-10">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Teams</p>
+      <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
+        Team <span class="text-brand-500">activity</span>
+      </h1>
+      <p class="text-zinc-500 text-sm mt-4 max-w-xl">The full history of what has been added to your team, newest first. Open it from View all on the Team page, or from Activity in the team sidebar.</p>
+    </div>
+
+    <div class="space-y-10">
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The three numbers at the top</h2>
+        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Total actions</p>
+            <p class="text-zinc-500 text-sm">How many activity lines match what you are looking at. If you filter by a member, this becomes that member's total.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Viewing</p>
+            <p class="text-zinc-500 text-sm">Whose activity is on screen: "Everyone", a member's name, or "You" if you can only see your own.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Members</p>
+            <p class="text-zinc-500 text-sm">How many people are on the team.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Filter by member</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          The panel on the left lists every member. Click a name to show only that person's activity. Click the same name again, or press <span class="font-semibold text-zinc-900 dark:text-zinc-100">Show all</span>, to go back to everyone.
+        </p>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          While a filter is on, the member's name also appears as a small tag above the timeline. Click the &times; on the tag to clear it.
+        </p>
+        <p class="text-zinc-500 text-xs mt-3">Only owners and admins get this panel. If you can see only your own activity, the timeline simply takes the full width.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The timeline</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">
+          Activity is grouped by day, with headings such as Today, Yesterday and then the full date. Each entry on the line tells you:
+        </p>
+        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">What happened</p>
+            <p class="text-zinc-500 text-sm">The person's name, what they did, and what they did it to. Click the name to open that person's own activity page.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">The grey tag</p>
+            <p class="text-zinc-500 text-sm">The kind of thing it was, so you can tell a server from a site at a glance.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">The time</p>
+            <p class="text-zinc-500 text-sm">The clock time on the right, with how long ago it was underneath, such as "Just now" or "5h ago".</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Paging</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          Each page shows 25 entries. Use <span class="font-semibold text-zinc-900 dark:text-zinc-100">Previous</span> and <span class="font-semibold text-zinc-900 dark:text-zinc-100">Next</span> at the bottom to move through them. Between the buttons you see "Page 1 of 3", and on the left the range you are on, for example "1&ndash;25 of 60". A button is greyed out when there is nowhere to go.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">How long activity is kept</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          Under the Activity heading you will see a line starting with "Kept:". It says how long your team's history is stored. Older entries are removed automatically after that.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Deleting activity</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          People who are allowed to delete see two extra controls:
+        </p>
+        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800 mb-4">
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">The &times; on a single entry</p>
+            <p class="text-zinc-500 text-sm">Removes that one line from the list.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Delete all</p>
+            <p class="text-zinc-500 text-sm">Clears every entry you are looking at. With a member filter on, it clears only that member's activity. You are asked to confirm first.</p>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-brand-500/20 bg-brand-500/5 px-5 py-4">
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            Deleting activity only clears the list. Your servers and sites are not touched.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Your own view</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          If you are not an owner or admin, the page is titled "Your activity" and shows only what you have added. There is no member filter, because there is nobody else to pick.
+        </p>
+      </section>
+
+    </div>
+
+    <div class="mt-12 pt-6 border-t border-line flex items-center justify-between gap-4">
+      <a href="/docs/team" class="text-zinc-500 text-sm hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">&larr; Team page</a>
+      <a href="/docs/team/member" class="text-brand-600 dark:text-brand-500 text-sm font-medium hover:underline">A member's activity &rarr;</a>
+    </div>
+
+  </div>
+  </div>
+</div>

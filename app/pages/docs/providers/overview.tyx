@@ -1,0 +1,114 @@
+page DocsProviderOverview
+
+title "Provider overview - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="provider-overview" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Provider overview</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The summary page for one connection: counts, charts, and anything in the account that needs a look.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Shows the connection's label, the provider, the date you connected it, and a one line summary such as &ldquo;3 machines &middot; 2 running &middot; 1 volume &middot; 4 IP addresses&rdquo;. <strong>Create server</strong> opens the create server form with this connection already chosen.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Summary cards</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each card links to its page.</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Machines</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many, and how many are running.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Firewalls</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Cloud firewalls in the account.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Volumes</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many, and their total size in GB.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Images</p>
+          <p class="text-zinc-500 text-xs mt-0.5">How many, and their total size.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">IP addresses</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The count, split into IPv4 and IPv6.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Domains</p>
+          <p class="text-zinc-500 text-xs mt-0.5">DNS zones hosted at the provider.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Balance or current charges</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The label depends on the provider. It says <em>estimate</em> when the figure is worked out from your servers, or <em>from the provider</em> when the provider reported it.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Created here</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Servers the deployer created from this connection.</p>
+        </div>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Needs attention</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">A list of things that cost money or put mail at risk. Each line links to the page where you can fix it. When there is nothing to flag it says &ldquo;Nothing needs attention in this account.&rdquo;</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Machines offline</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Counts machines that are switched off.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Volumes not attached</p>
+          <p class="text-zinc-500 text-xs mt-0.5">You are billed for a volume whether or not a server uses it.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Addresses not assigned</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Unassigned addresses are billed.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Firewalls not attached</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A firewall on no server protects nothing.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No reverse DNS</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Public IPv4 addresses without reverse DNS. Mail from those servers is likely to be rejected.</p>
+        </div>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Charts</h2>
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Machines</strong>: a ring of running, offline and changing state.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Volume storage</strong>: GB attached against GB not attached.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>IP addresses</strong>: assigned against unassigned.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Machines by region</strong>: your six busiest regions.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>Billing</strong>: the amount, the balance if the provider gives one, and your eight most expensive servers. The network transfer ring turns amber at 75% and red at 90% of the monthly quota.</span></li>
+      </ul>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Created through the deployer</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Every server provisioned from this connection, with its region, plan and template. The badge is <strong>Queued</strong>, <strong>Working</strong>, <strong>Ready</strong> or <strong>Failed</strong>. A failed server shows its error underneath. Ready servers link to their server page. The Machines page lists everything in the account, including machines the deployer did not create.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Provider not found</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The connection was removed or the link is wrong. Go back to Cloud providers.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message about the token at the top</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The token lacks a permission. The message names it. Fix it at the provider and reload.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Some figures couldn't be loaded</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Part of the account did not answer, so a few numbers may read zero. Reload to try again.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/providers" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Providers page</a>
+        <a href="/docs/providers/machines" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Machines &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

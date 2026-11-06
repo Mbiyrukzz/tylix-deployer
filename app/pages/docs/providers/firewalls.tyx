@@ -1,0 +1,83 @@
+page DocsProviderFirewalls
+
+title "Firewalls - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="provider-firewalls" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Firewalls</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Cloud firewalls at the provider. They filter traffic before it reaches the server.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each card shows the firewall's name, what it is attached to (or &ldquo;Not attached to any server&rdquo;), how many inbound and outbound rules it has, and what happens to other traffic. These are cloud firewalls. The one inside a server is the <a href="/docs/servers/firewall" class="text-brand-600 dark:text-brand-500 hover:underline">server Firewall</a>.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Create a firewall</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select <strong>Create firewall</strong>, type a name such as web-servers and create it. It starts with no rules. Add rules next, then attach it to servers in the provider's console.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Edit rules</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select <strong>Edit rules</strong> on a card. Changes stay on the page until you select <strong>Save rules</strong>. Saving replaces the firewall's whole rule set, so check the list first.</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Direction</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Inbound or outbound.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Protocol</p>
+          <p class="text-zinc-500 text-xs mt-0.5">For example TCP or UDP. Ports only apply to TCP and UDP.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Ports</p>
+          <p class="text-zinc-500 text-xs mt-0.5">One port like 22, or a range like 8000-8100. Where the provider allows it you can also give a list like 80,443.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Addresses</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Where the traffic comes from or goes to, separated by commas. 0.0.0.0/0 and ::/0 mean anywhere. Use a /32 to match one IPv4 address.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Action</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Accept or drop. Only shown on providers whose firewalls support both.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Label</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Optional. Something like &ldquo;Allow SSH from the office&rdquo;.</p>
+        </div>
+      </div>
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Other traffic</h3>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">On Linode you set what happens to inbound and outbound traffic that no rule matches. On Hetzner a firewall only allows traffic: inbound you do not allow is blocked, and outbound is open until you add an outbound rule, after which only the outbound traffic you allow gets through. Hetzner takes one port or one range per rule, so add one rule per port.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Delete a firewall</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select <strong>Delete</strong>, then <strong>Yes, delete</strong>. Servers that used it are no longer filtered.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter the port or ports this rule covers, like 22 or 8000-8100.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A TCP or UDP rule needs a port.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter at least one address, like 0.0.0.0/0.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The address box was empty.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Hetzner takes one port or one range per rule.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Split a list like 80,443 into two rules.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the rules. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider refused the rule set. Its reason is shown when it gives one.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If the API token is missing a permission this page needs, a message at the top says which one and how to fix it. Add the permission to the token at the provider, then reload.</p>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/providers/machines" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Machines</a>
+        <a href="/docs/providers/volumes" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Volumes &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

@@ -44,7 +44,7 @@ state
         { id: "server-settings-system", label: "System and power", href: "/docs/servers/settings-system" }
       ]
     },
-        {
+    {
       key: "site",
       label: "Inside a site",
       items: [
@@ -57,6 +57,32 @@ state
         { id: "site-logs", label: "Logs", href: "/docs/sites/logs" },
         { id: "site-terminal", label: "Terminal", href: "/docs/sites/terminal" },
         { id: "site-settings", label: "Settings", href: "/docs/sites/settings" }
+      ]
+    },
+    {
+      key: "provider",
+      label: "Cloud providers",
+      items: [
+        { id: "providers", label: "Providers page", href: "/docs/providers" },
+        { id: "provider-overview", label: "Provider overview", href: "/docs/providers/overview" },
+        { id: "provider-machines", label: "Machines", href: "/docs/providers/machines" },
+        { id: "provider-firewalls", label: "Firewalls", href: "/docs/providers/firewalls" },
+        { id: "provider-volumes", label: "Volumes", href: "/docs/providers/volumes" },
+        { id: "provider-images", label: "Images", href: "/docs/providers/images" },
+        { id: "provider-ips", label: "IP addresses", href: "/docs/providers/ips" },
+        { id: "provider-domains", label: "Domains", href: "/docs/providers/domains" },
+        { id: "provider-dns-records", label: "DNS records", href: "/docs/providers/dns-records" },
+        { id: "provider-billing", label: "Billing", href: "/docs/providers/billing" }
+      ]
+    },
+    {
+      key: "team",
+      label: "Teams",
+      items: [
+        { id: "team-members", label: "Team page", href: "/docs/team" },
+        { id: "team-activity", label: "Team activity", href: "/docs/team/activity" },
+        { id: "team-member", label: "A member's activity", href: "/docs/team/member" },
+        { id: "team-invites", label: "Invites and roles", href: "/docs/team/invites" }
       ]
     }
   ]

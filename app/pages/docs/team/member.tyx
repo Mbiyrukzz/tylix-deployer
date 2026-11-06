@@ -1,0 +1,110 @@
+page DocsTeamMember
+
+title "A member's activity"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="team-member" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-3xl mx-auto">
+
+    <div class="mb-10">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Teams</p>
+      <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
+        A member's <span class="text-brand-500">activity</span>
+      </h1>
+      <p class="text-zinc-500 text-sm mt-4 max-w-xl">One person's page: who they are, how much they have done, and exactly what they added. It is the quickest way to see what a single teammate has been up to.</p>
+    </div>
+
+    <div class="space-y-10">
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">How to open it</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          Press <span class="font-semibold text-zinc-900 dark:text-zinc-100">View</span> next to a person on the <a href="/docs/team" class="text-brand-600 dark:text-brand-500 hover:underline">Team page</a>, or click anyone's name in the activity feed or the <a href="/docs/team/activity" class="text-brand-600 dark:text-brand-500 hover:underline">Team activity</a> timeline.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The header</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          At the top you see the person's name, their email and a badge with their role. If the page is your own, a small <span class="font-semibold text-zinc-900 dark:text-zinc-100">You</span> badge sits next to the role.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The three numbers</h2>
+        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Total actions</p>
+            <p class="text-zinc-500 text-sm">Everything this person has added to the team.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Last active</p>
+            <p class="text-zinc-500 text-sm">How long ago they last did something, such as "Just now" or "4d ago". It shows "Never" if they have not done anything yet.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Member since</p>
+            <p class="text-zinc-500 text-sm">The date they joined the team.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">What they've added</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          The panel on the left breaks the person's total down by kind, for example servers, sites and databases. Each row has a count and a bar. The longest bar belongs to the kind they have added most of, and the others are sized against it.
+        </p>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          Click a row to show only that kind in the timeline. Click it again, or press <span class="font-semibold text-zinc-900 dark:text-zinc-100">Show all</span>, to see everything. While a filter is on, its name appears as a small tag above the timeline, and the &times; on the tag clears it.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The timeline</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          It works like the team timeline, but for one person only, so their name is left out of each line. Entries are grouped by day (Today, Yesterday, then the date). Each one shows what they did, what it was done to, a grey tag with the kind, and the time.
+        </p>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          Each page shows 15 entries. Use <span class="font-semibold text-zinc-900 dark:text-zinc-100">Previous</span> and <span class="font-semibold text-zinc-900 dark:text-zinc-100">Next</span> at the bottom to move through them.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Deleting activity</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
+          People who are allowed to delete can remove a single entry with the &times; beside it, or clear everything for this person with <span class="font-semibold text-zinc-900 dark:text-zinc-100">Delete all</span>. You are asked to confirm before anything is cleared.
+        </p>
+        <div class="rounded-2xl border border-brand-500/20 bg-brand-500/5 px-5 py-4">
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            This only clears the activity list. Servers and sites are not touched.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">When the page won't open</h2>
+        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Not available</p>
+            <p class="text-zinc-500 text-sm">Only team owners and admins can see other members' activity. You can always open your own page.</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Member not found</p>
+            <p class="text-zinc-500 text-sm">The person may have left the team, or the link is wrong. Go back to the Team page and pick them from the list.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="mt-12 pt-6 border-t border-line flex items-center justify-between gap-4">
+      <a href="/docs/team/activity" class="text-zinc-500 text-sm hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">&larr; Team activity</a>
+      <a href="/docs/team/invites" class="text-brand-600 dark:text-brand-500 text-sm font-medium hover:underline">Invites and roles &rarr;</a>
+    </div>
+
+  </div>
+  </div>
+</div>

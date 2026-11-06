@@ -1,0 +1,70 @@
+page DocsProviderVolumes
+
+title "Volumes - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="provider-volumes" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Volumes</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Block storage: extra disk space that can move between servers.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The top shows how many volumes you have, their total size and how many are attached. Each card shows the size, the region, what it is attached to and its device name.</p>
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Volumes are billed per GB for as long as they exist, attached or not.</p>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Create a volume</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select <strong>Create volume</strong> and give it a name and a size from 10 to 10240 GB. Then choose where it goes:</p>
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>In a region</strong>: pick a region. The volume is created there, not attached.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span><strong>For a server</strong>: pick a server. The volume is created in that server's region and attached right away.</span></li>
+      </ul>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Attach, detach, delete</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Attach</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Lists the servers in the volume's region. A volume can only be attached to a server in its own region. If there are none, the card says so.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Detach</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Select Detach, then Yes, detach. The data stays on the volume.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Delete</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Select Delete, then Yes, delete. The data is gone.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">After attaching, the volume still has to be mounted on the server. Do that in the <a href="/docs/servers/terminal" class="text-brand-600 dark:text-brand-500 hover:underline">server terminal</a>.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't create the volume. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider refused it. Check the size and the region.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't attach the volume. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Pick a server in the same region.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't detach / delete the volume.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Read the message. A volume in use may need to be unmounted first.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If the API token is missing a permission this page needs, a message at the top says which one and how to fix it. Add the permission to the token at the provider, then reload.</p>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/providers/firewalls" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Firewalls</a>
+        <a href="/docs/providers/images" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Images &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

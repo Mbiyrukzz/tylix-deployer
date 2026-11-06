@@ -1,0 +1,71 @@
+page DocsProviderBilling
+
+title "Billing - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="provider-billing" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Billing</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">What the provider account owes, its invoices and payments, and paying from here.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The summary</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Shows the balance, the current charges (or an estimate when the provider does not report them), and network transfer used this month. Under it, <strong>Servers in this project</strong> splits the cost by server, <strong>Recent invoices</strong> lists invoices (select one to see its items) and <strong>Recent payments</strong> lists payments.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Paying</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">What you see depends on the provider.</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Make a payment</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Charges a payment method saved on your provider account. It shows the amount due and any credit. Pick a method, type an amount in USD (<strong>Amount due</strong> fills it in), then select <strong>Review payment</strong> and <strong>Yes, pay now</strong>. There is a limit on how much you can pay at once from here, and the page tells you what it is.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Open the provider's billing page</p>
+          <p class="text-zinc-500 text-xs mt-0.5">For providers that cannot be paid from here, the page links to the provider's own billing page. It opens in a new tab.</p>
+        </div>
+      </div>
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Some cards need the CVV. It goes to the provider with that payment only and is not saved.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>With two-factor sign-in on you are asked for a code before the payment goes ahead.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>If no saved method can be charged from here, add one on the provider's billing page.</span></li>
+      </ul>
+      <h3 class="text-zinc-900 dark:text-zinc-100 text-base font-semibold mb-3">Payments started here</h3>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each payment you start is logged as <strong>Paid</strong>, <strong>Failed</strong> or <strong>Unconfirmed</strong>.</p>
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">If a payment shows an unknown result, do not pay again yet. The provider did not confirm it either way. Check the provider's payment history first.</p>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Choose a payment method.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Select one of the saved methods.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter an amount greater than zero.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The amount box was empty.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Enter your two-factor code, then press Pay again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Nothing was charged. Enter the code and repeat.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load billing. Try again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The provider did not answer. Reload.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If the API token is missing a permission this page needs, a message at the top says which one and how to fix it. Add the permission to the token at the provider, then reload.</p>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/providers/dns-records" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; DNS records</a>
+        <a href="/docs/team" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Teams &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>
