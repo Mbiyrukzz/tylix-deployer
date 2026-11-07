@@ -57,3 +57,44 @@ export async function getChangelog(): Promise<ChangelogResult> {
         clearTimeout(timer);
     }
 }
+
+export interface StatusResult {
+    state: "operational" | "outage" | "unknown";
+    last_seen_at: string | null;
+}
+
+const STATUS_TTL_MS = 30_000;
+let statusCache: { at: number; value: StatusResult } | null = null;
+
+/** Never throws. If the Hub can't be reached the answer is "unknown", never a stale "operational". */
+export async function getStatus(): Promise<StatusResult> {
+    const unknown: StatusResult = { state: "unknown", last_seen_at: null };
+    if (!BASE) return unknown;
+
+    if (statusCache && Date.now() - statusCache.at < STATUS_TTL_MS) {
+        return statusCache.value;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+        const res = await fetch(`${BASE}/api/v1/products/${encodeURIComponent(SLUG)}/status`, {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+        });
+        if (!res.ok) return unknown;
+
+        const json = (await res.json()) as { status?: { state?: string; last_seen_at?: string | null } };
+        const state = json.status?.state;
+        if (state !== "operational" && state !== "outage" && state !== "unknown") return unknown;
+
+        const value: StatusResult = { state, last_seen_at: json.status?.last_seen_at ?? null };
+        statusCache = { at: Date.now(), value };
+        return value;
+    } catch {
+        return unknown;
+    } finally {
+        clearTimeout(timer);
+    }
+}

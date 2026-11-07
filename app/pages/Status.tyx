@@ -1,0 +1,112 @@
+page Status
+
+title "System status"
+
+state
+  loading: true
+  level: "unknown"
+  lastSeen: ""
+
+computed
+  headline() {
+    if this.level is "operational" {
+      return "All systems operational"
+    }
+    if this.level is "outage" {
+      return "Service disruption"
+    }
+    return "Status unavailable"
+  }
+
+  detail() {
+    if this.level is "operational" {
+      return "Tylix Deploy is running normally."
+    }
+    if this.level is "outage" {
+      return "We aren't receiving health reports from Tylix Deploy. We're looking into it."
+    }
+    return "We couldn't determine the current status. Check back in a minute."
+  }
+
+  bannerClass() {
+    if this.level is "operational" {
+      return "border-emerald-300 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30"
+    }
+    if this.level is "outage" {
+      return "border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30"
+    }
+    return "border-line bg-panel"
+  }
+
+  dotClass() {
+    if this.level is "operational" {
+      return "bg-emerald-500"
+    }
+    if this.level is "outage" {
+      return "bg-rose-500"
+    }
+    return "bg-zinc-400"
+  }
+
+  checkedLabel() {
+    if not this.lastSeen {
+      return "Not reported yet"
+    }
+    const secs = Math.floor((Date.now() - new Date(this.lastSeen).getTime()) / 1000)
+    if secs < 60 {
+      return "Just now"
+    }
+    if secs < 3600 {
+      return Math.floor(secs / 60) + " min ago"
+    }
+    if secs < 86400 {
+      return Math.floor(secs / 3600) + " h ago"
+    }
+    return Math.floor(secs / 86400) + " d ago"
+  }
+
+action
+  async load() {
+    const res = await useApi("/api/status")
+    if res.ok {
+      this.level = res.data.state
+      this.lastSeen = res.data.last_seen_at ?? ""
+    } else {
+      this.level = "unknown"
+    }
+  }
+
+  tick() {
+    // Only keep refreshing while this page is the one on screen.
+    if window.location.pathname is "/status" {
+      this.load()
+    }
+  }
+
+onMount
+  async {
+    await this.load()
+    this.loading = false
+    setInterval(() => this.tick(), 30000)
+  }
+
+template
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+    <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Tylix Deploy</p>
+    <h1 class="text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-8">System status</h1>
+
+{{#if loading}}
+    <p class="text-sm text-zinc-500">Checking…</p>
+{{/if}}
+
+{{#if not loading}}
+    <section class="rounded-2xl border p-6 sm:p-8 {{ bannerClass }}">
+      <div class="flex items-center gap-3">
+        <span class="w-3 h-3 rounded-full shrink-0 {{ dotClass }}"></span>
+        <h2 class="text-xl font-medium text-zinc-900 dark:text-zinc-100">{{ headline }}</h2>
+      </div>
+      <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-3">{{ detail }}</p>
+      <p class="text-xs text-zinc-500 mt-4">Last health report: {{ checkedLabel }}. This page refreshes automatically.</p>
+    </section>
+{{/if}}
+  </main>
