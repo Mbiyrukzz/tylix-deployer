@@ -6,6 +6,7 @@ state
   loading: true
   level: "unknown"
   lastSeen: ""
+  notices: []
 
 computed
   headline() {
@@ -66,13 +67,85 @@ computed
   }
 
 action
+  whenText(value) {
+    if not value {
+      return ""
+    }
+    const d = new Date(value)
+    const day = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    return day + ", " + time
+  }
+
+  rangeText(a) {
+    const from = this.whenText(a.starts_at)
+    const to = this.whenText(a.ends_at)
+    if a.phase is "resolved" {
+      return to ? "Resolved " + to : ""
+    }
+    if a.phase is "upcoming" {
+      return to ? from + " to " + to : "From " + from
+    }
+    return to ? "Since " + from + " · expected to end " + to : "Since " + from
+  }
+
+  kindLabel(kind) {
+    if kind is "incident" {
+      return "Incident"
+    }
+    if kind is "maintenance" {
+      return "Maintenance"
+    }
+    return "Notice"
+  }
+
+  kindChip(kind) {
+    if kind is "incident" {
+      return "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+    }
+    if kind is "maintenance" {
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+    }
+    return "bg-sky-500/10 text-sky-700 dark:text-sky-300"
+  }
+
+  decorate(a) {
+    return Object.assign({}, a, {
+      label: this.kindLabel(a.kind),
+      chipClass: this.kindChip(a.kind),
+      range: this.rangeText(a)
+    })
+  }
+
+  withHeading(items, heading) {
+    return items.map((a, i) => Object.assign({}, a, { heading: i is 0 ? heading : "" }))
+  }
+
+  applyAnnouncements(list) {
+    const rows = (Array.isArray(list) ? list : []).map((a) => this.decorate(a))
+    const active = this.withHeading(rows.filter((a) => a.phase is "active"), "Happening now")
+    const upcoming = this.withHeading(rows.filter((a) => a.phase is "upcoming"), "Upcoming")
+    const resolved = this.withHeading(rows.filter((a) => a.phase is "resolved"), "Recently resolved")
+    this.notices = active.concat(upcoming).concat(resolved)
+  }
+
   async load() {
-    const res = await useApi("/api/status")
+    const results = await Promise.all([
+      useApi("/api/status"),
+      useApi("/api/announcements")
+    ])
+    const res = results[0]
+    const noteRes = results[1]
+
     if res.ok {
       this.level = res.data.state
       this.lastSeen = res.data.last_seen_at ?? ""
     } else {
       this.level = "unknown"
+    }
+
+    if noteRes.ok {
+      this.applyAnnouncements(noteRes.data?.announcements)
     }
   }
 
@@ -108,5 +181,19 @@ template
       <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-3">{{ detail }}</p>
       <p class="text-xs text-zinc-500 mt-4">Last health report: {{ checkedLabel }}. This page refreshes automatically.</p>
     </section>
+
+{{#each n in notices}}
+{{#if n.heading}}
+    <h2 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500 mt-10 mb-4">{{ n.heading }}</h2>
+{{/if}}
+    <article class="rounded-2xl border border-line bg-panel p-5 mb-3">
+      <div class="flex flex-wrap items-center gap-2 mb-1.5">
+        <span class="rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider {{ n.chipClass }}">{{ n.label }}</span>
+        <span class="text-xs text-zinc-500">{{ n.range }}</span>
+      </div>
+      <h3 class="font-medium text-zinc-900 dark:text-zinc-100">{{ n.title }}</h3>
+      <p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 whitespace-pre-line mt-2">{{ n.body }}</p>
+    </article>
+{{/each}}
 {{/if}}
   </main>

@@ -1,0 +1,99 @@
+component AnnouncementBanner
+
+state
+  items: []
+  dismissed: []
+
+computed
+  shown() {
+    return this.items.filter((a) => not this.dismissed.includes(a.id))
+  }
+
+action
+  readDismissed() {
+    try {
+      const raw = sessionStorage.getItem("hub-dismissed")
+      const list = raw ? JSON.parse(raw) : []
+      return Array.isArray(list) ? list : []
+    } catch (err) {
+      return []
+    }
+  }
+
+  dismiss(id) {
+    this.dismissed = this.dismissed.concat([id])
+    try {
+      sessionStorage.setItem("hub-dismissed", JSON.stringify(this.dismissed))
+    } catch (err) {
+      // Private mode: the banner simply comes back on the next visit.
+    }
+  }
+
+  whenText(value) {
+    if not value {
+      return ""
+    }
+    const d = new Date(value)
+    const day = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    return day + ", " + time
+  }
+
+  // Active ones always show. Planned maintenance shows from 24 hours before it starts.
+  worthShowing(a) {
+    if a.phase is "active" {
+      return true
+    }
+    if a.phase is "upcoming" and a.kind is "maintenance" and a.starts_at {
+      return new Date(a.starts_at).getTime() - Date.now() < 24 * 60 * 60 * 1000
+    }
+    return false
+  }
+
+  decorate(a) {
+    const label = a.kind is "incident" ? "Incident" : (a.kind is "maintenance" ? "Maintenance" : "Notice")
+    let box = "border-sky-300 dark:border-sky-900/50 bg-sky-50 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200"
+    let chip = "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+    if a.kind is "incident" {
+      box = "border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200"
+      chip = "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+    }
+    if a.kind is "maintenance" {
+      box = "border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200"
+      chip = "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+    }
+    return Object.assign({}, a, {
+      label: label,
+      boxClass: box,
+      chipClass: chip,
+      note: a.phase is "upcoming" ? "Starts " + this.whenText(a.starts_at) : ""
+    })
+  }
+
+  async load() {
+    const res = await useApi("/api/announcements")
+    if not res.ok {
+      return null
+    }
+    const list = Array.isArray(res.data?.announcements) ? res.data.announcements : []
+    this.items = list.filter((a) => this.worthShowing(a)).slice(0, 3).map((a) => this.decorate(a))
+  }
+
+onMount
+  async {
+    this.dismissed = this.readDismissed()
+    await this.load()
+    setInterval(() => this.load(), 60000)
+  }
+
+template
+{{#each a in shown}}
+<div role="status" class="border-b {{ a.boxClass }}">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-2.5 flex items-center gap-3">
+    <span class="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider {{ a.chipClass }}">{{ a.label }}</span>
+    <p class="min-w-0 flex-1 text-sm"><span class="font-medium">{{ a.title }}</span>{{ a.note ? ' · ' + a.note : '' }}</p>
+    <a href="/status" class="shrink-0 text-sm underline underline-offset-2 hover:no-underline">Details</a>
+    <button onclick="{{ dismiss(a.id) }}" aria-label="Dismiss" class="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors">&times;</button>
+  </div>
+</div>
+{{/each}}

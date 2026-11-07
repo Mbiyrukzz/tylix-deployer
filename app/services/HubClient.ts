@@ -1,7 +1,8 @@
 /**
- * Reads this product's changelog from the Ashmif Hub public API.
- * Server-side only, so there is no CORS to deal with. Results are cached
- * for a minute, and the last good copy is served if the Hub is unreachable.
+ * Reads this product's changelog, status and announcements from the Ashmif
+ * Hub public API. Server-side only, so there is no CORS to deal with.
+ * Results are cached briefly, and the last good copy is served if the Hub
+ * is unreachable (except status, which becomes "unknown").
  */
 
 const BASE = (process.env.HUB_URL ?? "").replace(/\/+$/, "");
@@ -94,6 +95,56 @@ export async function getStatus(): Promise<StatusResult> {
         return value;
     } catch {
         return unknown;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+export interface HubAnnouncement {
+    id: number;
+    kind: string;
+    title: string;
+    body: string;
+    phase: "active" | "upcoming" | "resolved";
+    applies_to_all: boolean;
+    starts_at: string | null;
+    ends_at: string | null;
+}
+
+const ANNOUNCEMENT_TTL_MS = 30_000;
+const ANNOUNCEMENT_STALE_MS = 10 * 60_000;
+let announcementCache: { at: number; items: HubAnnouncement[] } | null = null;
+
+/**
+ * Never throws. If the Hub can't be reached the last good copy is served
+ * for up to ten minutes, then an empty list.
+ */
+export async function getAnnouncements(): Promise<HubAnnouncement[]> {
+    if (!BASE) return [];
+
+    if (announcementCache && Date.now() - announcementCache.at < ANNOUNCEMENT_TTL_MS) {
+        return announcementCache.items;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+        const res = await fetch(`${BASE}/api/v1/products/${encodeURIComponent(SLUG)}/announcements`, {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`The Hub answered ${res.status}.`);
+
+        const json = (await res.json()) as { data?: HubAnnouncement[] };
+        const items = Array.isArray(json.data) ? json.data : [];
+        announcementCache = { at: Date.now(), items };
+        return items;
+    } catch {
+        if (announcementCache && Date.now() - announcementCache.at < ANNOUNCEMENT_STALE_MS) {
+            return announcementCache.items;
+        }
+        return [];
     } finally {
         clearTimeout(timer);
     }
