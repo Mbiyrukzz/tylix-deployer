@@ -1,0 +1,89 @@
+page DocsSettingsBilling
+
+title "Billing - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="settings-billing" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Settings</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Billing</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Your team's plan, what it uses and how to change it.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The plan card</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Open <strong>Settings</strong>, then <strong>Billing</strong>. The top card shows your plan name and a badge:</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Active</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The plan is running. The card says when the current period ends. During a free trial it says when the trial ends instead.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Ended</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The plan has lapsed. Everything you have keeps running, but you cannot add new servers, sites, connections or members until you renew.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No limits</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Your team has no plan yet, so nothing is limited. Choose a plan below to get started.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If a plan is set to stop, the card adds &ldquo;This plan won't renew.&rdquo; It stays active until the date shown. If limits are not being enforced yet, a line says so: limits are shown but nothing is blocked.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Usage</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Four bars show what the team uses against the plan: <strong>Team members</strong>, <strong>Servers</strong>, <strong>Sites</strong> and <strong>Provider connections</strong>. Each reads like <em>3 / 10</em>, or <em>3 / Unlimited</em>.</p>
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The bar is green while you are under the limit.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>It turns amber when you reach the limit exactly.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>It turns red when you are over it.</span></li>
+      </ul>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Plans</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Every plan is listed with its monthly price in USD and its limits. The one you are on has a <strong>Current</strong> badge. During a free trial no plan is marked Current. Prices are shown in USD and you are charged the equivalent in KES at checkout. Payments are processed by Paystack, and plans renew monthly until cancelled.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">People who can manage billing also see:</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Choose</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Opens the Paystack payment page for that plan. When you return, the page confirms with &ldquo;Payment received. Your plan is active.&rdquo;</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Cancel plan</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Appears on an active plan that is not already set to stop. The plan stays active until the period ends.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Pay now</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Shown in the unpaid invoice banner. It starts payment for your current plan.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Everyone else on the team can look at the page but has no buttons.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Unpaid invoices</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">When an invoice has not been paid, an amber banner at the top gives the amount and invoice number. <strong>View</strong> opens <a href="/docs/settings/invoices" class="text-brand-600 dark:text-brand-500 hover:underline">Invoices</a>.</p>
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">When a subscription needs payment, the rest of Tylix Deploy turns view only. See the <a href="/docs/providers" class="text-brand-600 dark:text-brand-500 hover:underline">Providers page</a> for how that looks.</p>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load billing.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The plan and usage did not load. Reload the page.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't start the payment.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The Paystack page did not open. Try Choose again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't cancel.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The plan is still set to renew. Try again.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/settings/two-factor" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Two-factor</a>
+        <a href="/docs/settings/invoices" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Invoices &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

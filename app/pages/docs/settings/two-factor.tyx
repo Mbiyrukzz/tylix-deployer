@@ -1,0 +1,97 @@
+page DocsSettingsTwoFactor
+
+title "Two-factor - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="settings-two-factor" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Settings</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Two-factor</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Ask for a code each time you log in: from an authenticator app, by text message, or either.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Why turn it on</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A Tylix Deploy account can hold SSH keys and cloud tokens, so a second step at login is worth having. Open <strong>Settings</strong>, then <strong>Two-factor</strong>. The page has two independent methods, each with an <strong>On</strong> or <strong>Off</strong> badge. With both on, either one gets you in.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Authenticator app</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">You need an authenticator app such as Google Authenticator, Authy or 1Password. Select <strong>Set up authenticator app</strong> and follow the two steps.</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">1. Add this account to your app</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Choose &ldquo;enter a setup key&rdquo; in your app and paste the key shown. Use <strong>Copy</strong> to copy it. On a phone, <strong>tap here</strong> opens it in the app directly.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">2. Enter the 6-digit code</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Type the code your app shows and select <strong>Turn on authenticator app</strong>. It stays off until you do. <strong>Cancel</strong> abandons the setup.</p>
+        </div>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Recovery codes</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The moment the authenticator app turns on, a list of recovery codes appears.</p>
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Save these now. They are shown only once. Each works one time if you lose access to your app.</p>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3"><strong>Copy all</strong> copies the list. Select <strong>I've saved them</strong> when they are stored somewhere safe, and the list disappears.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Afterwards the Recovery codes card shows how many are left. <strong>Generate new codes</strong> asks for your password and a code, then shows a fresh set. Generating new codes cancels the old ones.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Turn off the authenticator app</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select <strong>Turn off</strong>, enter your password and an authenticator or recovery code, then <strong>Confirm</strong>. Logging in stops asking for an authenticator code.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Text message (SMS)</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Get a 6-digit code by text when you log in. It works on its own or alongside an authenticator app.</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Turn it on</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Enter your mobile number and your password, then select <strong>Send code</strong>. Type the code you receive and select <strong>Turn on text messages</strong>. <strong>Resend</strong> sends another code and <strong>Cancel</strong> stops.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">When it is on</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The card says where codes are sent, showing only part of the number.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Turn it off</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Select <strong>Turn off</strong>, enter your password and a code, then <strong>Turn off</strong> again. The code can be one texted to you (select <strong>Text me a code</strong>), or one from your authenticator app or recovery codes.</p>
+        </div>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't start setup.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The setup key was not created. Select Set up authenticator app again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message under the code field</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The code was wrong or has expired. Authenticator codes change every few seconds, so wait for a new one.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message under Password</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The password was not accepted.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message under Mobile number</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The number was not accepted. Check it and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't send the code.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The text did not go out. Try Resend after a moment.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't confirm the code.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The code could not be checked. Try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Something went wrong.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Turning a method off, or generating codes, failed. Nothing changed. Try again.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/settings/password" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Password</a>
+        <a href="/docs/settings/billing" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Billing &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

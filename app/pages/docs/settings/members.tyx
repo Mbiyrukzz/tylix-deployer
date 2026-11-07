@@ -1,0 +1,100 @@
+page DocsSettingsMembers
+
+title "Members - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="settings-members" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Settings</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Members</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">See who is on your team, invite people and change their roles.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What is on the page</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Open <strong>Settings</strong> from the main sidebar, then <strong>Members</strong>. Everyone on a team sees the same servers, providers and sites. Under the team name the page shows your own role: <strong>owner</strong>, <strong>admin</strong> or <strong>member</strong>.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Each person is listed with their name, email, a role badge and the date they joined. Your own row says &ldquo;This is you&rdquo;. To see what each person has added, use the <a href="/docs/team" class="text-brand-600 dark:text-brand-500 hover:underline">Team page</a>.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Your teams</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If you belong to more than one team, a card at the top lists them all with your role in each. The team you are working in has a <strong>Current</strong> badge. Select <strong>Switch</strong> on another team and the page reloads on that team.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Roles</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Owner and admin</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Can invite people, revoke invitations, change roles and remove members. The invite form and the pending invitations list only appear for them.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Member</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Sees the team's servers, providers and sites. Cannot invite or manage people.</p>
+        </div>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Buttons on a member</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Which buttons you see on a row depends on your role and theirs.</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Make admin</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Gives a member the admin role.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Make member</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Takes the admin role away.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Remove</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Asks &ldquo;Remove this person from the team?&rdquo; and, once you confirm, they lose access to the team's servers and sites immediately.</p>
+        </div>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Leave team</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If you are allowed to leave, a <strong>Leave team</strong> button sits at the bottom of the list. It asks you to confirm, and you lose access to the team's servers and sites. Then the page reloads.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Invite someone</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Owners and admins see an <strong>Invite someone</strong> card. Enter the person's email, choose <strong>Member</strong> or <strong>Admin</strong> (admins can invite and manage the team), then select <strong>Send invitation</strong>.</p>
+      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-8">
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The person gets an email with a link that works <strong>once</strong> and expires in <strong>7 days</strong>.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>If they already have servers or connections of their own, they are asked to bring them into this team.</span></li>
+        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>If the email can't be sent, the page says so and shows the link. Copy it and send it yourself.</span></li>
+      </ul>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Pending invitations</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Invitations that have not been accepted are listed with the email, the role and the date they expire. Select <strong>Revoke</strong> to cancel one.</p>
+      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Team members count against your plan. When you reach the member limit, or your plan has ended, you cannot add more people. See <a href="/docs/settings/billing" class="text-brand-600 dark:text-brand-500 hover:underline">Billing</a>.</p>
+      </div>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't send the invitation.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The invitation was not created. Read the message above the cards and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't revoke that invitation.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The invitation is still pending. Try Revoke again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't change that role.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The role stayed as it was. Reload the page and try again.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't remove that member.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The person is still on the team.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't leave the team.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">You are still on the team.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't switch teams.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">You stayed on the current team.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/team/invites" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Invites and roles</a>
+        <a href="/docs/settings/password" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Password &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>

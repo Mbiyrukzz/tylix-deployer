@@ -1,0 +1,57 @@
+page DocsSettingsInvoices
+
+title "Invoices - Documentation"
+
+template
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+
+  <DocsSidebar active="settings-invoices" />
+
+  <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+  <div class="max-w-5xl mx-auto">
+
+    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Settings</p>
+      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Invoices</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">What your team has been billed, and what is coming due.</p>
+
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Open <strong>Settings</strong>, then <strong>Invoices</strong>. Each line shows:</p>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Number and description</p>
+          <p class="text-zinc-500 text-xs mt-0.5">For example the invoice number followed by what it was for.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Date</p>
+          <p class="text-zinc-500 text-xs mt-0.5">When the invoice was raised.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Amount</p>
+          <p class="text-zinc-500 text-xs mt-0.5">What was charged.</p>
+        </div>
+        <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Status</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A badge: <strong>paid</strong> in green, <strong>failed</strong> in red, and any other status, such as one still waiting for payment, in amber.</p>
+        </div>
+      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Until your first payment the page says &ldquo;No invoices yet.&rdquo; Invoices appear here after your first payment.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Unpaid invoices</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If any invoice is not paid, a banner at the top says &ldquo;You have an invoice that isn't paid yet.&rdquo; <strong>Go to billing</strong> opens <a href="/docs/settings/billing" class="text-brand-600 dark:text-brand-500 hover:underline">Billing</a>, where people who can manage billing can pay.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
+      <div class="rounded-2xl border border-line overflow-hidden mb-8">
+        <div class="px-5 py-3.5">
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load invoices.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The list did not load. Reload the page.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-8 pt-5 border-t border-stone-100 dark:border-white/5">
+        <a href="/docs/settings/billing" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">&larr; Billing</a>
+        <a href="/docs" class="text-sm text-brand-600 dark:text-brand-500 hover:underline">Back to overview &rarr;</a>
+      </div>
+    </article>
+
+  </div>
+  </div>
+</div>
