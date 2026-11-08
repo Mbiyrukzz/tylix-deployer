@@ -67,6 +67,8 @@ state
   sourceKind: ""
   latestCommit: null
   viewId: ""
+  logPage: false
+  savedScroll: 0
   logText: ""
   logStatus: "idle"
   logLoading: false
@@ -85,7 +87,7 @@ state
   latestErrors: 0
   latestWarns: 0
   latestStages: 0
-  modalAtBottom: true
+  atBottom: true
   copied: false
   histAll: 0
   successCount: 0
@@ -213,7 +215,7 @@ action
   setLogFilter(key) {
     this.logFilter = key
     this.applyLogFilter()
-    window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 40)
+    window.setTimeout(() => this.scrollPageEnd(), 40)
   }
 
   scrollToLine(n) {
@@ -231,7 +233,7 @@ action
 
     this.logFilter = "all"
     this.applyLogFilter()
-    this.modalAtBottom = false
+    this.atBottom = false
     window.setTimeout(() => this.scrollToLine(first.n), 60)
   }
 
@@ -287,18 +289,16 @@ action
     }
   }
 
-  scrollEnd(id) {
-    const el = document.getElementById(id)
-    if el {
-      el.scrollTop = el.scrollHeight
-    }
+  scrollPageEnd() {
+    window.scrollTo(0, document.documentElement.scrollHeight)
   }
 
-  onModalScroll() {
-    const el = document.getElementById("deploy-log-modal")
-    if el {
-      this.modalAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+  onPageScroll() {
+    if not this.logPage {
+      return null
     }
+    const doc = document.documentElement
+    this.atBottom = window.innerHeight + window.scrollY >= doc.scrollHeight - 48
   }
 
   setScript() {
@@ -316,14 +316,19 @@ action
   }
 
   onKey(e) {
-    if e.key is "Escape" and this.modal is not "" {
+    if e.key is not "Escape" {
+      return null
+    }
+    if this.modal is not "" {
       this.closeModal()
+    } else if this.logPage {
+      this.closeLog()
     }
   }
 
-  jumpModal() {
-    this.scrollEnd("deploy-log-modal")
-    this.modalAtBottom = true
+  jumpBottom() {
+    this.scrollPageEnd()
+    this.atBottom = true
   }
 
   showLog(raw) {
@@ -334,8 +339,8 @@ action
     this.logStages = this.logLines.filter((l) => l.kind is "stage").length
     this.applyLogFilter()
 
-    if this.modalAtBottom {
-      window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 40)
+    if this.logPage and this.atBottom {
+      window.setTimeout(() => this.scrollPageEnd(), 40)
     }
   }
 
@@ -533,14 +538,29 @@ action
     this.cancelError = ""
   }
 
+  openLogPage() {
+    if not this.logPage {
+      this.savedScroll = window.scrollY
+    }
+    this.error = ""
+    this.saved = false
+    this.logPage = true
+    window.scrollTo(0, 0)
+  }
+
+  closeLog() {
+    this.logPage = false
+    window.setTimeout(() => window.scrollTo(0, this.savedScroll), 30)
+  }
+
   openLive() {
     this.viewId = ""
     this.logLoading = false
     this.logStatus = this.deployStatus
-    this.modalAtBottom = true
+    this.atBottom = true
     this.showLog(this.deployLog)
-    this.openModal("log")
-    window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 80)
+    this.openLogPage()
+    window.setTimeout(() => this.scrollPageEnd(), 80)
   }
 
   async openDeployLog(id) {
@@ -557,9 +577,9 @@ action
     this.viewId = id
     this.logStatus = d.status
     this.logLoading = true
-    this.modalAtBottom = true
+    this.atBottom = true
     this.showLog("")
-    this.openModal("log")
+    this.openLogPage()
 
     const result = await useApi("/api/sites/" + this.siteId + "/deployments/" + id)
 
@@ -568,7 +588,7 @@ action
       if result.ok {
         this.logStatus = result.data.status
         this.showLog(result.data.log or "")
-        window.setTimeout(() => this.scrollEnd("deploy-log-modal"), 80)
+        window.setTimeout(() => this.scrollPageEnd(), 80)
       } else if result.status is 401 {
         window.location.href = "/login"
       } else {
@@ -960,7 +980,7 @@ action
       this.viewId = ""
       this.logLoading = false
       this.logStatus = st
-      this.modalAtBottom = true
+      this.atBottom = true
       this.queuedText = "Waiting to start"
       this.setLatest("")
       this.showLog("")
@@ -984,6 +1004,7 @@ action
 onMount
   async {
     window.addEventListener("keydown", (e) => this.onKey(e))
+    window.addEventListener("scroll", () => this.onPageScroll())
 
     const params = new URLSearchParams(window.location.search)
     const id = params.get("id")
@@ -1046,11 +1067,122 @@ template
       <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-10 text-center shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">&larr; Back to servers</a>
+        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">← Back to servers</a>
       </div>
 {{/if}}
 
 {{#if site}}
+{{#if logPage}}
+
+      <div class="min-w-0">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <button onclick="{{ closeLog() }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">
+            <IconArrowLeft class="w-4 h-4" /> Back to deployment
+          </button>
+          <p class="min-w-0 truncate text-slate-500 text-sm">{{ site.domain }}</p>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-sm">
+
+          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-800">
+            <div class="flex items-center gap-3 min-w-0">
+              <h2 class="text-slate-200 text-sm font-medium">Deployment log</h2>
+{{#if logStatus is "queued"}}
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sky-400"><span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> Queued</span>
+{{/if}}
+{{#if logStatus is "deploying"}}
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-400"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Deploying</span>
+{{/if}}
+{{#if logStatus is "success"}}
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-400"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Deployed</span>
+{{/if}}
+{{#if logStatus is "failed"}}
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-400"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed</span>
+{{/if}}
+{{#if logStatus is "cancelled"}}
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-orange-400"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Cancelled</span>
+{{/if}}
+            </div>
+
+            <div class="flex items-center gap-1.5">
+{{#if logErrors is not 0}}
+              <button onclick="{{ jumpToError() }}" class="text-xs text-rose-300 rounded-md px-2.5 py-1.5 hover:bg-rose-500/10 transition-colors">Jump to first error</button>
+{{/if}}
+              <button onclick="{{ copyLog() }}" class="text-xs text-slate-300 rounded-md px-2.5 py-1.5 hover:bg-slate-800 transition-colors">
+                {{#if copied}}Copied{{/if}}{{#if not copied}}Copy{{/if}}
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-slate-800/70">
+{{#each t in logTabs}}
+            <button onclick="{{ setLogFilter(t.key) }}" class="{{ t.cls }}">
+              {{ t.label }}
+              <span class="opacity-60">{{ t.count }}</span>
+            </button>
+{{/each}}
+          </div>
+
+{{#if logStatus is "deploying"}}
+          <div class="h-0.5 w-full bg-slate-800 overflow-hidden">
+            <div class="h-full w-1/3 bg-brand-500 animate-pulse"></div>
+          </div>
+{{/if}}
+
+{{#if logLoading}}
+          <div class="flex items-center justify-center py-24">
+            <p class="text-slate-500 text-sm font-mono">loading log…</p>
+          </div>
+{{/if}}
+
+{{#if not logLoading}}
+{{#if logText}}
+          <div class="py-3 text-[12.5px] leading-6 font-mono">
+{{#if shownLogLines.length is 0}}
+            <p class="px-5 py-6 text-slate-500 text-xs">No lines match this filter.</p>
+{{/if}}
+{{#each l in shownLogLines}}
+{{#if l.isStage}}
+            <div id="log-line-{{ l.n }}" class="mt-5 mb-1 flex items-center gap-3 px-5">
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-400 [overflow-wrap:anywhere]">{{ l.text }}</span>
+              <span class="h-px flex-1 bg-slate-800"></span>
+            </div>
+{{/if}}
+{{#if not l.isStage}}
+            <div id="log-line-{{ l.n }}" class="flex items-start border-l-2 hover:bg-white/[0.03] {{ l.rowCls }}">
+              <span class="w-12 shrink-0 pr-3 text-right text-slate-700 select-none">{{ l.n }}</span>
+              <span class="w-4 shrink-0 text-center select-none opacity-80 {{ l.cls }}">{{ l.icon }}</span>
+              <span class="min-w-0 flex-1 pl-2 pr-5 whitespace-pre-wrap [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-slate-600 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
+            </div>
+{{/if}}
+{{/each}}
+          </div>
+{{/if}}
+{{#if not logText}}
+          <div class="flex items-center justify-center py-24">
+            <p class="text-slate-500 text-sm font-mono">no output yet</p>
+          </div>
+{{/if}}
+{{/if}}
+
+{{#if deployedText}}
+          <div class="px-5 py-3 border-t border-slate-800">
+            <p class="text-slate-500 text-xs">Last deployed <span class="font-mono text-slate-400">{{ deployedText }} UTC</span></p>
+          </div>
+{{/if}}
+        </div>
+      </div>
+
+{{#if not atBottom}}
+      <button onclick="{{ jumpBottom() }}" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-1.5 text-xs font-semibold bg-brand-500 text-slate-950 rounded-full px-3.5 py-2 shadow-lg hover:bg-brand-400 transition-colors">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M10 4v12M5 11l5 5 5-5" /></svg>
+        Jump to bottom
+      </button>
+{{/if}}
+
+{{/if}}
+
+{{#if not logPage}}
       <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
@@ -1154,7 +1286,10 @@ template
                 </span>
 {{#if latestCommit}}
 {{#if latestCommit.commitUrl}}
-                <a href="{{ latestCommit.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ latestCommit.commitTitle }}" class="inline-flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">{{ latestCommit.shortCommit }} <span class="opacity-60">&nearr;</span></a>
+                <a href="{{ latestCommit.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ latestCommit.commitTitle }}" class="inline-flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
+                  {{ latestCommit.shortCommit }}
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 opacity-60"><path d="M6 14L14 6M7 6h7v7" /></svg>
+                </a>
 {{/if}}
 {{#if not latestCommit.commitUrl}}
                 <span class="font-mono text-slate-600 dark:text-slate-300">{{ latestCommit.shortCommit }}</span>
@@ -1289,7 +1424,10 @@ template
 {{/if}}
 {{#if d.shortCommit}}
 {{#if d.commitUrl}}
-                    <a href="{{ d.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ d.commitTitle }}" class="inline-flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">{{ d.shortCommit }} <span class="opacity-60">&nearr;</span></a>
+                    <a href="{{ d.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ d.commitTitle }}" class="inline-flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
+                      {{ d.shortCommit }}
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 opacity-60"><path d="M6 14L14 6M7 6h7v7" /></svg>
+                    </a>
 {{/if}}
 {{#if not d.commitUrl}}
                     <span class="font-mono text-slate-600 dark:text-slate-300">{{ d.shortCommit }}</span>
@@ -1329,19 +1467,19 @@ template
               <p class="text-slate-500 text-xs">Page {{ page }} of {{ totalPages }}</p>
               <div class="flex items-center gap-1">
 {{#if hasPrev}}
-                <button onclick="{{ prevPage() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">&larr; Previous</button>
+                <button onclick="{{ prevPage() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">← Previous</button>
 {{/if}}
 {{#if not hasPrev}}
-                <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">&larr; Previous</button>
+                <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">← Previous</button>
 {{/if}}
 {{#each p in pageNumbers}}
                 <button onclick="{{ goPage(p.n) }}" class="{{ p.cls }}">{{ p.n }}</button>
 {{/each}}
 {{#if hasNext}}
-                <button onclick="{{ nextPage() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Next &rarr;</button>
+                <button onclick="{{ nextPage() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Next →</button>
 {{/if}}
 {{#if not hasNext}}
-                <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">Next &rarr;</button>
+                <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">Next →</button>
 {{/if}}
               </div>
             </div>
@@ -1351,6 +1489,7 @@ template
 
         </div>
       </div>
+{{/if}}
 {{/if}}
 
 {{#if modal is "script"}}
@@ -1460,7 +1599,7 @@ template
               <h3 id="delete-title" class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Delete this deployment?</h3>
               <p class="text-slate-500 text-sm leading-relaxed">This removes the record and its log from the history. It does not change anything on the server.</p>
 {{#if deleteTarget}}
-              <p class="mt-3 text-xs font-mono text-slate-500">{{ deleteTarget.whenText }} UTC{{#if deleteTarget.shortCommit}} &middot; {{ deleteTarget.shortCommit }}{{/if}}</p>
+              <p class="mt-3 text-xs font-mono text-slate-500">{{ deleteTarget.whenText }} UTC{{#if deleteTarget.shortCommit}} · {{ deleteTarget.shortCommit }}{{/if}}</p>
 {{/if}}
             </div>
           </div>
@@ -1516,115 +1655,6 @@ template
             <button onclick="{{ confirmCancel() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">Cancel deployment</button>
 {{/if}}
           </div>
-        </div>
-      </div>
-{{/if}}
-
-{{#if modal is "log"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-3 sm:px-6">
-        <div class="w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
-
-          <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-800">
-            <div class="flex items-center gap-3 min-w-0">
-              <h3 id="log-title" class="text-slate-200 text-sm font-medium">Deployment log</h3>
-{{#if logStatus is "queued"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sky-400"><span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> Queued</span>
-{{/if}}
-{{#if logStatus is "deploying"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-400"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Deploying</span>
-{{/if}}
-{{#if logStatus is "success"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-400"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Deployed</span>
-{{/if}}
-{{#if logStatus is "failed"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-400"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed</span>
-{{/if}}
-{{#if logStatus is "cancelled"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-orange-400"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Cancelled</span>
-{{/if}}
-            </div>
-
-            <div class="flex items-center gap-1.5">
-{{#if logErrors is not 0}}
-              <button onclick="{{ jumpToError() }}" class="text-xs text-rose-300 rounded-md px-2.5 py-1.5 hover:bg-rose-500/10 transition-colors">Jump to first error</button>
-{{/if}}
-              <button onclick="{{ copyLog() }}" class="text-xs text-slate-300 rounded-md px-2.5 py-1.5 hover:bg-slate-800 transition-colors">
-                {{#if copied}}Copied{{/if}}{{#if not copied}}Copy{{/if}}
-              </button>
-              <button onclick="{{ closeModal() }}" aria-label="Close" class="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-white hover:bg-slate-800 transition-colors">
-                <IconX class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-1 px-4 py-2 border-b border-slate-800/70">
-{{#each t in logTabs}}
-            <button onclick="{{ setLogFilter(t.key) }}" class="{{ t.cls }}">
-              {{ t.label }}
-              <span class="opacity-60">{{ t.count }}</span>
-            </button>
-{{/each}}
-          </div>
-
-{{#if logStatus is "deploying"}}
-          <div class="h-0.5 w-full bg-slate-800 overflow-hidden">
-            <div class="h-full w-1/3 bg-brand-500 animate-pulse"></div>
-          </div>
-{{/if}}
-
-{{#if logLoading}}
-          <div class="flex-1 flex items-center justify-center">
-            <p class="text-slate-500 text-sm font-mono">loading log…</p>
-          </div>
-{{/if}}
-
-{{#if not logLoading}}
-{{#if logText}}
-          <div class="relative flex-1 min-h-0">
-            <div id="deploy-log-modal" onscroll="{{ onModalScroll() }}" class="h-full overflow-y-auto overflow-x-hidden py-3 text-[12.5px] leading-6 font-mono">
-{{#if shownLogLines.length is 0}}
-              <p class="px-5 py-6 text-slate-500 text-xs">No lines match this filter.</p>
-{{/if}}
-{{#each l in shownLogLines}}
-{{#if l.isStage}}
-              <div id="log-line-{{ l.n }}" class="mt-5 mb-1 flex items-center gap-3 px-5">
-                <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-400 [overflow-wrap:anywhere]">{{ l.text }}</span>
-                <span class="h-px flex-1 bg-slate-800"></span>
-              </div>
-{{/if}}
-{{#if not l.isStage}}
-              <div id="log-line-{{ l.n }}" class="flex items-start border-l-2 hover:bg-white/[0.03] {{ l.rowCls }}">
-                <span class="w-12 shrink-0 pr-3 text-right text-slate-700 select-none">{{ l.n }}</span>
-                <span class="w-4 shrink-0 text-center select-none opacity-80 {{ l.cls }}">{{ l.icon }}</span>
-                <span class="min-w-0 flex-1 pl-2 pr-5 whitespace-pre-wrap [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-slate-600 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
-              </div>
-{{/if}}
-{{/each}}
-            </div>
-{{#if not modalAtBottom}}
-            <button onclick="{{ jumpModal() }}" class="absolute bottom-4 right-6 inline-flex items-center gap-1.5 text-xs font-semibold bg-brand-500 text-slate-950 rounded-full px-3.5 py-2 shadow-lg hover:bg-brand-400 transition-colors">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M10 4v12M5 11l5 5 5-5" /></svg>
-              Jump to bottom
-            </button>
-{{/if}}
-          </div>
-{{/if}}
-{{#if not logText}}
-          <div class="flex-1 flex items-center justify-center">
-            <p class="text-slate-500 text-sm font-mono">no output yet</p>
-          </div>
-{{/if}}
-{{/if}}
-
-          <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-800">
-            <p class="text-slate-500 text-xs">
-{{#if deployedText}}
-              Last deployed <span class="font-mono text-slate-400">{{ deployedText }} UTC</span>
-{{/if}}
-            </p>
-            <button onclick="{{ closeModal() }}" class="text-sm text-slate-300 rounded-md px-4 py-1.5 hover:bg-slate-800 transition-colors">Close</button>
-          </div>
-
         </div>
       </div>
 {{/if}}
