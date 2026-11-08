@@ -1,7 +1,8 @@
 import type { Router } from "@tylix/core";
 import { StatusController } from "../controllers/StatusController.js";
 import { AnnouncementController } from "../controllers/AnnouncementController.js";
-import { startHeartbeat } from "../services/HubReporter.js";
+import { startHeartbeat, startMetrics } from "../services/HubReporter.js";
+import { collectUserMetrics } from "../services/UserMetrics.js";
 
 let started = false;
 
@@ -22,5 +23,6 @@ export async function routes(router: Router) {
     if (!started) {
         started = true;
         startHeartbeat("0.1.0");
+        startMetrics(collectUserMetrics);
     }
 }
