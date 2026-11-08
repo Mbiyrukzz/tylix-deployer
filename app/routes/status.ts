@@ -12,6 +12,9 @@ export async function routes(router: Router) {
     // Public: the same overall state the Hub already publishes.
     router.get("/api/status", (req, res) => status.index(req, res));
 
+    // Public: daily uptime for the last 90 days.
+    router.get("/api/uptime", (req, res) => status.uptime(req, res));
+
     // Public: incidents, maintenance and notices from the Hub.
     router.get("/api/announcements", (req, res) => announcements.index(req, res));
 

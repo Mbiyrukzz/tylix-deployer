@@ -1,6 +1,6 @@
 /**
- * Reads this product's changelog, status and announcements from the Ashmif
- * Hub public API. Server-side only, so there is no CORS to deal with.
+ * Reads this product's changelog, status, announcements and uptime from the
+ * Ashmif Hub public API. Server-side only, so there is no CORS to deal with.
  * Results are cached briefly, and the last good copy is served if the Hub
  * is unreachable (except status, which becomes "unknown").
  */
@@ -145,6 +145,57 @@ export async function getAnnouncements(): Promise<HubAnnouncement[]> {
             return announcementCache.items;
         }
         return [];
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+export interface UptimeDay {
+    day: string; // YYYY-MM-DD, UTC
+    uptime_percent: number | null; // null = not monitored yet
+    down_minutes: number;
+}
+
+export interface UptimeReport {
+    uptime_percent: number | null;
+    days: UptimeDay[]; // oldest first, today last
+}
+
+const UPTIME_TTL_MS = 60_000;
+const UPTIME_STALE_MS = 10 * 60_000;
+let uptimeCache: { at: number; value: UptimeReport } | null = null;
+
+/**
+ * Never throws. If the Hub can't be reached the last good copy is served
+ * for up to ten minutes, then null (the page hides the uptime card).
+ */
+export async function getUptime(): Promise<UptimeReport | null> {
+    if (!BASE) return null;
+
+    if (uptimeCache && Date.now() - uptimeCache.at < UPTIME_TTL_MS) {
+        return uptimeCache.value;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+        const res = await fetch(`${BASE}/api/v1/products/${encodeURIComponent(SLUG)}/uptime?days=90`, {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`The Hub answered ${res.status}.`);
+
+        const json = (await res.json()) as { uptime?: UptimeReport };
+        if (!json.uptime || !Array.isArray(json.uptime.days)) throw new Error("Unexpected uptime answer.");
+
+        uptimeCache = { at: Date.now(), value: json.uptime };
+        return json.uptime;
+    } catch {
+        if (uptimeCache && Date.now() - uptimeCache.at < UPTIME_STALE_MS) {
+            return uptimeCache.value;
+        }
+        return null;
     } finally {
         clearTimeout(timer);
     }

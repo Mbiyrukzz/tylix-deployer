@@ -7,6 +7,8 @@ state
   level: "unknown"
   lastSeen: ""
   notices: []
+  bars: []
+  uptimeLabel: ""
 
 computed
   headline() {
@@ -129,13 +131,54 @@ action
     this.notices = active.concat(upcoming).concat(resolved)
   }
 
+  barClass(d) {
+    if d.uptime_percent is null {
+      return "bg-zinc-200 dark:bg-white/10"
+    }
+    if d.uptime_percent >= 99.9 {
+      return "bg-emerald-500"
+    }
+    if d.uptime_percent >= 99 {
+      return "bg-amber-400"
+    }
+    return "bg-rose-500"
+  }
+
+  barTitle(d) {
+    const date = new Date(d.day).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
+    if d.uptime_percent is null {
+      return date + ": no data"
+    }
+    if d.down_minutes > 0 {
+      return date + ": " + d.uptime_percent + "% · " + d.down_minutes + " min down"
+    }
+    return date + ": " + d.uptime_percent + "%"
+  }
+
+  applyUptime(u) {
+    if not u {
+      this.bars = []
+      this.uptimeLabel = ""
+      return null
+    }
+    if not Array.isArray(u.days) {
+      this.bars = []
+      this.uptimeLabel = ""
+      return null
+    }
+    this.bars = u.days.map((d) => Object.assign({}, d, { title: this.barTitle(d), cls: this.barClass(d) }))
+    this.uptimeLabel = u.uptime_percent is null ? "Not enough data yet" : u.uptime_percent + "% over this period"
+  }
+
   async load() {
     const results = await Promise.all([
       useApi("/api/status"),
-      useApi("/api/announcements")
+      useApi("/api/announcements"),
+      useApi("/api/uptime")
     ])
     const res = results[0]
     const noteRes = results[1]
+    const upRes = results[2]
 
     if res.ok {
       this.level = res.data.state
@@ -146,6 +189,10 @@ action
 
     if noteRes.ok {
       this.applyAnnouncements(noteRes.data?.announcements)
+    }
+
+    if upRes.ok {
+      this.applyUptime(upRes.data?.uptime)
     }
   }
 
@@ -181,6 +228,25 @@ template
       <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-3">{{ detail }}</p>
       <p class="text-xs text-zinc-500 mt-4">Last health report: {{ checkedLabel }}. This page refreshes automatically.</p>
     </section>
+
+{{#if bars.length > 0}}
+    <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6 mt-6">
+      <div class="flex items-center justify-between gap-4 mb-4">
+        <h2 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Uptime, last 90 days</h2>
+        <span class="text-sm text-zinc-700 dark:text-zinc-300">{{ uptimeLabel }}</span>
+      </div>
+      <div class="flex gap-px h-8" role="img" aria-label="Daily uptime for the last 90 days">
+{{#each b in bars}}
+        <span title="{{ b.title }}" class="flex-1 rounded-[2px] {{ b.cls }}"></span>
+{{/each}}
+      </div>
+      <div class="flex items-center justify-between text-xs text-zinc-500 mt-2">
+        <span>90 days ago</span>
+        <span>Today</span>
+      </div>
+      <p class="text-xs text-zinc-500 mt-4">Measured from the health reports Tylix Deploy sends every minute. Grey days were not monitored yet.</p>
+    </section>
+{{/if}}
 
 {{#each n in notices}}
 {{#if n.heading}}
