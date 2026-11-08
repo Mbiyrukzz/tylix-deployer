@@ -1,5 +1,29 @@
 /**
- * Deploys a site that is already provisioned. Phases, one SSH call each:
+ * Deploys a site that is already provisioned.
+ *
+ * HOW A DEPLOY RUNS NOW
+ *
+ *   1. The controller calls SiteDeployer.enqueue(): a Deployment row with
+ *      status "queued" is created. Nothing runs yet.
+ *   2. A runner loop (every 2s, in every process that imports this file
+ *      unless TYLIX_DEPLOY_RUNNER=off) claims queued rows and runs them.
+ *      The claim is a conditional update, so two processes never run the
+ *      same deployment.
+ *   3. A running deployment heartbeats every 15s. If the process dies
+ *      (restart, crash, deploying the deployer itself), the sweeper fails
+ *      the row within ~2 minutes. A clean SIGTERM fails it immediately.
+ *   4. Cancel: the controller sets cancel_requested. A queued row is simply
+ *      closed. A running one is stopped: the runner kills the running
+ *      commands on the server, and the deploy script's own rollback runs.
+ *
+ * Rules the runner follows when picking work:
+ *   - one deployment per server at a time (builds are heavy)
+ *   - at most TYLIX_DEPLOY_CONCURRENCY (default 3) at once
+ *   - a deploy of the deployer itself (domain listed in TYLIX_SELF_DOMAIN)
+ *     runs alone: it waits for everything else to finish, and nothing else
+ *     starts while it runs. This is what used to kill other deploys.
+ *
+ * Phases, one SSH call each:
  *
  *   pull     git pull --ff-only (token passed through git's env config),
  *            then prints the commit it landed on (saved on the history row)
@@ -17,9 +41,10 @@
  *                 container is only removed after the build succeeds, and the
  *                 previous image is restored if the new container doesn't stay up.
  *
- * run() never throws; failures are saved on the row.
+ * Nothing here throws to the caller: failures are saved on the rows.
  */
 
+import { randomBytes } from "node:crypto";
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
 import { Deployment } from "../models/Deployment.js";
@@ -53,19 +78,71 @@ export interface DeployRow {
     [key: string]: unknown;
 }
 
+export interface DeploymentRow {
+    id: number;
+    site_id: number;
+    user_id: number;
+    team_id: number | null;
+    status: string;
+    log: string;
+    branch: string;
+    commit_sha: string;
+    commit_message: string;
+    cancel_requested: number;
+    runner: string;
+    queued_at: string;
+    started_at: string;
+    finished_at: string;
+    heartbeat_at: string;
+    [key: string]: unknown;
+}
+
 interface Phase {
     title: string;
     script: string;
-    /** The pull phase prints the commit it landed on; run() saves it. */
+    /** The pull phase prints the commit it landed on; execute() saves it. */
     capturesCommit?: boolean;
+    /** This phase restarts services. For the deployer's own site it ends the process running the deploy. */
+    restarts?: boolean;
 }
 
-const DEPLOY_TIMEOUT_MS = 20 * 60_000;
+// ---- tuning ----
+
+const DEPLOY_TIMEOUT_MS = 20 * 60_000; // per SSH phase
+const PHASE_GRACE_MS = 30_000; // extra wait before we stop waiting on sshExec itself
+const HEARTBEAT_MS = 15_000; // a running deploy touches its rows this often
+const STALE_MS = 2 * 60_000; // no heartbeat for this long = the process died
+const SWEEP_MS = 30_000;
+const POLL_MS = 2_000;
+const CANCEL_POLL_MS = 2_000;
+const CANCEL_GRACE_MS = 45_000; // after a cancel, how long we wait for the phase to end before giving up on it
+const MAX_CONCURRENT = Math.max(1, Number(process.env.TYLIX_DEPLOY_CONCURRENCY) || 3);
+const RUNNER_ENABLED = String(process.env.TYLIX_DEPLOY_RUNNER ?? "on").toLowerCase() !== "off";
+const RUNNER_ID = `${process.pid}-${randomBytes(3).toString("hex")}`;
 
 const COMMIT_MARK = "TYLIX_COMMIT ";
 const COMMIT_MSG_MARK = "TYLIX_COMMIT_MSG ";
 
 const s = (value: unknown) => String(value ?? "");
+const nowIso = () => new Date().toISOString();
+
+/** Parses an ISO string, a Date, or MySQL's "YYYY-MM-DD HH:MM:SS" (read as UTC). NaN when empty. */
+export function parseTime(value: unknown): number {
+    if (value instanceof Date) return value.getTime();
+    const text = s(value).trim();
+    if (!text) return NaN;
+    const plain = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text);
+    return new Date(plain ? text.replace(" ", "T") + "Z" : text).getTime();
+}
+
+/** True for the domain(s) of the deployer itself, set in TYLIX_SELF_DOMAIN (comma separated). */
+export function isSelfDeploy(domain: string): boolean {
+    const list = s(process.env.TYLIX_SELF_DOMAIN)
+        .split(",")
+        .map((d) => d.trim().toLowerCase())
+        .filter(Boolean);
+    return list.includes(s(domain).toLowerCase());
+}
 
 /** A deploy needs a repository the site was cloned from. */
 export function canDeploy(site: DeployRow): boolean {
@@ -109,6 +186,9 @@ export function envPathFor(site: DeployRow): string {
  * Wraps deploy steps so a failure rolls the code back to the previous commit
  * and re-runs the same steps there. (Node, static, python, java, go, ruby,
  * dotnet and rust deploys. Docker has its own rollback, see dockerDeployScript.)
+ *
+ * Cancelling kills the running command, which fires the ERR trap below, so a
+ * cancelled deploy rolls back exactly like a failed one.
  */
 function guarded(steps: string[]): string {
     const body = steps.join("\n");
@@ -364,9 +444,8 @@ echo "Deployment completed."`;
     return guarded(lines);
 }
 
-// The deploy_log column is TEXT-sized (64 KB in bytes). Keep the tail, because
-// that is where the error is, and stay under the limit even for 4-byte chars.
-// Sized for a MEDIUMTEXT column (16 MB); lower it if the column is plain TEXT.
+// The deploy_log column is MEDIUMTEXT (16 MB). Keep the tail, because that is
+// where the error is.
 const MAX_LOG_CHARS = 200_000;
 
 function clip(text: string): string {
@@ -408,24 +487,6 @@ function extractCommit(text: string): { sha: string; message: string; clean: str
     }
 
     return { sha, message: message.slice(0, 500), clean: kept.join("\n").trim() };
-}
-
-/** Saves the commit on the newest running history row of the site. Never throws. */
-async function recordCommit(siteId: number, sha: string, message: string): Promise<void> {
-    if (!sha) return;
-
-    try {
-        const all = (await Deployment.all()) as { id: number; site_id: number; status: string }[];
-        const running = all
-            .filter((d) => Number(d.site_id) === Number(siteId) && d.status === "deploying")
-            .sort((a, b) => Number(b.id) - Number(a.id))[0];
-
-        if (running) {
-            await Deployment.update(running.id, { commit_sha: sha, commit_message: message });
-        }
-    } catch (err) {
-        console.error(`Couldn't save the commit for site ${siteId}:`, err);
-    }
 }
 
 /** Same pool file the site-creation job writes (socket name matches the nginx vhost). */
@@ -479,6 +540,46 @@ bounce() {
   fi
 }
 ${calls}`;
+}
+
+/**
+ * Stops whatever the deployment script is running on the server.
+ *
+ * It finds the runner script's bash process and kills the whole process tree
+ * UNDER it (never the runner itself). The runner then sees a failing command,
+ * its ERR trap fires, and the script rolls back on its own, exactly as for any
+ * other failure (for Laravel that includes "artisan up").
+ *
+ * The pull phase has no runner script, so a running `git pull` is stopped too.
+ */
+function cancelScript(site: DeployRow): string {
+    const docker = (getType(site.type)?.runtime ?? "static") === "docker";
+    const pattern = docker
+        ? `^bash /run/tylix-deploy-$SITE_USER\\.sh$`
+        : `^bash /home/$SITE_USER/\\.deploy-$SITE_USER\\.sh$`;
+
+    return shellScript(
+        { SITE_USER: site.isolated_user, SITE_ROOT: `/home/${site.isolated_user}/${site.domain}` },
+        `
+kill_tree() {
+  for c in $(pgrep -P "$1" || true); do kill_tree "$c"; done
+  $SUDO kill -TERM "$1" 2>/dev/null || true
+}
+RUNNER_RE="${pattern}"
+STOPPED=0
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+  for P in $(pgrep -f "$RUNNER_RE" || true); do
+    for c in $(pgrep -P "$P" || true); do
+      kill_tree "$c"
+      STOPPED=1
+    done
+  done
+  if [ "$STOPPED" = "1" ]; then break; fi
+  sleep 1
+done
+if $SUDO pkill -TERM -u "$SITE_USER" -f "^git (pull|fetch)" 2>/dev/null; then STOPPED=1; fi
+if [ "$STOPPED" = "1" ]; then echo "Stopped the running commands on the server."; else echo "Nothing was running on the server to stop."; fi`,
+    );
 }
 
 function buildPhases(site: DeployRow, source: { kind: string; token: string } | null, plugins: string[]): Phase[] {
@@ -597,17 +698,18 @@ command -v "php$PHP_VERSION" >/dev/null 2>&1 || { echo "PHP $PHP_VERSION is not 
 
     if (runtime === "docker") {
         // Docker needs root, so this script runs as the ssh user through sudo, not as
-        // the isolated user. It is written to a private temp file (not into the site's
-        // home) so the site user can never edit what root is about to run.
+        // the isolated user. It is written to a root-owned file in /run (writable by
+        // root only, so the site user can never edit what root is about to run).
+        // The path is fixed per site so a cancel can find the process.
         phases.push({
             title: "Building and starting the container",
             script: shellScript(
                 { ...base, SCRIPT_B64: Buffer.from(runner, "utf8").toString("base64") },
                 `
-RUNNER="$(mktemp)"
-trap 'rm -f "$RUNNER"' EXIT
-printf %s "$SCRIPT_B64" | base64 -d > "$RUNNER"
-chmod 700 "$RUNNER"
+RUNNER="/run/tylix-deploy-$SITE_USER.sh"
+printf %s "$SCRIPT_B64" | base64 -d | $SUDO tee "$RUNNER" >/dev/null
+$SUDO chmod 700 "$RUNNER"
+trap '$SUDO rm -f "$RUNNER"' EXIT
 cd "$SITE_ROOT"
 $SUDO env SITE_USER="$SITE_USER" SITE_ROOT="$SITE_ROOT" DOMAIN="$DOMAIN" BRANCH="$BRANCH" APP_DIR="$APP_DIR" BACKEND_DIR="$BACKEND_DIR" PORT="$PORT" bash "$RUNNER"
 echo "Deployment script finished"`,
@@ -637,6 +739,7 @@ echo "Deployment script finished"`,
     if (appRuntime && s(site.start_command) !== "") {
         phases.push({
             title: "Restarting the app",
+            restarts: true,
             script: shellScript(
                 base,
                 `
@@ -661,6 +764,7 @@ fi`,
     if (runtime === "php") {
         phases.push({
             title: "Reloading PHP-FPM",
+            restarts: true,
             script: shellScript(
                 base,
                 `
@@ -674,6 +778,7 @@ echo "PHP-FPM reloaded"`,
     if (pluginScript) {
         phases.push({
             title: "Restarting plugin services",
+            restarts: true,
             script: shellScript(base, pluginScript),
         });
     }
@@ -681,96 +786,541 @@ echo "PHP-FPM reloaded"`,
     return phases;
 }
 
-export class SiteDeployer {
-    static start(siteId: number): void {
-        // run() handles its own errors; this is a last line of defence so a
-        // bug here can never become an unhandled rejection that kills the server.
-        SiteDeployer.run(siteId).catch((err) => {
-            console.error(`Deploy of site ${siteId} crashed:`, err);
-        });
-    }
+// =====================================================================
+// Running a deployment
+// =====================================================================
 
-    static async run(siteId: number): Promise<void> {
-        let log = "";
+class CancelError extends Error {}
 
-        // Never throws. If the log can't be saved, the status still is.
-        const save = async (patch: Record<string, unknown>) => {
+interface ActiveRun {
+    siteId: number;
+    /** Called on SIGTERM/SIGINT: records the deployment as failed right away. */
+    interrupt: (reason: string) => Promise<void>;
+}
+
+/** Deployments this process is running right now, by deployment id. */
+const active = new Map<number, ActiveRun>();
+
+/** Rejects if `work` hasn't settled in `ms`, or when any `extra` promise rejects (a cancel). */
+function withDeadline<T>(work: Promise<T>, ms: number, what: string, extra: Promise<never>[] = []): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+            () => reject(new Error(`"${what}" did not finish within ${Math.round(ms / 60_000)} minutes.`)),
+            ms,
+        );
+    });
+    return Promise.race([work, deadline, ...extra]).finally(() => clearTimeout(timer));
+}
+
+async function execute(deploymentId: number, siteId: number): Promise<void> {
+    let log = "";
+    let finished = false;
+    let earlyDone = false; // self deploy: recorded as success before the restart that ends this process
+    let cancelFlag = false;
+    let inflight = 0;
+    let queue: Promise<void> = Promise.resolve();
+
+    /**
+     * Never throws. Saves run one at a time and read `log` when they run, so a
+     * late heartbeat can never overwrite the final log with an older one.
+     * Every save also stamps heartbeat_at, which is what the sweeper watches.
+     */
+    const save = (sitePatch: Record<string, unknown> = {}, depPatch: Record<string, unknown> = {}): Promise<void> => {
+        inflight++;
+        queue = queue.then(async () => {
+            const text = clip(log);
             try {
-                await Site.update(siteId, { ...patch, deploy_log: clip(log) });
-            } catch (err) {
-                console.error(`Couldn't save the deploy log for site ${siteId}:`, err);
                 try {
-                    if (Object.keys(patch).length > 0) await Site.update(siteId, patch);
-                } catch (err2) {
-                    console.error(`Couldn't save the deploy status for site ${siteId}:`, err2);
+                    await Site.update(siteId, { ...sitePatch, deploy_log: text });
+                } catch (err) {
+                    console.error(`Couldn't save the deploy log for site ${siteId}:`, err);
+                    try {
+                        if (Object.keys(sitePatch).length > 0) await Site.update(siteId, sitePatch);
+                    } catch (err2) {
+                        console.error(`Couldn't save the deploy status for site ${siteId}:`, err2);
+                    }
                 }
+
+                try {
+                    await Deployment.update(deploymentId, { ...depPatch, log: text, heartbeat_at: nowIso() });
+                } catch (err) {
+                    console.error(`Couldn't save deployment ${deploymentId}:`, err);
+                    try {
+                        await Deployment.update(deploymentId, { ...depPatch, heartbeat_at: nowIso() });
+                    } catch (err2) {
+                        console.error(`Couldn't save the status of deployment ${deploymentId}:`, err2);
+                    }
+                }
+            } finally {
+                inflight--;
+            }
+        });
+        return queue;
+    };
+
+    const interrupt = async (reason: string) => {
+        if (finished || earlyDone) return;
+        finished = true;
+        log += `\nFAILED: ${reason}\n`;
+        await save({ deploy_status: "failed" }, { status: "failed", finished_at: nowIso() });
+    };
+
+    active.set(deploymentId, { siteId, interrupt });
+
+    let beat: ReturnType<typeof setInterval> | undefined;
+    let watcher: ReturnType<typeof setInterval> | undefined;
+
+    try {
+        const site = (await Site.find(siteId)) as DeployRow | null;
+        if (!site) throw new Error("The site no longer exists.");
+
+        const server = (await Server.find(site.server_id)) as
+            | { user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string }
+            | null;
+        if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
+            throw new Error("The server no longer exists.");
+        }
+
+        let source: { kind: string; token: string } | null = null;
+        if (Number(site.source_control_id) !== 0) {
+            const sc = (await SourceProvider.find(site.source_control_id)) as
+                | { user_id: number; team_id?: number | null; kind: string; token: string }
+                | null;
+            if (!sc || (await teamIdOfRow(sc)) !== (await teamIdOfRow(site))) {
+                throw new Error("The source control connection no longer exists.");
+            }
+            source = { kind: sc.kind, token: CryptoService.decrypt(sc.token) };
+        }
+
+        const token = source?.token ?? "";
+        const mask = (text: string) => (token ? text.split(token).join("***") : text);
+        const target = serverTarget(server);
+        const self = isSelfDeploy(site.domain);
+
+        // The deployment row is already "deploying" (the claim did that).
+        await save({ deploy_status: "deploying" });
+
+        // Heartbeat: proof of life for the sweeper, and streams the log during long phases.
+        beat = setInterval(() => {
+            if (!finished && inflight === 0) void save();
+        }, HEARTBEAT_MS);
+
+        // Cancel: the controller sets cancel_requested; we notice within a couple of seconds.
+        let rejectCancel: (e: Error) => void = () => {};
+        const cancelGate = new Promise<never>((_, reject) => {
+            rejectCancel = reject;
+        });
+        cancelGate.catch(() => {}); // never an unhandled rejection when nobody is racing it
+
+        let checking = false;
+        const checkCancel = async () => {
+            if (cancelFlag || finished || checking) return;
+            checking = true;
+            try {
+                const row = (await Deployment.find(deploymentId)) as DeploymentRow | null;
+                if (!row || Number(row.cancel_requested) !== 1) return;
+
+                cancelFlag = true;
+                log += "\n==> Cancelling the deployment\n";
+                await save();
+
+                try {
+                    const killed = await sshExec(target, cancelScript(site), 60_000);
+                    const out = mask([killed.stdout, killed.stderr].filter(Boolean).join("\n").trim());
+                    if (out) log += out + "\n";
+                } catch (err) {
+                    log += `Couldn't reach the server to stop the commands: ${err instanceof Error ? err.message : "unknown error"}\n`;
+                }
+                await save();
+
+                // If the running phase ends by itself (it should, the command was killed), good.
+                // If not, stop waiting for it.
+                setTimeout(() => rejectCancel(new CancelError("Cancelled.")), CANCEL_GRACE_MS);
+            } catch (err) {
+                console.error(`Cancel check for deployment ${deploymentId} failed:`, err);
+            } finally {
+                checking = false;
             }
         };
+        watcher = setInterval(() => void checkCancel(), CANCEL_POLL_MS);
 
-        try {
-            const site = (await Site.find(siteId)) as DeployRow | null;
-            if (!site) return;
+        const installed = ((await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[])
+            .filter((r) => Number(r.site_id) === siteId && r.status === "installed")
+            .map((r) => r.plugin);
 
-            const server = (await Server.find(site.server_id)) as
-                | { user_id: number; team_id: number | null; host: string; port: number; ssh_user: string; ssh_key: string }
-                | null;
-            if (!server || (await teamIdOfRow(server)) !== (await teamIdOfRow(site))) {
-                throw new Error("The server no longer exists.");
+        for (const phase of buildPhases(site, source, installed)) {
+            if (cancelFlag) throw new CancelError("Cancelled.");
+
+            log += `==> ${phase.title}\n`;
+            await save();
+
+            // Restarting the deployer's own services ends the process that is running this deploy.
+            // Record the success first, or the row would be left "deploying" and later swept as failed.
+            if (phase.restarts && self && !earlyDone) {
+                earlyDone = true;
+                log +=
+                    "The deployer is restarting itself now. This deployment is recorded as successful before the restart, because the restart ends the process running it. Reload the page in a few seconds.\n";
+                await save({ deploy_status: "success", deployed_at: nowIso() }, { status: "success", finished_at: nowIso() });
             }
 
-            let source: { kind: string; token: string } | null = null;
-            if (Number(site.source_control_id) !== 0) {
-                const sc = (await SourceProvider.find(site.source_control_id)) as
-                    | { user_id: number; team_id?: number | null; kind: string; token: string }
-                    | null;
-                if (!sc || (await teamIdOfRow(sc)) !== (await teamIdOfRow(site))) {
-                    throw new Error("The source control connection no longer exists.");
-                }
-                source = { kind: sc.kind, token: CryptoService.decrypt(sc.token) };
-            }
+            const result = await withDeadline(
+                sshExec(target, phase.script, DEPLOY_TIMEOUT_MS),
+                DEPLOY_TIMEOUT_MS + PHASE_GRACE_MS,
+                phase.title,
+                [cancelGate],
+            );
 
-            const token = source?.token ?? "";
-            const mask = (text: string) => (token ? text.split(token).join("***") : text);
-            const target = serverTarget(server);
+            let stdout = result.stdout;
 
-            await save({ deploy_status: "deploying" });
-
-            const installed = ((await SitePlugin.all()) as { site_id: number; plugin: string; status: string }[])
-                .filter((r) => Number(r.site_id) === siteId && r.status === "installed")
-                .map((r) => r.plugin);
-
-            for (const phase of buildPhases(site, source, installed)) {
-                log += `==> ${phase.title}\n`;
-                await save({});
-
-                const result = await sshExec(target, phase.script, DEPLOY_TIMEOUT_MS);
-
-                let stdout = result.stdout;
-
-                // The pull phase prints the commit it landed on. Save it on the history
-                // row and keep the marker lines out of the visible log.
-                if (phase.capturesCommit && result.code === 0) {
-                    const found = extractCommit(stdout);
-                    stdout = found.clean;
-                    await recordCommit(siteId, found.sha, mask(found.message));
-                }
-
-                const out = mask([stdout, result.stderr].filter(Boolean).join("\n").trim());
-                if (out) log += out + "\n";
-                log += "\n";
-                await save({});
-
-                if (result.code !== 0) {
-                    throw new Error(mask(lastLine(result.stderr, result.stdout)));
+            // The pull phase prints the commit it landed on. Save it on the history
+            // row and keep the marker lines out of the visible log.
+            if (phase.capturesCommit && result.code === 0) {
+                const found = extractCommit(stdout);
+                stdout = found.clean;
+                if (found.sha) {
+                    try {
+                        await Deployment.update(deploymentId, {
+                            commit_sha: found.sha,
+                            commit_message: mask(found.message),
+                        });
+                    } catch (err) {
+                        console.error(`Couldn't save the commit for deployment ${deploymentId}:`, err);
+                    }
                 }
             }
 
-            log += "Deployed successfully.\n";
-            await save({ deploy_status: "success", deployed_at: new Date().toISOString() });
-        } catch (err) {
+            const out = mask([stdout, result.stderr].filter(Boolean).join("\n").trim());
+            if (out) log += out + "\n";
+            log += "\n";
+            await save();
+
+            if (result.code !== 0) {
+                if (cancelFlag) throw new CancelError("Cancelled.");
+                throw new Error(mask(lastLine(result.stderr, result.stdout)));
+            }
+        }
+
+        finished = true;
+        log += "Deployed successfully.\n";
+        await save({ deploy_status: "success", deployed_at: nowIso() }, { status: "success", finished_at: nowIso() });
+    } catch (err) {
+        finished = true;
+
+        if (err instanceof CancelError) {
+            log +=
+                "\nCANCELLED: the deployment was stopped. The deploy script rolled back if it was running; the code on the server may be partially updated, so deploy again before relying on it.\n";
+            await save({ deploy_status: "cancelled" }, { status: "cancelled", finished_at: nowIso() });
+        } else {
             const message = err instanceof Error ? err.message : "Deployment failed.";
             log += `\nFAILED: ${message}\n`;
-            await save({ deploy_status: "failed" });
+            await save({ deploy_status: "failed" }, { status: "failed", finished_at: nowIso() });
         }
+    } finally {
+        finished = true;
+        if (beat) clearInterval(beat);
+        if (watcher) clearInterval(watcher);
+        active.delete(deploymentId);
+        // A slot is free: let the next queued deployment start without waiting for the poll.
+        SiteDeployer.kick();
     }
 }
+
+// =====================================================================
+// The queue runner
+// =====================================================================
+
+/**
+ * Claims a queued deployment. The conditional update (status must still be
+ * "queued") is what makes two processes unable to take the same row; after it
+ * we read the row back and check it carries OUR runner id.
+ */
+async function claim(id: number): Promise<boolean> {
+    const patch = { status: "deploying", runner: RUNNER_ID, started_at: nowIso(), heartbeat_at: nowIso() };
+
+    try {
+        await (Deployment as any).where("id", id).where("status", "queued").update(patch);
+    } catch {
+        // The ORM has no conditional update: fall back to a plain one (safe with a single runner process).
+        try {
+            const current = (await Deployment.find(id)) as DeploymentRow | null;
+            if (!current || current.status !== "queued") return false;
+            await Deployment.update(id, patch);
+        } catch {
+            return false;
+        }
+    }
+
+    const row = (await Deployment.find(id)) as DeploymentRow | null;
+    return row?.status === "deploying" && row.runner === RUNNER_ID;
+}
+
+let ticking = false;
+
+async function tick(): Promise<void> {
+    if (!RUNNER_ENABLED || ticking) return;
+    ticking = true;
+
+    try {
+        const queued = ((await Deployment.where("status", "queued").get()) as unknown as DeploymentRow[]).sort(
+            (a, b) => Number(a.id) - Number(b.id),
+        );
+        if (queued.length === 0) return;
+
+        const running = (await Deployment.where("status", "deploying").get()) as unknown as DeploymentRow[];
+
+        const infoCache = new Map<number, { server_id: number; domain: string } | null>();
+        const infoOf = async (siteId: number) => {
+            if (!infoCache.has(siteId)) {
+                const site = (await Site.find(siteId)) as { server_id: number; domain: string } | null;
+                infoCache.set(siteId, site ? { server_id: Number(site.server_id), domain: s(site.domain) } : null);
+            }
+            return infoCache.get(siteId) ?? null;
+        };
+
+        // What is running right now, anywhere (this process or another).
+        const busy: { server_id: number; self: boolean }[] = [];
+        for (const r of running) {
+            const info = await infoOf(Number(r.site_id));
+            if (info) busy.push({ server_id: info.server_id, self: isSelfDeploy(info.domain) });
+        }
+
+        let waitingForSelf = false;
+
+        for (const cand of queued) {
+            if (running.length >= MAX_CONCURRENT) break;
+
+            const info = await infoOf(Number(cand.site_id));
+            if (!info) {
+                await SiteDeployer.closeOrphan(cand.id, "failed", "FAILED: the site no longer exists.", ["queued"]);
+                continue;
+            }
+
+            const self = isSelfDeploy(info.domain);
+
+            if (self) {
+                // The deployer restarts itself, so it runs alone and everything else waits for it.
+                if (running.length > 0) {
+                    waitingForSelf = true;
+                    continue;
+                }
+            } else {
+                if (waitingForSelf) continue; // don't let new work starve a queued self deploy
+                if (busy.some((b) => b.self)) continue;
+            }
+
+            if (busy.some((b) => b.server_id === info.server_id)) continue; // one deploy per server
+
+            if (!(await claim(cand.id))) continue;
+
+            busy.push({ server_id: info.server_id, self });
+            running.push(cand);
+
+            void execute(cand.id, Number(cand.site_id)).catch((err) => {
+                console.error(`Deployment ${cand.id} crashed:`, err);
+            });
+        }
+    } catch (err) {
+        console.error("Deploy queue tick failed:", err);
+    } finally {
+        ticking = false;
+    }
+}
+
+// =====================================================================
+// Public API
+// =====================================================================
+
+export class SiteDeployer {
+    /**
+     * Queues a deployment. Returns the new history row (status "queued").
+     * The runner picks it up within a couple of seconds.
+     */
+    static async enqueue(siteId: number, userId: number): Promise<DeploymentRow | null> {
+        const site = (await Site.find(siteId)) as DeployRow | null;
+        if (!site) return null;
+
+        await Site.update(siteId, { deploy_status: "queued", deploy_log: "" });
+
+        const row = (await Deployment.create({
+            site_id: siteId,
+            user_id: userId,
+            team_id: Number(site.team_id),
+            status: "queued",
+            log: "",
+            branch: s(site.branch),
+            commit_sha: "",
+            commit_message: "",
+            cancel_requested: 0,
+            runner: "",
+            queued_at: nowIso(),
+            started_at: "",
+            finished_at: "",
+            heartbeat_at: "",
+        })) as DeploymentRow | null;
+
+        SiteDeployer.kick();
+        return row;
+    }
+
+    /** Backward compatible: queues a deployment as the site's creator. */
+    static start(siteId: number): void {
+        void (async () => {
+            try {
+                const site = (await Site.find(siteId)) as DeployRow | null;
+                if (site) await SiteDeployer.enqueue(siteId, Number(site.user_id));
+            } catch (err) {
+                console.error(`Couldn't queue a deploy of site ${siteId}:`, err);
+            }
+        })();
+    }
+
+    /** Wakes the runner now instead of waiting for the next poll. */
+    static kick(): void {
+        if (RUNNER_ENABLED) setTimeout(() => void tick(), 0);
+    }
+
+    /**
+     * Closes a queued or running deployment that nothing is working on (or
+     * that is being cancelled before it started). `from` limits which statuses
+     * may be closed, so a cancel can't close a deployment that just started.
+     * Also settles the site's deploy_status. Returns true if it closed one.
+     */
+    static async closeOrphan(
+        deploymentId: number,
+        status: "failed" | "cancelled",
+        note: string,
+        from: string[] = ["queued", "deploying"],
+    ): Promise<boolean> {
+        try {
+            const row = (await Deployment.find(deploymentId)) as DeploymentRow | null;
+            if (!row || !from.includes(row.status)) return false;
+
+            const site = (await Site.find(row.site_id)) as { id: number; deploy_status: string; deploy_log: string } | null;
+            const base = s(site?.deploy_log) || s(row.log);
+            const log = clip((base ? base + "\n" : "") + note + "\n");
+
+            await Deployment.update(deploymentId, { status, log, finished_at: nowIso() });
+
+            if (site && (site.deploy_status === "queued" || site.deploy_status === "deploying")) {
+                await Site.update(site.id, { deploy_status: status, deploy_log: log });
+            }
+
+            return true;
+        } catch (err) {
+            console.error(`Couldn't close deployment ${deploymentId}:`, err);
+            return false;
+        }
+    }
+
+    /**
+     * Fails deployments whose process died (no heartbeat for STALE_MS), and
+     * resets sites left on "queued"/"deploying" with nothing behind them.
+     * Safe to run from any process: a live deploy keeps its heartbeat fresh,
+     * and deployments this process is running are skipped outright.
+     */
+    static async sweepStale(): Promise<number> {
+        let closed = 0;
+
+        try {
+            const running = (await Deployment.where("status", "deploying").get()) as unknown as DeploymentRow[];
+
+            for (const row of running) {
+                if (active.has(row.id)) continue;
+
+                const beat = parseTime(row.heartbeat_at) || parseTime(row.started_at) || parseTime(row.queued_at);
+                if (Number.isFinite(beat) && Date.now() - beat < STALE_MS) continue;
+
+                // Re-read right before writing: it may have finished a moment ago.
+                const fresh = (await Deployment.find(row.id)) as DeploymentRow | null;
+                if (!fresh || fresh.status !== "deploying") continue;
+
+                const cancelled = Number(fresh.cancel_requested) === 1;
+                const ok = await SiteDeployer.closeOrphan(
+                    row.id,
+                    cancelled ? "cancelled" : "failed",
+                    cancelled
+                        ? "CANCELLED: the process running this deployment was gone, so it was closed."
+                        : "FAILED: this deployment stopped reporting progress (the app was probably restarted while it ran). Marked as failed automatically.",
+                    ["deploying"],
+                );
+                if (ok) closed++;
+            }
+
+            // Sites stuck on queued/deploying with no active deployment row behind them.
+            const activeRows = [
+                ...((await Deployment.where("status", "queued").get()) as unknown as DeploymentRow[]),
+                ...((await Deployment.where("status", "deploying").get()) as unknown as DeploymentRow[]),
+            ];
+            const withWork = new Set(activeRows.map((d) => Number(d.site_id)));
+
+            const sites = (await Site.all()) as {
+                id: number;
+                deploy_status: string;
+                deploy_log: string;
+                updated_at: string;
+            }[];
+
+            for (const site of sites) {
+                if (site.deploy_status !== "deploying" && site.deploy_status !== "queued") continue;
+                if (withWork.has(Number(site.id))) continue;
+
+                const age = Date.now() - parseTime(site.updated_at);
+                if (Number.isFinite(age) && age < STALE_MS) continue;
+
+                await Site.update(site.id, {
+                    deploy_status: "failed",
+                    deploy_log: clip(s(site.deploy_log) + "\nFAILED: this deployment was lost (no record of it was running). Marked as failed automatically.\n"),
+                });
+                closed++;
+            }
+        } catch (err) {
+            console.error("Stale deploy sweep failed:", err);
+        }
+
+        return closed;
+    }
+}
+
+// =====================================================================
+// Background loops
+// =====================================================================
+
+async function interruptActive(): Promise<void> {
+    const jobs = [...active.values()].map((a) => a.interrupt("The app was restarted while this deployment was running."));
+    await Promise.race([Promise.allSettled(jobs), new Promise((resolve) => setTimeout(resolve, 4000))]);
+}
+
+let started = false;
+
+/**
+ * Starts the sweeper (always) and the queue runner (unless TYLIX_DEPLOY_RUNNER=off).
+ * Importing this file starts them once per process.
+ */
+export function startDeployRunner(): void {
+    if (started) return;
+    started = true;
+
+    void SiteDeployer.sweepStale();
+    const sweep = setInterval(() => void SiteDeployer.sweepStale(), SWEEP_MS);
+    sweep.unref?.();
+
+    if (RUNNER_ENABLED) {
+        const poll = setInterval(() => void tick(), POLL_MS);
+        poll.unref?.();
+        void tick();
+    }
+
+    // A clean restart records its running deployments as failed immediately,
+    // instead of leaving them for the sweeper. We only exit ourselves if nobody
+    // else is handling the signal.
+    for (const sig of ["SIGTERM", "SIGINT"] as const) {
+        process.once(sig, () => {
+            void interruptActive().finally(() => {
+                if (process.listenerCount(sig) === 0) process.exit(0);
+            });
+        });
+    }
+}
+
+startDeployRunner();

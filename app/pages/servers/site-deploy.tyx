@@ -33,6 +33,7 @@ state
   saved: false
   error: ""
   timer: 0
+  lastPolled: ""
   history: []
   histFilter: "all"
   histTabs: []
@@ -49,6 +50,18 @@ state
   deleteTarget: null
   deleting: false
   deleteError: ""
+  cancelTarget: null
+  cancelBusy: false
+  cancelError: ""
+  runId: 0
+  cancelling: false
+  queuePos: 0
+  queuedText: ""
+  activeStartedAt: ""
+  idleText: ""
+  elapsedText: ""
+  sourceKind: ""
+  latestCommit: null
   viewId: ""
   logText: ""
   logStatus: "idle"
@@ -74,6 +87,7 @@ state
   histAll: 0
   successCount: 0
   failedCount: 0
+  cancelledCount: 0
   successRate: 0
   rateStyle: "width: 0%"
   heroCls: "bg-slate-400"
@@ -99,8 +113,9 @@ action
 
     const lower = body.toLowerCase()
     const quiet = lower.includes("0 error") or lower.includes("no error") or lower.includes("without error")
-    const isErr = (body.startsWith("FAILED") or lower.startsWith("failed") or lower.includes("error") or lower.includes("fatal") or lower.includes("exception")) and not quiet
-    const isWarn = lower.includes("warning") or lower.includes("deprecat") or body.startsWith("NOTE")
+    const isCancel = body.startsWith("CANCELLED") or lower.startsWith("cancelled")
+    const isErr = (body.startsWith("FAILED") or lower.startsWith("failed") or lower.includes("error") or lower.includes("fatal") or lower.includes("exception")) and not quiet and not isCancel
+    const isWarn = lower.includes("warning") or lower.includes("deprecat") or body.startsWith("NOTE") or isCancel
     const isOk = lower.startsWith("done") or lower.includes("success") or lower.includes("is running") or lower.includes("reloaded") or lower.startsWith("ok")
     const isGit = lower.startsWith("from ") or lower.startsWith("remote:") or lower.startsWith("already up to date") or lower.startsWith("head is now") or lower.startsWith("updating ") or lower.startsWith("fast-forward") or lower.startsWith("cloning") or lower.startsWith("git ")
     const isTool = lower.includes("composer") or lower.includes("npm ") or lower.includes("yarn") or lower.includes("pnpm") or lower.includes("artisan") or lower.includes("pm2") or lower.includes("systemctl") or lower.includes("nginx") or lower.includes("migrat")
@@ -232,6 +247,12 @@ action
     if status is "failed" {
       return "bg-rose-500"
     }
+    if status is "cancelled" {
+      return "bg-orange-400"
+    }
+    if status is "queued" {
+      return "bg-sky-400 animate-pulse"
+    }
     if status is "deploying" {
       return "bg-amber-400 animate-pulse"
     }
@@ -249,6 +270,10 @@ action
     if isLast and this.deployStatus is "failed" {
       tone = "bg-rose-500/10 border-rose-500/30 text-rose-300"
       icon = "✕"
+    }
+    if isLast and this.deployStatus is "cancelled" {
+      tone = "bg-orange-500/10 border-orange-500/30 text-orange-300"
+      icon = "■"
     }
 
     return {
@@ -358,6 +383,50 @@ action
     window.setTimeout(() => this.clearCopied(), 1800)
   }
 
+  parseUtc(v) {
+    if not v {
+      return 0
+    }
+    const t = ("" + v).trim()
+    const plain = t.length is 19 and t.charAt(10) is " "
+    return new Date(plain ? t.replace(" ", "T") + "Z" : t).getTime()
+  }
+
+  fmtSecs(secs) {
+    if secs >= 60 {
+      return Math.floor(secs / 60) + "m " + (secs % 60) + "s"
+    }
+    return Math.max(0, secs) + "s"
+  }
+
+  elapsedFor() {
+    if this.deployStatus is not "deploying" or this.activeStartedAt is "" {
+      return ""
+    }
+    const secs = Math.round((Date.now() - this.parseUtc(this.activeStartedAt)) / 1000)
+    return secs >= 0 ? this.fmtSecs(secs) : ""
+  }
+
+  commitLink(given, sha) {
+    if given is not "" {
+      return given
+    }
+    const repo = this.site ? (this.site.repository or "").trim() : ""
+    if sha is "" or repo is "" or repo.includes("@") {
+      return ""
+    }
+    const clean = repo.endsWith(".git") ? repo.slice(0, repo.length - 4) : repo
+    const gitlab = this.sourceKind is "gitlab"
+    const path = gitlab ? "/-/commit/" : "/commit/"
+    if clean.startsWith("http") {
+      return clean + path + sha
+    }
+    if clean.includes(":") {
+      return ""
+    }
+    return (gitlab ? "https://gitlab.com/" : "https://github.com/") + clean + path + sha
+  }
+
   applyStatus(data) {
     this.deployStatus = data.deploy_status
     this.heroCls = this.heroFor(data.deploy_status)
@@ -367,8 +436,32 @@ action
       this.showLog(data.deploy_log)
     }
     this.deployedText = data.deployed_at ? data.deployed_at.slice(0, 16).replace("T", " ") : ""
+
+    const act = data.active or null
+    this.runId = 0
+    this.cancelling = false
+    this.queuePos = 0
+    this.activeStartedAt = ""
+    if act {
+      this.runId = act.id
+      this.cancelling = act.cancelling is true
+      this.queuePos = act.position or 0
+      this.activeStartedAt = act.started_at or ""
+    }
+
+    this.queuedText = ""
+    if data.deploy_status is "queued" {
+      this.queuedText = this.queuePos > 1 ? "Waiting in the queue, position " + this.queuePos : "Waiting to start, you are next in the queue"
+    }
+
+    this.idleText = ""
+    if data.deploy_status is "deploying" and (data.idle_seconds or 0) > 45 {
+      this.idleText = this.fmtSecs(data.idle_seconds)
+    }
+    this.elapsedText = this.elapsedFor()
+
     this.busy = false
-    if data.deploy_status is "deploying" {
+    if data.deploy_status is "deploying" or data.deploy_status is "queued" {
       this.busy = true
     }
   }
@@ -383,6 +476,7 @@ action
     this.modal = ""
     this.error = ""
     this.deleteError = ""
+    this.cancelError = ""
   }
 
   openLive() {
@@ -401,7 +495,7 @@ action
       return null
     }
 
-    if d.status is "deploying" {
+    if d.status is "deploying" or d.status is "queued" {
       this.openLive()
       return null
     }
@@ -449,15 +543,30 @@ action
       tone = "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-500"
       dot = "bg-rose-500"
     }
+    if d.status is "cancelled" {
+      label = "Cancelled"
+      tone = "bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400"
+      dot = "bg-orange-500"
+    }
+    if d.status is "queued" {
+      label = "Queued"
+      tone = "bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400"
+      dot = "bg-sky-500 animate-pulse"
+    }
     if d.status is "deploying" {
       label = "Deploying"
       tone = "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500"
       dot = "bg-amber-500 animate-pulse"
     }
+    if d.cancelling is true and (d.status is "queued" or d.status is "deploying") {
+      label = "Cancelling"
+      tone = "bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400"
+      dot = "bg-orange-500 animate-pulse"
+    }
 
     let duration = ""
     if d.finished_at and d.started_at {
-      const secs = Math.round((new Date(d.finished_at).getTime() - new Date(d.started_at).getTime()) / 1000)
+      const secs = Math.round((this.parseUtc(d.finished_at) - this.parseUtc(d.started_at)) / 1000)
       if secs >= 60 {
         duration = Math.floor(secs / 60) + "m " + (secs % 60) + "s"
       } else {
@@ -465,26 +574,40 @@ action
       }
     }
 
+    const when = d.started_at or d.queued_at or ""
     const commit = d.commit or ""
     const message = d.commit_message or ""
+    const link = this.commitLink(d.commit_url or "", commit)
+    const host = this.sourceKind is "gitlab" ? "GitLab" : "GitHub"
+
+    let queueText = ""
+    if d.status is "queued" {
+      queueText = (d.position or 0) > 1 ? "Position " + d.position + " in the queue" : "Next in the queue"
+    }
 
     return Object.assign({}, d, {
       label: label,
       dotCls: "w-2.5 h-2.5 rounded-full shrink-0 " + dot,
       badgeCls: "inline-flex w-24 shrink-0 justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider " + tone,
-      whenText: d.started_at ? d.started_at.slice(0, 16).replace("T", " ") : "",
+      whenText: when ? when.slice(0, 16).replace("T", " ") : "",
       duration: duration,
+      queueText: queueText,
       shortCommit: commit.slice(0, 7),
       commitMessage: message.length > 90 ? message.slice(0, 90) + "…" : message,
-      commitUrl: d.commit_url or "",
-      canDelete: d.status is not "deploying"
+      commitUrl: link,
+      commitTitle: "Open commit on " + host,
+      canCancel: (d.status is "queued" or d.status is "deploying") and d.cancelling is not true,
+      canDelete: d.status is not "deploying" and d.status is not "queued"
     })
   }
 
   buildTabs(counts) {
     const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-xs font-semibold px-4 py-2 transition-all"
     const idleCls = "inline-flex items-center gap-2 rounded-full border border-line bg-panel text-slate-600 dark:text-slate-300 text-xs font-medium px-4 py-2 hover:border-brand-500/50 transition-all"
-    const keys = [["all", "All", counts.all], ["success", "Successful", counts.success], ["failed", "Failed", counts.failed]]
+    let keys = [["all", "All", counts.all], ["success", "Successful", counts.success], ["failed", "Failed", counts.failed]]
+    if (counts.cancelled or 0) > 0 or this.histFilter is "cancelled" {
+      keys = keys.concat([["cancelled", "Cancelled", counts.cancelled or 0]])
+    }
 
     this.histTabs = keys.map((k) => ({
       key: k[0],
@@ -557,22 +680,26 @@ action
         return null
       }
 
+      this.sourceKind = body.source or ""
+
       const activeId = body.active_id or null
       this.history = body.data.map((d) => this.decorateDeploy(d, activeId))
+      this.latestCommit = this.history.find((d) => d.id is activeId and d.shortCommit is not "") or null
       this.total = body.total
       this.totalPages = Math.max(1, body.total_pages)
 
-      const counts = body.counts or { all: body.total, success: 0, failed: 0 }
+      const counts = body.counts or { all: body.total, success: 0, failed: 0, cancelled: 0 }
       this.histAll = counts.all
       this.successCount = counts.success
       this.failedCount = counts.failed
+      this.cancelledCount = counts.cancelled or 0
 
       const finishedTotal = counts.success + counts.failed
       this.successRate = finishedTotal > 0 ? Math.round(counts.success / finishedTotal * 100) : 0
       this.rateStyle = "width: " + this.successRate + "%"
 
       if this.page is 1 and this.histFilter is "all" {
-        const finished = this.history.find((d) => d.duration is not "")
+        const finished = this.history.find((d) => d.duration is not "" and d.status is not "cancelled")
         this.lastDuration = finished ? finished.duration : ""
       }
 
@@ -627,13 +754,63 @@ action
     this.deleting = false
   }
 
+  openCancel(id) {
+    const d = this.history.find((x) => x.id is id)
+    this.cancelTarget = d or { id: id, status: this.deployStatus, whenText: "", shortCommit: "" }
+    this.cancelError = ""
+    this.openModal("cancel")
+  }
+
+  openCancelActive() {
+    if this.runId is 0 {
+      return null
+    }
+    this.openCancel(this.runId)
+  }
+
+  async confirmCancel() {
+    if this.cancelBusy or not this.cancelTarget {
+      return null
+    }
+
+    this.cancelBusy = true
+    this.cancelError = ""
+
+    const result = await useApi("/api/sites/" + this.siteId + "/deployments/" + this.cancelTarget.id + "/cancel", { method: "POST" })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      this.modal = ""
+      this.cancelTarget = null
+      this.cancelling = true
+      this.startPolling()
+      await this.poll()
+      await this.loadHistory()
+    } else {
+      this.cancelError = result.data?.error or "Couldn't cancel this deployment."
+    }
+
+    this.cancelBusy = false
+  }
+
   async poll() {
     const result = await useApi("/api/sites/" + this.siteId + "/deployment")
 
     if result.ok {
       this.applyStatus(result.data)
-      if result.data.deploy_status is not "deploying" {
+
+      const st = result.data.deploy_status
+      const changed = st is not this.lastPolled
+      this.lastPolled = st
+
+      if st is not "deploying" and st is not "queued" {
         window.clearInterval(this.timer)
+        await this.loadHistory()
+      } else if changed {
         await this.loadHistory()
       }
     }
@@ -717,12 +894,17 @@ action
     const result = await useApi("/api/sites/" + this.siteId + "/deploy", { method: "POST" })
 
     if result.ok {
-      this.deployStatus = "deploying"
-      this.heroCls = this.heroFor("deploying")
+      const st = result.data?.deploy_status or "queued"
+      this.deployStatus = st
+      this.lastPolled = st
+      this.runId = result.data?.deployment_id or 0
+      this.cancelling = false
+      this.heroCls = this.heroFor(st)
       this.viewId = ""
       this.logLoading = false
-      this.logStatus = "deploying"
+      this.logStatus = st
       this.modalAtBottom = true
+      this.queuedText = "Waiting to start"
       this.setLatest("")
       this.showLog("")
       this.startPolling()
@@ -768,8 +950,9 @@ onMount
           this.envText = config.data.env
           this.envPath = config.data.env_path
           this.applyStatus(config.data)
+          this.lastPolled = config.data.deploy_status
 
-          if config.data.deploy_status is "deploying" {
+          if config.data.deploy_status is "deploying" or config.data.deploy_status is "queued" {
             this.startPolling()
           }
         }
@@ -837,10 +1020,27 @@ template
             <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
           </span>
 {{/if}}
+{{#if deployStatus is "cancelled"}}
+          <span class="inline-flex items-center gap-2 rounded-full bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Cancelled
+          </span>
+{{/if}}
+{{#if deployStatus is "queued"}}
+          <span class="inline-flex items-center gap-2 rounded-full bg-sky-500/10 border border-sky-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span> Queued
+          </span>
+{{/if}}
 {{#if deployStatus is "deploying"}}
+{{#if cancelling}}
+          <span class="inline-flex items-center gap-2 rounded-full bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> Cancelling
+          </span>
+{{/if}}
+{{#if not cancelling}}
           <span class="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
             <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Deploying
           </span>
+{{/if}}
 {{/if}}
 {{#if deployStatus is "idle"}}
           <span class="inline-flex items-center gap-2 rounded-full bg-slate-500/10 border border-slate-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -875,19 +1075,51 @@ template
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
               <div class="min-w-0">
                 <h2 class="text-slate-900 dark:text-slate-100 text-lg font-semibold mb-1.5">Deploy</h2>
-                <p class="text-slate-500 text-sm leading-relaxed max-w-xl">Pulls the latest code, writes the environment, runs the deployment script and restarts the app.</p>
+                <p class="text-slate-500 text-sm leading-relaxed max-w-xl">Pulls the latest code, writes the environment, runs the deployment script and restarts the app. Deployments are queued, and you can cancel one at any time.</p>
+{{#if queuedText}}
+                <p class="mt-4 flex max-w-full items-center gap-2 text-xs font-medium text-sky-600 dark:text-sky-400">
+                  <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-sky-500 animate-pulse"></span>
+                  <span class="truncate">{{ queuedText }}</span>
+                </p>
+{{/if}}
 {{#if currentStage}}
                 <p class="mt-4 flex max-w-full items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
                   <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse"></span>
                   <span class="truncate">{{ currentStage }}</span>
                 </p>
 {{/if}}
+{{#if elapsedText}}
+                <p class="mt-1.5 text-xs font-mono text-slate-500">Running for {{ elapsedText }}</p>
+{{/if}}
+{{#if idleText}}
+                <p class="mt-3 max-w-xl rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-400">No output for {{ idleText }}. If the app was restarted, this deployment is marked failed automatically within a couple of minutes. You can also cancel it.</p>
+{{/if}}
               </div>
               <div class="shrink-0">
 {{#if busy}}
-                <button disabled class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">
-                  <span class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Deploying…
-                </button>
+                <div class="flex flex-wrap items-center gap-3">
+{{#if deployStatus is "queued"}}
+                  <button disabled class="inline-flex items-center gap-2 text-sm bg-sky-500 text-white font-semibold rounded-full px-6 py-2.5 opacity-60">
+                    <span class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Queued…
+                  </button>
+{{/if}}
+{{#if deployStatus is "deploying"}}
+                  <button disabled class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">
+                    <span class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Deploying…
+                  </button>
+{{/if}}
+{{#if cancelling}}
+                  <button disabled class="inline-flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400 border border-orange-500/40 rounded-full px-5 py-2.5 opacity-70">
+                    <span class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Cancelling…
+                  </button>
+{{/if}}
+{{#if not cancelling}}
+                  <button onclick="{{ openCancelActive() }}" class="inline-flex items-center gap-2 text-sm text-rose-600 dark:text-rose-400 border border-rose-500/40 rounded-full px-5 py-2.5 hover:bg-rose-500/10 transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                    Cancel
+                  </button>
+{{/if}}
+                </div>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -922,6 +1154,14 @@ template
               <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-5 py-4 min-w-0">
                 <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">Branch</p>
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ site.branch }}</p>
+{{#if latestCommit}}
+{{#if latestCommit.commitUrl}}
+                <a href="{{ latestCommit.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ latestCommit.commitTitle }}" class="mt-2 inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-700 dark:text-slate-200 hover:bg-brand-500/10 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">{{ latestCommit.shortCommit }} <span class="opacity-60">&nearr;</span></a>
+{{/if}}
+{{#if not latestCommit.commitUrl}}
+                <span class="mt-2 inline-flex rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-700 dark:text-slate-200">{{ latestCommit.shortCommit }}</span>
+{{/if}}
+{{/if}}
               </div>
               <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-5 py-4">
                 <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">Last duration</p>
@@ -989,6 +1229,11 @@ template
                   <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Live
                 </span>
 {{/if}}
+{{#if deployStatus is "queued"}}
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sky-400">
+                  <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> Queued
+                </span>
+{{/if}}
               </div>
               <div class="flex flex-wrap items-center gap-2">
 {{#if latestStages is not 0}}
@@ -1030,6 +1275,23 @@ template
 {{/if}}
 {{/if}}
 
+{{#if deployStatus is "cancelled"}}
+            <div class="flex items-start gap-3 px-5 py-4 bg-orange-500/10 border-b border-orange-500/20">
+              <span class="text-orange-400 text-sm mt-px">&#9632;</span>
+              <div class="min-w-0">
+                <p class="text-orange-300 text-xs font-semibold mb-1">Deployment cancelled</p>
+                <p class="text-orange-200/80 text-xs leading-relaxed">The running commands were stopped and the deploy script rolled back where it could. The code on the server may be partially updated, so deploy again before relying on it.</p>
+              </div>
+            </div>
+{{/if}}
+
+{{#if deployStatus is "queued"}}
+            <div class="flex items-center gap-3 px-5 py-8">
+              <span class="w-3.5 h-3.5 rounded-full border-2 border-sky-400 border-t-transparent animate-spin"></span>
+              <p class="text-slate-400 text-xs">{{ queuedText }}. One deployment runs per server at a time.</p>
+            </div>
+{{/if}}
+
 {{#if deployStatus is "deploying"}}
 {{#if latestStages is 0}}
             <div class="flex items-center gap-3 px-5 py-8">
@@ -1059,10 +1321,12 @@ template
 {{/if}}
 {{#if not deployLog}}
 {{#if deployStatus is not "deploying"}}
+{{#if deployStatus is not "queued"}}
             <div class="px-5 py-14 text-center">
               <p class="text-slate-500 text-xs font-mono">$ no deployment yet</p>
               <p class="text-slate-600 text-xs mt-2">Press Deploy now to see live progress here.</p>
             </div>
+{{/if}}
 {{/if}}
 {{/if}}
           </div>
@@ -1107,6 +1371,9 @@ template
 {{#if d.duration}}
                     <p class="text-slate-500 text-xs font-mono">{{ d.duration }}</p>
 {{/if}}
+{{#if d.queueText}}
+                    <p class="text-sky-600 dark:text-sky-400 text-xs">{{ d.queueText }}</p>
+{{/if}}
                   </div>
                   <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 {{#if d.branch}}
@@ -1117,7 +1384,7 @@ template
 {{/if}}
 {{#if d.shortCommit}}
 {{#if d.commitUrl}}
-                    <a href="{{ d.commitUrl }}" target="_blank" rel="noopener noreferrer" title="Open commit on GitHub" class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-mono text-slate-700 dark:text-slate-200 hover:bg-brand-500/10 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
+                    <a href="{{ d.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ d.commitTitle }}" class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-mono text-slate-700 dark:text-slate-200 hover:bg-brand-500/10 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 shrink-0"><circle cx="12" cy="12" r="3.5" /><path d="M3 12h5.5M15.5 12H21" /></svg>
                       {{ d.shortCommit }}
                       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 shrink-0 opacity-60"><path d="M11 3h6v6M17 3l-8 8" /></svg>
@@ -1137,6 +1404,9 @@ template
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
+{{#if d.canCancel}}
+                  <button onclick="{{ openCancel(d.id) }}" class="text-xs text-rose-600 dark:text-rose-400 border border-rose-500/40 rounded-full px-4 py-2 hover:bg-rose-500/10 transition-colors">Cancel</button>
+{{/if}}
                   <button onclick="{{ openDeployLog(d.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View log</button>
 {{#if d.canDelete}}
                   <button onclick="{{ openDelete(d.id) }}" aria-label="Delete deployment" title="Delete deployment" class="w-9 h-9 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
@@ -1309,6 +1579,41 @@ template
       </div>
 {{/if}}
 
+{{#if modal is "cancel"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="cancel-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
+        <div class="w-full max-w-md rounded-2xl border border-line bg-panel shadow-xl p-6">
+          <div class="flex items-start gap-4">
+            <span class="w-10 h-10 shrink-0 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+            </span>
+            <div class="min-w-0">
+              <h3 id="cancel-title" class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Cancel this deployment?</h3>
+{{#if cancelTarget}}
+{{#if cancelTarget.status is "queued"}}
+              <p class="text-slate-500 text-sm leading-relaxed">It hasn't started yet. It will be removed from the queue and nothing changes on the server.</p>
+{{/if}}
+{{#if cancelTarget.status is "deploying"}}
+              <p class="text-slate-500 text-sm leading-relaxed">The running commands on the server are stopped, and the deploy script rolls back where it can. The code may be partially updated, so deploy again afterwards.</p>
+{{/if}}
+{{/if}}
+            </div>
+          </div>
+{{#if cancelError}}
+          <p role="alert" class="text-rose-500 text-sm mt-4">{{ cancelError }}</p>
+{{/if}}
+          <div class="flex items-center justify-end gap-3 mt-6">
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Keep deploying</button>
+{{#if cancelBusy}}
+            <button disabled class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Cancelling…</button>
+{{/if}}
+{{#if not cancelBusy}}
+            <button onclick="{{ confirmCancel() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">Cancel deployment</button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
 {{#if modal is "log"}}
       <div role="dialog" aria-modal="true" aria-labelledby="log-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-3 sm:px-6">
         <div class="w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
@@ -1321,6 +1626,11 @@ template
                 <span class="w-2.5 h-2.5 rounded-full bg-brand-500/70"></span>
               </div>
               <h3 id="log-title" class="text-slate-200 text-sm font-medium">Deployment log</h3>
+{{#if logStatus is "queued"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> Queued
+              </span>
+{{/if}}
 {{#if logStatus is "deploying"}}
               <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-500">
                 <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Deploying
@@ -1334,6 +1644,11 @@ template
 {{#if logStatus is "failed"}}
               <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-500">
                 <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+              </span>
+{{/if}}
+{{#if logStatus is "cancelled"}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-orange-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Cancelled
               </span>
 {{/if}}
             </div>

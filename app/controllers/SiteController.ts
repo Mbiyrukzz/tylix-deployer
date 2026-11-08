@@ -16,15 +16,23 @@
  * refused with 402 while the team is view only (requireActive).
  *
  * Roles:
- *   - member: view sites, deployments and logs, and trigger a deploy
+ *   - member: view sites, deployments and logs, trigger and cancel a deploy
  *   - admin / owner: also create and delete sites, edit the deploy script,
  *     see and edit the env file, and delete deployment history entries
  * To change who may do what, change the role in the requireRole() call.
  *
  * Deployment: the env is stored encrypted and only returned by
- * deployment() to admins and owners. deploy() starts SiteDeployer in the
- * background. The history is paginated (?page, ?per_page, ?status) and each
- * entry carries the commit it deployed, with a link to GitHub or GitLab.
+ * deployment() to admins and owners.
+ *
+ * Deploys are QUEUED. deploy() creates a "queued" history row and returns
+ * 202 straight away; the runner in SiteDeployer picks it up. History rows go
+ * queued -> deploying -> success | failed | cancelled. cancelDeployment()
+ * removes a queued row from the queue, or asks the runner to stop a running
+ * one. A cancel is allowed even while the team is view only, so a stuck
+ * deploy can always be cleared.
+ *
+ * The history is paginated (?page, ?per_page, ?status) and each entry carries
+ * the commit it deployed, with a link to GitHub or GitLab.
  *
  * Deleting: destroy() needs ?confirm=<domain> (the API enforces the typed
  * confirmation, not just the UI), marks the site "deleting" and starts
@@ -34,10 +42,10 @@
  * runs last, after every check that can refuse the request.
  *
  * Hardening:
- *   - creating is rate limited per team; deleting, deploying and saving the
- *     deployment are rate limited per user
- *   - creating, deleting, deploying and changing the script or env are
- *     written to the server log (never the script or env contents)
+ *   - creating is rate limited per team; deleting, deploying, cancelling and
+ *     saving the deployment are rate limited per user
+ *   - creating, deleting, deploying, cancelling and changing the script or
+ *     env are written to the server log (never the script or env contents)
  */
 
 import type { TylixRequest, TylixResponse } from "@tylix/core";
@@ -48,7 +56,7 @@ import { SourceProvider } from "../models/SourceProvider.js";
 import { validateSite, normalizeSite } from "../validators/SiteValidator.js";
 import type { NormalizedSite } from "../validators/SiteValidator.js";
 import { SiteProvisioner } from "../services/SiteProvisioner.js";
-import { SiteDeployer, canDeploy, defaultDeployScript, envPathFor } from "../services/SiteDeployer.js";
+import { SiteDeployer, canDeploy, defaultDeployScript, envPathFor, parseTime } from "../services/SiteDeployer.js";
 import { SiteDestroyer } from "../services/SiteDestroyer.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { commitUrl } from "../services/CommitLinks.js";
@@ -101,8 +109,12 @@ interface DeploymentRow {
     branch: string;
     commit_sha: string;
     commit_message: string;
+    cancel_requested: number;
+    runner: string;
+    queued_at: string;
     started_at: string;
     finished_at: string;
+    heartbeat_at: string;
     created_at: string;
     [key: string]: unknown;
 }
@@ -111,66 +123,32 @@ const FIFTEEN_MINUTES = 15 * 60_000;
 const createGuardPerTeam = createGuard({ max: 20, windowMs: 60 * 60_000, scope: "team", what: "site creations" });
 const deleteGuard = createGuard({ max: 10, windowMs: FIFTEEN_MINUTES, scope: "user", what: "site deletions" });
 const deployGuard = createGuard({ max: 15, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployments" });
+const cancelGuard = createGuard({ max: 30, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployment cancellations" });
 const saveGuard = createGuard({ max: 30, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployment changes" });
 const deleteDeploymentGuard = createGuard({ max: 60, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployment deletions" });
 
 const DEFAULT_PER_PAGE = 10;
 const MAX_PER_PAGE = 50;
 
+const MAX_TEXT = 20_000;
+const STALE_CREATE_MS = 30 * 60_000; // site creation has no heartbeat
+const STALE_DELETE_MS = 10 * 60_000;
+const DEAD_RUNNER_MS = 45_000; // a running deploy silent this long has no live runner
+
 async function deploymentsFor(siteId: number): Promise<DeploymentRow[]> {
     const all = (await Deployment.all()) as DeploymentRow[];
     return all.filter((d) => Number(d.site_id) === Number(siteId)).sort((a, b) => Number(b.id) - Number(a.id));
 }
 
-const MAX_LOG_CHARS = 200_000;
-
-function clipLog(text: string): string {
-    if (text.length <= MAX_LOG_CHARS) return text;
-    return "[... earlier output trimmed ...]\n" + text.slice(-MAX_LOG_CHARS);
-}
-
-/**
- * SiteDeployer only writes to the site row, so history rows are closed here.
- * The newest running row takes the site's result; any older running row was
- * interrupted (restart, stale deploy) and is marked failed.
- */
-async function syncDeployments(site: SiteRow): Promise<DeploymentRow[]> {
-    const rows = await deploymentsFor(site.id);
-    const running = rows.filter((d) => d.status === "deploying");
-    let changed = false;
-
-    for (let i = 0; i < running.length; i++) {
-        const d = running[i];
-
-        try {
-            if (i === 0) {
-                if (site.deploy_status === "deploying") continue;
-
-                await Deployment.update(d.id, {
-                    status: site.deploy_status === "success" ? "success" : "failed",
-                    log: clipLog(String(site.deploy_log ?? "")),
-                    finished_at: String(site.deployed_at || new Date().toISOString()),
-                });
-            } else {
-                await Deployment.update(d.id, {
-                    status: "failed",
-                    log: clipLog(String(d.log || "") || "Interrupted before it finished."),
-                    finished_at: new Date().toISOString(),
-                });
-            }
-
-            changed = true;
-        } catch (err) {
-            console.error(`Couldn't close deployment ${d.id}:`, err);
-        }
-    }
-
-    return changed ? await deploymentsFor(site.id) : rows;
+/** Queued deployments across all sites, oldest first (the runner takes them in this order). */
+async function queuedAll(): Promise<DeploymentRow[]> {
+    const rows = (await Deployment.where("status", "queued").get()) as unknown as DeploymentRow[];
+    return rows.sort((a, b) => Number(a.id) - Number(b.id));
 }
 
 /** The log and the person who deployed stay private; the commit is exposed as commit, commit_message and commit_url. */
-function toPublicDeployment(row: DeploymentRow, repository: string, kind: string) {
-    const { log, user_id, commit_sha, commit_message, ...rest } = row;
+function toPublicDeployment(row: DeploymentRow, repository: string, kind: string, position = 0) {
+    const { log, user_id, commit_sha, commit_message, runner, heartbeat_at, cancel_requested, ...rest } = row;
     const sha = String(commit_sha ?? "");
 
     return {
@@ -178,6 +156,8 @@ function toPublicDeployment(row: DeploymentRow, repository: string, kind: string
         commit: sha,
         commit_message: String(commit_message ?? ""),
         commit_url: commitUrl(repository, kind, sha),
+        cancelling: Number(cancel_requested) === 1 && (row.status === "queued" || row.status === "deploying"),
+        position,
     };
 }
 
@@ -198,10 +178,6 @@ function intParam(value: unknown, fallback: number, min: number, max: number): n
     if (!Number.isFinite(n)) return fallback;
     return Math.min(max, Math.max(min, n));
 }
-
-const MAX_TEXT = 20_000;
-const STALE_DEPLOY_MS = 30 * 60_000;
-const STALE_DELETE_MS = 10 * 60_000;
 
 function parseAliases(raw: unknown): string[] {
     try {
@@ -432,15 +408,24 @@ export class SiteController {
             });
         }
 
-        const age = Date.now() - new Date(site.updated_at).getTime();
+        // Settle anything whose process died, so a dead deploy can't block the delete.
+        await SiteDeployer.sweepStale();
+        const fresh = ((await Site.find(site.id)) as SiteRow | null) ?? site;
 
-        const creating = site.status === "pending" || site.status === "creating";
-        const deploying = site.deploy_status === "deploying";
-        const alreadyDeleting = site.status === "deleting";
+        const age = Date.now() - new Date(fresh.updated_at).getTime();
 
-        if ((creating || deploying) && age < STALE_DEPLOY_MS) {
+        const creating = fresh.status === "pending" || fresh.status === "creating";
+        const deploying = fresh.deploy_status === "deploying" || fresh.deploy_status === "queued";
+        const alreadyDeleting = fresh.status === "deleting";
+
+        if (creating && age < STALE_CREATE_MS) {
             res.status(409);
-            return res.json({ error: "This site is busy creating or deploying. Wait for it to finish, then try again." });
+            return res.json({ error: "This site is busy creating. Wait for it to finish, then try again." });
+        }
+
+        if (deploying) {
+            res.status(409);
+            return res.json({ error: "This site has a deployment queued or running. Cancel it first, then try again." });
         }
 
         if (alreadyDeleting && age < STALE_DELETE_MS) {
@@ -475,6 +460,9 @@ export class SiteController {
     /**
      * GET /api/sites/:id/deployment: script, env, status and log for the Deployment tab.
      * Plain members get env "" and env_hidden true: env files hold production secrets.
+     *
+     * `active` describes the queued or running deployment (null when there is none),
+     * and idle_seconds says how long a running one has been silent.
      */
     async deployment(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
@@ -482,6 +470,22 @@ export class SiteController {
 
         const defaultScript = defaultDeployScript(site);
         const canSeeEnv = hasRole(req, "admin");
+
+        const newest = (await Deployment.where("site_id", site.id).orderBy("id", "DESC").limit(1).get()) as unknown as DeploymentRow[];
+        const latest = newest[0] ?? null;
+        const live = latest && (latest.status === "queued" || latest.status === "deploying") ? latest : null;
+
+        let position = 0;
+        if (live && live.status === "queued") {
+            const queue = await queuedAll();
+            position = queue.findIndex((d) => Number(d.id) === Number(live.id)) + 1;
+        }
+
+        let idleSeconds = 0;
+        if (live && live.status === "deploying") {
+            const beat = parseTime(live.heartbeat_at) || parseTime(live.started_at);
+            if (Number.isFinite(beat)) idleSeconds = Math.max(0, Math.round((Date.now() - beat) / 1000));
+        }
 
         return res.json({
             can_deploy: canDeploy(site),
@@ -493,31 +497,46 @@ export class SiteController {
             deploy_status: String(site.deploy_status || "idle"),
             deploy_log: String(site.deploy_log ?? ""),
             deployed_at: String(site.deployed_at ?? ""),
+            idle_seconds: idleSeconds,
+            active: live
+                ? {
+                      id: live.id,
+                      status: live.status,
+                      cancelling: Number(live.cancel_requested) === 1,
+                      position,
+                      queued_at: String(live.queued_at ?? ""),
+                      started_at: String(live.started_at ?? ""),
+                  }
+                : null,
         });
     }
 
     /**
-     * GET /api/sites/:id/deployments?page=1&per_page=10&status=all|success|failed
+     * GET /api/sites/:id/deployments?page=1&per_page=10&status=all|success|failed|cancelled
      *
      * Newest first, without logs. The counts always cover the whole history
      * (not just the chosen status), so the filter tabs can show them.
-     * active_id is the newest successful deployment.
+     * active_id is the newest successful deployment. `source` is "github" or
+     * "gitlab" (for commit links).
      */
     async deployments(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
 
-        const rows = await syncDeployments(site);
+        // Settle deployments whose process died, so the list is never stuck on "deploying".
+        await SiteDeployer.sweepStale();
+        const rows = await deploymentsFor(site.id);
 
         const query = (req as { query?: Record<string, unknown> }).query ?? {};
         const perPage = intParam(query.per_page, DEFAULT_PER_PAGE, 1, MAX_PER_PAGE);
         const wanted = String(query.status ?? "all");
-        const status = wanted === "success" || wanted === "failed" ? wanted : "all";
+        const status = wanted === "success" || wanted === "failed" || wanted === "cancelled" ? wanted : "all";
 
         const counts = {
             all: rows.length,
             success: rows.filter((d) => d.status === "success").length,
             failed: rows.filter((d) => d.status === "failed").length,
+            cancelled: rows.filter((d) => d.status === "cancelled").length,
         };
 
         const filtered = status === "all" ? rows : rows.filter((d) => d.status === status);
@@ -531,14 +550,19 @@ export class SiteController {
         const kind = await sourceKindOf(site);
         const repository = String(site.repository ?? "");
 
+        // Queue positions are global (the runner takes queued rows oldest first).
+        const queue = slice.some((d) => d.status === "queued") ? await queuedAll() : [];
+        const positionOf = (id: number) => queue.findIndex((d) => Number(d.id) === Number(id)) + 1;
+
         return res.json({
-            data: slice.map((d) => toPublicDeployment(d, repository, kind)),
+            data: slice.map((d) => toPublicDeployment(d, repository, kind, d.status === "queued" ? positionOf(d.id) : 0)),
             page,
             per_page: perPage,
             total,
             total_pages: totalPages,
             counts,
             active_id: activeId,
+            source: kind,
         });
     }
 
@@ -547,24 +571,24 @@ export class SiteController {
         const site = await findOwned(req, res);
         if (!site) return;
 
-        await syncDeployments(site);
-
         const row = (await Deployment.find(req.params.deploymentId)) as DeploymentRow | null;
         if (!row || Number(row.site_id) !== Number(site.id)) {
             res.status(404);
             return res.json({ error: "Deployment not found." });
         }
 
-        // A running deployment's log lives on the site row until it finishes.
-        const log = row.status === "deploying" ? String(site.deploy_log ?? "") : String(row.log ?? "");
+        // A running deployment saves its log on its own row as it goes; the site row
+        // carries the same text, which is the fallback for older rows.
+        const log =
+            row.status === "deploying" ? String(row.log || site.deploy_log || "") : String(row.log ?? "");
 
         return res.json({ id: row.id, status: row.status, log });
     }
 
     /**
      * DELETE /api/sites/:id/deployments/:deploymentId: removes one history entry
-     * and its log. Admin only. Refused while that deployment is running. Nothing
-     * changes on the server.
+     * and its log. Admin only. Refused while that deployment is queued or
+     * running (cancel it first). Nothing changes on the server.
      */
     async deleteDeployment(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
@@ -573,8 +597,8 @@ export class SiteController {
         if (!(await requireActive(res, Number(site.team_id)))) return;
         if (!deleteDeploymentGuard(req, res)) return;
 
-        // Close finished rows first, so a deployment that just ended can be deleted.
-        await syncDeployments(site);
+        // Close rows whose process died first, so they can be deleted.
+        await SiteDeployer.sweepStale();
 
         const row = (await Deployment.find(req.params.deploymentId)) as DeploymentRow | null;
         if (!row || Number(row.site_id) !== Number(site.id)) {
@@ -582,9 +606,9 @@ export class SiteController {
             return res.json({ error: "Deployment not found." });
         }
 
-        if (row.status === "deploying") {
+        if (row.status === "deploying" || row.status === "queued") {
             res.status(409);
-            return res.json({ error: "This deployment is still running. Wait for it to finish, then delete it." });
+            return res.json({ error: "This deployment is queued or running. Cancel it first, then delete it." });
         }
 
         // If your ORM names its delete method differently (destroy, remove), change this line.
@@ -674,7 +698,10 @@ export class SiteController {
         return res.end();
     }
 
-    /** POST /api/sites/:id/deploy: any team member may deploy, unless the team is view only. */
+    /**
+     * POST /api/sites/:id/deploy: any team member may deploy, unless the team is view only.
+     * Queues the deployment and answers 202 right away; the runner starts it.
+     */
     async deploy(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
@@ -690,41 +717,103 @@ export class SiteController {
             return res.json({ error: "This site has no repository to deploy from." });
         }
 
-        const age = Date.now() - new Date(site.updated_at).getTime();
-        if (site.deploy_status === "deploying" && age < STALE_DEPLOY_MS) {
+        // Settle anything whose process died first, so a dead deploy never blocks a new one.
+        await SiteDeployer.sweepStale();
+
+        const rows = await deploymentsFor(site.id);
+        if (rows.some((d) => d.status === "queued" || d.status === "deploying")) {
             res.status(409);
-            return res.json({ error: "A deployment is already running." });
+            return res.json({ error: "A deployment is already queued or running. Cancel it, or wait for it to finish." });
         }
 
         if (!deployGuard(req, res)) return;
 
-        await Site.update(site.id, { deploy_status: "deploying", deploy_log: "" });
-        await Deployment.create({
-            site_id: site.id,
-            // The person who pressed Deploy, not the site's creator.
-            user_id: Number(req.user?.userId),
-            team_id: Number(site.team_id),
-            status: "deploying",
-            log: "",
-            branch: String(site.branch ?? ""),
-            // Filled in by SiteDeployer once the pull has landed on a commit.
-            commit_sha: "",
-            commit_message: "",
-            started_at: new Date().toISOString(),
-            finished_at: "",
-        });
-        SiteDeployer.start(site.id);
+        // The person who pressed Deploy, not the site's creator.
+        const queued = await SiteDeployer.enqueue(site.id, Number(req.user?.userId));
+        if (!queued) {
+            res.status(500);
+            return res.json({ error: "Couldn't queue the deployment." });
+        }
 
         await audit({
             userId: Number(req.user?.userId),
             teamId: Number(site.team_id),
             serverId: site.server_id,
             event: "site.deploy_started",
-            message: `A deployment of ${site.domain} was started.`,
-            meta: { site_id: site.id, branch: String(site.branch ?? "") },
+            message: `A deployment of ${site.domain} was queued.`,
+            meta: { site_id: site.id, deployment_id: queued.id, branch: String(site.branch ?? "") },
         });
 
         res.status(202);
-        return res.json({ deploy_status: "deploying" });
+        return res.json({ deploy_status: "queued", deployment_id: queued.id });
+    }
+
+    /**
+     * POST /api/sites/:id/deployments/:deploymentId/cancel
+     *
+     * Any team member. Allowed even while the team is view only.
+     *   - queued: closed straight away as "cancelled"
+     *   - running: flagged; the runner stops the running commands within a few
+     *     seconds and the deploy script rolls back on its own. If the process
+     *     that was running it is gone, it is closed right away instead.
+     */
+    async cancelDeployment(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+        if (!cancelGuard(req, res)) return;
+
+        const row = (await Deployment.find(req.params.deploymentId)) as DeploymentRow | null;
+        if (!row || Number(row.site_id) !== Number(site.id)) {
+            res.status(404);
+            return res.json({ error: "Deployment not found." });
+        }
+
+        if (row.status !== "queued" && row.status !== "deploying") {
+            res.status(409);
+            return res.json({ error: "This deployment has already finished." });
+        }
+
+        // Flag first: if the runner claims a queued row at this very moment, it sees the flag.
+        await Deployment.update(row.id, { cancel_requested: 1 });
+
+        let result: "cancelled" | "cancelling" = "cancelling";
+
+        const current = (await Deployment.find(row.id)) as DeploymentRow | null;
+
+        if (current?.status === "queued") {
+            const closed = await SiteDeployer.closeOrphan(
+                row.id,
+                "cancelled",
+                "CANCELLED: removed from the queue before it started.",
+                ["queued"],
+            );
+            if (closed) result = "cancelled";
+        } else if (current?.status === "deploying") {
+            const beat = parseTime(current.heartbeat_at) || parseTime(current.started_at);
+            const silent = Number.isFinite(beat) ? Date.now() - beat : 0;
+
+            if (silent > DEAD_RUNNER_MS) {
+                const closed = await SiteDeployer.closeOrphan(
+                    row.id,
+                    "cancelled",
+                    "CANCELLED: the process running this deployment was gone, so it was closed.",
+                    ["deploying"],
+                );
+                if (closed) result = "cancelled";
+            }
+        }
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: Number(site.team_id),
+            serverId: site.server_id,
+            event: "site.deploy_cancelled",
+            level: "warning",
+            message: `A deployment of ${site.domain} was cancelled.`,
+            meta: { site_id: site.id, deployment_id: row.id, was: row.status },
+        });
+
+        res.status(202);
+        return res.json({ status: result });
     }
 }
