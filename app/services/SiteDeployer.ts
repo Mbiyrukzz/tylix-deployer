@@ -115,6 +115,7 @@ const STALE_MS = 2 * 60_000; // no heartbeat for this long = the process died
 const SWEEP_MS = 30_000;
 const POLL_MS = 2_000;
 const CANCEL_POLL_MS = 2_000;
+const STREAM_SAVE_MS = 2_000; // while a step prints output, save the log at most this often
 const CANCEL_GRACE_MS = 45_000; // after a cancel, how long we wait for the phase to end before giving up on it
 // A safety valve only. Waiting is per server (see tick), so different customers never queue behind each other.
 const MAX_CONCURRENT = Math.max(1, Number(process.env.TYLIX_DEPLOY_CONCURRENCY) || 50);
@@ -458,6 +459,23 @@ function lastLine(stderr: string, stdout: string): string {
     const text = stderr.trim() || stdout.trim();
     const lines = text.split("\n").filter((l) => l.trim() !== "");
     return (lines[lines.length - 1] ?? "Command failed.").slice(0, 300);
+}
+
+/**
+ * Cleans one line of live output: strips colour codes, keeps only the final state of
+ * progress lines that overwrite themselves with \r (npm, composer, git), and drops the
+ * commit marker lines (those are read from the full output instead).
+ * Returns null for a line that should not be shown.
+ */
+function tidyLine(raw: string): string | null {
+    let line = raw.replace(/\u001b\[[0-9;?]*[ -\/]*[@-~]/g, "");
+    if (line.includes("\r")) line = line.split("\r").filter((part) => part.length > 0).pop() ?? "";
+    line = line.replace(/\s+$/, "");
+
+    const trimmed = line.trim();
+    if (trimmed.startsWith(COMMIT_MARK) || trimmed.startsWith(COMMIT_MSG_MARK)) return null;
+
+    return line;
 }
 
 /** Pulls the commit marker lines out of a phase's output. Returns what was found and the cleaned text. */
@@ -965,20 +983,45 @@ async function execute(deploymentId: number, siteId: number): Promise<void> {
                 await save({ deploy_status: "success", deployed_at: nowIso() }, { status: "success", finished_at: nowIso() });
             }
 
+            const phaseStart = Date.now();
+
+            // Output goes into the log as it arrives, one whole line at a time, so a long step
+            // (npm install, composer, a build) shows progress instead of looking frozen.
+            let pending = "";
+            let lastFlush = 0;
+            const pushLine = (raw: string) => {
+                const line = tidyLine(raw);
+                if (line !== null) log += mask(line) + "\n";
+            };
+            const onData = (chunk: string) => {
+                pending += chunk;
+                const parts = pending.split("\n");
+                pending = parts.pop() ?? "";
+                for (const part of parts) pushLine(part);
+
+                const now = Date.now();
+                if (parts.length > 0 && now - lastFlush >= STREAM_SAVE_MS && inflight === 0) {
+                    lastFlush = now;
+                    void save();
+                }
+            };
+
             const result = await withDeadline(
-                sshExec(target, phase.script, DEPLOY_TIMEOUT_MS),
+                sshExec(target, phase.script, DEPLOY_TIMEOUT_MS, { onData }),
                 DEPLOY_TIMEOUT_MS + PHASE_GRACE_MS,
                 phase.title,
                 [cancelGate],
             );
 
-            let stdout = result.stdout;
+            if (pending) {
+                pushLine(pending);
+                pending = "";
+            }
 
             // The pull phase prints the commit it landed on. Save it on the history
-            // row and keep the marker lines out of the visible log.
+            // row (the marker lines were already kept out of the visible log).
             if (phase.capturesCommit && result.code === 0) {
-                const found = extractCommit(stdout);
-                stdout = found.clean;
+                const found = extractCommit(result.stdout);
                 if (found.sha) {
                     try {
                         await Deployment.update(deploymentId, {
@@ -991,8 +1034,7 @@ async function execute(deploymentId: number, siteId: number): Promise<void> {
                 }
             }
 
-            const out = mask([stdout, result.stderr].filter(Boolean).join("\n").trim());
-            if (out) log += out + "\n";
+            if (result.code === 0) log += `Done in ${Math.max(1, Math.round((Date.now() - phaseStart) / 1000))}s.\n`;
             log += "\n";
             await save();
 

@@ -9,9 +9,14 @@
  * key, so a different key fails closed. A server with no pinned key still uses
  * StrictHostKeyChecking=accept-new (trust on first contact, throwaway file)
  * and the key it presented is returned as observedHostKey so it can be pinned.
+ *
+ * Streaming: sshExec buffers everything and returns when the command ends
+ * (that is what execFile does). Pass { onData } as the 4th argument and the
+ * output is handed to your callback as it arrives instead (the full output is
+ * still returned at the end). Without the option nothing changes.
  */
 
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -26,6 +31,8 @@ const ALIAS = "tylix-pinned";
 export const HOST_KEY_RE = /^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)) [A-Za-z0-9+/=]+$/;
 
 const MISMATCH_RE = /REMOTE HOST IDENTIFICATION HAS CHANGED|Host key verification failed/i;
+
+const MAX_BUFFER = 10 * 1024 * 1024;
 
 export interface SshTarget {
     host: string;
@@ -44,6 +51,15 @@ export interface SshResult {
     hostKeyMismatch?: boolean;
     /** The key the server presented. Only set on success and only when no key was pinned. */
     observedHostKey?: string | null;
+}
+
+export interface SshExecOptions {
+    /**
+     * Called with each chunk of output as it arrives (stdout and stderr, in the
+     * order they arrive). Chunks can end mid-line. Errors thrown by the callback
+     * are ignored. The full output is still returned in the result.
+     */
+    onData?: (chunk: string, stream: "stdout" | "stderr") => void;
 }
 
 function withNewline(key: string): string {
@@ -119,11 +135,76 @@ export async function derivePublicKey(privateKey: string): Promise<string> {
     }
 }
 
+/**
+ * Runs ssh and hands output to `onData` as it arrives. Same timeout and
+ * buffer limits as execFile. Never rejects.
+ */
+function runStreaming(
+    args: string[],
+    timeoutMs: number,
+    onData: NonNullable<SshExecOptions["onData"]>,
+): Promise<{ code: number; stdout: string; stderr: string }> {
+    return new Promise((resolve) => {
+        let stdout = "";
+        let stderr = "";
+        let timedOut = false;
+        let settled = false;
+
+        // Keep the newest output if a command prints more than the limit.
+        const cap = (current: string, added: string) => {
+            const next = current + added;
+            return next.length > MAX_BUFFER ? next.slice(-MAX_BUFFER) : next;
+        };
+
+        const child = spawn("ssh", args, { stdio: ["ignore", "pipe", "pipe"] });
+        child.stdout.setEncoding("utf8");
+        child.stderr.setEncoding("utf8");
+
+        const emit = (chunk: string, stream: "stdout" | "stderr") => {
+            try {
+                onData(chunk, stream);
+            } catch {
+                // a broken callback must never break the command
+            }
+        };
+
+        child.stdout.on("data", (chunk: string) => {
+            stdout = cap(stdout, chunk);
+            emit(chunk, "stdout");
+        });
+        child.stderr.on("data", (chunk: string) => {
+            stderr = cap(stderr, chunk);
+            emit(chunk, "stderr");
+        });
+
+        const timer = setTimeout(() => {
+            timedOut = true;
+            child.kill("SIGTERM");
+            setTimeout(() => child.kill("SIGKILL"), 5000).unref?.();
+        }, timeoutMs);
+
+        const finish = (code: number) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (timedOut) stderr += `\nssh timed out after ${Math.round(timeoutMs / 1000)}s.`;
+            resolve({ code, stdout, stderr });
+        };
+
+        child.on("error", (err) => {
+            stderr += `\n${err.message}`;
+            finish(255);
+        });
+        child.on("close", (code) => finish(typeof code === "number" ? code : 255));
+    });
+}
+
 /** Runs one command over SSH. Never throws: a failed connection returns a non-zero code. */
 export async function sshExec(
     target: SshTarget,
     command: string,
     timeoutMs = 30_000,
+    options: SshExecOptions = {},
 ): Promise<SshResult> {
     const dir = await mkdtemp(join(tmpdir(), "tylix-ssh-"));
     try {
@@ -141,10 +222,30 @@ export async function sshExec(
             command,
         ];
 
+        if (options.onData) {
+            const { code, stdout, stderr } = await runStreaming(args, timeoutMs, options.onData);
+
+            if (code === 0) {
+                return {
+                    code,
+                    stdout,
+                    stderr,
+                    observedHostKey: target.hostKey ? null : await readObservedKey(dir),
+                };
+            }
+
+            return {
+                code,
+                stdout,
+                stderr,
+                hostKeyMismatch: Boolean(target.hostKey) && MISMATCH_RE.test(stderr),
+            };
+        }
+
         try {
             const { stdout, stderr } = await run("ssh", args, {
                 timeout: timeoutMs,
-                maxBuffer: 10 * 1024 * 1024,
+                maxBuffer: MAX_BUFFER,
             });
             return {
                 code: 0,
