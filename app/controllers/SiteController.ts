@@ -487,7 +487,14 @@ export class SiteController {
             if (Number.isFinite(beat)) idleSeconds = Math.max(0, Math.round((Date.now() - beat) / 1000));
         }
 
+        let queuedSeconds = 0;
+        if (live && live.status === "queued") {
+            const at = parseTime(live.queued_at);
+            if (Number.isFinite(at)) queuedSeconds = Math.max(0, Math.round((Date.now() - at) / 1000));
+        }
+
         return res.json({
+            queued_seconds: queuedSeconds,
             can_deploy: canDeploy(site),
             deploy_script: String(site.deploy_script || "") || defaultScript,
             default_script: defaultScript,

@@ -116,7 +116,8 @@ const SWEEP_MS = 30_000;
 const POLL_MS = 2_000;
 const CANCEL_POLL_MS = 2_000;
 const CANCEL_GRACE_MS = 45_000; // after a cancel, how long we wait for the phase to end before giving up on it
-const MAX_CONCURRENT = Math.max(1, Number(process.env.TYLIX_DEPLOY_CONCURRENCY) || 3);
+// A safety valve only. Waiting is per server (see tick), so different customers never queue behind each other.
+const MAX_CONCURRENT = Math.max(1, Number(process.env.TYLIX_DEPLOY_CONCURRENCY) || 50);
 const RUNNER_ENABLED = String(process.env.TYLIX_DEPLOY_RUNNER ?? "on").toLowerCase() !== "off";
 const RUNNER_ID = `${process.pid}-${randomBytes(3).toString("hex")}`;
 
@@ -1040,19 +1041,64 @@ async function claim(id: number): Promise<boolean> {
 
     try {
         await (Deployment as any).where("id", id).where("status", "queued").update(patch);
-    } catch {
+    } catch (err) {
         // The ORM has no conditional update: fall back to a plain one (safe with a single runner process).
+        console.error(`Deploy queue: conditional claim of deployment ${id} failed, trying a plain update:`, err);
         try {
             const current = (await Deployment.find(id)) as DeploymentRow | null;
             if (!current || current.status !== "queued") return false;
             await Deployment.update(id, patch);
-        } catch {
+        } catch (err2) {
+            console.error(
+                `Deploy queue: couldn't claim deployment ${id}. Is the migration applied (runner, heartbeat_at columns)?`,
+                err2,
+            );
             return false;
         }
     }
 
     const row = (await Deployment.find(id)) as DeploymentRow | null;
-    return row?.status === "deploying" && row.runner === RUNNER_ID;
+    if (!row || row.status !== "deploying") return false;
+
+    // Someone else won the race.
+    if (row.runner && row.runner !== RUNNER_ID) return false;
+
+    // The row is ours by status but the runner id wasn't saved: the column is missing from
+    // Deployment.fillable. Carry on (fine with one runner process) but say so.
+    if (!row.runner) {
+        console.warn(
+            "Deploy queue: deployments.runner was not saved. Add runner, heartbeat_at, queued_at and cancel_requested to Deployment.fillable.",
+        );
+    }
+
+    return true;
+}
+
+/** Logs once at startup if the deployments table or model doesn't have the queue columns. */
+async function selfCheck(): Promise<void> {
+    try {
+        await (Deployment as any).where("runner", "__check__").get();
+        await (Deployment as any).where("heartbeat_at", "__check__").get();
+        await (Deployment as any).where("queued_at", "__check__").get();
+        await (Deployment as any).where("cancel_requested", 99).get();
+        console.log(
+            `Deploy queue: runner ${RUNNER_ID} started (runner ${RUNNER_ENABLED ? "on" : "OFF"}, max ${MAX_CONCURRENT} at once, self domain "${process.env.TYLIX_SELF_DOMAIN ?? ""}").`,
+        );
+    } catch (err) {
+        console.error(
+            "Deploy queue: the deployments table is missing the queue columns. Run the migration (cancel_requested, runner, queued_at, heartbeat_at). Deploys will stay queued until you do.",
+            err,
+        );
+    }
+}
+
+let lastWhy = "";
+
+/** Logs why queued work isn't starting, only when the reason changes (so a stuck queue explains itself). */
+function why(reason: string): void {
+    if (reason === lastWhy) return;
+    lastWhy = reason;
+    if (reason) console.log(`Deploy queue: waiting, ${reason}`);
 }
 
 let ticking = false;
@@ -1065,7 +1111,10 @@ async function tick(): Promise<void> {
         const queued = ((await Deployment.where("status", "queued").get()) as unknown as DeploymentRow[]).sort(
             (a, b) => Number(a.id) - Number(b.id),
         );
-        if (queued.length === 0) return;
+        if (queued.length === 0) {
+            why("");
+            return;
+        }
 
         const running = (await Deployment.where("status", "deploying").get()) as unknown as DeploymentRow[];
 
@@ -1086,9 +1135,14 @@ async function tick(): Promise<void> {
         }
 
         let waitingForSelf = false;
+        let begun = 0;
+        let reason = "";
 
         for (const cand of queued) {
-            if (running.length >= MAX_CONCURRENT) break;
+            if (running.length >= MAX_CONCURRENT) {
+                reason = `the safety limit of ${MAX_CONCURRENT} simultaneous deploys is reached`;
+                break;
+            }
 
             const info = await infoOf(Number(cand.site_id));
             if (!info) {
@@ -1102,17 +1156,31 @@ async function tick(): Promise<void> {
                 // The deployer restarts itself, so it runs alone and everything else waits for it.
                 if (running.length > 0) {
                     waitingForSelf = true;
+                    reason = `deployment ${cand.id} is the deployer itself and ${running.length} other deploy(s) are still running`;
                     continue;
                 }
             } else {
-                if (waitingForSelf) continue; // don't let new work starve a queued self deploy
-                if (busy.some((b) => b.self)) continue;
+                if (waitingForSelf) {
+                    reason = `deployment ${cand.id} is held so the deployer's own deploy can go first`;
+                    continue; // don't let new work starve a queued self deploy
+                }
+                if (busy.some((b) => b.self)) {
+                    reason = `the deployer is deploying itself`;
+                    continue;
+                }
             }
 
-            if (busy.some((b) => b.server_id === info.server_id)) continue; // one deploy per server
+            if (busy.some((b) => b.server_id === info.server_id)) {
+                reason = `deployment ${cand.id} waits for another deploy on server ${info.server_id}`;
+                continue; // one deploy per server
+            }
 
-            if (!(await claim(cand.id))) continue;
+            if (!(await claim(cand.id))) {
+                reason = `deployment ${cand.id} could not be claimed (see the errors above)`;
+                continue;
+            }
 
+            begun++;
             busy.push({ server_id: info.server_id, self });
             running.push(cand);
 
@@ -1120,6 +1188,8 @@ async function tick(): Promise<void> {
                 console.error(`Deployment ${cand.id} crashed:`, err);
             });
         }
+
+        why(begun === 0 ? reason : "");
     } catch (err) {
         console.error("Deploy queue tick failed:", err);
     } finally {
@@ -1228,20 +1298,39 @@ export class SiteDeployer {
             for (const row of running) {
                 if (active.has(row.id)) continue;
 
-                const beat = parseTime(row.heartbeat_at) || parseTime(row.started_at) || parseTime(row.queued_at);
-                if (Number.isFinite(beat) && Date.now() - beat < STALE_MS) continue;
+                // Proof of life = the newest of: the deployment's heartbeat, its start, and the site row's
+                // own activity while that site is deploying. The site row is saved on every heartbeat too,
+                // so this still works if heartbeat_at is missing from Deployment.fillable.
+                const site = (await Site.find(row.site_id)) as { deploy_status: string; updated_at: string; deploy_log: string } | null;
+                const siteBeat = site && site.deploy_status === "deploying" ? parseTime(site.updated_at) : NaN;
+                const beat = Math.max(
+                    parseTime(row.heartbeat_at) || 0,
+                    parseTime(row.started_at) || 0,
+                    parseTime(row.queued_at) || 0,
+                    Number.isFinite(siteBeat) ? siteBeat : 0,
+                );
+                if (beat > 0 && Date.now() - beat < STALE_MS) continue;
 
                 // Re-read right before writing: it may have finished a moment ago.
                 const fresh = (await Deployment.find(row.id)) as DeploymentRow | null;
                 if (!fresh || fresh.status !== "deploying") continue;
 
                 const cancelled = Number(fresh.cancel_requested) === 1;
+
+                // If the last stage was a restart, the deploy most likely worked and the restart ended the process.
+                const text = s(site?.deploy_log) || s(fresh.log);
+                const stages = text.split("\n").filter((l) => l.startsWith("==> "));
+                const lastStage = stages.length > 0 ? stages[stages.length - 1] : "";
+                const restartHint = /==> (Restarting|Reloading)/.test(lastStage)
+                    ? " The last stage was a restart, so the deploy itself most likely worked and the restart ended the process running it. If this was the deployer's own site, set TYLIX_SELF_DOMAIN so this is recorded as a success."
+                    : "";
+
                 const ok = await SiteDeployer.closeOrphan(
                     row.id,
                     cancelled ? "cancelled" : "failed",
                     cancelled
                         ? "CANCELLED: the process running this deployment was gone, so it was closed."
-                        : "FAILED: this deployment stopped reporting progress (the app was probably restarted while it ran). Marked as failed automatically.",
+                        : "FAILED: this deployment stopped reporting progress (the app was probably restarted while it ran). Marked as failed automatically." + restartHint,
                     ["deploying"],
                 );
                 if (ok) closed++;
@@ -1301,6 +1390,7 @@ export function startDeployRunner(): void {
     if (started) return;
     started = true;
 
+    void selfCheck();
     void SiteDeployer.sweepStale();
     const sweep = setInterval(() => void SiteDeployer.sweepStale(), SWEEP_MS);
     sweep.unref?.();

@@ -452,6 +452,9 @@ action
     this.queuedText = ""
     if data.deploy_status is "queued" {
       this.queuedText = this.queuePos > 1 ? "Waiting in the queue, position " + this.queuePos : "Waiting to start, you are next in the queue"
+      if (data.queued_seconds or 0) > 20 {
+        this.queuedText = this.queuedText + " (" + this.fmtSecs(data.queued_seconds) + "). Another deploy on this server may be running; if nothing starts, check the app logs for 'Deploy queue'."
+      }
     }
 
     this.idleText = ""
