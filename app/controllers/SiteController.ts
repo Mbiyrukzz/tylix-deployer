@@ -18,12 +18,13 @@
  * Roles:
  *   - member: view sites, deployments and logs, and trigger a deploy
  *   - admin / owner: also create and delete sites, edit the deploy script,
- *     and see and edit the env file
+ *     see and edit the env file, and delete deployment history entries
  * To change who may do what, change the role in the requireRole() call.
  *
  * Deployment: the env is stored encrypted and only returned by
  * deployment() to admins and owners. deploy() starts SiteDeployer in the
- * background.
+ * background. The history is paginated (?page, ?per_page, ?status) and each
+ * entry carries the commit it deployed, with a link to GitHub or GitLab.
  *
  * Deleting: destroy() needs ?confirm=<domain> (the API enforces the typed
  * confirmation, not just the UI), marks the site "deleting" and starts
@@ -50,6 +51,7 @@ import { SiteProvisioner } from "../services/SiteProvisioner.js";
 import { SiteDeployer, canDeploy, defaultDeployScript, envPathFor } from "../services/SiteDeployer.js";
 import { SiteDestroyer } from "../services/SiteDestroyer.js";
 import { CryptoService } from "../services/CryptoService.js";
+import { commitUrl } from "../services/CommitLinks.js";
 import { needsPort } from "../services/SiteTypes.js";
 import { createGuard, audit, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole, hasRole } from "../services/TeamScope.js";
@@ -97,6 +99,8 @@ interface DeploymentRow {
     status: string;
     log: string;
     branch: string;
+    commit_sha: string;
+    commit_message: string;
     started_at: string;
     finished_at: string;
     created_at: string;
@@ -108,6 +112,10 @@ const createGuardPerTeam = createGuard({ max: 20, windowMs: 60 * 60_000, scope: 
 const deleteGuard = createGuard({ max: 10, windowMs: FIFTEEN_MINUTES, scope: "user", what: "site deletions" });
 const deployGuard = createGuard({ max: 15, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployments" });
 const saveGuard = createGuard({ max: 30, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployment changes" });
+const deleteDeploymentGuard = createGuard({ max: 60, windowMs: FIFTEEN_MINUTES, scope: "user", what: "deployment deletions" });
+
+const DEFAULT_PER_PAGE = 10;
+const MAX_PER_PAGE = 50;
 
 async function deploymentsFor(siteId: number): Promise<DeploymentRow[]> {
     const all = (await Deployment.all()) as DeploymentRow[];
@@ -160,9 +168,35 @@ async function syncDeployments(site: SiteRow): Promise<DeploymentRow[]> {
     return changed ? await deploymentsFor(site.id) : rows;
 }
 
-function toPublicDeployment(row: DeploymentRow) {
-    const { log, user_id, ...rest } = row;
-    return rest;
+/** The log and the person who deployed stay private; the commit is exposed as commit, commit_message and commit_url. */
+function toPublicDeployment(row: DeploymentRow, repository: string, kind: string) {
+    const { log, user_id, commit_sha, commit_message, ...rest } = row;
+    const sha = String(commit_sha ?? "");
+
+    return {
+        ...rest,
+        commit: sha,
+        commit_message: String(commit_message ?? ""),
+        commit_url: commitUrl(repository, kind, sha),
+    };
+}
+
+/** "github" or "gitlab" for the site's source control connection ("" when there is none). */
+async function sourceKindOf(site: SiteRow): Promise<string> {
+    if (Number(site.source_control_id) === 0) return "";
+
+    try {
+        const sc = (await SourceProvider.find(site.source_control_id)) as { kind?: string } | null;
+        return String(sc?.kind ?? "");
+    } catch {
+        return "";
+    }
+}
+
+function intParam(value: unknown, fallback: number, min: number, max: number): number {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
 }
 
 const MAX_TEXT = 20_000;
@@ -462,13 +496,50 @@ export class SiteController {
         });
     }
 
-    /** GET /api/sites/:id/deployments: newest first, without logs. */
+    /**
+     * GET /api/sites/:id/deployments?page=1&per_page=10&status=all|success|failed
+     *
+     * Newest first, without logs. The counts always cover the whole history
+     * (not just the chosen status), so the filter tabs can show them.
+     * active_id is the newest successful deployment.
+     */
     async deployments(req: TylixRequest, res: TylixResponse) {
         const site = await findOwned(req, res);
         if (!site) return;
 
         const rows = await syncDeployments(site);
-        return res.json(rows.slice(0, 50).map(toPublicDeployment));
+
+        const query = (req as { query?: Record<string, unknown> }).query ?? {};
+        const perPage = intParam(query.per_page, DEFAULT_PER_PAGE, 1, MAX_PER_PAGE);
+        const wanted = String(query.status ?? "all");
+        const status = wanted === "success" || wanted === "failed" ? wanted : "all";
+
+        const counts = {
+            all: rows.length,
+            success: rows.filter((d) => d.status === "success").length,
+            failed: rows.filter((d) => d.status === "failed").length,
+        };
+
+        const filtered = status === "all" ? rows : rows.filter((d) => d.status === status);
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / perPage);
+        const page = intParam(query.page, 1, 1, Math.max(1, totalPages));
+
+        const slice = filtered.slice((page - 1) * perPage, page * perPage);
+        const activeId = rows.find((d) => d.status === "success")?.id ?? null;
+
+        const kind = await sourceKindOf(site);
+        const repository = String(site.repository ?? "");
+
+        return res.json({
+            data: slice.map((d) => toPublicDeployment(d, repository, kind)),
+            page,
+            per_page: perPage,
+            total,
+            total_pages: totalPages,
+            counts,
+            active_id: activeId,
+        });
     }
 
     /** GET /api/sites/:id/deployments/:deploymentId: one deployment's log. */
@@ -488,6 +559,48 @@ export class SiteController {
         const log = row.status === "deploying" ? String(site.deploy_log ?? "") : String(row.log ?? "");
 
         return res.json({ id: row.id, status: row.status, log });
+    }
+
+    /**
+     * DELETE /api/sites/:id/deployments/:deploymentId: removes one history entry
+     * and its log. Admin only. Refused while that deployment is running. Nothing
+     * changes on the server.
+     */
+    async deleteDeployment(req: TylixRequest, res: TylixResponse) {
+        const site = await findOwned(req, res);
+        if (!site) return;
+        if (!requireRole(req, res, "admin")) return;
+        if (!(await requireActive(res, Number(site.team_id)))) return;
+        if (!deleteDeploymentGuard(req, res)) return;
+
+        // Close finished rows first, so a deployment that just ended can be deleted.
+        await syncDeployments(site);
+
+        const row = (await Deployment.find(req.params.deploymentId)) as DeploymentRow | null;
+        if (!row || Number(row.site_id) !== Number(site.id)) {
+            res.status(404);
+            return res.json({ error: "Deployment not found." });
+        }
+
+        if (row.status === "deploying") {
+            res.status(409);
+            return res.json({ error: "This deployment is still running. Wait for it to finish, then delete it." });
+        }
+
+        // If your ORM names its delete method differently (destroy, remove), change this line.
+        await Deployment.delete(row.id);
+
+        await audit({
+            userId: Number(req.user?.userId),
+            teamId: Number(site.team_id),
+            serverId: site.server_id,
+            event: "site.deployment_deleted",
+            message: `A deployment of ${site.domain} was removed from the history.`,
+            meta: { site_id: site.id, deployment_id: row.id, status: row.status },
+        });
+
+        res.status(204);
+        return res.end();
     }
 
     /** PUT /api/sites/:id/deployment: body { deploy_script?, env? }. Omitted fields are left alone. */
@@ -594,6 +707,9 @@ export class SiteController {
             status: "deploying",
             log: "",
             branch: String(site.branch ?? ""),
+            // Filled in by SiteDeployer once the pull has landed on a commit.
+            commit_sha: "",
+            commit_message: "",
             started_at: new Date().toISOString(),
             finished_at: "",
         });

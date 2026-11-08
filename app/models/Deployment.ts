@@ -8,6 +8,8 @@ export interface DeploymentAttributes {
     status: string;
     log: string;
     branch: string;
+    commit_sha: string;
+    commit_message: string;
     started_at: string;
     finished_at: string;
     created_at: string;
@@ -23,6 +25,8 @@ export class Deployment extends Model {
         "status",
         "log",
         "branch",
+        "commit_sha",
+        "commit_message",
         "started_at",
         "finished_at",
     ];

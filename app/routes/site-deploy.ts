@@ -5,11 +5,13 @@
  * script runs on the machine, the env holds secrets and logs can echo them.
  * Writes answer 402 while the team is view only (withBillingLock).
  *
- * GET  /api/sites/:id/deployment                   admin: script, env, status and log
- * PUT  /api/sites/:id/deployment                   admin: save script and/or env
- * POST /api/sites/:id/deploy                       admin: start a deployment
- * GET  /api/sites/:id/deployments                  any member: deployment history (no logs)
- * GET  /api/sites/:id/deployments/:deploymentId    admin: one deployment's log
+ * GET    /api/sites/:id/deployment                   admin: script, env, status and log
+ * PUT    /api/sites/:id/deployment                   admin: save script and/or env
+ * POST   /api/sites/:id/deploy                       admin: start a deployment
+ * GET    /api/sites/:id/deployments                  any member: paginated history (no logs)
+ *                                                    ?page=1&per_page=10&status=all|success|failed
+ * GET    /api/sites/:id/deployments/:deploymentId    admin: one deployment's log
+ * DELETE /api/sites/:id/deployments/:deploymentId    admin: delete one deployment
  */
 
 import type { Router } from "@tylix/core";
@@ -63,6 +65,13 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
         "/api/sites/:id/deployments/:deploymentId",
         write(async (req, res) => {
             await controller.deploymentLog(req, res);
+        }),
+    );
+
+    router.delete(
+        "/api/sites/:id/deployments/:deploymentId",
+        write(async (req, res) => {
+            await controller.deleteDeployment(req, res);
         }),
     );
 }

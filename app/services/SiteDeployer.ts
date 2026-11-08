@@ -1,7 +1,8 @@
 /**
  * Deploys a site that is already provisioned. Phases, one SSH call each:
  *
- *   pull     git pull --ff-only (token passed through git's env config)
+ *   pull     git pull --ff-only (token passed through git's env config),
+ *            then prints the commit it landed on (saved on the history row)
  *   env      writes the saved env to the site's .env (mode 600)
  *   script   runs the deployment script as the isolated user
  *            (docker sites: as the ssh user through sudo, because Docker needs root)
@@ -21,6 +22,7 @@
 
 import { Site } from "../models/Site.js";
 import { Server } from "../models/Server.js";
+import { Deployment } from "../models/Deployment.js";
 import { SitePlugin } from "../models/SitePlugin.js";
 import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "./CryptoService.js";
@@ -54,9 +56,14 @@ export interface DeployRow {
 interface Phase {
     title: string;
     script: string;
+    /** The pull phase prints the commit it landed on; run() saves it. */
+    capturesCommit?: boolean;
 }
 
 const DEPLOY_TIMEOUT_MS = 20 * 60_000;
+
+const COMMIT_MARK = "TYLIX_COMMIT ";
+const COMMIT_MSG_MARK = "TYLIX_COMMIT_MSG ";
 
 const s = (value: unknown) => String(value ?? "");
 
@@ -373,6 +380,54 @@ function lastLine(stderr: string, stdout: string): string {
     return (lines[lines.length - 1] ?? "Command failed.").slice(0, 300);
 }
 
+/** Pulls the commit marker lines out of a phase's output. Returns what was found and the cleaned text. */
+function extractCommit(text: string): { sha: string; message: string; clean: string } {
+    let sha = "";
+    let message = "";
+    const kept: string[] = [];
+
+    for (const line of text.split("\n")) {
+        const t = line.trim();
+
+        if (t.startsWith(COMMIT_MSG_MARK)) {
+            try {
+                message = Buffer.from(t.slice(COMMIT_MSG_MARK.length).trim(), "base64").toString("utf8").trim();
+            } catch {
+                message = "";
+            }
+            continue;
+        }
+
+        if (t.startsWith(COMMIT_MARK)) {
+            const value = t.slice(COMMIT_MARK.length).trim();
+            if (/^[0-9a-f]{7,64}$/i.test(value)) sha = value;
+            continue;
+        }
+
+        kept.push(line);
+    }
+
+    return { sha, message: message.slice(0, 500), clean: kept.join("\n").trim() };
+}
+
+/** Saves the commit on the newest running history row of the site. Never throws. */
+async function recordCommit(siteId: number, sha: string, message: string): Promise<void> {
+    if (!sha) return;
+
+    try {
+        const all = (await Deployment.all()) as { id: number; site_id: number; status: string }[];
+        const running = all
+            .filter((d) => Number(d.site_id) === Number(siteId) && d.status === "deploying")
+            .sort((a, b) => Number(b.id) - Number(a.id))[0];
+
+        if (running) {
+            await Deployment.update(running.id, { commit_sha: sha, commit_message: message });
+        }
+    } catch (err) {
+        console.error(`Couldn't save the commit for site ${siteId}:`, err);
+    }
+}
+
 /** Same pool file the site-creation job writes (socket name matches the nginx vhost). */
 function fpmPool(site: DeployRow): string {
     return `[${site.isolated_user}]
@@ -448,6 +503,7 @@ function buildPhases(site: DeployRow, source: { kind: string; token: string } | 
         const gitUser = source.kind === "gitlab" ? "oauth2" : "x-access-token";
         phases.push({
             title: "Pulling the latest code",
+            capturesCommit: true,
             script: shellScript(
                 { ...base, GIT_USER: gitUser, GIT_TOKEN: source.token },
                 `
@@ -455,7 +511,9 @@ cd "$SITE_ROOT"
 [ -d .git ] || { echo "There is no git repository in $SITE_ROOT." >&2; exit 1; }
 as_user git rev-parse HEAD | $SUDO tee "/home/$SITE_USER/.prev-head-$SITE_USER" >/dev/null
 AUTH="$(printf '%s:%s' "$GIT_USER" "$GIT_TOKEN" | base64 -w0)"
-as_user env GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader "GIT_CONFIG_VALUE_0=Authorization: Basic $AUTH" git pull --ff-only origin "$BRANCH"`,
+as_user env GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader "GIT_CONFIG_VALUE_0=Authorization: Basic $AUTH" git pull --ff-only origin "$BRANCH"
+echo "${COMMIT_MARK}$(as_user git rev-parse HEAD)"
+echo "${COMMIT_MSG_MARK}$(as_user git log -1 --format=%s | base64 -w0)"`,
             ),
         });
     }
@@ -686,7 +744,18 @@ export class SiteDeployer {
                 await save({});
 
                 const result = await sshExec(target, phase.script, DEPLOY_TIMEOUT_MS);
-                const out = mask([result.stdout, result.stderr].filter(Boolean).join("\n").trim());
+
+                let stdout = result.stdout;
+
+                // The pull phase prints the commit it landed on. Save it on the history
+                // row and keep the marker lines out of the visible log.
+                if (phase.capturesCommit && result.code === 0) {
+                    const found = extractCommit(stdout);
+                    stdout = found.clean;
+                    await recordCommit(siteId, found.sha, mask(found.message));
+                }
+
+                const out = mask([stdout, result.stderr].filter(Boolean).join("\n").trim());
                 if (out) log += out + "\n";
                 log += "\n";
                 await save({});

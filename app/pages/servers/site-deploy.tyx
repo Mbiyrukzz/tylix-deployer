@@ -34,9 +34,21 @@ state
   error: ""
   timer: 0
   history: []
-  shownHistory: []
   histFilter: "all"
   histTabs: []
+  histLoading: false
+  histBodyCls: "transition-opacity"
+  page: 1
+  perPage: 10
+  total: 0
+  totalPages: 1
+  rangeText: ""
+  hasPrev: false
+  hasNext: false
+  pageNumbers: []
+  deleteTarget: null
+  deleting: false
+  deleteError: ""
   viewId: ""
   logText: ""
   logStatus: "idle"
@@ -59,6 +71,7 @@ state
   latestStages: 0
   modalAtBottom: true
   copied: false
+  histAll: 0
   successCount: 0
   failedCount: 0
   successRate: 0
@@ -305,7 +318,7 @@ action
     this.latestStages = this.latestLines.filter((l) => l.kind is "stage").length
 
     const stages = this.latestLines.filter((l) => l.isStage)
-    const recent = stages.slice(-12)
+    const recent = stages.slice(-6)
     const last = recent.length - 1
     this.stageChips = recent.map((s, i) => this.decorateStage(s.text, i is last))
     const rawStage = recent.length > 0 ? recent[last].text : ""
@@ -369,6 +382,7 @@ action
   closeModal() {
     this.modal = ""
     this.error = ""
+    this.deleteError = ""
   }
 
   openLive() {
@@ -425,6 +439,11 @@ action
       tone = "bg-brand-500/10 border-brand-500/20 text-brand-700 dark:text-brand-500"
       dot = "bg-brand-500"
     }
+    if d.status is "success" and d.id is not activeId {
+      label = "Success"
+      tone = "bg-brand-500/10 border-brand-500/20 text-brand-700 dark:text-brand-500"
+      dot = "bg-brand-500/60"
+    }
     if d.status is "failed" {
       label = "Failed"
       tone = "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-500"
@@ -446,53 +465,166 @@ action
       }
     }
 
+    const commit = d.commit or ""
+    const message = d.commit_message or ""
+
     return Object.assign({}, d, {
       label: label,
       dotCls: "w-2.5 h-2.5 rounded-full shrink-0 " + dot,
       badgeCls: "inline-flex w-24 shrink-0 justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider " + tone,
       whenText: d.started_at ? d.started_at.slice(0, 16).replace("T", " ") : "",
-      duration: duration
+      duration: duration,
+      shortCommit: commit.slice(0, 7),
+      commitMessage: message.length > 90 ? message.slice(0, 90) + "…" : message,
+      commitUrl: d.commit_url or "",
+      canDelete: d.status is not "deploying"
     })
   }
 
-  applyHistFilter() {
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-xs font-semibold px-3.5 py-1.5 transition-all"
-    const idleCls = "inline-flex items-center gap-2 rounded-full border border-line bg-panel text-slate-600 dark:text-slate-300 text-xs font-medium px-3.5 py-1.5 hover:border-brand-500/50 transition-all"
-    const keys = [["all", "All"], ["success", "Successful"], ["failed", "Failed"]]
+  buildTabs(counts) {
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-xs font-semibold px-4 py-2 transition-all"
+    const idleCls = "inline-flex items-center gap-2 rounded-full border border-line bg-panel text-slate-600 dark:text-slate-300 text-xs font-medium px-4 py-2 hover:border-brand-500/50 transition-all"
+    const keys = [["all", "All", counts.all], ["success", "Successful", counts.success], ["failed", "Failed", counts.failed]]
 
-    this.shownHistory = this.histFilter is "all" ? this.history : this.history.filter((d) => d.status is this.histFilter)
     this.histTabs = keys.map((k) => ({
       key: k[0],
       label: k[1],
-      count: k[0] is "all" ? this.history.length : this.history.filter((d) => d.status is k[0]).length,
+      count: k[2],
       cls: k[0] is this.histFilter ? activeCls : idleCls
     }))
   }
 
+  buildPages() {
+    const total = this.totalPages
+    const cur = this.page
+    const end = Math.min(total, Math.max(1, cur - 2) + 4)
+    const start = Math.max(1, end - 4)
+    const activeCls = "w-9 h-9 inline-flex items-center justify-center rounded-full bg-brand-500 text-white dark:text-slate-950 text-xs font-semibold"
+    const idleCls = "w-9 h-9 inline-flex items-center justify-center rounded-full text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+
+    this.pageNumbers = Array.from({ length: end - start + 1 }, (x, i) => start + i).map((n) => ({
+      n: n,
+      cls: n is cur ? activeCls : idleCls
+    }))
+    this.hasPrev = cur > 1
+    this.hasNext = cur < total
+  }
+
   setHistFilter(key) {
+    if key is this.histFilter {
+      return null
+    }
     this.histFilter = key
-    this.applyHistFilter()
+    this.page = 1
+    this.loadHistory()
+  }
+
+  goPage(n) {
+    if n < 1 or n > this.totalPages or n is this.page {
+      return null
+    }
+    this.page = n
+    this.loadHistory()
+  }
+
+  prevPage() {
+    this.goPage(this.page - 1)
+  }
+
+  nextPage() {
+    this.goPage(this.page + 1)
   }
 
   async loadHistory() {
-    const result = await useApi("/api/sites/" + this.siteId + "/deployments")
+    this.histLoading = true
+    this.histBodyCls = "opacity-50 pointer-events-none transition-opacity"
 
-    if result.ok and Array.isArray(result.data) {
-      const firstOk = result.data.find((d) => d.status is "success")
-      const activeId = firstOk ? firstOk.id : null
-      this.history = result.data.map((d) => this.decorateDeploy(d, activeId))
-      this.successCount = this.history.filter((d) => d.status is "success").length
-      this.failedCount = this.history.filter((d) => d.status is "failed").length
+    const query = "?page=" + this.page + "&per_page=" + this.perPage + "&status=" + this.histFilter
+    const result = await useApi("/api/sites/" + this.siteId + "/deployments" + query)
 
-      const total = this.successCount + this.failedCount
-      this.successRate = total > 0 ? Math.round(this.successCount / total * 100) : 0
-      this.rateStyle = "width: " + this.successRate + "%"
-
-      const finished = this.history.find((d) => d.duration is not "")
-      this.lastDuration = finished ? finished.duration : ""
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
     }
 
-    this.applyHistFilter()
+    if result.ok and result.data and Array.isArray(result.data.data) {
+      const body = result.data
+
+      // The page we asked for no longer exists (rows were deleted): step back.
+      if body.total_pages > 0 and this.page > body.total_pages {
+        this.page = body.total_pages
+        await this.loadHistory()
+        return null
+      }
+
+      const activeId = body.active_id or null
+      this.history = body.data.map((d) => this.decorateDeploy(d, activeId))
+      this.total = body.total
+      this.totalPages = Math.max(1, body.total_pages)
+
+      const counts = body.counts or { all: body.total, success: 0, failed: 0 }
+      this.histAll = counts.all
+      this.successCount = counts.success
+      this.failedCount = counts.failed
+
+      const finishedTotal = counts.success + counts.failed
+      this.successRate = finishedTotal > 0 ? Math.round(counts.success / finishedTotal * 100) : 0
+      this.rateStyle = "width: " + this.successRate + "%"
+
+      if this.page is 1 and this.histFilter is "all" {
+        const finished = this.history.find((d) => d.duration is not "")
+        this.lastDuration = finished ? finished.duration : ""
+      }
+
+      const from = body.total > 0 ? (this.page - 1) * this.perPage + 1 : 0
+      const to = body.total > 0 ? from + this.history.length - 1 : 0
+      this.rangeText = body.total > 0 ? "Showing " + from + "–" + to + " of " + body.total : ""
+
+      this.buildTabs(counts)
+      this.buildPages()
+    }
+
+    this.histLoading = false
+    this.histBodyCls = "transition-opacity"
+  }
+
+  openDelete(id) {
+    const d = this.history.find((x) => x.id is id)
+    if not d {
+      return null
+    }
+    this.deleteTarget = d
+    this.deleteError = ""
+    this.openModal("delete")
+  }
+
+  async confirmDelete() {
+    if Billing.locked {
+      return null
+    }
+    if this.deleting or not this.deleteTarget {
+      return null
+    }
+
+    this.deleting = true
+    this.deleteError = ""
+
+    const result = await useApi("/api/sites/" + this.siteId + "/deployments/" + this.deleteTarget.id, { method: "DELETE" })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      this.modal = ""
+      this.deleteTarget = null
+      await this.loadHistory()
+    } else {
+      this.deleteError = result.data?.error or "Couldn't delete this deployment."
+    }
+
+    this.deleting = false
   }
 
   async poll() {
@@ -594,6 +726,7 @@ action
       this.setLatest("")
       this.showLog("")
       this.startPolling()
+      this.page = 1
       await this.loadHistory()
       return null
     }
@@ -657,18 +790,18 @@ template
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0 overflow-x-hidden">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 lg:py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
 
 {{#if loading}}
-      <div class="space-y-4">
+      <div class="space-y-6">
         <div class="h-8 w-64 rounded-lg bg-panel animate-pulse"></div>
-        <div class="h-40 rounded-2xl bg-panel animate-pulse"></div>
-        <div class="h-56 rounded-2xl bg-panel animate-pulse"></div>
+        <div class="h-44 rounded-2xl bg-panel animate-pulse"></div>
+        <div class="h-64 rounded-2xl bg-panel animate-pulse"></div>
       </div>
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center shadow-sm dark:shadow-none">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-10 text-center shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
         <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">&larr; Back to servers</a>
@@ -676,13 +809,13 @@ template
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-5">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Sites
       </a>
 
       <LockedBanner />
 
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
         <div class="min-w-0">
           <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-center gap-2.5 max-w-full">
             <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-500 transition-colors">{{ site.domain }}</h1>
@@ -690,7 +823,7 @@ template
               <path d="M11 3h6v6M17 3l-8 8M15 11v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" />
             </svg>
           </a>
-          <p class="text-slate-500 text-sm mt-1">Deployment</p>
+          <p class="text-slate-500 text-sm mt-1.5">Deployment</p>
         </div>
 
         <div class="shrink-0">
@@ -717,10 +850,10 @@ template
         </div>
       </div>
 
-      <div class="flex flex-col lg:flex-row gap-8">
+      <div class="flex flex-col lg:flex-row gap-10">
         <SiteSidebar active="deployment" siteId="{{ siteId }}" />
 
-        <div class="min-w-0 flex-1 space-y-6">
+        <div class="min-w-0 flex-1 space-y-8">
 
 {{#if error}}
 {{#if modal is ""}}
@@ -731,20 +864,20 @@ template
 {{/if}}
 
 {{#if not canDeploy}}
-          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-8 shadow-sm dark:shadow-none">
             <p class="text-slate-900 dark:text-slate-100 text-sm">This site has no repository, so there is nothing to deploy.</p>
           </div>
 {{/if}}
 
 {{#if canDeploy}}
-          <div class="relative overflow-hidden rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+          <div class="relative overflow-hidden rounded-2xl border border-line bg-panel p-6 sm:p-8 shadow-sm dark:shadow-none">
             <div class="absolute inset-x-0 top-0 h-1 {{ heroCls }}"></div>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
               <div class="min-w-0">
-                <h2 class="text-slate-900 dark:text-slate-100 text-lg font-semibold mb-1">Deploy</h2>
-                <p class="text-slate-500 text-sm">Pulls the latest code, writes the environment, runs the deployment script and restarts the app.</p>
+                <h2 class="text-slate-900 dark:text-slate-100 text-lg font-semibold mb-1.5">Deploy</h2>
+                <p class="text-slate-500 text-sm leading-relaxed max-w-xl">Pulls the latest code, writes the environment, runs the deployment script and restarts the app.</p>
 {{#if currentStage}}
-                <p class="mt-3 flex max-w-full items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <p class="mt-4 flex max-w-full items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
                   <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse"></span>
                   <span class="truncate">{{ currentStage }}</span>
                 </p>
@@ -776,9 +909,9 @@ template
               </div>
             </div>
 
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3">
-                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Last deployed</p>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-5 py-4">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">Last deployed</p>
 {{#if deployedText}}
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ deployedText }} UTC</p>
 {{/if}}
@@ -786,12 +919,12 @@ template
                 <p class="text-slate-400 text-sm">Never</p>
 {{/if}}
               </div>
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3 min-w-0">
-                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Branch</p>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-5 py-4 min-w-0">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">Branch</p>
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ site.branch }}</p>
               </div>
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3">
-                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Last duration</p>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-5 py-4">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">Last duration</p>
 {{#if lastDuration}}
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ lastDuration }}</p>
 {{/if}}
@@ -799,9 +932,9 @@ template
                 <p class="text-slate-400 text-sm">None yet</p>
 {{/if}}
               </div>
-              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-4 py-3">
-                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1">Success rate</p>
-                <p class="text-sm mb-2"><span class="text-brand-600 dark:text-brand-500 font-semibold">{{ successCount }}</span> <span class="text-slate-400">passed</span> <span class="text-slate-300 dark:text-slate-700">/</span> <span class="text-rose-600 dark:text-rose-500 font-semibold">{{ failedCount }}</span> <span class="text-slate-400">failed</span></p>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-line px-5 py-4">
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">Success rate</p>
+                <p class="text-sm mb-2.5"><span class="text-brand-600 dark:text-brand-500 font-semibold">{{ successCount }}</span> <span class="text-slate-400">passed</span> <span class="text-slate-300 dark:text-slate-700">/</span> <span class="text-rose-600 dark:text-rose-500 font-semibold">{{ failedCount }}</span> <span class="text-slate-400">failed</span></p>
                 <div class="h-1.5 w-full rounded-full bg-rose-500/20 overflow-hidden">
                   <div class="h-full rounded-full bg-brand-500 transition-all" style="{{ rateStyle }}"></div>
                 </div>
@@ -809,12 +942,41 @@ template
             </div>
 
 {{#if saved}}
-            <p class="text-brand-700 dark:text-brand-500 text-sm mt-4">Saved.</p>
+            <p class="text-brand-700 dark:text-brand-500 text-sm mt-5">Saved.</p>
+{{/if}}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <button onclick="{{ openModal('script') }}" class="group text-left rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
+              <div class="flex items-center gap-4">
+                <span class="w-10 h-10 shrink-0 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M4 17l6-6-6-6M12 19h8" /></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Deployment script</p>
+                  <p class="text-slate-500 text-xs mt-0.5">Commands run after the latest code is pulled.</p>
+                </div>
+                <span class="text-xs text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">Edit &rarr;</span>
+              </div>
+            </button>
+{{#if envPath}}
+            <button onclick="{{ openModal('env') }}" class="group text-left rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
+              <div class="flex items-center gap-4">
+                <span class="w-10 h-10 shrink-0 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Environment</p>
+                  <p class="text-slate-500 text-xs font-mono truncate mt-0.5">{{ envPath }}</p>
+                </div>
+                <span class="text-xs text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">Edit &rarr;</span>
+              </div>
+            </button>
 {{/if}}
           </div>
 
           <div class="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-sm dark:shadow-none max-w-full">
-            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/60">
+            <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-800 bg-slate-900/60">
               <div class="flex items-center gap-3 min-w-0">
                 <div class="flex items-center gap-1.5">
                   <span class="w-2.5 h-2.5 rounded-full bg-rose-500/70"></span>
@@ -838,7 +1000,7 @@ template
 {{#if latestErrors is not 0}}
                 <span class="text-[11px] text-rose-300 bg-rose-500/10 rounded-full px-2.5 py-1">{{ latestErrors }} errors</span>
 {{/if}}
-                <button onclick="{{ openLive() }}" class="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-800 rounded-full px-3 py-1 transition-colors">
+                <button onclick="{{ openLive() }}" class="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-800 rounded-full px-3.5 py-1.5 transition-colors">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 3h5v5M8 17H3v-5M17 3l-6 6M3 17l6-6" /></svg>
                   Full log
                 </button>
@@ -846,7 +1008,7 @@ template
             </div>
 
 {{#if latestStages is not 0}}
-            <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-800/70">
+            <div class="flex flex-wrap items-center gap-2 px-5 py-4 border-b border-slate-800/70">
 {{#each s in stageChips}}
               <span class="{{ s.cls }}">
                 <span class="text-[10px]">{{ s.icon }}</span>
@@ -858,10 +1020,10 @@ template
 
 {{#if deployStatus is "failed"}}
 {{#if lastErrorText}}
-            <div class="flex items-start gap-3 px-4 py-3 bg-rose-500/10 border-b border-rose-500/20">
+            <div class="flex items-start gap-3 px-5 py-4 bg-rose-500/10 border-b border-rose-500/20">
               <span class="text-rose-400 text-sm mt-px">&#10005;</span>
               <div class="min-w-0">
-                <p class="text-rose-300 text-xs font-semibold mb-0.5">Deployment failed</p>
+                <p class="text-rose-300 text-xs font-semibold mb-1">Deployment failed</p>
                 <p class="text-rose-200/80 text-xs font-mono [overflow-wrap:anywhere]">{{ lastErrorText }}</p>
               </div>
             </div>
@@ -870,7 +1032,7 @@ template
 
 {{#if deployStatus is "deploying"}}
 {{#if latestStages is 0}}
-            <div class="flex items-center gap-3 px-4 py-6">
+            <div class="flex items-center gap-3 px-5 py-8">
               <span class="w-3.5 h-3.5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></span>
               <p class="text-slate-400 text-xs">Starting deployment…</p>
             </div>
@@ -879,17 +1041,17 @@ template
 
 {{#if deployLog}}
 {{#if deployStatus is not "deploying"}}
-            <div class="py-3 text-xs leading-relaxed font-mono">
-              <p class="px-4 pb-2 text-[10px] uppercase tracking-wider text-slate-500 font-sans">Highlights</p>
+            <div class="py-4 text-xs leading-relaxed font-mono">
+              <p class="px-5 pb-3 text-[10px] uppercase tracking-wider text-slate-500 font-sans">Highlights</p>
 {{#each l in highlights}}
-              <div class="flex items-start border-l-2 {{ l.rowCls }}">
+              <div class="flex items-start border-l-2 py-0.5 {{ l.rowCls }}">
                 <span class="w-10 shrink-0 pr-2 text-right text-slate-600 select-none">{{ l.n }}</span>
                 <span class="w-4 shrink-0 text-center select-none opacity-80 {{ l.cls }}">{{ l.icon }}</span>
-                <span class="min-w-0 flex-1 pl-2 pr-4 whitespace-pre-wrap line-clamp-2 [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-slate-500 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
+                <span class="min-w-0 flex-1 pl-2 pr-5 whitespace-pre-wrap line-clamp-2 [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-slate-500 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
               </div>
 {{/each}}
             </div>
-            <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-800/70 bg-slate-900/40">
+            <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-800/70 bg-slate-900/40">
               <p class="text-slate-500 text-[11px]">{{ hiddenCount }} more lines in the full log</p>
               <button onclick="{{ openLive() }}" class="text-[11px] font-semibold text-brand-400 hover:text-brand-300 transition-colors">View full log &rarr;</button>
             </div>
@@ -897,7 +1059,7 @@ template
 {{/if}}
 {{#if not deployLog}}
 {{#if deployStatus is not "deploying"}}
-            <div class="px-4 py-12 text-center">
+            <div class="px-5 py-14 text-center">
               <p class="text-slate-500 text-xs font-mono">$ no deployment yet</p>
               <p class="text-slate-600 text-xs mt-2">Press Deploy now to see live progress here.</p>
             </div>
@@ -905,38 +1067,14 @@ template
 {{/if}}
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button onclick="{{ openModal('script') }}" class="group text-left rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
-              <div class="flex items-center gap-3">
-                <span class="w-9 h-9 shrink-0 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M4 17l6-6-6-6M12 19h8" /></svg>
-                </span>
-                <div class="min-w-0 flex-1">
-                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Deployment script</p>
-                  <p class="text-slate-500 text-xs">Commands run after the latest code is pulled.</p>
-                </div>
-                <span class="text-xs text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">Edit &rarr;</span>
-              </div>
-            </button>
-{{#if envPath}}
-            <button onclick="{{ openModal('env') }}" class="group text-left rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
-              <div class="flex items-center gap-3">
-                <span class="w-9 h-9 shrink-0 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                </span>
-                <div class="min-w-0 flex-1">
-                  <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">Environment</p>
-                  <p class="text-slate-500 text-xs font-mono truncate">{{ envPath }}</p>
-                </div>
-                <span class="text-xs text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">Edit &rarr;</span>
-              </div>
-            </button>
+          <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-line">
+              <div>
+                <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Deployment history</h2>
+{{#if rangeText}}
+                <p class="text-slate-500 text-xs mt-1">{{ rangeText }}</p>
 {{/if}}
-          </div>
-
-          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Deployment history</h2>
+              </div>
               <div class="flex flex-wrap items-center gap-2">
 {{#each t in histTabs}}
                 <button onclick="{{ setHistFilter(t.key) }}" class="{{ t.cls }}">
@@ -947,30 +1085,91 @@ template
               </div>
             </div>
 
-{{#if shownHistory.length is 0}}
-            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
+{{#if history.length is 0}}
+{{#if not histLoading}}
+            <div class="px-6 py-14 text-center">
               <p class="text-slate-500 text-sm">No deployments to show.</p>
             </div>
 {{/if}}
+{{/if}}
 
-            <div class="space-y-2">
-{{#each d in shownHistory}}
-              <div class="flex flex-wrap items-center gap-3 rounded-xl border border-line px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors">
-                <span class="{{ d.dotCls }}"></span>
-                <span class="{{ d.badgeCls }}">{{ d.label }}</span>
-                <div class="min-w-0 flex-1 basis-40">
-                  <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ d.whenText }} UTC</p>
+            <div class="divide-y divide-line {{ histBodyCls }}">
+{{#each d in history}}
+              <div class="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors">
+                <div class="flex items-center gap-3 sm:w-40 shrink-0">
+                  <span class="{{ d.dotCls }}"></span>
+                  <span class="{{ d.badgeCls }}">{{ d.label }}</span>
+                </div>
+
+                <div class="min-w-0 flex-1 space-y-2">
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <p class="text-slate-900 dark:text-slate-100 text-sm font-mono">{{ d.whenText }} UTC</p>
+{{#if d.duration}}
+                    <p class="text-slate-500 text-xs font-mono">{{ d.duration }}</p>
+{{/if}}
+                  </div>
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 {{#if d.branch}}
-                  <p class="text-slate-500 text-xs font-mono truncate">{{ d.branch }}</p>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-mono text-slate-500 max-w-[14rem]">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 shrink-0"><circle cx="6" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="8" r="2.5" /><path d="M6 8.5v7M18 10.5c0 4-12 2-12 5.5" /></svg>
+                      <span class="truncate">{{ d.branch }}</span>
+                    </span>
+{{/if}}
+{{#if d.shortCommit}}
+{{#if d.commitUrl}}
+                    <a href="{{ d.commitUrl }}" target="_blank" rel="noopener noreferrer" title="Open commit on GitHub" class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-mono text-slate-700 dark:text-slate-200 hover:bg-brand-500/10 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 shrink-0"><circle cx="12" cy="12" r="3.5" /><path d="M3 12h5.5M15.5 12H21" /></svg>
+                      {{ d.shortCommit }}
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 shrink-0 opacity-60"><path d="M11 3h6v6M17 3l-8 8" /></svg>
+                    </a>
+{{/if}}
+{{#if not d.commitUrl}}
+                    <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-mono text-slate-700 dark:text-slate-200">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 shrink-0"><circle cx="12" cy="12" r="3.5" /><path d="M3 12h5.5M15.5 12H21" /></svg>
+                      {{ d.shortCommit }}
+                    </span>
+{{/if}}
+{{/if}}
+                  </div>
+{{#if d.commitMessage}}
+                  <p class="text-slate-500 text-xs truncate">{{ d.commitMessage }}</p>
 {{/if}}
                 </div>
-{{#if d.duration}}
-                <span class="text-slate-500 text-xs font-mono shrink-0">{{ d.duration }}</span>
+
+                <div class="flex items-center gap-2 shrink-0">
+                  <button onclick="{{ openDeployLog(d.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View log</button>
+{{#if d.canDelete}}
+                  <button onclick="{{ openDelete(d.id) }}" aria-label="Delete deployment" title="Delete deployment" class="w-9 h-9 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" /></svg>
+                  </button>
 {{/if}}
-                <button onclick="{{ openDeployLog(d.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View log</button>
+                </div>
               </div>
 {{/each}}
             </div>
+
+{{#if totalPages is not 1}}
+            <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-t border-line">
+              <p class="text-slate-500 text-xs">Page {{ page }} of {{ totalPages }}</p>
+              <div class="flex items-center gap-1.5">
+{{#if hasPrev}}
+                <button onclick="{{ prevPage() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">&larr; Previous</button>
+{{/if}}
+{{#if not hasPrev}}
+                <button disabled class="text-xs text-slate-400 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-2 opacity-50 cursor-not-allowed">&larr; Previous</button>
+{{/if}}
+{{#each p in pageNumbers}}
+                <button onclick="{{ goPage(p.n) }}" class="{{ p.cls }}">{{ p.n }}</button>
+{{/each}}
+{{#if hasNext}}
+                <button onclick="{{ nextPage() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Next &rarr;</button>
+{{/if}}
+{{#if not hasNext}}
+                <button disabled class="text-xs text-slate-400 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-2 opacity-50 cursor-not-allowed">Next &rarr;</button>
+{{/if}}
+              </div>
+            </div>
+{{/if}}
           </div>
 {{/if}}
 
@@ -1067,6 +1266,42 @@ template
 {{/if}}
 {{#if not Billing.locked}}
             <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
+{{/if}}
+{{/if}}
+          </div>
+        </div>
+      </div>
+{{/if}}
+
+{{#if modal is "delete"}}
+      <div role="dialog" aria-modal="true" aria-labelledby="delete-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
+        <div class="w-full max-w-md rounded-2xl border border-line bg-panel shadow-xl p-6">
+          <div class="flex items-start gap-4">
+            <span class="w-10 h-10 shrink-0 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" /></svg>
+            </span>
+            <div class="min-w-0">
+              <h3 id="delete-title" class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Delete this deployment?</h3>
+              <p class="text-slate-500 text-sm leading-relaxed">This removes the record and its log from the history. It does not change anything on the server.</p>
+{{#if deleteTarget}}
+              <p class="mt-3 text-xs font-mono text-slate-500">{{ deleteTarget.whenText }} UTC{{#if deleteTarget.shortCommit}} &middot; {{ deleteTarget.shortCommit }}{{/if}}</p>
+{{/if}}
+            </div>
+          </div>
+{{#if deleteError}}
+          <p role="alert" class="text-rose-500 text-sm mt-4">{{ deleteError }}</p>
+{{/if}}
+          <div class="flex items-center justify-end gap-3 mt-6">
+            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if deleting}}
+            <button disabled class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Deleting…</button>
+{{/if}}
+{{#if not deleting}}
+{{#if Billing.locked}}
+            <button disabled title="Pay to continue" class="text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 cursor-not-allowed select-none">Delete</button>
+{{/if}}
+{{#if not Billing.locked}}
+            <button onclick="{{ confirmDelete() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">Delete</button>
 {{/if}}
 {{/if}}
           </div>
