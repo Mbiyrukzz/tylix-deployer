@@ -214,7 +214,7 @@ template
 
       <div class="mb-8">
         <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
+          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
 {{#if status is "working"}}
           <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
             <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working

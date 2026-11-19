@@ -1,13 +1,13 @@
 component Sidebar
 
-import { IconBolt, IconViewGrid, IconServer, IconCloud, IconCode, IconAdjustments, IconGlobe } from "tylix-icons"
+import { IconBolt, IconViewGrid, IconServer, IconCloud, IconCode, IconAdjustments, IconGlobe, IconDotsHorizontal, IconUsers, IconDocumentText, IconX } from "tylix-icons"
 
 props
   active: String
 
 state
   collapsed: false
-  asideCls: "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:p-4 lg:w-64"
+  asideCls: "hidden lg:flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:p-4 lg:w-64"
   brandCls: "hidden lg:flex items-center gap-3 mb-6 px-1"
   brandTextCls: "flex flex-col leading-tight"
   topCls: "hidden lg:flex items-center justify-between px-3 mb-1"
@@ -20,10 +20,47 @@ state
   chipOffCls: "flex items-center justify-center w-7 h-7 shrink-0 rounded-lg bg-stone-200/50 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 group-hover:bg-brand-500/10 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"
   labelCls: ""
   chevCls: "w-4 h-4 transition-transform"
+  moreOpen: false
 
 action
+  // Phones get a bottom tab bar instead of the sidebar (see template).
+  tabCls(on) {
+    const base = "flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 h-14 rounded-2xl text-[11px] font-medium transition-colors "
+    if on {
+      return base + "text-brand-600 dark:text-brand-400"
+    }
+    return base + "text-zinc-500 dark:text-zinc-400 active:bg-stone-200/60 dark:active:bg-white/[0.06]"
+  }
+
+  tabIconCls(on) {
+    if on {
+      return "flex items-center justify-center w-11 h-7 rounded-full bg-brand-500/15"
+    }
+    return "flex items-center justify-center w-11 h-7 rounded-full"
+  }
+
+  inMore() {
+    return this.active is "team" or this.active is "source-control" or this.active is "settings"
+  }
+
+  sheetLink(on) {
+    const base = "flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition-colors "
+    if on {
+      return base + "bg-brand-500/10 text-brand-700 dark:text-brand-400"
+    }
+    return base + "text-zinc-700 dark:text-zinc-200 active:bg-stone-200/60 dark:active:bg-white/[0.06]"
+  }
+
+  toggleMore() {
+    this.moreOpen = not this.moreOpen
+  }
+
+  closeMore() {
+    this.moreOpen = false
+  }
+
   applyLayout() {
-    const asideBase = "flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
+    const asideBase = "hidden lg:flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
     const on = "relative shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-slate-900 dark:text-slate-100 text-sm font-medium"
     const off = "group shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
     const title = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
@@ -72,6 +109,7 @@ onMount
   }
 
 template
+<div class="contents">
 <aside class="{{ asideCls }}">
 
   <div class="{{ brandCls }}">
@@ -200,3 +238,47 @@ template
 {{/if}}
   </div>
 </aside>
+
+<nav aria-label="Main" class="app-tabbar lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/90 dark:bg-[#131315]/90 backdrop-blur-xl" style="padding-bottom: env(safe-area-inset-bottom)">
+  <div class="flex items-stretch gap-1 px-2 py-1">
+    <a href="/dashboard" class="{{ tabCls(active is 'overview') }}" aria-current="{{ active is 'overview' ? 'page' : 'false' }}">
+      <span class="{{ tabIconCls(active is 'overview') }}"><IconViewGrid class="w-5 h-5" /></span>
+      Overview
+    </a>
+    <a href="/servers" class="{{ tabCls(active is 'servers') }}" aria-current="{{ active is 'servers' ? 'page' : 'false' }}">
+      <span class="{{ tabIconCls(active is 'servers') }}"><IconServer class="w-5 h-5" /></span>
+      Servers
+    </a>
+    <a href="/providers" class="{{ tabCls(active is 'providers') }}" aria-current="{{ active is 'providers' ? 'page' : 'false' }}">
+      <span class="{{ tabIconCls(active is 'providers') }}"><IconCloud class="w-5 h-5" /></span>
+      Providers
+    </a>
+    <a href="/registrars" class="{{ tabCls(active is 'registrars') }}" aria-current="{{ active is 'registrars' ? 'page' : 'false' }}">
+      <span class="{{ tabIconCls(active is 'registrars') }}"><IconGlobe class="w-5 h-5" /></span>
+      Domains
+    </a>
+    <button onclick="{{ toggleMore() }}" aria-expanded="{{ moreOpen }}" aria-controls="tabbar-more" class="{{ tabCls(inMore() or moreOpen) }}">
+      <span class="{{ tabIconCls(inMore() or moreOpen) }}"><IconDotsHorizontal class="w-5 h-5" /></span>
+      More
+    </button>
+  </div>
+</nav>
+
+{{#if moreOpen}}
+<div class="lg:hidden fixed inset-0 z-[45]" role="dialog" aria-modal="true" aria-label="More">
+  <button onclick="{{ closeMore() }}" aria-label="Close" class="absolute inset-0 w-full h-full bg-black/40 backdrop-blur-[2px] cursor-default"></button>
+  <div id="tabbar-more" class="absolute inset-x-2 bottom-2 rounded-3xl border border-line bg-panel p-2 shadow-2xl shadow-black/30" style="margin-bottom: env(safe-area-inset-bottom)">
+    <div class="flex items-center justify-between px-4 pt-2 pb-1">
+      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.18em]">Workspace</p>
+      <button onclick="{{ closeMore() }}" aria-label="Close" class="w-9 h-9 -mr-2 flex items-center justify-center rounded-full text-zinc-500 active:bg-stone-200/60 dark:active:bg-white/[0.06]"><IconX class="w-5 h-5" /></button>
+    </div>
+    <a href="/team" class="{{ sheetLink(active is 'team') }}"><IconUsers class="w-5 h-5 text-zinc-400" /> Team</a>
+    <a href="/source-control" class="{{ sheetLink(active is 'source-control') }}"><IconCode class="w-5 h-5 text-zinc-400" /> Source control</a>
+    <a href="/settings" class="{{ sheetLink(active is 'settings') }}"><IconAdjustments class="w-5 h-5 text-zinc-400" /> Settings</a>
+    <div class="h-px bg-line my-1.5 mx-3"></div>
+    <a href="/docs" class="{{ sheetLink(false) }}"><IconDocumentText class="w-5 h-5 text-zinc-400" /> Docs</a>
+    <a href="/status" class="{{ sheetLink(false) }}"><span class="w-5 h-5 flex items-center justify-center"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span></span> System status</a>
+  </div>
+</div>
+{{/if}}
+</div>

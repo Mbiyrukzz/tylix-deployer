@@ -22,6 +22,9 @@ state
   sending: false
   needsCaptcha: false
   captchaToken: ""
+  unverified: false
+  resendText: ""
+  providers: []
 
 action
   setField(field, value) {
@@ -137,6 +140,7 @@ action
 
     const result = await this.callLogin(true).catch((err) => this.loginFailed(err))
     const failCode = result?.data?.code
+    this.unverified = failCode is "EMAIL_NOT_VERIFIED"
 
     this.afterAttempt(result)
 
@@ -199,13 +203,52 @@ action
     this.submitting = false
   }
 
+  // Sends a fresh verification link (the old one may have expired).
+  async resendVerification() {
+    this.resendText = "Sending…"
+    const result = await useApi("/api/auth/resend-verification", { method: "POST", body: { email: this.email } })
+    this.resendText = result.ok ? "Sent. Check your inbox (and spam folder)." : (result.data?.error or "Couldn't send it. Try again in a minute.")
+  }
+
+  oauthHref(id) {
+    return "/api/auth/oauth/" + id + "?returnTo=/dashboard"
+  }
+
+  // Google / GitHub sign-in sends people back here with ?error=<code>.
+  oauthMessage(code) {
+    const messages = {
+      oauth_cancelled: "Sign-in was cancelled.",
+      oauth_failed: "That sign-in didn't work. Try again.",
+      oauth_unavailable: "That sign-in option isn't set up yet.",
+      oauth_unknown: "That sign-in option isn't available.",
+      oauth_no_email: "Your account there has no email address we can use.",
+      oauth_email_unverified: "Verify your email with that provider first, then try again.",
+      oauth_rate_limited: "Too many sign-in attempts. Try again in a few minutes.",
+      oauth_two_factor: "Your account has two-factor sign-in on. Log in with your email, password and code."
+    }
+    const hit = Object.entries(messages).find((m) => m[0] is code)
+    return hit ? hit[1] : ""
+  }
+
 onMount
   async {
     document.addEventListener("keydown", (event) => this.onKey(event))
+
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get("error")
+    if code {
+      this.error = this.oauthMessage(code)
+      window.history.replaceState({}, "", "/login")
+    }
+
+    const list = await useApi("/api/auth/providers")
+    if list.ok and Array.isArray(list.data?.providers) {
+      this.providers = list.data.providers.filter((p) => p.enabled)
+    }
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-page transition-colors px-6 py-16">
+  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-page transition-colors px-3 sm:px-6 py-6 sm:py-16">
     <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] rounded-3xl border border-line bg-panel shadow-xl shadow-slate-300/40 dark:shadow-none overflow-hidden">
 
       <div class="hidden lg:flex flex-col justify-between bg-slate-950 p-10 relative overflow-hidden">
@@ -247,7 +290,7 @@ template
         </div>
       </div>
 
-      <div class="flex items-center justify-center px-6 py-12 lg:px-12">
+      <div class="flex items-center justify-center px-5 py-10 sm:px-8 sm:py-12 lg:px-12">
         <div class="w-full max-w-sm">
           <a href="/" class="lg:hidden flex items-center gap-2.5 justify-center mb-8">
             <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
@@ -269,7 +312,15 @@ template
 {{#if error}}
           <div role="alert" aria-live="polite" class="flex items-start gap-3 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-6">
             <span class="mt-0.5 text-rose-600 dark:text-rose-400 text-sm font-bold" aria-hidden="true">!</span>
-            <p class="text-rose-700 dark:text-rose-400 text-sm">{{ error }}</p>
+            <div class="min-w-0">
+              <p class="text-rose-700 dark:text-rose-400 text-sm">{{ error }}</p>
+{{#if unverified}}
+              <button type="button" onclick="{{ resendVerification() }}" class="mt-1 text-sm font-semibold text-rose-700 dark:text-rose-300 underline underline-offset-2">Resend verification email</button>
+{{#if resendText}}
+              <p class="text-rose-700/80 dark:text-rose-300/80 text-xs mt-1">{{ resendText }}</p>
+{{/if}}
+{{/if}}
+            </div>
           </div>
 {{/if}}
 
@@ -369,6 +420,26 @@ template
 {{/if}}
 
 {{#if not needsCode}}
+{{#if providers.length is not 0}}
+          <div class="flex items-center gap-3 my-6" aria-hidden="true">
+            <span class="h-px flex-1 bg-line"></span>
+            <span class="text-slate-400 text-xs uppercase tracking-wider">or</span>
+            <span class="h-px flex-1 bg-line"></span>
+          </div>
+          <div class="grid gap-2">
+{{#each p in providers}}
+            <a href="{{ oauthHref(p.id) }}" data-no-prerender class="w-full inline-flex items-center justify-center gap-2.5 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-brand-500/50 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
+{{#if p.id is "google"}}
+              <svg viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 01-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0012 24z"/><path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 010-4.6V6.6H1.3a12 12 0 000 10.8l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 001.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z"/></svg>
+{{/if}}
+{{#if p.id is "github"}}
+              <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.6 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0012 .5z"/></svg>
+{{/if}}
+              Continue with {{ p.name }}
+            </a>
+{{/each}}
+          </div>
+{{/if}}
           <p class="text-sm text-slate-500 text-center mt-6">
             New to Tylix Deploy? <a href="/register" class="text-brand-700 dark:text-brand-400 hover:underline">Create an account</a>
           </p>

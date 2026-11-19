@@ -80,3 +80,15 @@ export async function sameTeam(
     if (x <= 0) return false;
     return x === (await teamIdOfRow(b));
 }
+/**
+ * Returns true if the caller has the permission in their current team
+ * (app/permissions.ts), or answers 403 itself and returns false.
+ */
+export async function requirePermission(req: TylixRequest, res: TylixResponse, permission: string): Promise<boolean> {
+    const { permissions, subjectOf } = await import("../permissions.js");
+    if (await permissions.can(subjectOf(req as any), permission)) return true;
+
+    res.status(403);
+    res.json({ error: "Your role in this team doesn't allow that." });
+    return false;
+}

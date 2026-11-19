@@ -1,15 +1,49 @@
-export default {
+import { defineConfig } from '@tylix/shared';
+
+// Run in UTC. The ORM writes every timestamp as a UTC ISO string, and the
+// MySQL driver reads DATETIME columns back in the process's local zone. On
+// a machine that isn't on UTC every date came back hours off, and refresh
+// token rotation (which compares rotated_at with now) treated two tabs
+// refreshing together as token theft and signed people out. Every tylix
+// command (dev, start, migrate, queue:work) loads this file first.
+process.env.TZ = 'UTC';
+
+export default defineConfig({
   database: {
-    driver: process.env.DATABASE_DRIVER || 'mysql',
+    driver: (process.env.DATABASE_DRIVER || 'mysql') as 'mysql',
     host: process.env.DATABASE_HOST || '127.0.0.1',
     port: Number(process.env.DATABASE_PORT) || 3306,
     user: process.env.DATABASE_USER || 'root',
     password: process.env.DATABASE_PASSWORD || '',
     database: process.env.DATABASE_NAME || 'typloy',
   },
+
+  // Installable app and offline page (@tylix/pwa). Tylix serves the manifest
+  // and service worker; the icons and offline.html are in public/. Pages are
+  // never cached (they hold a signed-in user's servers and secrets), so
+  // offline visitors get public/offline.html. The shortcuts open straight
+  // from the home-screen icon.
+  pwa: {
+    name: 'Tylix Deploy',
+    shortName: 'Deploy',
+    description: 'Provision servers, deploy sites and manage domains from anywhere.',
+    startUrl: '/dashboard',
+    themeColor: '#0a0a0b',
+    backgroundColor: '#0a0a0b',
+    shortcuts: [
+      { name: 'Servers', url: '/servers' },
+      { name: 'New server', url: '/servers/create' },
+      { name: 'Billing', url: '/settings/billing' },
+    ],
+  },
+
   auth: {
     secret: process.env.AUTH_SECRET,
-    tokenExpiresInSeconds: 60 * 60 * 24 * 7,
+    // Lifetime of an access token, in seconds. Tylix 2 caps it at an hour:
+    // the rotating 30-day refresh session keeps people signed in (and
+    // public/app-shell.js refreshes it in the browser), while logout, "sign
+    // out everywhere" and password resets apply at once.
+    tokenExpiresInSeconds: 15 * 60,
 
     // Adds teamId and teamRole to req.user. The logic lives in
     // app/services/AuthHydrate.ts. It is imported lazily so the models
@@ -23,6 +57,7 @@ export default {
           return {}
         }),
   },
+
   mail: {
     driver: process.env.MAIL_DRIVER || 'log',
     from: process.env.MAIL_FROM || 'noreply@example.com',
@@ -32,4 +67,14 @@ export default {
     password: process.env.MAIL_PASSWORD || '',
     secure: process.env.MAIL_SECURE === 'true',
   },
-};
+
+  logging: {
+    // LOG_CHANNEL / LOG_STACK pick the channels (default console + daily
+    // files in storage/logs). Deploys and provisioning get their own files
+    // so one noisy server doesn't bury everything else.
+    channels: {
+      deploys: { driver: 'daily', path: 'storage/logs/deploys.log', level: 'info' },
+      provisioning: { driver: 'daily', path: 'storage/logs/provisioning.log', level: 'info' },
+    },
+  },
+});

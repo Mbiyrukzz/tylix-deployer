@@ -75,7 +75,7 @@ template
 
       <section>
         <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Who can see what</h2>
-        <div class="rounded-3xl border border-line bg-panel p-6">
+        <div class="rounded-3xl border border-line bg-panel p-4 sm:p-6">
           <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
             <span class="font-semibold text-zinc-900 dark:text-zinc-100">Owners and admins</span> see the whole team. The feed is titled "Recent team activity", and every member has a View button.
           </p>

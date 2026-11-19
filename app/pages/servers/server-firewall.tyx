@@ -281,7 +281,7 @@ template
     <ServerSidebar active="firewall" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
@@ -303,7 +303,7 @@ template
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Firewall</h1>
+          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Firewall</h1>
           <p class="text-slate-500 text-sm">Here you can manage this server's firewall rules. Rules are applied with UFW over SSH.</p>
         </div>
         <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -374,7 +374,7 @@ template
 {{/if}}
 
 {{#if showForm}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
 {{#if editId is 0}}
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">New rule</h2>
 {{/if}}
@@ -472,14 +472,14 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none overflow-x-auto">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none overflow-x-auto">
 {{#if rules.length is 0}}
         <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
           <p class="text-slate-500 text-sm">No rules yet.</p>
         </div>
 {{/if}}
 {{#if rules.length is not 0}}
-        <table class="w-full text-sm text-left">
+        <table class="w-full min-w-[560px] text-sm text-left">
           <thead>
             <tr class="text-slate-500 text-xs uppercase tracking-wider">
               <th class="py-2 pr-4 font-semibold">Name</th>

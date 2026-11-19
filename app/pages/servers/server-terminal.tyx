@@ -655,7 +655,7 @@ template
       <LockedBanner />
 
       <div class="mb-6">
-        <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-2">Terminal</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-2">Terminal</h1>
         <p class="text-slate-500 text-sm">Open a shell on any of your servers. Switching servers ends the current session.</p>
       </div>
 

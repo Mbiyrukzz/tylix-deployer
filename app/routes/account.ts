@@ -4,7 +4,7 @@
  * GET    /api/account                              profile + two-factor status (authenticator and SMS)
  * PUT    /api/account                              change name
  * PUT    /api/account/password                     change password (needs the current one)
- * POST   /api/account/sign-out-everywhere          revoke every refresh token, clear cookies
+ * POST   /api/account/sign-out-everywhere          end every session (all devices), clear cookies
  * POST   /api/account/two-factor/setup             start setup, returns secret + otpauth URI
  * POST   /api/account/two-factor/confirm           prove the app works, turns 2FA on, returns recovery codes once
  * POST   /api/account/two-factor/disable           needs password + a code
@@ -21,17 +21,17 @@
  * (PasswordPolicy) and is checked against known breaches.
  *
  * Changing the password signs the user out everywhere (including this
- * device), the same as the reset flow: access tokens already issued
- * still work until they expire (15 minutes by default).
+ * device), the same as the reset flow. Access ends at once: requireAuth
+ * checks that a token's session still exists (Tylix 2 session guard).
  */
 
 import type { Router } from "@tylix/core";
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { createRateLimiter } from "@tylix/core";
-import { verifyPassword, clearAuthCookies } from "@tylix/auth";
+import { verifyPassword, applyCookies } from "@tylix/auth";
 import { User } from "../models/User.js";
 import type { UserAttributes } from "../models/User.js";
-import { RefreshToken } from "../models/RefreshToken.js";
+import { authController } from "../controllers/AuthController.js";
 import { UserTwoFactor } from "../models/UserTwoFactor.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { TwoFactorService } from "../services/TwoFactorService.js";
@@ -68,6 +68,13 @@ async function currentUser(req: TylixRequest, res: TylixResponse): Promise<UserA
         return null;
     }
     return user;
+}
+
+/** Ends every session of the user (this browser too) and clears its cookies. */
+async function endEverySession(req: TylixRequest, res: TylixResponse, userId: number): Promise<void> {
+    const { auth } = authController();
+    await auth.revokeAllSessions(userId);
+    applyCookies(res, auth.clearCookies(req));
 }
 
 function fail(res: TylixResponse, errors: FieldErrors) {
@@ -169,8 +176,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             }
 
             await User.updatePassword(user.id, next);
-            await RefreshToken.revokeAllForUser(user.id);
-            clearAuthCookies(res);
+            await endEverySession(req, res, user.id);
 
             return res.json({ ok: true, message: "Password updated. Please log in again." });
         }),
@@ -182,8 +188,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             const user = await currentUser(req, res);
             if (!user) return;
 
-            await RefreshToken.revokeAllForUser(user.id);
-            clearAuthCookies(res);
+            await endEverySession(req, res, user.id);
 
             return res.json({ ok: true });
         }),

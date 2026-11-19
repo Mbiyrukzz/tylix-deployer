@@ -258,7 +258,7 @@ template
     <ServerSidebar active="workers" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
@@ -278,14 +278,14 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Workers</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Workers</h1>
       <p class="text-slate-500 text-sm mb-6">Long-running processes kept alive by Supervisor: queue workers, Reverb, or any command.</p>
 
 {{#if error}}
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">New worker</h2>
 
         <p class="text-slate-500 text-xs mb-2">Start from a preset</p>
@@ -343,7 +343,7 @@ template
         </div>
       </div>
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <div class="flex items-center justify-between mb-1">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Active workers</h2>
           <button onclick="{{ loadStatus() }}" class="text-sm text-brand-700 dark:text-brand-500 hover:underline font-medium">Refresh</button>

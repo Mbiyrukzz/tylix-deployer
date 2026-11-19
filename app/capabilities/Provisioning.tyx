@@ -17,7 +17,7 @@ state
   serverId: 0
   failed: false
   finished: false
-  missing: false
+  notFound: false
   live: false
   streaming: false
   redirecting: false
@@ -149,7 +149,7 @@ action
     } else if result.status is 401 {
       window.location.href = "/login"
     } else if result.status is 404 {
-      this.missing = true
+      this.notFound = true
     }
   }
 
@@ -157,14 +157,14 @@ action
     this.disconnect()
     this.provisionId = id
     this.active = true
-    this.missing = false
+    this.notFound = false
     this.redirecting = false
     this.shown = 0
     this.sweep = 0
 
     await this.load()
 
-    if this.missing or this.finished {
+    if this.notFound or this.finished {
       return null
     }
 
@@ -193,7 +193,7 @@ action
   }
 
   scheduleReconnect() {
-    if this.reconnectTimer or this.finished or this.missing {
+    if this.reconnectTimer or this.finished or this.notFound {
       return null
     }
     this.reconnectTimer = window.setTimeout(() => this.reconnectNow(), 4000)
@@ -203,7 +203,7 @@ action
     this.reconnectTimer = null
     await this.load()
 
-    if this.finished or this.missing {
+    if this.finished or this.notFound {
       return null
     }
 

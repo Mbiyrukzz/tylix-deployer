@@ -185,7 +185,7 @@ template
       <LockedBanner />
 
       <div class="mb-8">
-        <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
         <p class="text-slate-500 text-sm">Redirects</p>
       </div>
 

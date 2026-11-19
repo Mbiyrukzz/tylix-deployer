@@ -1,0 +1,60 @@
+capability Pwa
+
+// The installable-app state, for .tyx pages: Pwa.installable,
+// Pwa.updateAvailable, Pwa.online, and Pwa.install(), Pwa.update().
+// It reads the runtime Tylix puts on every page when pwa is on in
+// tylix.config; without it, everything stays false.
+
+state
+  supported: false
+  installable: false
+  installed: false
+  updateAvailable: false
+  offlineReady: false
+  online: true
+
+action
+  async install() {
+    const pwa = window.__TYLIX_PWA__
+    if not pwa {
+      return "unavailable"
+    }
+    return await pwa.install()
+  }
+
+  update() {
+    const pwa = window.__TYLIX_PWA__
+    if pwa {
+      pwa.update()
+    }
+  }
+
+  dismissUpdate() {
+    const pwa = window.__TYLIX_PWA__
+    if pwa {
+      pwa.dismissUpdate()
+    }
+  }
+
+  dismissOfflineReady() {
+    const pwa = window.__TYLIX_PWA__
+    if pwa {
+      pwa.dismissOfflineReady()
+    }
+  }
+
+init
+  async {
+    const pwa = window.__TYLIX_PWA__
+    if not pwa {
+      return null
+    }
+    pwa.subscribe(s => {
+      this.supported = s.supported
+      this.installable = s.installable
+      this.installed = s.installed
+      this.updateAvailable = s.updateAvailable
+      this.offlineReady = s.offlineReady
+      this.online = s.online
+    })
+  }

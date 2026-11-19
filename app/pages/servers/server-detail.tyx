@@ -444,7 +444,7 @@ onMount
 
       await Provisioning.connect(Number(provisionParam))
 
-      if Provisioning.missing {
+      if Provisioning.notFound {
         this.provisioning = false
         this.notFound = true
       }
@@ -498,7 +498,7 @@ template
     <div></div>
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading server…</p>
@@ -519,7 +519,7 @@ template
 
       <div class="mb-6">
         <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ Provisioning.name }}</h1>
+          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ Provisioning.name }}</h1>
 {{#if Provisioning.failed}}
           <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
             <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
@@ -550,7 +550,7 @@ template
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ Provisioning.error }}</p>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-2">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-2">
         <div class="flex items-center justify-between gap-4 mb-3">
           <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ Provisioning.headline }}</p>
           <p class="text-brand-600 dark:text-brand-400 text-xs font-mono tabular-nums shrink-0">{{ Provisioning.shown }}%</p>
@@ -636,7 +636,7 @@ template
       <div class="flex items-start justify-between gap-4 mb-6">
         <div class="min-w-0">
           <div class="flex items-center gap-3 mb-2">
-            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ server.name }}</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ server.name }}</h1>
 {{#if status is "online"}}
             <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
               <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Online
@@ -819,7 +819,7 @@ template
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
-        <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Connect</h2>
           <p class="text-slate-500 text-sm mb-4">Open a shell on this server from your machine.</p>
           <div class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3">
@@ -859,7 +859,7 @@ template
           </div>
         </div>
 
-        <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between mb-1">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Sites</h2>
 {{#if Billing.locked}}
@@ -909,7 +909,7 @@ template
         </div>
       </div>
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Reboot server</h2>
         <p class="text-slate-500 text-sm mb-4">Restarts the machine over SSH. Sites and services on it will be offline for about a minute. The SSH user needs to be root or have passwordless sudo.</p>
 

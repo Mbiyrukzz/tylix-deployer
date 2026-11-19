@@ -159,9 +159,9 @@ function invalid(res: TylixResponse, errors: Record<string, string[]>) {
 export async function routes(router: Router, { auth }: { auth: (handler: Handler) => Handler }) {
     // Admin-only: a route registered with write() answers 403 to a plain member.
     const write = (handler: Handler): Handler =>
-        auth(async (req, res) => {
+        auth(async (req, res, next) => {
             if (!requireRole(req as any, res as any, "admin")) return;
-            return handler(req, res);
+            return handler(req, res, next);
         });
 
     // ---- Machines ----

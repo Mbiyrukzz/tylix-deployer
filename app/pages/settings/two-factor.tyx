@@ -358,9 +358,9 @@ template
     <Sidebar active="settings" />
     <SettingsSidebar active="two-factor" />
     <div class="min-w-0">
-    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Two-factor authentication</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Two-factor authentication</h1>
       <p class="text-slate-500 text-sm mb-8">Ask for a code each time you log in: from an authenticator app, by text message, or either.</p>
 
 {{#if loading}}
@@ -375,7 +375,7 @@ template
 {{#if step is "idle"}}
 
 {{#if not enabled}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Authenticator app</h2>
           <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
@@ -397,7 +397,7 @@ template
 {{/if}}
 
 {{#if enabled}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Authenticator app</h2>
           <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
@@ -407,7 +407,7 @@ template
         <p class="text-slate-500 text-sm">Logging in asks for a code from your authenticator app.</p>
       </div>
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Recovery codes</h2>
         <p class="text-slate-500 text-sm mb-4">Each code works once, if you lose your phone. <span class="font-semibold text-slate-700 dark:text-slate-300">{{ remaining }}</span> left. Generating new codes cancels the old ones.</p>
 {{#if mode is not "regen"}}
@@ -428,7 +428,7 @@ template
       </div>
 
 {{#if mode}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mt-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mt-6">
 {{#if mode is "disable"}}
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Confirm it's you</h2>
         <p class="text-slate-500 text-sm mb-5">Enter your password and a code to turn the authenticator app off.</p>
@@ -469,7 +469,7 @@ template
 {{/if}}
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mt-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mt-6">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Text message (SMS)</h2>
 {{#if smsEnabled}}
@@ -570,7 +570,7 @@ template
 {{/if}}
 
 {{#if step is "setup"}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">1. Add this account to your app</h2>
         <p class="text-slate-500 text-sm mb-4">In your authenticator app choose "enter a setup key" and paste this. On a phone, <a href="{{ uri }}" class="text-brand-700 dark:text-brand-500 hover:underline font-medium">tap here</a> to open it directly.</p>
 
@@ -615,7 +615,7 @@ template
         <p class="text-amber-800 dark:text-amber-400 text-sm"><span class="font-semibold">Save these now.</span> They're shown only once. Each works one time if you lose access to your app.</p>
       </div>
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Recovery codes</h2>
 
         <div class="grid grid-cols-2 gap-2 rounded-xl bg-slate-950 px-4 py-4">

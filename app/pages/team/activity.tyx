@@ -268,7 +268,7 @@ template
     <Sidebar active="team" />
     <TeamSidebar active="activity" />
     <div class="min-w-0">
-    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <div class="space-y-4">
@@ -310,15 +310,15 @@ template
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Total actions</p>
-          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ totalText }}</p>
+          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ totalText }}</p>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Viewing</p>
-          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ selectedName }}</p>
+          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ selectedName }}</p>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Members</p>
-          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ memberCount }}</p>
+          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ memberCount }}</p>
         </div>
       </div>
 

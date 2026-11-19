@@ -176,7 +176,7 @@ template
     <ServerSidebar active="logs" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
@@ -196,14 +196,14 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Logs</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Logs</h1>
       <p class="text-slate-500 text-sm mb-6">Everything that happened to this server, newest first: creation, edits, reboots and blocked actions. Keys and passwords are never recorded.</p>
 
 {{#if error}}
       <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div class="flex flex-wrap gap-1.5">

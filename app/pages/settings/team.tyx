@@ -232,9 +232,9 @@ template
     <Sidebar active="settings" />
     <SettingsSidebar active="team" />
     <div class="min-w-0">
-    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Members</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Members</h1>
       <p class="text-slate-500 text-sm mb-8">Everyone on your team sees the same servers, providers and sites.</p>
 
 {{#if loading}}
@@ -247,7 +247,7 @@ template
 {{/if}}
 
 {{#if hasManyTeams}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your teams</h2>
         <div class="divide-y divide-slate-200 dark:divide-slate-800">
 {{#each t in teams}}
@@ -268,7 +268,7 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ teamName }}</h2>
         <p class="text-slate-500 text-sm mb-5">Your role: <span class="font-semibold text-slate-700 dark:text-slate-300">{{ role }}</span></p>
 
@@ -309,7 +309,7 @@ template
       </div>
 
 {{#if canManage}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Invite someone</h2>
         <p class="text-slate-500 text-sm mb-5">They get an email with a link that works once and expires in 7 days. If they already have servers or connections of their own, they'll be asked to bring them into this team.</p>
 
@@ -342,7 +342,7 @@ template
       </div>
 
 {{#if invites.length is not 0}}
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Pending invitations</h2>
         <div class="divide-y divide-slate-200 dark:divide-slate-800">
 {{#each i in invites}}

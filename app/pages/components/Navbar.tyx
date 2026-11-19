@@ -37,8 +37,9 @@ action
 
   // True when the current URL is inside the app (dashboard or server pages).
   checkInApp() {
-    const full = window.location.pathname + window.location.hash
-    return full.includes("dashboard") or full.includes("/server")
+    const path = window.location.pathname
+    const sections = ["/dashboard", "/server", "/settings", "/team", "/providers", "/registrars", "/source-control"]
+    return sections.some((p) => path.startsWith(p))
   }
 
   refresh() {
@@ -89,17 +90,8 @@ onMount
     window.addEventListener("popstate", () => this.refresh())
     window.addEventListener("hashchange", () => this.refresh())
 
-    // Re-checks the URL every 250ms. Only writes state when the value changes,
-    // so it doesn't trigger a re-render on every tick. Only one timer ever runs.
-    if window.__tylixNavTimer {
-      clearInterval(window.__tylixNavTimer)
-    }
-    window.__tylixNavTimer = setInterval(() => {
-      const next = this.checkInApp()
-      if next is not this.inApp {
-        this.inApp = next
-      }
-    }, 250)
+    // Every link loads its own document (prerendered on hover, see
+    // public/nav.js), so the URL is read once per page: no polling timer.
 
     // Click anywhere outside the user menu closes it.
     document.addEventListener("click", (e) => {
@@ -111,13 +103,13 @@ onMount
   }
 
 template
-<header class="sticky top-0 z-40 px-4 sm:px-6 lg:px-10 py-2">
+<header class="app-nav sticky top-0 z-40 px-3 sm:px-6 lg:px-10 py-2">
   <nav class="relative max-w-7xl mx-auto h-12 rounded-full border border-line bg-white/80 dark:bg-[#131315]/80 backdrop-blur-xl pl-4 pr-1.5 flex items-center justify-between gap-4 shadow-sm shadow-black/[0.03] transition-colors">
 
     <div class="flex items-center gap-4 min-w-0">
       <a href="/" onclick="{{ go('/') }}" class="flex items-center gap-2.5 group shrink-0">
-        <img src="/logo-mark.png" alt="Tylix" class="w-9 h-9 rounded-lg group-hover:scale-105 transition-transform" />
-        <span class="text-zinc-900 dark:text-zinc-100 text-base font-semibold uppercase tracking-[0.14em]">Tylix <span class="text-brand-500">Deploy</span></span>
+        <img src="/logo-mark.png" alt="Tylix" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg group-hover:scale-105 transition-transform" />
+        <span class="text-zinc-900 dark:text-zinc-100 text-sm sm:text-base font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] whitespace-nowrap">Tylix <span class="text-brand-500">Deploy</span></span>
       </a>
 
       <div class="hidden md:block w-px h-5 bg-line"></div>

@@ -210,13 +210,13 @@ template
   <Sidebar active="registrars" />
   <RegistrarSidebar active="domains" registrarId="{{ registrarId }}" />
   <div class="min-w-0">
-    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
       <a href="{{ '/registrars/registrar-domains?id=' + registrarId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Domains
       </a>
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">{{ domainName }}</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">{{ domainName }}</h1>
       <p class="text-slate-500 text-sm mb-6">DNS records</p>
 
 {{#if locked}}

@@ -346,7 +346,7 @@ template
     <ServerSidebar active="databases" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
@@ -367,7 +367,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Databases</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Databases</h1>
       <p class="text-slate-500 text-sm mb-8">MySQL users and databases on this server. Create a user first, then a database owned by that user.</p>
 
 {{#if actionError}}

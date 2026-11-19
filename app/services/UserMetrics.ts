@@ -4,13 +4,16 @@
  *   users_total   every registered account
  *   users_active  accounts that signed in during the last ACTIVE_DAYS days
  *
- * "Active" counts sign-ins, not page visits. Every sign-in creates a
- * refresh token and those rows are kept after logout, so they are a record
- * of who signed in and when. Tokens of deleted accounts are ignored.
+ * "Active" counts sign-ins and session use, not page visits. Tylix 2
+ * sessions (auth_sessions) are deleted at logout, so a session's
+ * last_used_at counts while it lives, and the 0.x refresh_tokens rows,
+ * which were kept after logout, still count the sign-ins made before the
+ * upgrade. Rows of deleted accounts are ignored.
  */
 
 import { User } from "../models/User.js";
 import { RefreshToken, type RefreshTokenAttributes } from "../models/RefreshToken.js";
+import { AuthSession, type AuthSessionAttributes } from "../models/AuthSession.js";
 import type { UserMetrics } from "./HubReporter.js";
 
 const ACTIVE_DAYS = 30;
@@ -33,6 +36,15 @@ export async function collectUserMetrics(): Promise<UserMetrics> {
         if (!known.has(userId)) continue;
 
         const at = toMs(token.created_at);
+        if (!Number.isNaN(at) && at >= since) active.add(userId);
+    }
+
+    const sessions = (await AuthSession.query().get()) as unknown as AuthSessionAttributes[];
+    for (const session of sessions) {
+        const userId = Number(session.user_id);
+        if (!known.has(userId)) continue;
+
+        const at = Math.max(toMs(session.last_used_at), toMs(session.created_at));
         if (!Number.isNaN(at) && at >= since) active.add(userId);
     }
 

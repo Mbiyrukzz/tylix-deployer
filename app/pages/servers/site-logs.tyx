@@ -31,7 +31,7 @@ state
   openIds: []
   errorCount: 0
   scanned: 0
-  missing: false
+  logsMissing: false
   loaded: false
   live: false
   timer: 0
@@ -193,7 +193,7 @@ action
       this.source = result.data.source
       this.entries = result.data.entries
       this.scanned = result.data.scanned
-      this.missing = result.data.missing
+      this.logsMissing = result.data.missing
       this.fetchedAt = new Date().toLocaleTimeString()
       this.loaded = true
 
@@ -429,7 +429,7 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-6 sm:p-8 text-center">
+      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-4 sm:p-6 sm:p-8 text-center">
         <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Site not found</h2>
         <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
         <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
@@ -468,7 +468,7 @@ template
         <div class="min-w-0 flex-1 space-y-4 sm:space-y-6">
 
 {{#if not siteReady}}
-          <section class="rounded-2xl border border-line bg-panel p-6 text-center shadow-sm dark:shadow-none">
+          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 text-center shadow-sm dark:shadow-none">
             <p class="text-slate-500 text-sm">Logs are available once the site has finished creating.</p>
           </section>
 {{/if}}
@@ -536,13 +536,13 @@ template
 {{/if}}
 
 {{#if loaded}}
-{{#if missing}}
+{{#if logsMissing}}
             <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No log file yet</p>
               <p class="text-slate-500 text-sm">It hasn't been created on the server, which usually means nothing has been written to it.</p>
             </div>
 {{/if}}
-{{#if not missing}}
+{{#if not logsMissing}}
 {{#if preview.length is 0}}
             <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No recent errors</p>
@@ -663,10 +663,10 @@ template
 {{/if}}
 
 {{#if loaded}}
-{{#if missing}}
+{{#if logsMissing}}
             <p class="px-3 sm:px-4 text-slate-400">No such file. Nothing has been written to this log yet.</p>
 {{/if}}
-{{#if not missing}}
+{{#if not logsMissing}}
 {{#if view.length is 0}}
               <p class="px-3 sm:px-4 text-brand-400">Nothing to show in the last {{ lines }} lines.</p>
               <p class="px-3 sm:px-4 text-slate-500">Turn off Errors only, clear the grep filter, or scan more lines.</p>

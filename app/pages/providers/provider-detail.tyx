@@ -378,7 +378,7 @@ template
   <Sidebar active="providers" />
   <ProviderSidebar active="overview" providerId="{{ providerId }}" />
   <div class="min-w-0">
-    <div class="max-w-5xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if notFound}}
       <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center">
@@ -399,7 +399,7 @@ template
         <div class="flex items-center gap-4 min-w-0">
           <span class="{{ tileClass }}">{{ tileLetter }}</span>
           <div class="min-w-0">
-            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ provider.label }}</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ provider.label }}</h1>
             <p class="text-slate-500 text-sm">{{ kindName }} · connected {{ provider.created_at.slice(0, 10) }}</p>
 {{#if summaryReady}}
             <p class="text-slate-500 text-xs mt-0.5">{{ summaryLine }}</p>

@@ -1,0 +1,68 @@
+component PwaPrompt
+
+// Install, new-version and offline notices, bottom right (bottom, full
+// width, on phones). No "ready to work offline" toast: deployer pages always
+// need the network (they're never cached, see pwa in tylix.config).
+
+uses
+  Pwa
+
+state
+  hideInstall: true
+
+action
+  dismissInstall() {
+    this.hideInstall = true
+    try {
+      localStorage.setItem("tylix:pwa-install-dismissed", "1")
+    } catch (err) {
+      return null
+    }
+  }
+
+  async install() {
+    await Pwa.install()
+  }
+
+onMount
+  {
+    try {
+      this.hideInstall = localStorage.getItem("tylix:pwa-install-dismissed") is "1"
+    } catch (err) {
+      this.hideInstall = false
+    }
+  }
+
+template
+<div class="pwa-prompt fixed inset-x-3 bottom-3 sm:inset-x-auto sm:right-5 sm:bottom-5 z-[60] flex flex-col items-stretch sm:items-end gap-2 pointer-events-none" style="padding-bottom: env(safe-area-inset-bottom)" aria-live="polite">
+{{#if not Pwa.online}}
+  <div role="status" class="pointer-events-auto self-center sm:self-end inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3.5 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-200 shadow-lg shadow-black/10">
+    <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> You're offline. Changes won't save until you're back.
+  </div>
+{{/if}}
+{{#if Pwa.updateAvailable}}
+  <div role="status" class="pointer-events-auto sm:w-96 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-panel p-4 shadow-xl shadow-black/15">
+    <img src="/logo-mark.png" alt="" class="w-9 h-9 shrink-0" />
+    <div class="flex-1 min-w-[10rem]">
+      <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">A new version is ready</p>
+      <p class="text-[13px] text-zinc-500">Reload to get the latest Tylix Deploy.</p>
+    </div>
+    <div class="flex gap-1.5 ml-auto">
+      <button onclick="{{ Pwa.dismissUpdate() }}" class="text-sm font-medium text-zinc-600 dark:text-zinc-300 rounded-full px-3.5 h-9 hover:bg-stone-200/60 dark:hover:bg-white/[0.06] transition-colors">Later</button>
+      <button onclick="{{ Pwa.update() }}" class="text-sm font-semibold bg-brand-500 text-white rounded-full px-4 h-9 hover:bg-brand-400 transition-colors">Reload</button>
+    </div>
+  </div>
+{{#else if Pwa.installable and not hideInstall}}
+  <div role="status" class="pointer-events-auto sm:w-96 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-panel p-4 shadow-xl shadow-black/15">
+    <img src="/logo-mark.png" alt="" class="w-9 h-9 shrink-0" />
+    <div class="flex-1 min-w-[10rem]">
+      <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Install Tylix Deploy</p>
+      <p class="text-[13px] text-zinc-500">Check servers and deploys from your home screen, like any other app.</p>
+    </div>
+    <div class="flex gap-1.5 ml-auto">
+      <button onclick="{{ dismissInstall() }}" class="text-sm font-medium text-zinc-600 dark:text-zinc-300 rounded-full px-3.5 h-9 hover:bg-stone-200/60 dark:hover:bg-white/[0.06] transition-colors">Not now</button>
+      <button onclick="{{ install() }}" class="text-sm font-semibold bg-brand-500 text-white rounded-full px-4 h-9 hover:bg-brand-400 transition-colors">Install</button>
+    </div>
+  </div>
+{{/if}}
+</div>

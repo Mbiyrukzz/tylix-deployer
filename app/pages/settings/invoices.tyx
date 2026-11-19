@@ -1,5 +1,7 @@
 page SettingsInvoices
 
+import { IconDownload, IconTable, IconDocumentText } from "tylix-icons"
+
 title "Invoices"
 
 needs
@@ -10,6 +12,7 @@ state
   rows: []
   unpaid: 0
   error: ""
+  exporting: false
 
 action
   badgeFor(status) {
@@ -48,6 +51,42 @@ action
     this.loading = false
   }
 
+  pdfHref(id) {
+    return "/api/billing/invoices/" + id + "/pdf"
+  }
+
+  viewHref(id) {
+    return "/api/billing/invoices/" + id + "/pdf?inline=1"
+  }
+
+  // A plain link would work too; this shows progress and a readable error
+  // (the API answers JSON when the role doesn't allow it).
+  async exportExcel() {
+    this.exporting = true
+    this.error = ""
+    try {
+      const res = await fetch("/api/billing/invoices/export.xlsx", { credentials: "same-origin" })
+      if not res.ok {
+        const body = await res.json().catch(() => ({}))
+        this.error = body.error or "Couldn't export invoices."
+      } else {
+        const blob = await res.blob()
+        const disposition = res.headers.get("Content-Disposition") or ""
+        const match = disposition.match(/filename="?([^";]+)"?/)
+        const a = document.createElement("a")
+        a.href = URL.createObjectURL(blob)
+        a.download = match ? match[1] : "invoices.xlsx"
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+      }
+    } catch (err) {
+      this.error = "Couldn't export invoices. Check your connection."
+    }
+    this.exporting = false
+  }
+
 onMount
   async {
     await this.load()
@@ -58,45 +97,68 @@ template
     <Sidebar active="settings" />
     <SettingsSidebar active="invoices" />
     <div class="min-w-0">
-    <div class="max-w-3xl mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Invoices</h1>
-      <p class="text-slate-500 text-sm mb-8">What your team has been billed, and what is coming due.</p>
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 sm:mb-8">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Invoices</h1>
+          <p class="text-slate-500 text-sm">What your team has been billed, and what is coming due.</p>
+        </div>
+{{#if rows.length is not 0}}
+        <button onclick="{{ exportExcel() }}" disabled="{{ exporting }}" class="inline-flex items-center justify-center gap-2 shrink-0 h-10 rounded-full border border-line bg-panel px-4 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-brand-500/40 hover:text-brand-700 dark:hover:text-brand-400 disabled:opacity-60 transition-colors">
+          <IconTable class="w-4 h-4" />
+          {{ exporting ? "Exporting…" : "Export to Excel" }}
+        </button>
+{{/if}}
+      </div>
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
-{{/if}}
-
-{{#if not loading}}
-{{#if error}}
-      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
-{{/if}}
-
-{{#if unpaid is not 0}}
-      <div role="alert" class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-6 flex items-center justify-between gap-4">
-        <p class="text-amber-800 dark:text-amber-400 text-sm">You have an invoice that isn't paid yet.</p>
-        <a href="/settings/billing" class="shrink-0 text-sm font-medium text-amber-800 dark:text-amber-400 hover:underline">Go to billing</a>
+      <div class="rounded-2xl border border-line bg-panel p-2 shadow-sm dark:shadow-none" aria-busy="true">
+        <div class="h-16 rounded-xl bg-slate-200/60 dark:bg-white/[0.04] animate-pulse m-2"></div>
+        <div class="h-16 rounded-xl bg-slate-200/60 dark:bg-white/[0.04] animate-pulse m-2"></div>
+        <div class="h-16 rounded-xl bg-slate-200/60 dark:bg-white/[0.04] animate-pulse m-2"></div>
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
-{{#if rows.length is 0}}
-        <p class="text-slate-500 text-sm">No invoices yet. They appear here after your first payment.</p>
+{{#if error}}
+      <p role="alert" class="rounded-2xl border border-rose-300/60 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-sm px-4 py-3 mb-4">{{ error }}</p>
 {{/if}}
-        <div class="divide-y divide-slate-200 dark:divide-slate-800">
-{{#each r in rows}}
-          <div class="flex items-center justify-between gap-4 py-3">
-            <div class="min-w-0">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">{{ r.number }} · {{ r.description }}</p>
-              <p class="text-slate-500 text-xs">{{ r.dateText }}</p>
-            </div>
-            <div class="flex items-center gap-4 shrink-0">
-              <span class="text-slate-700 dark:text-slate-300 text-sm font-mono">{{ r.amountText }}</span>
-              <span class="{{ r.badge }}">{{ r.status }}</span>
-            </div>
-          </div>
-{{/each}}
+
+{{#if not loading}}
+{{#if unpaid is not 0}}
+      <div role="alert" class="rounded-2xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 sm:px-5 py-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+        <p class="text-amber-800 dark:text-amber-400 text-sm">You have an invoice that isn't paid yet.</p>
+        <a href="/settings/billing" class="shrink-0 text-sm font-semibold text-amber-800 dark:text-amber-400 hover:underline">Go to billing &rarr;</a>
+      </div>
+{{/if}}
+
+      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+{{#if rows.length is 0}}
+        <div class="flex flex-col items-center text-center px-6 py-12">
+          <span class="w-12 h-12 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-4"><IconDocumentText class="w-6 h-6" /></span>
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold">No invoices yet</p>
+          <p class="text-slate-500 text-sm mt-1">They appear here after your first payment.</p>
         </div>
+{{/if}}
+        <ul class="divide-y divide-line">
+{{#each r in rows}}
+          <li class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 hover:bg-stone-50 dark:hover:bg-white/[0.02] transition-colors">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <a href="{{ viewHref(r.id) }}" target="_blank" rel="noopener" class="text-slate-900 dark:text-slate-100 text-sm font-semibold hover:text-brand-600 dark:hover:text-brand-400 transition-colors">{{ r.number }}</a>
+                <span class="{{ r.badge }}">{{ r.status }}</span>
+              </div>
+              <p class="text-slate-500 text-xs mt-0.5 truncate">{{ r.description }} · {{ r.dateText }}</p>
+            </div>
+            <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+              <span class="text-slate-800 dark:text-slate-200 text-sm font-mono font-medium">{{ r.amountText }}</span>
+              <a href="{{ pdfHref(r.id) }}" download data-no-prerender title="Download PDF" aria-label="{{ 'Download ' + r.number + ' as PDF' }}" class="inline-flex items-center gap-1.5 h-9 rounded-full border border-line px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-brand-500/40 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
+                <IconDownload class="w-4 h-4" /> PDF
+              </a>
+            </div>
+          </li>
+{{/each}}
+        </ul>
       </div>
 {{/if}}
 

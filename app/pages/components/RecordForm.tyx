@@ -5,7 +5,7 @@ props
   domainId: String
   kind: String
   record: Object
-  chips: Array
+  chips: any
   billingLocked: Boolean
   onClose: Function
   onSaved: Function

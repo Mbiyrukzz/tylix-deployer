@@ -31,3 +31,142 @@
 html, body {
   background-color: var(--page);
 }
+
+/* ---------------------------------------------------------------------------
+   Navigation between pages (see public/app-shell.js)
+   Every page is its own document. Moving between them cross-fades instead
+   of flashing, the full-screen Tylix loader is kept for the first visit
+   only, and a slim bar shows from the click until the next page renders.
+--------------------------------------------------------------------------- */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+  animation-timing-function: ease;
+}
+
+/* The navbar stays put while the page under it changes. */
+.app-nav {
+  view-transition-name: app-nav;
+}
+::view-transition-group(app-nav) {
+  animation-duration: 0s;
+}
+
+html[data-soft-nav]:not([data-app-ready]) #tylix-loading-screen {
+  display: none !important;
+}
+
+html[data-navigating] body::before,
+html[data-soft-nav]:not([data-app-ready]) body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  z-index: 99999;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, #f97316, #e879f9);
+  box-shadow: 0 0 10px rgb(249 115 22 / 0.6);
+  animation: app-nav-progress 6s cubic-bezier(0.08, 0.7, 0.2, 1) forwards;
+}
+
+@keyframes app-nav-progress {
+  from { transform: scaleX(0.04); }
+  to { transform: scaleX(0.92); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+  html[data-navigating] body::before,
+  html[data-soft-nav]:not([data-app-ready]) body::before {
+    animation: none;
+    transform: scaleX(0.6);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile
+--------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Wide tables and code blocks scroll inside their card, never the page. */
+.app-main {
+  overflow-x: clip;
+}
+
+/* iOS zooms into inputs under 16px; keep them at 16px on small screens. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Room for the home indicator on notched phones (installed app). */
+@supports (padding: env(safe-area-inset-bottom)) {
+  footer {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Horizontal scrollers (sidebar tabs on phones) without a visible bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   App chrome on phones and tablets (below lg)
+   - the main sidebar is a bottom tab bar (components/Sidebar.tyx)
+   - section sidebars (server, site, settings, ...) are one sticky strip
+     under the navbar that swipes sideways
+--------------------------------------------------------------------------- */
+@media (max-width: 1023px) {
+  .app-subnav {
+    position: sticky;
+    top: 4rem;
+    z-index: 30;
+    background-color: rgb(245 245 244 / 0.85) !important;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 12px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%);
+  }
+  .dark .app-subnav {
+    background-color: rgb(10 10 11 / 0.85) !important;
+  }
+  .app-subnav > * {
+    scroll-snap-align: start;
+  }
+  /* A short page's min-height grid would otherwise stretch the strip's row. */
+  .grid:has(> .app-subnav) {
+    align-content: start;
+  }
+
+  /* Room for the tab bar; the marketing footer isn't shown inside the app. */
+  body:has(.app-tabbar) .app-main {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+  body:has(.app-tabbar) footer.site-footer {
+    display: none;
+  }
+  body:has(.app-tabbar) .pwa-prompt {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  }
+}

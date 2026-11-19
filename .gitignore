@@ -25,3 +25,4 @@ npm-debug.log*
 !.vscode/extensions.json
 .idea/
 public/tailwind.css
+storage/logs/*.log

@@ -204,7 +204,7 @@ template
     <ServerSidebar active="ssh-keys" serverId="{{ serverId }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-10">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <p class="text-slate-500 text-sm">Loading…</p>
@@ -224,7 +224,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">SSH Keys</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">SSH Keys</h1>
       <p class="text-slate-500 text-sm mb-6">Give people or machines SSH access to this server, as any user on it.</p>
 
 {{#if error}}
@@ -243,7 +243,7 @@ template
       </div>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Deploy a key</h2>
 
         <div class="flex gap-2 mb-4">
@@ -311,7 +311,7 @@ template
         </div>
       </div>
 
-      <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
+      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Deployed keys</h2>
         <p class="text-slate-500 text-sm mb-4">Keys that can log in to this server.</p>
 
