@@ -18,7 +18,7 @@ state
   serverId: ""
   site: null
   loading: true
-  notFound: false
+  isMissing: false
   canDeploy: false
   scriptText: ""
   defaultScript: ""
@@ -1011,7 +1011,7 @@ onMount
     this.siteId = id or ""
 
     if not id {
-      this.notFound = true
+      this.isMissing = true
       this.loading = false
     } else {
       const result = await useApi("/api/sites/" + id)
@@ -1040,7 +1040,7 @@ onMount
         await this.loadHistory()
         this.loading = false
       } else {
-        this.notFound = true
+        this.isMissing = true
         this.loading = false
       }
     }
@@ -1049,7 +1049,12 @@ onMount
 template
   <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)] bg-page transition-colors">
 {{#if serverId}}
+{{#if not isMissing}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+{{/if}}
+{{#if isMissing}}
+    <div></div>
 {{/if}}
     <div class="min-w-0 overflow-x-hidden">
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
@@ -1062,12 +1067,8 @@ template
       </div>
 {{/if}}
 
-{{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-10 text-center shadow-sm dark:shadow-none">
-        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-2">Site not found</h2>
-        <p class="text-slate-500 text-sm mb-6">It may have been removed, or the link is wrong.</p>
-        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">← Back to servers</a>
-      </div>
+{{#if isMissing}}
+      <NotFoundCard heading="Site not found" body="It may have been removed, or the link is wrong." link="/servers" linkLabel="Back to servers" />
 {{/if}}
 
 {{#if site}}

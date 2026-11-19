@@ -8,7 +8,7 @@ needs
 state
   loading: true
   paging: false
-  notFound: false
+  isMissing: false
   forbidden: false
   memberId: ""
   name: ""
@@ -127,7 +127,7 @@ action
     }
 
     if result.status is 404 {
-      this.notFound = true
+      this.isMissing = true
       return null
     }
 
@@ -137,7 +137,7 @@ action
     }
 
     if not result.ok {
-      this.notFound = true
+      this.isMissing = true
       return null
     }
 
@@ -176,7 +176,7 @@ action
   async load() {
     const id = new URLSearchParams(window.location.search).get("id")
     if not id {
-      this.notFound = true
+      this.isMissing = true
       this.loading = false
       return null
     }
@@ -282,11 +282,8 @@ template
       </div>
 {{/if}}
 
-{{#if notFound}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
-        <p class="text-slate-900 dark:text-slate-100 font-medium mb-1">Member not found</p>
-        <p class="text-slate-500 text-sm">They may have left the team.</p>
-      </div>
+{{#if isMissing}}
+      <NotFoundCard heading="Member not found" body="They may have left the team." link="/team" linkLabel="Back to team" />
 {{/if}}
 
 {{#if forbidden}}
@@ -297,7 +294,7 @@ template
 {{/if}}
 
 {{#if not loading}}
-{{#if not notFound}}
+{{#if not isMissing}}
 {{#if not forbidden}}
 
       <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">

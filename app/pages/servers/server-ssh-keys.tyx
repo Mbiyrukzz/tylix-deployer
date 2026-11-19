@@ -17,7 +17,7 @@ state
   server: null
   serverId: ""
   loading: true
-  notFound: false
+  isMissing: false
   busy: false
   error: ""
   mode: "existing"
@@ -177,7 +177,7 @@ onMount
     this.serverId = serverId or ""
 
     if not serverId {
-      this.notFound = true
+      this.isMissing = true
       this.loading = false
     } else {
       const result = await useApi("/api/servers/" + serverId)
@@ -191,7 +191,7 @@ onMount
         await this.loadDeployments()
         await this.loadUsers()
       } else {
-        this.notFound = true
+        this.isMissing = true
         this.loading = false
       }
     }
@@ -200,7 +200,12 @@ onMount
 template
   <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
+{{#if not isMissing}}
     <ServerSidebar active="ssh-keys" serverId="{{ serverId }}" />
+{{/if}}
+{{/if}}
+{{#if isMissing}}
+    <div></div>
 {{/if}}
     <div class="min-w-0">
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -209,11 +214,8 @@ template
       <LoaderMark label="Loading…" />
 {{/if}}
 
-{{#if notFound}}
-      <div class="max-w-2xl mx-auto rounded-2xl border border-line bg-panel p-8 text-center">
-        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-2">Server not found</h2>
-        <a href="/servers" class="text-brand-700 dark:text-brand-500 text-sm hover:underline">&larr; Back to servers</a>
-      </div>
+{{#if isMissing}}
+      <NotFoundCard heading="Server not found" body="It may have been deleted, or the link is wrong." link="/servers" linkLabel="Back to servers" />
 {{/if}}
 
 {{#if server}}

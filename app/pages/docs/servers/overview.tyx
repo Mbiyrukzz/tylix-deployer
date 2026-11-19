@@ -13,7 +13,7 @@ template
     <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
       <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Server overview</h1>
-      <p class="text-zinc-500 text-sm mt-2 mb-8">Open any server from the Servers page and you land here. It shows whether the machine is healthy right now, how to log in to it, which sites run on it, and lets you reboot or delete it. The other pages for this server are in the menu on the left.</p>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">Open any server from the Servers page and you land here. It shows whether the machine is healthy right now, how to log in to it, which sites run on it, and lets you reboot it. The other pages for this server are in the menu on the left.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
 
@@ -98,7 +98,7 @@ template
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Reboot server</h2>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Restarts the machine over SSH. Sites and services on it are offline for about a minute. Select Reboot server, then Yes, reboot now to confirm. Cancel backs out.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Restarts the machine over SSH. Sites and services on it are offline for about a minute. It is the first row of the card at the bottom of the page. Select Reboot, then Yes, reboot now to confirm. Cancel backs out.</p>
 
       <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
         <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>The SSH user must be root, or have sudo that does not ask for a password.</span></li>
@@ -106,21 +106,11 @@ template
         <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>If it has not come back after about three minutes, the badge changes to Offline.</span></li>
       </ul>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If the reboot cannot start, a red message appears above the button.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">If the reboot cannot start, a red message appears under the description.</p>
 
-      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Delete server</h2>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Settings and danger zone</h2>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Removes the server from Tylix Flux, together with its stored SSH key. Your machine itself is not touched.</p>
-
-      <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
-        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Select Delete server, then Yes, delete it. Cancel backs out.</span></li>
-        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>With two-factor sign-in on, a Verification code box appears first. With an authenticator app, enter its current code or a recovery code. With SMS only, a code is texted to you straight away, and Text me a code sends another.</span></li>
-        <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>When it works you return to the Servers page.</span></li>
-      </ul>
-
-      <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
-        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Deleting cannot be undone. Make sure nothing on the server still needs Tylix Flux before you confirm.</p>
-      </div>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">The second row, Open settings, takes you to this server's Settings page: updates, services, host keys, and Delete server in the Danger zone. To change the server's name or connection details, use Edit at the top of the Overview.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>
 

@@ -8,6 +8,10 @@ props
 
 state
   collapsed: false
+  // The server these pages belong to, for the header.
+  infoName: ""
+  infoHost: ""
+  infoStatus: ""
   asideCls: "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:px-3 lg:py-4"
   topCls: "hidden lg:flex items-center justify-between gap-2 mb-5"
   headCls: "hidden lg:flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 text-[11px] font-semibold uppercase tracking-[0.14em] pt-2 pb-1.5 px-3 transition-colors"
@@ -19,6 +23,33 @@ state
   chevCls: "w-4 h-4 transition-transform"
 
 action
+  // The page passes its id once it has read the URL; fall back to ?id=.
+  async loadInfo() {
+    const id = this.serverId or new URLSearchParams(window.location.search).get("id") or ""
+    if not id {
+      return null
+    }
+    const result = await useApi("/api/servers/" + id)
+    if result.ok and result.data {
+      this.infoName = String(result.data.name or "")
+      this.infoHost = String(result.data.host or "")
+      this.infoStatus = String(result.data.status or "")
+    }
+  }
+
+  statusLabel() {
+    if this.infoStatus is "online" {
+      return "Online"
+    }
+    if this.infoStatus is "offline" {
+      return "Offline"
+    }
+    if this.infoStatus is "pending" {
+      return "Not tested"
+    }
+    return ""
+  }
+
   applyLayout() {
     const asideBase = "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
     const on = "relative shrink-0 flex items-center gap-3 h-9 px-3 rounded-xl bg-white text-zinc-900 text-[13.5px] font-medium shadow-sm ring-1 ring-black/[0.06] dark:ring-0"
@@ -62,6 +93,7 @@ action
 
 onMount
   async {
+    this.loadInfo()
     const saved = window.localStorage.getItem("tylix-server-sidebar")
     if saved is "1" {
       this.collapsed = true
@@ -74,18 +106,34 @@ template
 
   <div class="{{ topCls }}">
     <div class="flex items-center gap-3 min-w-0">
-      <span class="w-9 h-9 shrink-0 rounded-[10px] border border-line bg-panel text-zinc-700 dark:text-zinc-200 flex items-center justify-center">
+      <span title="{{ statusLabel() }}" class="relative w-9 h-9 shrink-0 rounded-[10px] border border-line bg-panel text-zinc-700 dark:text-zinc-200 flex items-center justify-center">
         <IconCpuChip class="w-5 h-5" />
+{{#if infoStatus is "online"}}
+        <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-page"></span>
+{{/if}}
+{{#if infoStatus is "offline"}}
+        <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-page"></span>
+{{/if}}
+{{#if infoStatus is "pending"}}
+        <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-page"></span>
+{{/if}}
       </span>
       <div class="{{ titleCls }}">
-        <p class="text-zinc-900 dark:text-zinc-50 text-[15px] font-semibold tracking-tight leading-tight truncate">Server</p>
-        <p class="text-zinc-500 text-[11px] leading-tight truncate">Manage this server</p>
+        <p title="{{ infoName }}" class="text-zinc-900 dark:text-zinc-50 text-[15px] font-semibold tracking-tight leading-tight truncate">{{ infoName or "Server" }}</p>
+        <p class="text-zinc-500 text-[11px] leading-tight font-mono truncate">{{ infoHost or "Manage this server" }}</p>
       </div>
     </div>
     <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="{{ btnCls }}">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" class="{{ chevCls }}"><rect x="3" y="3.5" width="14" height="13" rx="3" /><path d="M8 3.5v13" /><path d="M13 8l-2 2 2 2" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </button>
   </div>
+
+{{#if infoName}}
+  <span class="lg:hidden shrink-0 flex items-center gap-2 pr-3 mr-1 border-r border-line">
+    <IconCpuChip class="w-4 h-4 shrink-0 text-zinc-500" />
+    <span class="text-sm font-semibold text-slate-900 dark:text-slate-100 max-w-[9rem] truncate">{{ infoName }}</span>
+  </span>
+{{/if}}
 
   <details open class="tylix-sec group/sec flex shrink-0 items-center gap-1 lg:flex-col lg:items-stretch lg:shrink">
     <summary class="{{ headCls }}">
@@ -118,13 +166,13 @@ template
 {{/if}}
 
 {{#if active is "databases"}}
-    <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Database" aria-current="page" class="{{ onCls }}">
-      <IconDatabase class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Database</span>
+    <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Databases" aria-current="page" class="{{ onCls }}">
+      <IconDatabase class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Databases</span>
     </a>
 {{/if}}
 {{#if active is not "databases"}}
-    <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Database" class="{{ offCls }}">
-      <IconDatabase class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Database</span>
+    <a href="{{ '/servers/server-databases?id=' + serverId }}" title="Databases" class="{{ offCls }}">
+      <IconDatabase class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Databases</span>
     </a>
 {{/if}}
 
@@ -151,13 +199,13 @@ template
     </summary>
 
 {{#if active is "cron"}}
-    <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="CronJobs" aria-current="page" class="{{ onCls }}">
-      <IconClock class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">CronJobs</span>
+    <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="Cron jobs" aria-current="page" class="{{ onCls }}">
+      <IconClock class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Cron jobs</span>
     </a>
 {{/if}}
 {{#if active is not "cron"}}
-    <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="CronJobs" class="{{ offCls }}">
-      <IconClock class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">CronJobs</span>
+    <a href="{{ '/servers/server-cron-jobs?id=' + serverId }}" title="Cron jobs" class="{{ offCls }}">
+      <IconClock class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Cron jobs</span>
     </a>
 {{/if}}
 
