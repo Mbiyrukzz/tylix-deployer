@@ -48,6 +48,10 @@ state
   chartFailed: false
   bars: []
   chartBusy: false
+  yGrid: []
+  avgShow: false
+  avgStyle: ""
+  avgText: ""
   chartEmpty: false
   yTicks: []
   deployTotal: 0
@@ -301,14 +305,19 @@ action
   }
 
   barCls(i, b) {
-    const base = "relative w-full overflow-hidden rounded-t-[6px] sm:rounded-t-[8px] rounded-b-[3px] transition-[height,background-color] duration-300 "
+    const base = "flux-grow relative block w-[70%] max-w-[40px] overflow-hidden rounded-t-[5px] sm:rounded-t-[7px] rounded-b-[2px] transition-[height,background-color,box-shadow] duration-300 "
     if b.total is 0 {
-      return base + "bg-zinc-200/70 dark:bg-white/[0.05]"
+      return base + "bg-zinc-300 dark:bg-white/[0.16]"
     }
     if i is this.shownFocus {
-      return base + "bg-brand-500 shadow-[0_6px_20px_-6px_rgb(224_57_63/0.6)]"
+      return base + "bg-gradient-to-t from-brand-600 to-brand-400 shadow-[0_8px_24px_-8px_rgb(224_57_63/0.75)]"
     }
     return base + "bg-zinc-300 dark:bg-zinc-600 group-hover:bg-zinc-400 dark:group-hover:bg-zinc-500"
+  }
+
+  colCls(i) {
+    const base = "absolute inset-y-0 -inset-x-px rounded-lg transition-colors "
+    return base + (i is this.shownFocus ? "bg-zinc-100 dark:bg-white/[0.035]" : "")
   }
 
   labelCls(i) {
@@ -329,11 +338,25 @@ action
     const top = Math.max(0, ...d.buckets.map((b) => b.total))
     const max = this.niceMax(top)
     this.yTicks = [max, Math.round(max * 2 / 3), Math.round(max / 3), 0]
+    // Grid lines and their labels share one position, so they always line up.
+    this.yGrid = [0, 1, 2, 3].map((k) => ({
+      v: Math.round(max * k / 3),
+      pos: "bottom: " + (k * 100 / 3).toFixed(3) + "%",
+      line: k is 0 ? "bg-zinc-300 dark:bg-white/[0.14]" : "bg-zinc-200/80 dark:bg-white/[0.06]"
+    }))
+    const avg = d.buckets.length ? d.buckets.reduce((a, b) => a + b.total, 0) / d.buckets.length : 0
+    // The line only helps when it sits clear of the axis.
+    this.avgShow = avg > 0 and avg / max >= 0.08
+    this.avgStyle = "bottom: " + (avg / max * 100).toFixed(2) + "%"
+    const per = this.range is "daily" ? "a day" : (this.range is "monthly" ? "a month" : "a week")
+    this.avgText = (avg >= 10 ? Math.round(avg) : Math.round(avg * 10) / 10) + " " + per
     this.bars = d.buckets.map((b, i) => {
       const text = this.bucketText(b, i, d.buckets)
       const failed = b.failed or 0
       return Object.assign({}, b, text, {
-        style: "height: " + (b.total > 0 ? Math.max(8, Math.round(b.total / max * 100)) : 3) + "%",
+        // Empty periods keep a short visible stub so the axis never looks blank.
+        barStyle: (b.total > 0 ? "height: " + Math.max(4, Math.round(b.total / max * 100)) + "%" : "height: 4px") + "; animation-delay: " + (i * 28) + "ms",
+        valueStyle: "bottom: calc(" + (b.total > 0 ? Math.max(4, Math.round(b.total / max * 100)) : 0) + "% + 6px)",
         failStyle: "height: " + (b.total > 0 ? Math.round(failed / b.total * 100) : 0) + "%",
         hasFailed: failed > 0,
         aria: text.full + ": " + this.plural(b.total, "deploy") + (failed > 0 ? ", " + failed + " failed" : "")
@@ -766,39 +789,63 @@ template
 {{/if}}
         </div>
 
-        <div class="{{ chartBusy ? 'relative mt-4 h-56 sm:h-64 opacity-50 transition-opacity' : 'relative mt-4 h-56 sm:h-64 transition-opacity' }}" onmouseleave="{{ hoverIndex = -1 }}">
-          <div class="absolute inset-y-0 left-0 w-7 sm:w-8 flex flex-col justify-between pb-8 text-[10.5px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums" aria-hidden="true">
-{{#each t in yTicks}}
-            <span class="leading-none -translate-y-1/2">{{ t }}</span>
+        <!-- Every piece is absolutely placed inside a box of fixed height, so
+             bar heights (percentages) resolve the same in every browser. -->
+        <div class="{{ chartBusy ? 'relative mt-4 h-60 sm:h-72 opacity-50 transition-opacity' : 'relative mt-4 h-60 sm:h-72 transition-opacity' }}" onmouseleave="{{ hoverIndex = -1 }}">
+          <div class="absolute left-8 sm:left-10 right-0 top-4 bottom-9">
+{{#each g in yGrid}}
+            <div class="absolute inset-x-0 h-px {{ g.line }}" style="{{ g.pos }}" aria-hidden="true"></div>
+            <span class="absolute -left-8 sm:-left-10 w-6 sm:w-8 text-right translate-y-1/2 leading-none text-[10.5px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums" style="{{ g.pos }}" aria-hidden="true">{{ g.v }}</span>
 {{/each}}
-          </div>
-          <div class="absolute left-8 sm:left-9 right-0 top-0 bottom-8 flex flex-col justify-between pointer-events-none" aria-hidden="true">
-            <div class="h-px bg-line"></div>
-            <div class="h-px bg-line"></div>
-            <div class="h-px bg-line"></div>
-            <div class="h-px bg-line-strong"></div>
-          </div>
-          <div class="absolute left-8 sm:left-9 right-0 inset-y-0 flex items-stretch gap-1 sm:gap-2" role="group" aria-label="Deploys per period">
+
+            <div class="absolute inset-0 flex gap-1 sm:gap-2" role="group" aria-label="Deploys per period">
 {{#each b, i in bars}}
-            <button type="button" onclick="{{ pickBar(i) }}" onmouseenter="{{ pickBar(i) }}" onfocus="{{ pickBar(i) }}" aria-label="{{ b.aria }}" aria-pressed="{{ i is shownFocus }}" class="group flex-1 min-w-0 flex flex-col items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50">
-              <span class="relative flex-1 w-full max-w-[44px] flex items-end">
-                <span class="{{ barCls(i, b) }}" style="{{ b.style }}">
+              <div class="group relative flex-1 min-w-0 h-full">
+                <span class="{{ colCls(i) }}" aria-hidden="true"></span>
+                <span class="absolute inset-0 flex items-end justify-center" aria-hidden="true">
+                  <span class="{{ barCls(i, b) }}" style="{{ b.barStyle }}">
 {{#if b.hasFailed}}
-                  <span class="absolute inset-x-0 top-0 bg-rose-950/80 dark:bg-rose-300/90" style="{{ b.failStyle }}"></span>
+                    <span class="absolute inset-x-0 top-0 bg-rose-950/75 dark:bg-rose-300/90" style="{{ b.failStyle }}"></span>
 {{/if}}
+                  </span>
                 </span>
-              </span>
-              <span class="h-8 pt-2 {{ labelCls(i) }}">
-                <span class="{{ tickCls(i) }}">{{ b.short }}</span>
-                <span class="block leading-none text-[9.5px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">{{ b.sub }}</span>
-              </span>
-            </button>
+{{#if i is shownFocus}}
+{{#if b.total > 0}}
+                <span class="absolute inset-x-0 text-center leading-none text-[11px] font-semibold text-zinc-900 dark:text-zinc-50 tabular-nums pointer-events-none" style="{{ b.valueStyle }}" aria-hidden="true">{{ b.total }}</span>
+{{/if}}
+{{/if}}
+                <button type="button" onclick="{{ pickBar(i) }}" onmouseenter="{{ pickBar(i) }}" onfocus="{{ pickBar(i) }}" aria-label="{{ b.aria }}" aria-pressed="{{ i is shownFocus }}" class="absolute inset-0 w-full h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"></button>
+              </div>
+{{/each}}
+            </div>
+
+{{#if avgShow}}
+            <div class="absolute inset-x-0 border-t border-dashed border-zinc-400/80 dark:border-zinc-400/60 pointer-events-none" style="{{ avgStyle }}" aria-hidden="true"></div>
+{{/if}}
+
+{{#if chartEmpty}}
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <p class="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 shadow-sm">No deploys in this period yet</p>
+            </div>
+{{/if}}
+          </div>
+
+          <div class="absolute left-8 sm:left-10 right-0 bottom-0 h-9 flex gap-1 sm:gap-2" aria-hidden="true">
+{{#each b, i in bars}}
+            <div class="flex-1 min-w-0 pt-2 {{ labelCls(i) }}">
+              <span class="{{ tickCls(i) }}">{{ b.short }}</span>
+              <span class="block leading-none text-[9.5px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">{{ b.sub }}</span>
+            </div>
 {{/each}}
           </div>
-{{#if chartEmpty}}
-          <div class="absolute left-8 sm:left-9 right-0 top-0 bottom-8 flex items-center justify-center pointer-events-none">
-            <p class="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 shadow-sm">No deploys in this period yet</p>
-          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] text-zinc-600 dark:text-zinc-300">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-[3px] bg-zinc-300 dark:bg-zinc-600"></span>Deploys</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-[3px] bg-rose-950/75 dark:bg-rose-300/90"></span>Failed</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-[3px] bg-gradient-to-t from-brand-600 to-brand-400"></span>Selected</span>
+{{#if deployTotal > 0}}
+          <span class="flex items-center gap-1.5"><span class="w-3.5 border-t border-dashed border-zinc-500"></span>Average <span class="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{{ avgText }}</span></span>
 {{/if}}
         </div>
 {{/if}}

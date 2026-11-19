@@ -177,6 +177,25 @@ html[data-sidebar="collapsed"] {
     @apply text-white dark:text-zinc-900;
   }
 
+  /* Chart bars grow up from the axis when they first draw. */
+  .flux-grow {
+    transform-origin: bottom;
+    animation: flux-grow 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes flux-grow {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .flux-grow {
+      animation: none;
+    }
+  }
+
   /* Hatched bar used by charts for "the rest of the scale". */
   .flux-hatch {
     background-color: var(--sunken);
