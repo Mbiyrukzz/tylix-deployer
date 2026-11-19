@@ -47,6 +47,8 @@ state
   chartReady: false
   chartFailed: false
   bars: []
+  chartBusy: false
+  chartEmpty: false
   yTicks: []
   deployTotal: 0
   deltaText: ""
@@ -227,7 +229,65 @@ action
       return null
     }
     this.range = r
+    this.chartBusy = true
     await this.loadChart()
+    this.chartBusy = false
+  }
+
+  // Tap (phones) or hover (mouse) picks the bar the readout describes.
+  pickBar(i) {
+    this.hoverIndex = i
+  }
+
+  readout() {
+    const b = this.bars[this.shownFocus]
+    if not b {
+      return null
+    }
+    return b
+  }
+
+  // Bucket labels from the bucket's ISO key, short enough for a phone:
+  // days show the day number (the month only where it starts or changes),
+  // weeks their ISO week, months three letters.
+  bucketText(b, i, list) {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    const longMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    const key = String(b.key or "")
+    const d = new Date(key.length is 7 ? key + "-01T00:00:00Z" : key + "T00:00:00Z")
+    if isNaN(d.getTime()) {
+      return { short: String(b.label or ""), sub: "", full: String(b.label or "") }
+    }
+    const day = d.getUTCDate()
+    const mon = months[d.getUTCMonth()]
+    if this.range is "daily" {
+      const prev = i > 0 ? new Date(String(list[i - 1].key) + "T00:00:00Z") : null
+      const newMonth = not prev or prev.getUTCMonth() is not d.getUTCMonth()
+      const today = i is list.length - 1
+      return {
+        short: "" + day,
+        sub: newMonth ? mon : "",
+        full: (today ? "Today, " : days[d.getUTCDay()] + " ") + day + " " + mon
+      }
+    }
+    if this.range is "monthly" {
+      return { short: mon, sub: "", full: longMonths[d.getUTCMonth()] + " " + d.getUTCFullYear() }
+    }
+    const end = new Date(d.getTime() + 6 * 86400000)
+    return {
+      short: String(b.label or ""),
+      sub: "",
+      full: "Week of " + day + " " + mon + " – " + end.getUTCDate() + " " + months[end.getUTCMonth()]
+    }
+  }
+
+  // On a phone the 14 daily labels don't fit: keep every other one,
+  // counting back from today so today is always labelled.
+  tickCls(i) {
+    const base = "block leading-none whitespace-nowrap tabular-nums "
+    const thin = this.range is "daily" and (this.bars.length - 1 - i) % 2 is 1
+    return base + (thin ? "hidden sm:block" : "")
   }
 
   // A round top for the y axis that splits into thirds: 3, 6, 9, 12, 24, 48, 72...
@@ -240,26 +300,22 @@ action
     return hit or Math.ceil(n / 300) * 300
   }
 
-  barCls(i) {
-    const base = "relative w-full rounded-[10px] transition-[height,background-color] duration-300 "
-    if i is this.shownFocus {
-      return base + "bg-brand-500"
+  barCls(i, b) {
+    const base = "relative w-full overflow-hidden rounded-t-[6px] sm:rounded-t-[8px] rounded-b-[3px] transition-[height,background-color] duration-300 "
+    if b.total is 0 {
+      return base + "bg-zinc-200/70 dark:bg-white/[0.05]"
     }
-    return base + "flux-hatch border border-line"
-  }
-
-  capCls(i) {
     if i is this.shownFocus {
-      return "absolute top-2 left-1/2 -translate-x-1/2 w-3.5 h-[3px] rounded-full bg-white/80"
+      return base + "bg-brand-500 shadow-[0_6px_20px_-6px_rgb(224_57_63/0.6)]"
     }
-    return "absolute top-2 left-1/2 -translate-x-1/2 w-3.5 h-[3px] rounded-full bg-zinc-400 dark:bg-zinc-300"
+    return base + "bg-zinc-300 dark:bg-zinc-600 group-hover:bg-zinc-400 dark:group-hover:bg-zinc-500"
   }
 
   labelCls(i) {
     if i is this.shownFocus {
-      return "text-[11px] font-medium text-zinc-900 dark:text-zinc-100"
+      return "flex flex-col items-center gap-0.5 text-[10.5px] sm:text-[11px] font-semibold text-zinc-900 dark:text-zinc-50"
     }
-    return "text-[11px] text-zinc-500"
+    return "flex flex-col items-center gap-0.5 text-[10.5px] sm:text-[11px] text-zinc-500 dark:text-zinc-400"
   }
 
   async loadChart() {
@@ -273,10 +329,17 @@ action
     const top = Math.max(0, ...d.buckets.map((b) => b.total))
     const max = this.niceMax(top)
     this.yTicks = [max, Math.round(max * 2 / 3), Math.round(max / 3), 0]
-    this.bars = d.buckets.map((b) => Object.assign({}, b, {
-      style: "height: " + Math.max(b.total > 0 ? 10 : 6, Math.round(b.total / max * 100)) + "%",
-      tip: this.plural(b.total, "deploy") + (b.failed > 0 ? " · " + b.failed + " failed" : "")
-    }))
+    this.bars = d.buckets.map((b, i) => {
+      const text = this.bucketText(b, i, d.buckets)
+      const failed = b.failed or 0
+      return Object.assign({}, b, text, {
+        style: "height: " + (b.total > 0 ? Math.max(8, Math.round(b.total / max * 100)) : 3) + "%",
+        failStyle: "height: " + (b.total > 0 ? Math.round(failed / b.total * 100) : 0) + "%",
+        hasFailed: failed > 0,
+        aria: text.full + ": " + this.plural(b.total, "deploy") + (failed > 0 ? ", " + failed + " failed" : "")
+      })
+    })
+    this.chartEmpty = d.buckets.every((b) => b.total is 0)
     let focus = -1
     d.buckets.forEach((b, i) => {
       if b.total > 0 and (focus < 0 or b.total >= d.buckets[focus].total) {
@@ -688,33 +751,55 @@ template
         </div>
 {{/if}}
 {{#if not chartFailed}}
-        <div class="relative mt-8 h-64" onmouseleave="{{ hoverIndex = -1 }}">
-          <div class="absolute inset-y-0 left-0 w-8 flex flex-col justify-between pb-6 text-[11px] text-zinc-500 tabular-nums">
+        <!-- What the picked bar holds: hover on desktop, tap on a phone. -->
+        <div class="mt-6 flex items-center justify-between gap-3 min-h-[34px] rounded-xl bg-sunken px-3 py-2" aria-live="polite">
+{{#if readout()}}
+          <p class="min-w-0 truncate text-[12.5px] font-medium text-zinc-900 dark:text-zinc-100">{{ readout().full }}</p>
+          <p class="shrink-0 flex items-center gap-3 text-[12px] tabular-nums">
+            <span class="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200"><span class="w-2 h-2 rounded-[3px] bg-brand-500"></span>{{ plural(readout().total, "deploy") }}</span>
+{{#if readout().hasFailed}}
+            <span class="flex items-center gap-1.5 text-rose-600 dark:text-rose-400"><span class="w-2 h-2 rounded-[3px] bg-rose-950 dark:bg-rose-300"></span>{{ readout().failed }} failed</span>
+{{/if}}
+          </p>
+{{#else}}
+          <p class="text-[12.5px] text-zinc-500 dark:text-zinc-400">Tap or hover a bar for details</p>
+{{/if}}
+        </div>
+
+        <div class="{{ chartBusy ? 'relative mt-4 h-56 sm:h-64 opacity-50 transition-opacity' : 'relative mt-4 h-56 sm:h-64 transition-opacity' }}" onmouseleave="{{ hoverIndex = -1 }}">
+          <div class="absolute inset-y-0 left-0 w-7 sm:w-8 flex flex-col justify-between pb-8 text-[10.5px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums" aria-hidden="true">
 {{#each t in yTicks}}
             <span class="leading-none -translate-y-1/2">{{ t }}</span>
 {{/each}}
           </div>
-          <div class="absolute left-9 right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none" aria-hidden="true">
+          <div class="absolute left-8 sm:left-9 right-0 top-0 bottom-8 flex flex-col justify-between pointer-events-none" aria-hidden="true">
             <div class="h-px bg-line"></div>
             <div class="h-px bg-line"></div>
             <div class="h-px bg-line"></div>
-            <div class="h-px bg-line"></div>
+            <div class="h-px bg-line-strong"></div>
           </div>
-          <div class="absolute left-9 right-0 inset-y-0 flex items-stretch gap-1.5 sm:gap-2.5">
+          <div class="absolute left-8 sm:left-9 right-0 inset-y-0 flex items-stretch gap-1 sm:gap-2" role="group" aria-label="Deploys per period">
 {{#each b, i in bars}}
-            <div class="flex-1 min-w-0 flex flex-col items-center gap-2" onmouseenter="{{ hoverIndex = i }}">
-              <div class="relative flex-1 w-full max-w-[46px] flex items-end">
-                <div class="{{ barCls(i) }}" style="{{ b.style }}">
-                  <span class="{{ capCls(i) }}"></span>
-{{#if i is shownFocus}}
-                  <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-full bg-brand-950 text-brand-100 ring-1 ring-brand-500/40 px-2 py-0.5 text-[11px] font-medium">{{ b.tip }}</span>
+            <button type="button" onclick="{{ pickBar(i) }}" onmouseenter="{{ pickBar(i) }}" onfocus="{{ pickBar(i) }}" aria-label="{{ b.aria }}" aria-pressed="{{ i is shownFocus }}" class="group flex-1 min-w-0 flex flex-col items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50">
+              <span class="relative flex-1 w-full max-w-[44px] flex items-end">
+                <span class="{{ barCls(i, b) }}" style="{{ b.style }}">
+{{#if b.hasFailed}}
+                  <span class="absolute inset-x-0 top-0 bg-rose-950/80 dark:bg-rose-300/90" style="{{ b.failStyle }}"></span>
 {{/if}}
-                </div>
-              </div>
-              <span class="{{ labelCls(i) }}">{{ b.label }}</span>
-            </div>
+                </span>
+              </span>
+              <span class="h-8 pt-2 {{ labelCls(i) }}">
+                <span class="{{ tickCls(i) }}">{{ b.short }}</span>
+                <span class="block leading-none text-[9.5px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">{{ b.sub }}</span>
+              </span>
+            </button>
 {{/each}}
           </div>
+{{#if chartEmpty}}
+          <div class="absolute left-8 sm:left-9 right-0 top-0 bottom-8 flex items-center justify-center pointer-events-none">
+            <p class="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 shadow-sm">No deploys in this period yet</p>
+          </div>
+{{/if}}
         </div>
 {{/if}}
       </section>

@@ -169,6 +169,14 @@ html[data-sidebar="collapsed"] {
     @apply bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm;
   }
 
+  /* The hover colour above is more specific than the selected one, so the
+     button you just clicked (still under the mouse, or a finger on a phone)
+     went dark-on-dark / white-on-white. Selected always wins. */
+  .flux-segmented > [aria-pressed="true"]:hover,
+  .flux-segmented > [aria-current="page"]:hover {
+    @apply text-white dark:text-zinc-900;
+  }
+
   /* Hatched bar used by charts for "the rest of the scale". */
   .flux-hatch {
     background-color: var(--sunken);
