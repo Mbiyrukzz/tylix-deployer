@@ -1,5 +1,7 @@
 page SettingsTeam
 
+import { IconSearch, IconCopy, IconCheck, IconMail, IconTrash, IconUserAdd, IconCrown, IconShieldCheck, IconEye, IconArrowUpRight } from "tylix-icons"
+
 title "Team"
 
 needs
@@ -19,6 +21,31 @@ state
   error: ""
   notice: ""
   link: ""
+  copied: false
+  query: ""
+  removingId: 0
+  revokingId: 0
+  confirmLeave: false
+
+computed
+  shownMembers() {
+    const q = this.query.trim().toLowerCase()
+    const order = { owner: 0, admin: 1, member: 2 }
+    const list = q ? this.members.filter((m) => String(m.name or "").toLowerCase().includes(q) or String(m.email or "").toLowerCase().includes(q)) : this.members.slice()
+    return list.sort((a, b) => (Reflect.get(order, a.role) ?? 3) - (Reflect.get(order, b.role) ?? 3) or String(a.name or a.email).localeCompare(String(b.name or b.email)))
+  }
+
+  ownerCount() {
+    return this.members.filter((m) => m.role is "owner").length
+  }
+
+  adminCount() {
+    return this.members.filter((m) => m.role is "admin").length
+  }
+
+  memberCount() {
+    return this.members.filter((m) => m.role is "member").length
+  }
 
 action
   readValue(id) {
@@ -43,7 +70,7 @@ action
         id: i.id,
         email: i.email,
         role: i.role,
-        expires: String(i.expires_at).slice(0, 10)
+        expires: this.expiresText(i.expires_at)
       }))
     }
   }
@@ -104,6 +131,105 @@ action
     this.loading = false
   }
 
+  expiresText(raw) {
+    const r = String(raw or "")
+    const t = new Date(r.includes("T") ? r : r.replace(" ", "T") + "Z").getTime()
+    if Number.isNaN(t) {
+      return "expires " + r.slice(0, 10)
+    }
+    const days = Math.ceil((t - Date.now()) / 86400000)
+    if days < 0 {
+      return "expired"
+    }
+    if days is 0 {
+      return "expires today"
+    }
+    return days is 1 ? "expires tomorrow" : "expires in " + days + " days"
+  }
+
+  joinedText(raw) {
+    const r = String(raw or "")
+    const d = new Date(r.length is 10 ? r + "T00:00:00Z" : r)
+    if Number.isNaN(d.getTime()) {
+      return r
+    }
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }
+
+  initial(m) {
+    return String(m.name or m.email or "?").charAt(0).toUpperCase()
+  }
+
+  roleCls(role) {
+    const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset "
+    if role is "owner" {
+      return base + "bg-amber-400/10 text-amber-700 dark:text-amber-300 ring-amber-400/25"
+    }
+    if role is "admin" {
+      return base + "bg-brand-500/10 text-brand-700 dark:text-brand-400 ring-brand-500/20"
+    }
+    return base + "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 ring-zinc-500/20"
+  }
+
+  roleName(role) {
+    const r = String(role or "member")
+    return r.charAt(0).toUpperCase() + r.slice(1)
+  }
+
+  setQuery(value) {
+    this.query = String(value or "")
+  }
+
+  clearMessages() {
+    this.error = ""
+    this.notice = ""
+    this.link = ""
+    this.copied = false
+  }
+
+  async copyLink() {
+    await navigator.clipboard.writeText(this.link)
+    this.copied = true
+    window.setTimeout(() => this.resetCopied(), 1800)
+  }
+
+  resetCopied() {
+    this.copied = false
+  }
+
+  async setRole(m, role) {
+    if role is m.role {
+      return null
+    }
+    await this.changeRole(m.id, role)
+  }
+
+  askRemove(id) {
+    this.revokingId = 0
+    this.removingId = id
+  }
+
+  cancelRemove() {
+    this.removingId = 0
+  }
+
+  askRevoke(id) {
+    this.removingId = 0
+    this.revokingId = id
+  }
+
+  cancelRevoke() {
+    this.revokingId = 0
+  }
+
+  askLeave() {
+    this.confirmLeave = true
+  }
+
+  cancelLeave() {
+    this.confirmLeave = false
+  }
+
   async invite() {
     if this.busy {
       return null
@@ -112,10 +238,13 @@ action
     const email = this.readValue("invite-email")
     const role = this.readValue("invite-role")
 
+    if not email.trim() {
+      this.error = "Enter the email address to invite."
+      return null
+    }
+
     this.busy = true
-    this.error = ""
-    this.notice = ""
-    this.link = ""
+    this.clearMessages()
 
     const result = await useApi("/api/team/invitations", { method: "POST", body: { email: email, role: role } })
 
@@ -138,11 +267,10 @@ action
   }
 
   async revoke(id) {
-    this.error = ""
-    this.notice = ""
-    this.link = ""
+    this.clearMessages()
 
     const result = await useApi("/api/team/invitations/" + id, { method: "DELETE" })
+    this.revokingId = 0
 
     if result.ok {
       await this.loadInvites()
@@ -152,9 +280,7 @@ action
   }
 
   async changeRole(id, role) {
-    this.error = ""
-    this.notice = ""
-    this.link = ""
+    this.clearMessages()
 
     const result = await useApi("/api/team/members/" + id, { method: "PUT", body: { role: role } })
 
@@ -179,15 +305,10 @@ action
   }
 
   async removeMember(id) {
-    if not window.confirm("Remove this person from the team? They lose access to its servers and sites immediately.") {
-      return null
-    }
-
-    this.error = ""
-    this.notice = ""
-    this.link = ""
+    this.clearMessages()
 
     const result = await useApi("/api/team/members/" + id, { method: "DELETE" })
+    this.removingId = 0
 
     if result.status is 401 {
       window.location.href = "/login"
@@ -195,6 +316,7 @@ action
     }
 
     if result.ok {
+      this.notice = "Removed. They no longer have access to this team's servers and sites."
       await this.load()
     } else {
       this.error = result.data?.error or "Couldn't remove that member."
@@ -202,11 +324,8 @@ action
   }
 
   async leave() {
-    if not window.confirm("Leave this team? You lose access to its servers and sites.") {
-      return null
-    }
-
     this.error = ""
+    this.confirmLeave = false
 
     const result = await useApi("/api/team/leave", { method: "POST" })
 
@@ -231,10 +350,15 @@ template
   <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <SettingsSidebar active="team" />
     <div class="min-w-0">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
-      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Members</h1>
-      <p class="text-slate-500 text-sm mb-8">Everyone on your team sees the same servers, providers and sites.</p>
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-8">
+        <div>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Members</h1>
+          <p class="text-slate-500 text-sm">Everyone on your team sees the same servers, providers and sites. Roles decide who can change them.</p>
+        </div>
+        <a href="/team/activity" class="inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap self-start sm:self-auto text-sm text-zinc-600 dark:text-zinc-300 rounded-full border border-line px-3.5 py-1.5 hover:border-line-strong transition-colors">Team activity <IconArrowUpRight class="w-3.5 h-3.5" /></a>
+      </div>
 
 {{#if loading}}
       <LoaderMark label="Loading…" />
@@ -242,120 +366,213 @@ template
 
 {{#if not loading}}
 {{#if error}}
-      <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+      <p role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 text-sm px-4 py-3 mb-4">{{ error }}</p>
 {{/if}}
 
 {{#if hasManyTeams}}
-      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
-        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your teams</h2>
-        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+      <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Your teams</h2>
+        <p class="text-slate-500 text-sm mb-4">Switching changes which servers, sites and connections you see.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 {{#each t in teams}}
-          <div class="flex items-center justify-between gap-4 py-3">
+          <div class="{{ t.current ? 'flex items-center justify-between gap-3 rounded-xl border border-brand-500/40 bg-brand-500/[0.04] px-3.5 py-3' : 'flex items-center justify-between gap-3 rounded-xl border border-line px-3.5 py-3' }}">
             <div class="min-w-0">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ t.name }}</p>
-              <p class="text-slate-500 text-xs">{{ t.role }}</p>
+              <p class="text-slate-500 text-xs">{{ roleName(t.role) }}</p>
             </div>
 {{#if t.current}}
-            <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500 shrink-0">Current</span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400 shrink-0">Current</span>
 {{/if}}
 {{#if not t.current}}
-            <button onclick="{{ switchTo(t.id) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition shrink-0">Switch</button>
+            <button onclick="{{ switchTo(t.id) }}" class="text-xs font-medium text-slate-700 dark:text-slate-300 border border-line rounded-lg px-2.5 py-1.5 hover:border-line-strong transition shrink-0">Switch</button>
 {{/if}}
           </div>
 {{/each}}
         </div>
-      </div>
+      </section>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
-        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">{{ teamName }}</h2>
-        <p class="text-slate-500 text-sm mb-5">Your role: <span class="font-semibold text-slate-700 dark:text-slate-300">{{ role }}</span></p>
-
-        <div class="divide-y divide-slate-200 dark:divide-slate-800">
-{{#each m in members}}
-          <div class="flex items-center justify-between gap-4 py-3">
+      <section class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none mb-6">
+        <div class="p-4 sm:p-6 pb-4 sm:pb-4 border-b border-line">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ m.name }}</p>
-              <p class="text-slate-500 text-xs font-mono truncate">{{ m.email }}</p>
-{{#if m.is_me}}
-              <p class="text-slate-500 text-xs">This is you</p>
-{{/if}}
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ teamName }}</h2>
+              <p class="text-slate-500 text-sm">You're {{ role is "admin" or role is "owner" ? "an" : "a" }} <span class="font-medium text-slate-700 dark:text-slate-300">{{ role }}</span> · {{ members.length }} {{ members.length is 1 ? "person" : "people" }}</p>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-{{#if m.can_promote}}
-              <button onclick="{{ promote(m.id) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Make admin</button>
+{{#if members.length > 5}}
+            <label class="relative block sm:w-60">
+              <span class="sr-only">Find a member</span>
+              <IconSearch class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input type="search" value="{{ query }}" oninput="{{ setQuery(event.target.value) }}" placeholder="Find by name or email" class="w-full rounded-xl border border-line bg-white dark:bg-slate-950 pl-9 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+            </label>
 {{/if}}
-{{#if m.can_demote}}
-              <button onclick="{{ demote(m.id) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Make member</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-3">
+            <span class="{{ roleCls('owner') }}"><IconCrown class="w-3 h-3" /> {{ ownerCount }} owner</span>
+            <span class="{{ roleCls('admin') }}"><IconShieldCheck class="w-3 h-3" /> {{ adminCount }} admin{{ adminCount is 1 ? "" : "s" }}</span>
+            <span class="{{ roleCls('member') }}"><IconEye class="w-3 h-3" /> {{ memberCount }} member{{ memberCount is 1 ? "" : "s" }}</span>
+          </div>
+        </div>
+
+        <ul class="divide-y divide-[var(--line)]">
+{{#each m in shownMembers}}
+          <li class="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-6 py-3.5">
+            <a href="{{ '/team/member?id=' + m.id }}" class="flex items-center gap-3 min-w-0 flex-1 group">
+{{#if m.avatar_url}}
+              <img src="{{ m.avatar_url }}" alt="" class="w-10 h-10 shrink-0 rounded-full object-cover border border-line" />
+{{/if}}
+{{#if not m.avatar_url}}
+              <span class="w-10 h-10 shrink-0 rounded-full bg-zinc-900 text-white dark:bg-zinc-200 dark:text-zinc-900 text-sm font-semibold flex items-center justify-center">{{ initial(m) }}</span>
+{{/if}}
+              <span class="min-w-0">
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate group-hover:underline underline-offset-4">{{ m.name or m.email }}</span>
+{{#if m.is_me}}
+                  <span class="shrink-0 rounded-md bg-zinc-100 dark:bg-white/[0.06] px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-zinc-500">You</span>
+{{/if}}
+                </span>
+                <span class="block text-xs text-slate-500 truncate"><span class="font-mono">{{ m.email }}</span> · joined {{ joinedText(m.joined) }}</span>
+              </span>
+            </a>
+
+            <div class="flex items-center gap-2 shrink-0 pl-[52px] sm:pl-0">
+{{#if removingId is m.id}}
+              <span class="text-xs text-slate-500">Remove {{ m.name or "them" }}?</span>
+              <button onclick="{{ removeMember(m.id) }}" class="text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-2.5 py-1.5 transition-colors">Remove</button>
+              <button onclick="{{ cancelRemove() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-1.5 py-1.5">Cancel</button>
+{{/if}}
+{{#if removingId is not m.id}}
+{{#if m.can_promote or m.can_demote}}
+              <label class="sr-only" for="{{ 'role-' + m.id }}">Role for {{ m.name or m.email }}</label>
+              <select id="{{ 'role-' + m.id }}" onchange="{{ setRole(m, event.target.value) }}" class="rounded-lg border border-line bg-white dark:bg-slate-950 pl-2.5 pr-7 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-brand-500">
+                <option value="admin" selected="{{ m.role is 'admin' }}">Admin</option>
+                <option value="member" selected="{{ m.role is 'member' }}">Member</option>
+              </select>
+{{/if}}
+{{#if not m.can_promote and not m.can_demote}}
+              <span class="{{ roleCls(m.role) }}">{{ roleName(m.role) }}</span>
 {{/if}}
 {{#if m.can_remove}}
-              <button onclick="{{ removeMember(m.id) }}" class="text-xs text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg px-2.5 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Remove</button>
+              <button onclick="{{ askRemove(m.id) }}" title="Remove from team" aria-label="{{ 'Remove ' + (m.name or m.email) }}" class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"><IconTrash class="w-4 h-4" /></button>
 {{/if}}
-              <div class="text-right">
-                <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">{{ m.role }}</span>
-                <p class="text-slate-500 text-xs mt-1">Joined {{ m.joined }}</p>
-              </div>
+{{/if}}
             </div>
-          </div>
+          </li>
+{{#else}}
+          <li class="px-6 py-8 text-center text-sm text-slate-500">No one matches “{{ query }}”.</li>
 {{/each}}
-        </div>
-
-{{#if canLeave}}
-        <div class="mt-5 pt-5 border-t border-line">
-          <button onclick="{{ leave() }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Leave team</button>
-        </div>
-{{/if}}
-      </div>
-
-{{#if canManage}}
-      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
-        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Invite someone</h2>
-        <p class="text-slate-500 text-sm mb-5">They get an email with a link that works once and expires in 7 days. If they already have servers or connections of their own, they'll be asked to bring them into this team.</p>
-
-        <label for="invite-email" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Email</label>
-        <input id="invite-email" type="email" autocomplete="off" placeholder="name@example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-
-        <label for="invite-role" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-5 mb-1.5">Role</label>
-        <select id="invite-role" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-          <option value="member">Member</option>
-          <option value="admin">Admin (can invite and manage the team)</option>
-        </select>
+        </ul>
+      </section>
 
 {{#if notice}}
-        <p role="status" class="text-brand-700 dark:text-brand-500 text-sm mt-4">{{ notice }}</p>
-{{/if}}
+      <div role="status" class="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 mb-6">
+        <p class="text-emerald-700 dark:text-emerald-400 text-sm">{{ notice }}</p>
 {{#if link}}
-        <div class="rounded-xl bg-slate-950 px-4 py-3 mt-2">
-          <code class="block text-brand-400 text-xs font-mono break-all">{{ link }}</code>
+        <div class="mt-2 flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2">
+          <code class="flex-1 text-brand-400 text-xs font-mono break-all">{{ link }}</code>
+          <button onclick="{{ copyLink() }}" class="inline-flex items-center gap-1 text-xs font-medium text-slate-300 hover:text-white shrink-0">
+{{#if copied}}
+            <IconCheck class="w-3.5 h-3.5" /> Copied
+{{/if}}
+{{#if not copied}}
+            <IconCopy class="w-3.5 h-3.5" /> Copy
+{{/if}}
+          </button>
         </div>
 {{/if}}
+      </div>
+{{/if}}
 
-        <div class="mt-6">
+{{#if canManage}}
+      <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold mb-1"><IconUserAdd class="w-4 h-4 text-slate-400" /> Invite someone</h2>
+        <p class="text-slate-500 text-sm mb-5">They get an email with a link that works once and expires in 7 days. If they already have servers or connections of their own, they're asked to bring them into this team.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
+          <div>
+            <label for="invite-email" class="sr-only">Email</label>
+            <div class="relative">
+              <IconMail class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input id="invite-email" type="email" autocomplete="off" placeholder="name@example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 pl-9 pr-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+            </div>
+          </div>
+          <div>
+            <label for="invite-role" class="sr-only">Role</label>
+            <select id="invite-role" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
 {{#if busy}}
-          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2.5 opacity-50">Sending…</button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ invite() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Send invitation</button>
+          <button onclick="{{ invite() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2.5 hover:bg-brand-400 transition-all">Send invite</button>
 {{/if}}
         </div>
-      </div>
 
 {{#if invites.length is not 0}}
-      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Pending invitations</h2>
-        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+        <div class="mt-6">
+          <h3 class="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-2">Pending · {{ invites.length }}</h3>
+          <ul class="divide-y divide-[var(--line)] rounded-xl border border-line">
 {{#each i in invites}}
-          <div class="flex items-center justify-between gap-4 py-3">
-            <div class="min-w-0">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ i.email }}</p>
-              <p class="text-slate-500 text-xs">{{ i.role }} · expires {{ i.expires }}</p>
-            </div>
-            <button onclick="{{ revoke(i.id) }}" class="text-sm text-rose-500 hover:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition shrink-0">Revoke</button>
-          </div>
-{{/each}}
-        </div>
-      </div>
+            <li class="flex items-center justify-between gap-3 px-3.5 py-2.5">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-8 h-8 shrink-0 rounded-full border border-dashed border-line-strong flex items-center justify-center text-zinc-400"><IconMail class="w-3.5 h-3.5" /></span>
+                <div class="min-w-0">
+                  <p class="text-slate-900 dark:text-slate-100 text-sm font-mono truncate">{{ i.email }}</p>
+                  <p class="text-slate-500 text-xs">{{ roleName(i.role) }} · {{ i.expires }}</p>
+                </div>
+              </div>
+{{#if revokingId is i.id}}
+              <div class="flex items-center gap-2 shrink-0">
+                <button onclick="{{ revoke(i.id) }}" class="text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-2.5 py-1.5 transition-colors">Revoke</button>
+                <button onclick="{{ cancelRevoke() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-1.5 py-1.5">Keep</button>
+              </div>
 {{/if}}
+{{#if revokingId is not i.id}}
+              <button onclick="{{ askRevoke(i.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line rounded-lg px-2.5 py-1.5 hover:border-rose-500/40 hover:text-rose-600 transition shrink-0">Revoke</button>
+{{/if}}
+            </li>
+{{/each}}
+          </ul>
+        </div>
+{{/if}}
+      </section>
+{{/if}}
+
+      <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">What each role can do</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="rounded-xl border border-line p-4">
+            <span class="{{ roleCls('owner') }}"><IconCrown class="w-3 h-3" /> Owner</span>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mt-2.5">Everything an admin can do, plus the plan, payment methods and invoices. One per team.</p>
+          </div>
+          <div class="rounded-xl border border-line p-4">
+            <span class="{{ roleCls('admin') }}"><IconShieldCheck class="w-3 h-3" /> Admin</span>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mt-2.5">Creates, deploys and deletes servers and sites, connects providers, domains and source control, invites and removes members.</p>
+          </div>
+          <div class="rounded-xl border border-line p-4">
+            <span class="{{ roleCls('member') }}"><IconEye class="w-3 h-3" /> Member</span>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mt-2.5">Sees every server, site, provider, domain and the bill, but can't change anything.</p>
+          </div>
+        </div>
+      </section>
+
+{{#if canLeave}}
+      <section class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-panel p-4 sm:p-6">
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Leave {{ teamName }}</h2>
+        <p class="text-slate-500 text-sm mb-4">You lose access to its servers, sites and connections. An admin can invite you back.</p>
+{{#if confirmLeave}}
+        <div class="flex items-center gap-2">
+          <button onclick="{{ leave() }}" class="text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-3.5 py-2 transition-colors">Yes, leave the team</button>
+          <button onclick="{{ cancelLeave() }}" class="text-sm text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2">Cancel</button>
+        </div>
+{{/if}}
+{{#if not confirmLeave}}
+        <button onclick="{{ askLeave() }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-lg px-3.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Leave team</button>
+{{/if}}
+      </section>
 {{/if}}
 {{/if}}
 

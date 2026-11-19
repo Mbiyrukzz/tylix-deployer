@@ -1,5 +1,7 @@
 page SettingsTwoFactor
 
+import { IconFingerprint, IconTrash, IconPencil, IconDeviceMobile, IconKey } from "tylix-icons"
+
 title "Two-factor"
 
 needs
@@ -13,6 +15,8 @@ state
   secret: ""
   secretText: ""
   uri: ""
+  qr: ""
+  showKey: false
   codes: []
   mode: ""
   busy: false
@@ -31,6 +35,18 @@ state
   smsPasswordError: ""
   smsCodeError: ""
   smsNotice: ""
+  pkSupported: true
+  pkLoaded: false
+  passkeys: []
+  pkStep: "idle"
+  pkBusy: false
+  pkError: ""
+  pkNotice: ""
+  pkPasswordError: ""
+  pkName: ""
+  renamingId: 0
+  renameValue: ""
+  removingId: 0
 
 action
   readValue(id) {
@@ -89,6 +105,8 @@ action
       this.secret = result.data.secret
       this.secretText = result.data.secret
       this.uri = result.data.uri
+      this.qr = result.data.qr or ""
+      this.showKey = not this.qr
       this.step = "setup"
     } else if result.status is 401 {
       window.location.href = "/login"
@@ -102,7 +120,12 @@ action
     this.secret = ""
     this.secretText = ""
     this.uri = ""
+    this.qr = ""
     this.step = "idle"
+  }
+
+  toggleKey() {
+    this.showKey = not this.showKey
   }
 
   async confirmSetup() {
@@ -126,6 +149,7 @@ action
       this.secret = ""
       this.secretText = ""
       this.uri = ""
+      this.qr = ""
       this.step = "codes"
     } else if result.status is 401 {
       window.location.href = "/login"
@@ -348,9 +372,158 @@ action
     }
   }
 
+  // ---------------------------------------------------------------- passkeys
+
+  async loadPasskeys() {
+    const result = await useApi("/api/account/passkeys")
+    if result.ok and Array.isArray(result.data?.passkeys) {
+      this.passkeys = result.data.passkeys
+    }
+    this.pkLoaded = true
+  }
+
+  clearPk() {
+    this.pkError = ""
+    this.pkNotice = ""
+    this.pkPasswordError = ""
+  }
+
+  startPasskey() {
+    this.clearPk()
+    this.pkName = passkey.deviceName()
+    this.pkStep = "add"
+  }
+
+  cancelPasskey() {
+    this.clearPk()
+    this.pkStep = "idle"
+  }
+
+  setPkName(value) {
+    this.pkName = String(value or "")
+  }
+
+  async addPasskey() {
+    if this.pkBusy {
+      return null
+    }
+    const password = this.readValue("pk-password")
+
+    this.pkBusy = true
+    this.clearPk()
+
+    const opts = await useApi("/api/account/passkeys/options", { method: "POST", body: { password: password } })
+    if not opts.ok {
+      this.pkBusy = false
+      if opts.status is 401 {
+        window.location.href = "/login"
+      } else if opts.status is 422 {
+        this.pkPasswordError = this.firstError(opts.data, "password")
+      } else {
+        this.pkError = opts.data?.error or "Couldn't start adding a passkey."
+      }
+      return null
+    }
+
+    const made = await passkey.create(opts.data.options)
+    if not made.ok {
+      this.pkBusy = false
+      this.pkError = made.cancelled ? "Cancelled. Nothing was added." : (made.error or "The passkey wasn't created.")
+      return null
+    }
+
+    const saved = await useApi("/api/account/passkeys", { method: "POST", body: { credential: made.credential, name: this.pkName } })
+    this.pkBusy = false
+
+    if saved.ok {
+      this.pkStep = "idle"
+      this.pkNotice = "Passkey added. Use it on the login page with “Sign in with a passkey”."
+      await this.loadPasskeys()
+    } else {
+      this.pkError = saved.data?.error or "Couldn't save the passkey."
+    }
+  }
+
+  startRename(p) {
+    this.clearPk()
+    this.removingId = 0
+    this.renamingId = p.id
+    this.renameValue = p.name
+  }
+
+  setRename(value) {
+    this.renameValue = String(value or "")
+  }
+
+  cancelRename() {
+    this.renamingId = 0
+  }
+
+  async saveRename() {
+    const id = this.renamingId
+    const result = await useApi("/api/account/passkeys/" + id, { method: "PUT", body: { name: this.renameValue } })
+    if result.ok {
+      this.renamingId = 0
+      await this.loadPasskeys()
+    } else {
+      this.pkError = this.firstError(result.data, "name") or result.data?.error or "Couldn't rename it."
+    }
+  }
+
+  askRemove(id) {
+    this.clearPk()
+    this.renamingId = 0
+    this.removingId = id
+  }
+
+  cancelRemove() {
+    this.removingId = 0
+  }
+
+  async removePasskey(id) {
+    const result = await useApi("/api/account/passkeys/" + id, { method: "DELETE" })
+    this.removingId = 0
+    if result.ok {
+      this.pkNotice = "Passkey removed. Also delete it from your device or password manager."
+      await this.loadPasskeys()
+    } else {
+      this.pkError = result.data?.error or "Couldn't remove it."
+    }
+  }
+
+  when(raw) {
+    if not raw {
+      return ""
+    }
+    const r = String(raw)
+    const d = new Date(r.includes("T") ? r : r.replace(" ", "T") + "Z")
+    if Number.isNaN(d.getTime()) {
+      return ""
+    }
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }
+
+  transportText(p) {
+    const t = Array.isArray(p.transports) ? p.transports : []
+    if t.includes("internal") and t.includes("hybrid") {
+      return "This device or a phone"
+    }
+    if t.includes("internal") {
+      return "Built into a device"
+    }
+    if t.includes("hybrid") {
+      return "Phone or tablet"
+    }
+    if t.includes("usb") or t.includes("nfc") or t.includes("ble") {
+      return "Security key"
+    }
+    return "Passkey"
+  }
+
 onMount
   async {
-    await this.load()
+    this.pkSupported = passkey.supported()
+    await Promise.all([this.load(), this.loadPasskeys()])
   }
 
 template
@@ -372,6 +545,112 @@ template
 {{/if}}
 
 {{#if step is "idle"}}
+
+      <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
+        <div class="flex items-start gap-3 mb-2">
+          <span class="w-9 h-9 shrink-0 rounded-xl border border-line bg-sunken text-zinc-700 dark:text-zinc-200 flex items-center justify-center"><IconFingerprint class="w-5 h-5" /></span>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Passkeys</h2>
+{{#if passkeys.length > 0}}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ passkeys.length }} added</span>
+{{/if}}
+              <span class="inline-flex items-center rounded-full bg-zinc-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Recommended</span>
+            </div>
+            <p class="text-slate-500 text-sm mt-1">Sign in with your fingerprint, face or device PIN instead of a password and code. Passkeys can't be phished or reused on another site.</p>
+          </div>
+        </div>
+
+{{#if pkError}}
+        <p role="alert" class="text-rose-500 text-sm mt-4">{{ pkError }}</p>
+{{/if}}
+{{#if pkNotice}}
+        <p role="status" class="text-emerald-700 dark:text-emerald-400 text-sm mt-4">{{ pkNotice }}</p>
+{{/if}}
+
+{{#if not pkSupported}}
+        <p class="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400 text-sm px-4 py-3">This browser can't use passkeys. Try a recent Chrome, Safari, Edge or Firefox.</p>
+{{/if}}
+
+{{#if passkeys.length > 0}}
+        <ul class="mt-5 divide-y divide-[var(--line)] rounded-xl border border-line">
+{{#each p in passkeys}}
+          <li class="px-4 py-3">
+{{#if renamingId is p.id}}
+            <div class="flex flex-col sm:flex-row gap-2">
+              <label for="{{ 'pk-rename-' + p.id }}" class="sr-only">Passkey name</label>
+              <input id="{{ 'pk-rename-' + p.id }}" type="text" maxlength="60" value="{{ renameValue }}" oninput="{{ setRename(event.target.value) }}" class="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+              <div class="flex items-center gap-2">
+                <button onclick="{{ saveRename() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-3.5 py-2 hover:bg-brand-400 transition-all">Save</button>
+                <button onclick="{{ cancelRename() }}" class="text-sm text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-2 py-2">Cancel</button>
+              </div>
+            </div>
+{{/if}}
+{{#if renamingId is not p.id}}
+            <div class="flex items-center gap-3">
+              <span class="w-8 h-8 shrink-0 rounded-lg bg-sunken border border-line flex items-center justify-center text-zinc-500">
+{{#if p.synced}}
+                <IconDeviceMobile class="w-4 h-4" />
+{{/if}}
+{{#if not p.synced}}
+                <IconKey class="w-4 h-4" />
+{{/if}}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{{ p.name }}</p>
+                <p class="text-xs text-slate-500 truncate">{{ transportText(p) }}{{ p.synced ? " · synced" : "" }} · added {{ when(p.created_at) }}{{ p.last_used_at ? " · last used " + when(p.last_used_at) : " · not used yet" }}</p>
+              </div>
+{{#if removingId is p.id}}
+              <div class="flex items-center gap-2 shrink-0">
+                <button onclick="{{ removePasskey(p.id) }}" class="text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-2.5 py-1.5 transition-colors">Remove</button>
+                <button onclick="{{ cancelRemove() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-1.5 py-1.5">Keep</button>
+              </div>
+{{/if}}
+{{#if removingId is not p.id}}
+              <div class="flex items-center gap-1 shrink-0">
+                <button onclick="{{ startRename(p) }}" title="Rename" aria-label="{{ 'Rename ' + p.name }}" class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] transition-colors"><IconPencil class="w-4 h-4" /></button>
+                <button onclick="{{ askRemove(p.id) }}" title="Remove" aria-label="{{ 'Remove ' + p.name }}" class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"><IconTrash class="w-4 h-4" /></button>
+              </div>
+{{/if}}
+            </div>
+{{/if}}
+          </li>
+{{/each}}
+        </ul>
+{{/if}}
+
+{{#if pkSupported}}
+{{#if pkStep is "idle"}}
+        <button onclick="{{ startPasskey() }}" class="mt-5 inline-flex items-center gap-2 text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
+          <IconFingerprint class="w-4 h-4" /> {{ passkeys.length > 0 ? "Add another passkey" : "Add a passkey" }}
+        </button>
+{{/if}}
+{{#if pkStep is "add"}}
+        <div class="mt-5 rounded-xl border border-line bg-sunken p-4">
+          <label for="pk-name" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Name</label>
+          <input id="pk-name" type="text" maxlength="60" value="{{ pkName }}" oninput="{{ setPkName(event.target.value) }}" placeholder="MacBook · Chrome" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          <p class="text-slate-500 text-xs mt-1.5">So you can tell your passkeys apart later.</p>
+
+          <label for="pk-password" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mt-4 mb-1.5">Your password</label>
+          <input id="pk-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+{{#if pkPasswordError}}
+          <p role="alert" class="text-rose-500 text-sm mt-2">{{ pkPasswordError }}</p>
+{{/if}}
+
+          <div class="flex items-center gap-3 mt-5">
+{{#if pkBusy}}
+            <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Waiting for your device…</button>
+{{/if}}
+{{#if not pkBusy}}
+            <button onclick="{{ addPasskey() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Continue</button>
+            <button onclick="{{ cancelPasskey() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
+{{/if}}
+          </div>
+          <p class="text-slate-500 text-xs mt-3">Your browser asks where to save it: this device, your phone (scan the code it shows) or a security key.</p>
+        </div>
+{{/if}}
+{{/if}}
+      </section>
 
 {{#if not enabled}}
       <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
@@ -570,17 +849,33 @@ template
 
 {{#if step is "setup"}}
       <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">1. Add this account to your app</h2>
-        <p class="text-slate-500 text-sm mb-4">In your authenticator app choose "enter a setup key" and paste this. On a phone, <a href="{{ uri }}" class="text-brand-700 dark:text-brand-500 hover:underline font-medium">tap here</a> to open it directly.</p>
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">1. Scan this code with your authenticator app</h2>
+        <p class="text-slate-500 text-sm mb-5">In Google Authenticator, Authy, 1Password or Microsoft Authenticator, add an account and scan the code. On this phone? <a href="{{ uri }}" class="text-brand-700 dark:text-brand-500 hover:underline font-medium">Open it in your app</a>.</p>
 
-        <div class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3">
-          <code class="flex-1 text-brand-400 text-sm font-mono break-all">{{ secretText }}</code>
+        <div class="flex flex-col sm:flex-row sm:items-start gap-5">
+{{#if qr}}
+          <div class="shrink-0 self-center sm:self-start rounded-2xl bg-white p-3 border border-line shadow-sm">
+            <img src="{{ qr }}" alt="QR code for your authenticator app" width="192" height="192" class="w-48 h-48 [image-rendering:pixelated]" />
+          </div>
+{{/if}}
+          <div class="min-w-0 flex-1">
+{{#if qr}}
+            <p class="text-slate-700 dark:text-slate-300 text-sm font-medium">Can't scan it?</p>
+            <p class="text-slate-500 text-sm mt-0.5">Choose “enter a setup key” in your app and type this key instead.</p>
+            <button onclick="{{ toggleKey() }}" class="mt-2 text-sm text-brand-700 dark:text-brand-500 hover:underline font-medium">{{ showKey ? "Hide the setup key" : "Show the setup key" }}</button>
+{{/if}}
+{{#if showKey}}
+            <div class="mt-3 flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3">
+              <code class="flex-1 text-brand-400 text-sm font-mono break-all">{{ secretText }}</code>
 {{#if copiedSecret}}
-          <button class="text-xs text-brand-400 font-medium">Copied</button>
+              <button class="text-xs text-brand-400 font-medium">Copied</button>
 {{/if}}
 {{#if not copiedSecret}}
-          <button onclick="{{ copySecret() }}" class="text-xs text-slate-400 hover:text-white font-medium transition-colors">Copy</button>
+              <button onclick="{{ copySecret() }}" class="text-xs text-slate-400 hover:text-white font-medium transition-colors">Copy</button>
 {{/if}}
+            </div>
+{{/if}}
+          </div>
         </div>
 
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mt-8 mb-1">2. Enter the 6-digit code</h2>

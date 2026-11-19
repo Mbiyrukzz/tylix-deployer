@@ -1,5 +1,7 @@
 page Login
 
+import { IconFingerprint } from "tylix-icons"
+
 title "Log in"
 
 uses
@@ -26,6 +28,8 @@ state
   unverified: false
   resendText: ""
   providers: []
+  pkSupported: false
+  pkBusy: false
 
 action
   // Where to go after signing in: ?next=/servers/... when given, otherwise
@@ -242,6 +246,48 @@ action
     this.resendText = result.ok ? "Sent. Check your inbox (and spam folder)." : (result.data?.error or "Couldn't send it. Try again in a minute.")
   }
 
+  // Passkey sign-in: the browser lists the passkeys saved for this site,
+  // the person picks one and unlocks it (fingerprint, face or PIN). That is
+  // two factors already, so no code is asked for.
+  async passkeyLogin() {
+    if this.pkBusy or this.submitting {
+      return null
+    }
+    this.pkBusy = true
+    this.error = ""
+    this.unverified = false
+
+    const opts = await useApi("/api/auth/passkey/options", { method: "POST" })
+    if not opts.ok {
+      this.pkBusy = false
+      this.error = opts.data?.error or "Passkey sign-in isn't available right now."
+      return null
+    }
+
+    const made = await passkey.get(opts.data.options)
+    if not made.ok {
+      this.pkBusy = false
+      if not made.cancelled {
+        this.error = made.error or "The passkey didn't work. Try again."
+      }
+      return null
+    }
+
+    const result = await useApi("/api/auth/passkey/login", {
+      method: "POST",
+      body: { request_id: opts.data.request_id, credential: made.credential, remember: true }
+    })
+
+    if result.ok {
+      window.location.replace(this.goAfter or this.nextUrl())
+      return null
+    }
+
+    this.unverified = result.data?.code is "EMAIL_NOT_VERIFIED"
+    this.error = result.data?.error or "That passkey didn't work. Try again or use your password."
+    this.pkBusy = false
+  }
+
   oauthHref(id) {
     return "/api/auth/oauth/" + id + "?returnTo=/dashboard"
   }
@@ -256,7 +302,7 @@ action
       oauth_no_email: "Your account there has no email address we can use.",
       oauth_email_unverified: "Verify your email with that provider first, then try again.",
       oauth_rate_limited: "Too many sign-in attempts. Try again in a few minutes.",
-      oauth_two_factor: "Your account has two-factor sign-in on. Log in with your email, password and code."
+      oauth_two_factor: "Your account has two-factor sign-in on. Log in with a passkey, or with your email, password and code."
     }
     const hit = Object.entries(messages).find((m) => m[0] is code)
     return hit ? hit[1] : ""
@@ -276,6 +322,8 @@ onMount
       const keep = params.get("next")
       window.history.replaceState({}, "", keep ? "/login?next=" + encodeURIComponent(keep) : "/login")
     }
+
+    this.pkSupported = passkey.supported()
 
     const list = await useApi("/api/auth/providers")
     if list.ok and Array.isArray(list.data?.providers) {
@@ -454,13 +502,19 @@ template
 {{/if}}
 
 {{#if not needsCode}}
-{{#if providers.length is not 0}}
+{{#if pkSupported or providers.length is not 0}}
           <div class="flex items-center gap-3 my-6" aria-hidden="true">
             <span class="h-px flex-1 bg-line"></span>
             <span class="text-slate-400 text-xs uppercase tracking-wider">or</span>
             <span class="h-px flex-1 bg-line"></span>
           </div>
           <div class="grid gap-2">
+{{#if pkSupported}}
+            <button type="button" onclick="{{ passkeyLogin() }}" disabled="{{ pkBusy }}" class="w-full inline-flex items-center justify-center gap-2.5 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-brand-500/50 hover:bg-stone-50 dark:hover:bg-white/[0.03] disabled:opacity-60 transition-colors">
+              <IconFingerprint class="w-4 h-4" />
+              {{ pkBusy ? "Waiting for your passkey…" : "Sign in with a passkey" }}
+            </button>
+{{/if}}
 {{#each p in providers}}
             <a href="{{ oauthHref(p.id) }}" data-no-prerender class="w-full inline-flex items-center justify-center gap-2.5 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-brand-500/50 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
 {{#if p.id is "google"}}

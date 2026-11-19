@@ -54,6 +54,8 @@ state
   hasDelta: false
   compareText: ""
   inProgress: 0
+  successRate: -1
+  attentionTotal: 0
   recentDeploys: []
   focusIndex: -1
   hoverIndex: -1
@@ -285,6 +287,7 @@ action
     this.hoverIndex = -1
     this.deployTotal = d.total
     this.inProgress = d.in_progress or 0
+    this.successRate = typeof d.success_rate is "number" ? d.success_rate : -1
 
     const prev = d.previous_total or 0
     this.hasDelta = prev > 0
@@ -343,19 +346,50 @@ action
 
   // ---------- attention ----------
 
+  // Problems are listed in their own card further down the page; the
+  // greeting stays a plain status line instead of leading with errors.
   rebuildAttention() {
     const all = this.baseAttention.concat(this.domainItems)
     this.attention = all.slice(0, 6)
+    this.attentionTotal = all.length
     const n = all.length
     if this.totalServers is 0 {
       this.summary = "Connect a server to start deploying. It takes about two minutes."
-    } else if n is 0 {
-      this.summary = "Everything is running: " + this.plural(this.onlineCount, "server") + " online and " + this.plural(this.readyCount, "site") + " live."
-    } else {
-      const lead = all.slice(0, 2).map((a) => a.short).join(" and ")
-      const head = n is 1 ? "1 thing needs" : n + " things need"
-      this.summary = head + " you today: " + lead + (n > 2 ? ", and more below." : ".")
+      return null
     }
+    const sitesText = this.siteCount is 0 ? "no sites yet" : this.readyCount + " of " + this.plural(this.siteCount, "site") + " live"
+    const base = this.onlineCount + " of " + this.plural(this.totalServers, "server") + " online, " + sitesText + "."
+    if n is 0 {
+      this.summary = base + " Everything is running."
+    } else {
+      this.summary = base + " " + (n is 1 ? "1 item" : n + " items") + " to look at below."
+    }
+  }
+
+  // Healthy sites first, then builds in progress, failed ones last; newest first within each.
+  siteRank(status) {
+    if status is "ready" {
+      return 0
+    }
+    if status is "failed" {
+      return 2
+    }
+    return 1
+  }
+
+  kpiSub(parts) {
+    return parts.filter((p) => p).join(" · ")
+  }
+
+  bottomGridCls() {
+    const cards = (this.setupDone ? 0 : 1) + (this.attentionTotal > 0 ? 1 : 0) + 2
+    if cards is 3 {
+      return "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4"
+    }
+    if cards is 4 {
+      return "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4"
+    }
+    return "grid grid-cols-1 lg:grid-cols-2 gap-4"
   }
 
   // ---------- connections ----------
@@ -530,7 +564,13 @@ onMount
     Insights.analyze(list, sites)
     this.buildDonut()
 
-    const byRecent = sites.slice().sort((a, b) => String(b.updated_at or b.created_at or "").localeCompare(String(a.updated_at or a.created_at or "")))
+    const byRecent = sites.slice().sort((a, b) => {
+      const rank = this.siteRank(a.status) - this.siteRank(b.status)
+      if rank is not 0 {
+        return rank
+      }
+      return String(b.updated_at or b.created_at or "").localeCompare(String(a.updated_at or a.created_at or ""))
+    })
     this.recentSites = byRecent.slice(0, 5).map((x, i) => {
       const host = list.find((s) => s.id is x.server_id)
       return {
@@ -595,20 +635,28 @@ template
       </div>
     </header>
 
-{{#if attention.length > 0}}
-    <section aria-label="Needs attention" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
-{{#each item in attention}}
-      <a href="{{ item.href }}" class="group flex items-start gap-3 rounded-2xl border border-line bg-panel px-4 py-3.5 hover:border-line-strong transition-colors">
-        <span class="{{ attentionDot(item.tone) }}"></span>
-        <span class="min-w-0 flex-1">
-          <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ item.text }}</span>
-          <span class="block text-xs text-zinc-500 mt-0.5 truncate">{{ item.hint }}</span>
-        </span>
-        <IconArrowUpRight class="w-4 h-4 shrink-0 text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+    <section aria-label="At a glance" class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4">
+      <a href="/servers" class="group rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4 hover:border-line-strong transition-colors min-w-0">
+        <p class="flex items-center justify-between text-xs text-zinc-500"><span>Servers online</span><IconServer class="w-4 h-4 text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /></p>
+        <p class="mt-2 text-[26px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ onlineCount }}<span class="text-base font-medium text-zinc-400"> / {{ totalServers }}</span></p>
+        <p class="mt-2 text-[11px] text-zinc-500 truncate">{{ kpiSub([pendingCount ? pendingCount + " setting up" : "", offlineCount ? offlineCount + " offline" : ""]) or (totalServers ? "All reachable" : "None connected yet") }}</p>
       </a>
-{{/each}}
+      <a href="/servers" class="group rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4 hover:border-line-strong transition-colors min-w-0">
+        <p class="flex items-center justify-between text-xs text-zinc-500"><span>Sites live</span><IconRocket class="w-4 h-4 text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /></p>
+        <p class="mt-2 text-[26px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ readyCount }}<span class="text-base font-medium text-zinc-400"> / {{ siteCount }}</span></p>
+        <p class="mt-2 text-[11px] text-zinc-500 truncate">{{ kpiSub([buildingCount ? buildingCount + " building" : "", failedCount ? failedCount + " need a redeploy" : ""]) or (siteCount ? "All deployed" : "Nothing deployed yet") }}</p>
+      </a>
+      <div class="rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4 min-w-0">
+        <p class="flex items-center justify-between text-xs text-zinc-500"><span>Deploys this period</span><IconGitCommit class="w-4 h-4 text-zinc-400" /></p>
+        <p class="mt-2 text-[26px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ deployTotal }}</p>
+        <p class="mt-2 text-[11px] text-zinc-500 truncate">{{ kpiSub([successRate >= 0 ? successRate + "% succeeded" : "", inProgress ? inProgress + " in progress" : ""]) or "No deploys yet" }}</p>
+      </div>
+      <a href="/registrars" class="group rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4 hover:border-line-strong transition-colors min-w-0">
+        <p class="flex items-center justify-between text-xs text-zinc-500"><span>Domains</span><IconGlobe class="w-4 h-4 text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /></p>
+        <p class="mt-2 text-[26px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ domainsReady ? domainCount : "–" }}</p>
+        <p class="mt-2 text-[11px] text-zinc-500 truncate">{{ not domainsReady ? "Checking registrars…" : (kpiSub([expiringCount ? expiringCount + " renew soon" : "", expiredCount ? expiredCount + " expired" : ""]) or (registrarCount ? "Nothing due" : "No registrar connected")) }}</p>
+      </a>
     </section>
-{{/if}}
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
 
@@ -815,7 +863,33 @@ template
       </section>
     </div>
 
-    <div class="{{ setupDone ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4' }}">
+    <div class="{{ bottomGridCls() }}">
+
+{{#if attentionTotal > 0}}
+      <section aria-label="Needs attention" class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Needs attention</h2>
+          <span class="text-xs text-zinc-500 tabular-nums">{{ attentionTotal }}</span>
+        </div>
+        <ul class="divide-y divide-line">
+{{#each item in attention}}
+          <li>
+            <a href="{{ item.href }}" class="group flex items-start gap-3 py-2.5">
+              <span class="{{ attentionDot(item.tone) }}"></span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm text-zinc-900 dark:text-zinc-100 truncate group-hover:underline underline-offset-4">{{ item.text }}</span>
+                <span class="block text-[11px] text-zinc-500 mt-0.5 truncate">{{ item.hint }}</span>
+              </span>
+              <IconArrowUpRight class="w-4 h-4 mt-0.5 shrink-0 text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+            </a>
+          </li>
+{{/each}}
+        </ul>
+{{#if attentionTotal > attention.length}}
+        <p class="text-[11px] text-zinc-500 mt-2">And {{ attentionTotal - attention.length }} more.</p>
+{{/if}}
+      </section>
+{{/if}}
 
 {{#if not setupDone}}
       <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">

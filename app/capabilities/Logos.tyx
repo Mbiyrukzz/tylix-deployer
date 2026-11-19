@@ -10,7 +10,7 @@ action
       "angular", "fastapi", "django", "java", "go", "ruby", "dotnet", "rust",
       "docker", "static", "tylix",
       "hetzner", "digitalocean", "vultr", "upcloud", "linode", "contabo",
-      "porkbun", "cloudflare", "godaddy", "namecheap"
+      "aws", "porkbun", "cloudflare", "godaddy", "namecheap", "spaceship", "route53"
     ]
     return have.includes(id) ? "/logos/" + id + ".svg" : ""
   }

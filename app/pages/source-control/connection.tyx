@@ -1,6 +1,6 @@
 page SourceControlConnection
 
-import { IconArrowLeft, IconExternalLink, IconMapPin, IconBuildingOffice, IconLink, IconMail, IconCalendar, IconKey, IconLockClosed, IconGitBranch, IconSearch, IconGlobe, IconRefresh, IconFolder } from "tylix-icons"
+import { IconArrowLeft, IconChevronLeft, IconChevronRight, IconExternalLink, IconMapPin, IconBuildingOffice, IconLink, IconMail, IconCalendar, IconKey, IconLockClosed, IconGitBranch, IconSearch, IconGlobe, IconRefresh, IconFolder } from "tylix-icons"
 
 // One source control connection (GitHub / GitLab): the account behind its
 // token (picture, profile, what the token may do), the team's sites that
@@ -29,6 +29,9 @@ state
   reposError: ""
   repos: []
   repoQuery: ""
+  repoPage: 1
+  repoPerPage: 20
+  repoFilter: "all"
 
 computed
   kindName() {
@@ -89,10 +92,65 @@ computed
     return all.filter((s) => typeof s.value is "number")
   }
 
-  shownRepos() {
+  privateCount() {
+    return this.repos.filter((r) => r.private).length
+  }
+
+  filteredRepos() {
     const q = this.repoQuery.trim().toLowerCase()
-    const list = q ? this.repos.filter((r) => String(r.full_name).toLowerCase().includes(q)) : this.repos
-    return list.slice(0, 60)
+    const f = this.repoFilter
+    return this.repos.filter((r) => {
+      if f is "private" and not r.private {
+        return false
+      }
+      if f is "public" and r.private {
+        return false
+      }
+      return not q or String(r.full_name).toLowerCase().includes(q)
+    })
+  }
+
+  pageCount() {
+    return Math.max(1, Math.ceil(this.filteredRepos.length / this.repoPerPage))
+  }
+
+  // The page in range even after a filter shrinks the list.
+  currentPage() {
+    return Math.min(Math.max(1, this.repoPage), this.pageCount)
+  }
+
+  shownRepos() {
+    const start = (this.currentPage - 1) * this.repoPerPage
+    return this.filteredRepos.slice(start, start + this.repoPerPage)
+  }
+
+  rangeText() {
+    const total = this.filteredRepos.length
+    if total is 0 {
+      return "0 repositories"
+    }
+    const start = (this.currentPage - 1) * this.repoPerPage + 1
+    const end = Math.min(total, start + this.repoPerPage - 1)
+    return start + "–" + end + " of " + total.toLocaleString()
+  }
+
+  // Page buttons: first, last, and two either side of the current one,
+  // with a gap marker (0) where pages are skipped.
+  pageButtons() {
+    const count = this.pageCount
+    const at = this.currentPage
+    const list = []
+    let last = 0
+    for (let p = 1; p <= count; p++) {
+      if p is 1 or p is count or (p >= at - 2 and p <= at + 2) {
+        if last and p - last > 1 {
+          list.push({ n: 0, key: "gap-" + p })
+        }
+        list.push({ n: p, key: "p-" + p })
+        last = p
+      }
+    }
+    return list
   }
 
 action
@@ -230,6 +288,41 @@ action
 
   setQuery(value) {
     this.repoQuery = String(value or "")
+    this.repoPage = 1
+  }
+
+  setFilter(value) {
+    this.repoFilter = value
+    this.repoPage = 1
+  }
+
+  setPerPage(value) {
+    this.repoPerPage = Number(value) or 20
+    this.repoPage = 1
+  }
+
+  goPage(n) {
+    this.repoPage = Math.min(Math.max(1, n), this.pageCount)
+    const el = document.getElementById("repositories")
+    if el and el.getBoundingClientRect().top < 0 {
+      el.scrollIntoView({ block: "start", behavior: "smooth" })
+    }
+  }
+
+  filterCls(value) {
+    const base = "px-3 h-8 rounded-lg text-xs font-medium transition-colors "
+    if this.repoFilter is value {
+      return base + "bg-white text-zinc-900 shadow-sm ring-1 ring-black/[0.06] dark:ring-0"
+    }
+    return base + "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+  }
+
+  pageCls(n) {
+    const base = "min-w-[2rem] h-8 px-2 rounded-lg text-xs font-medium tabular-nums transition-colors "
+    if n is this.currentPage {
+      return base + "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+    }
+    return base + "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06]"
   }
 
 onMount
@@ -406,19 +499,26 @@ template
       <p role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 text-sm px-4 py-3">{{ reposError }}</p>
 {{/if}}
 {{#if reposState is "ready"}}
-      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 class="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold"><IconFolder class="w-4 h-4 text-slate-400" /> Repositories</h2>
-            <p class="text-slate-500 text-xs mt-0.5">{{ repos.length }} the token can see, most recently pushed first.</p>
+      <section id="repositories" class="rounded-2xl border border-line bg-panel scroll-mt-20">
+        <div class="flex flex-col gap-3 p-5 sm:p-6 pb-4 sm:pb-4 border-b border-line">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold"><IconFolder class="w-4 h-4 text-slate-400" /> Repositories</h2>
+              <p class="text-slate-500 text-xs mt-0.5">{{ repos.length.toLocaleString() }} the token can see, most recently pushed first.</p>
+            </div>
+            <label class="relative block sm:w-64">
+              <span class="sr-only">Filter repositories</span>
+              <IconSearch class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input type="search" value="{{ repoQuery }}" oninput="{{ setQuery(event.target.value) }}" placeholder="Filter repositories" class="w-full rounded-xl border border-line bg-white dark:bg-slate-950 pl-9 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+            </label>
           </div>
-          <label class="relative block sm:w-64">
-            <span class="sr-only">Filter repositories</span>
-            <IconSearch class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input type="search" value="{{ repoQuery }}" oninput="{{ setQuery(event.target.value) }}" placeholder="Filter repositories" class="w-full rounded-xl border border-line bg-white dark:bg-slate-950 pl-9 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-          </label>
+          <div class="inline-flex self-start items-center gap-0.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] p-0.5" role="group" aria-label="Visibility">
+            <button onclick="{{ setFilter('all') }}" aria-pressed="{{ repoFilter is 'all' ? 'true' : 'false' }}" class="{{ filterCls('all') }}">All <span class="tabular-nums opacity-60">{{ repos.length }}</span></button>
+            <button onclick="{{ setFilter('public') }}" aria-pressed="{{ repoFilter is 'public' ? 'true' : 'false' }}" class="{{ filterCls('public') }}">Public <span class="tabular-nums opacity-60">{{ repos.length - privateCount }}</span></button>
+            <button onclick="{{ setFilter('private') }}" aria-pressed="{{ repoFilter is 'private' ? 'true' : 'false' }}" class="{{ filterCls('private') }}">Private <span class="tabular-nums opacity-60">{{ privateCount }}</span></button>
+          </div>
         </div>
-        <ul class="divide-y divide-[var(--line)]">
+        <ul class="divide-y divide-[var(--line)] px-5 sm:px-6">
 {{#each r in shownRepos}}
           <li class="flex items-center justify-between gap-3 py-2.5">
             <a href="{{ repoUrl(r) }}" target="_blank" rel="noopener noreferrer" class="min-w-0 flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100 hover:text-brand-600 dark:hover:text-brand-400">
@@ -433,11 +533,38 @@ template
             </span>
           </li>
 {{#else}}
-          <li class="py-3 text-slate-500 text-sm">{{ repoQuery ? "No repositories match." : "The token can't see any repositories." }}</li>
+          <li class="py-6 text-center text-slate-500 text-sm">{{ repoQuery or repoFilter is not "all" ? "No repositories match." : "The token can't see any repositories." }}</li>
 {{/each}}
         </ul>
-{{#if repos.length > 60 and not repoQuery}}
-        <p class="text-slate-500 text-xs mt-3">Showing the 60 most recent. Filter to find the others.</p>
+{{#if filteredRepos.length > 0}}
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 sm:px-6 py-3 border-t border-line">
+          <div class="flex items-center gap-3 text-xs text-slate-500">
+            <span class="tabular-nums">{{ rangeText }}</span>
+            <label class="inline-flex items-center gap-1.5">
+              <span class="sr-only sm:not-sr-only">Per page</span>
+              <select onchange="{{ setPerPage(event.target.value) }}" class="rounded-lg border border-line bg-white dark:bg-slate-950 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-brand-500">
+                <option value="10" selected="{{ repoPerPage is 10 }}">10</option>
+                <option value="20" selected="{{ repoPerPage is 20 }}">20</option>
+                <option value="50" selected="{{ repoPerPage is 50 }}">50</option>
+                <option value="100" selected="{{ repoPerPage is 100 }}">100</option>
+              </select>
+            </label>
+          </div>
+{{#if pageCount > 1}}
+          <nav aria-label="Repository pages" class="flex items-center gap-1">
+            <button onclick="{{ goPage(currentPage - 1) }}" disabled="{{ currentPage <= 1 }}" aria-label="Previous page" class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:pointer-events-none transition-colors"><IconChevronLeft class="w-4 h-4" /></button>
+{{#each b in pageButtons}}
+{{#if b.n is 0}}
+            <span class="w-6 text-center text-xs text-zinc-400" aria-hidden="true">…</span>
+{{/if}}
+{{#if b.n > 0}}
+            <button onclick="{{ goPage(b.n) }}" aria-current="{{ b.n is currentPage ? 'page' : 'false' }}" class="{{ pageCls(b.n) }}">{{ b.n }}</button>
+{{/if}}
+{{/each}}
+            <button onclick="{{ goPage(currentPage + 1) }}" disabled="{{ currentPage >= pageCount }}" aria-label="Next page" class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:pointer-events-none transition-colors"><IconChevronRight class="w-4 h-4" /></button>
+          </nav>
+{{/if}}
+        </div>
 {{/if}}
       </section>
 {{/if}}

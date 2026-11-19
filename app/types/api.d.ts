@@ -178,6 +178,41 @@ export interface ApiRoutes {
     response: unknown
     auth: true
   }
+  "GET /api/account/passkeys": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: true
+  }
+  "POST /api/account/passkeys": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
+  "DELETE /api/account/passkeys/:id": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: true
+  }
+  "PUT /api/account/passkeys/:id": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
+  "POST /api/account/passkeys/options": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
   "PUT /api/account/password": {
     params: Record<string, never>
     query: Record<string, string | number | boolean | undefined>
@@ -287,6 +322,20 @@ export interface ApiRoutes {
     params: { provider: string | number }
     query: Record<string, string | number | boolean | undefined>
     body: undefined
+    response: unknown
+    auth: false
+  }
+  "POST /api/auth/passkey/login": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: false
+  }
+  "POST /api/auth/passkey/options": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
     response: unknown
     auth: false
   }
@@ -1826,6 +1875,13 @@ export interface RouteClient {
       destroy(options?: RouteOptions<ApiRoutes["DELETE /api/account/avatar"]['query']>): Promise<ApiResult<ApiRoutes["DELETE /api/account/avatar"]['response']>>
       update(body?: ApiRoutes["PUT /api/account/avatar"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/account/avatar"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/account/avatar"]['response']>>
     }
+    passkeys: {
+      index(options?: RouteOptions<ApiRoutes["GET /api/account/passkeys"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/account/passkeys"]['response']>>
+      store(body?: ApiRoutes["POST /api/account/passkeys"]['body'], options?: RouteOptions<ApiRoutes["POST /api/account/passkeys"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/account/passkeys"]['response']>>
+      destroy(params: ApiRoutes["DELETE /api/account/passkeys/:id"]['params'], options?: RouteOptions<ApiRoutes["DELETE /api/account/passkeys/:id"]['query']>): Promise<ApiResult<ApiRoutes["DELETE /api/account/passkeys/:id"]['response']>>
+      update(params: ApiRoutes["PUT /api/account/passkeys/:id"]['params'], body?: ApiRoutes["PUT /api/account/passkeys/:id"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/account/passkeys/:id"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/account/passkeys/:id"]['response']>>
+      options(body?: ApiRoutes["POST /api/account/passkeys/options"]['body'], options?: RouteOptions<ApiRoutes["POST /api/account/passkeys/options"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/account/passkeys/options"]['response']>>
+    }
     password(body?: ApiRoutes["PUT /api/account/password"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/account/password"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/account/password"]['response']>>
     signOutEverywhere(body?: ApiRoutes["POST /api/account/sign-out-everywhere"]['body'], options?: RouteOptions<ApiRoutes["POST /api/account/sign-out-everywhere"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/account/sign-out-everywhere"]['response']>>
     twoFactor: {
@@ -1849,6 +1905,10 @@ export interface RouteClient {
     oauth: {
       show(params: ApiRoutes["GET /api/auth/oauth/:provider"]['params'], options?: RouteOptions<ApiRoutes["GET /api/auth/oauth/:provider"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/auth/oauth/:provider"]['response']>>
       callback(params: ApiRoutes["GET /api/auth/oauth/:provider/callback"]['params'], options?: RouteOptions<ApiRoutes["GET /api/auth/oauth/:provider/callback"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/auth/oauth/:provider/callback"]['response']>>
+    }
+    passkey: {
+      login(body?: ApiRoutes["POST /api/auth/passkey/login"]['body'], options?: RouteOptions<ApiRoutes["POST /api/auth/passkey/login"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/auth/passkey/login"]['response']>>
+      options(body?: ApiRoutes["POST /api/auth/passkey/options"]['body'], options?: RouteOptions<ApiRoutes["POST /api/auth/passkey/options"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/auth/passkey/options"]['response']>>
     }
     providers(options?: RouteOptions<ApiRoutes["GET /api/auth/providers"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/auth/providers"]['response']>>
     refresh(body?: ApiRoutes["POST /api/auth/refresh"]['body'], options?: RouteOptions<ApiRoutes["POST /api/auth/refresh"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/auth/refresh"]['response']>>

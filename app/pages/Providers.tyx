@@ -1,6 +1,6 @@
 page ProviderList
 
-import { IconArrowLeft } from "tylix-icons"
+import { IconArrowUpRight, IconServer, IconCloud, IconTrash, IconSearch } from "tylix-icons"
 
 title "Cloud providers"
 
@@ -14,107 +14,111 @@ uses
 state
   checkedAuth: false
   items: []
-  linodeCount: 0
-  hetznerCount: 0
-  doCount: 0
-  vultrCount: 0
-  awsCount: 0
-  upcloudCount: 0
-  contaboCount: 0
   serverCount: 0
+  kindChips: []
+  filter: "all"
+  query: ""
   removing: 0
   removeError: ""
 
-action
-  // Adds display-only fields to a connection: how many servers still use it,
-  // plus the label and tile colours for its provider.
-  decorate(p, rows) {
-    // REF: has_instance comes from /api/provisions and works for numeric ids
-    // (Linode, Hetzner, DigitalOcean), UUIDs (Vultr) and region/id refs (AWS). The old
-    // Number(r.instance_id) > 0 test would miss Vultr and AWS machines.
-    const used = rows.filter((r) => r.provider_id is p.id and r.has_instance and r.status is not "deleted").length
-
-    let usageText = used + " servers"
-    if used is 0 {
-      usageText = "No servers yet"
-    }
-    if used is 1 {
-      usageText = "1 server"
-    }
-
-    // Linode is the default; each other provider overrides name, letter and colour.
-    let kindName = "Linode (Akamai)"
-    let tileLetter = "L"
-    let tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-brand-500/10 text-brand-700 dark:text-brand-500"
-    if p.kind is "hetzner" {
-      kindName = "Hetzner Cloud"
-      tileLetter = "H"
-      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
-    }
-    // DIGITALOCEAN
-    if p.kind is "digitalocean" {
-      kindName = "DigitalOcean"
-      tileLetter = "D"
-      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400"
-    }
-    // VULTR
-    if p.kind is "vultr" {
-      kindName = "Vultr"
-      tileLetter = "V"
-      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400"
-    }
-    // AWS
-    if p.kind is "aws" {
-      kindName = "Amazon Web Services"
-      tileLetter = "A"
-      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
-    }
-
-      // UPCLOUD
-    if p.kind is "upcloud" {
-      kindName = "UpCloud"
-      tileLetter = "U"
-      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-    }
-    // CONTABO
-    if p.kind is "contabo" {
-      kindName = "Contabo"
-      tileLetter = "C"
-      tileClass = "w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
-    }
-
-    let since = "-"
-    if p.created_at {
-      since = p.created_at.slice(0, 10)
-    }
-
-    return Object.assign({}, p, { inUse: used, usageText: usageText, kindName: kindName, tileLetter: tileLetter, tileClass: tileClass, since: since })
+computed
+  // Every cloud Tylix Flux can create servers in, for the "Connect" gallery.
+  catalog() {
+    return ["hetzner", "digitalocean", "vultr", "linode", "aws", "upcloud", "contabo"]
   }
 
-  // Rebuilds the cards and the stat row from the loaded connections.
+  shown() {
+    const q = this.query.trim().toLowerCase()
+    return this.items.filter((p) => {
+      if this.filter is not "all" and p.kind is not this.filter {
+        return false
+      }
+      return not q or String(p.label or "").toLowerCase().includes(q) or p.kindName.toLowerCase().includes(q)
+    })
+  }
+
+  usedKinds() {
+    return this.kindChips.length
+  }
+
+action
+  plural(n, word) {
+    return n is 1 ? "1 " + word : n + " " + word + "s"
+  }
+
+  date(raw) {
+    if not raw {
+      return ""
+    }
+    const r = String(raw)
+    const d = new Date(r.includes("T") ? r : r.replace(" ", "T") + "Z")
+    if Number.isNaN(d.getTime()) {
+      return r.slice(0, 10)
+    }
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }
+
+  statusCls(status) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset "
+    const s = String(status or "").toLowerCase()
+    if s is "active" or s is "connected" or s is "ok" or s is "" {
+      return base + "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20"
+    }
+    return base + "bg-amber-400/10 text-amber-600 dark:text-amber-300 ring-amber-400/25"
+  }
+
+  statusText(status) {
+    const s = String(status or "active")
+    return s.charAt(0).toUpperCase() + s.slice(1)
+  }
+
+  // Display fields for a connection: its provider's name and how many
+  // servers it created that still exist.
+  decorate(p, rows) {
+    // has_instance from /api/provisions works for numeric ids (Linode,
+    // Hetzner, DigitalOcean), UUIDs (Vultr) and region/id refs (AWS).
+    const used = rows.filter((r) => r.provider_id is p.id and r.has_instance and r.status is not "deleted").length
+    return Object.assign({}, p, {
+      inUse: used,
+      kindName: Logos.name(p.kind) or p.kind,
+      since: this.date(p.created_at),
+      href: "/providers/provider-detail?id=" + p.id
+    })
+  }
+
   async refresh() {
     const prov = await useApi("/api/provisions")
-    let rows = []
-    if prov.ok and Array.isArray(prov.data) {
-      rows = prov.data
-    }
+    const rows = prov.ok and Array.isArray(prov.data) ? prov.data : []
     const list = Providers.data.map((p) => this.decorate(p, rows))
 
     this.items = list
-    this.linodeCount = list.filter((p) => p.kind is "linode").length
-    this.hetznerCount = list.filter((p) => p.kind is "hetzner").length
-    // DIGITALOCEAN
-    this.doCount = list.filter((p) => p.kind is "digitalocean").length
-    // VULTR
-    this.vultrCount = list.filter((p) => p.kind is "vultr").length
-    // AWS
-    this.awsCount = list.filter((p) => p.kind is "aws").length
     this.serverCount = list.reduce((n, p) => n + p.inUse, 0)
 
-        // UPCLOUD
-    this.upcloudCount = list.filter((p) => p.kind is "upcloud").length
-    // CONTABO
-    this.contaboCount = list.filter((p) => p.kind is "contabo").length
+    const kinds = Array.from(new Set(list.map((p) => p.kind)))
+    this.kindChips = kinds.map((k) => ({ id: k, name: Logos.name(k) or k, count: list.filter((p) => p.kind is k).length }))
+    if this.filter is not "all" and not kinds.includes(this.filter) {
+      this.filter = "all"
+    }
+  }
+
+  setFilter(k) {
+    this.filter = k
+  }
+
+  setQuery(value) {
+    this.query = String(value or "")
+  }
+
+  chipCls(k) {
+    const base = "inline-flex items-center gap-2 h-8 pl-1.5 pr-3 rounded-full text-xs font-medium border transition-colors "
+    if this.filter is k {
+      return base + "border-transparent bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+    }
+    return base + "border-line bg-panel text-zinc-600 dark:text-zinc-300 hover:border-line-strong"
+  }
+
+  isConnected(kind) {
+    return this.items.some((p) => p.kind is kind)
   }
 
   async addProvider(provider) {
@@ -159,147 +163,142 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-1 bg-page transition-colors">
-  <div class="min-w-0">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
+<div class="min-w-0 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+  <div class="max-w-[1200px] mx-auto">
 
-      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
-        <IconArrowLeft class="w-4 h-4" /> Dashboard
-      </a>
-
-      <div class="flex items-start justify-between gap-4 mb-6">
-        <div class="min-w-0">
-          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Cloud providers</h1>
-          <p class="text-slate-500 text-sm">Accounts Tylix Flux can create servers in.</p>
-        </div>
+    <header class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-7">
+      <div class="min-w-0">
+        <p class="flux-eyebrow mb-2">Connections</p>
+        <h1 class="text-[26px] sm:text-[30px] leading-tight font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Cloud providers</h1>
+        <p class="text-zinc-500 text-sm mt-1.5 max-w-2xl">The cloud accounts Tylix Flux creates servers in. Tokens are stored encrypted and never shown again.</p>
+      </div>
+      <div class="shrink-0">
         <ProviderForm onSaved="{{ addProvider }}" />
       </div>
+    </header>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Connections</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ items.length }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Linode</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ linodeCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Hetzner</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ hetznerCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">DigitalOcean</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ doCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Vultr</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ vultrCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">AWS</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ awsCount }}</p>
-        </div>
-          <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">UpCloud</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ upcloudCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Contabo</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ contaboCount }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs mb-1">Servers created</p>
-          <p class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ serverCount }}</p>
-        </div>
+{{#if items.length is not 0}}
+    <section aria-label="Summary" class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+      <div class="rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4">
+        <p class="flex items-center justify-between text-xs text-zinc-500"><span>Connected accounts</span><IconCloud class="w-4 h-4 text-zinc-400" /></p>
+        <p class="mt-2 text-[26px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ items.length }}</p>
+        <p class="mt-2 text-[11px] text-zinc-500">across {{ plural(usedKinds, "provider") }}</p>
       </div>
+      <a href="/servers" class="group rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4 hover:border-line-strong transition-colors">
+        <p class="flex items-center justify-between text-xs text-zinc-500"><span>Servers created</span><IconServer class="w-4 h-4 text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /></p>
+        <p class="mt-2 text-[26px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ serverCount }}</p>
+        <p class="mt-2 text-[11px] text-zinc-500">still running on these accounts</p>
+      </a>
+      <div class="col-span-2 lg:col-span-1 rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4">
+        <p class="text-xs text-zinc-500">Providers in use</p>
+        <div class="mt-2.5 flex items-center gap-1.5 flex-wrap">
+{{#each k in kindChips}}
+          <span title="{{ k.name + ' · ' + plural(k.count, 'account') }}"><BrandLogo kind="{{ k.id }}" size="sm" /></span>
+{{/each}}
+        </div>
+        <p class="mt-2 text-[11px] text-zinc-500 truncate">{{ kindChips.map((k) => k.name).join(", ") }}</p>
+      </div>
+    </section>
 
 {{#if removeError}}
-      <div role="alert" class="rounded-xl border border-rose-300 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 mb-4">
-        <p class="text-rose-800 dark:text-rose-400 text-sm">{{ removeError }}</p>
+    <p role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 text-sm px-4 py-3 mb-4">{{ removeError }}</p>
+{{/if}}
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+        <button onclick="{{ setFilter('all') }}" aria-pressed="{{ filter is 'all' ? 'true' : 'false' }}" class="{{ chipCls('all') + ' pl-3' }}">All <span class="tabular-nums opacity-60">{{ items.length }}</span></button>
+{{#each k in kindChips}}
+        <button onclick="{{ setFilter(k.id) }}" aria-pressed="{{ filter is k.id ? 'true' : 'false' }}" class="{{ chipCls(k.id) }}"><BrandLogo kind="{{ k.id }}" size="xs" /> {{ k.name }} <span class="tabular-nums opacity-60">{{ k.count }}</span></button>
+{{/each}}
       </div>
+{{#if items.length > 4}}
+      <label class="relative block md:w-64 shrink-0">
+        <span class="sr-only">Find a connection</span>
+        <IconSearch class="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input type="search" value="{{ query }}" oninput="{{ setQuery(event.target.value) }}" placeholder="Find a connection" class="w-full rounded-xl border border-line bg-panel pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      </label>
+{{/if}}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-10">
+{{#each p in shown}}
+      <article class="group/card relative flex flex-col rounded-2xl border border-line bg-panel hover:border-line-strong transition-colors">
+        <a href="{{ p.href }}" class="flex items-start gap-3.5 p-5 pb-4">
+          <BrandLogo kind="{{ p.kind }}" size="lg" />
+          <span class="min-w-0 flex-1">
+            <span class="flex items-center gap-2 min-w-0">
+              <span class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover/card:underline underline-offset-4">{{ p.label }}</span>
+            </span>
+            <span class="block text-xs text-zinc-500 truncate mt-0.5">{{ p.kindName }}</span>
+          </span>
+          <span class="{{ statusCls(p.status) }}"><span class="w-1.5 h-1.5 rounded-full bg-current"></span>{{ statusText(p.status) }}</span>
+        </a>
+
+        <dl class="grid grid-cols-2 gap-px mx-5 rounded-xl overflow-hidden border border-line bg-[var(--line)]">
+          <div class="bg-panel px-3.5 py-2.5">
+            <dt class="text-[11px] text-zinc-500">Servers</dt>
+            <dd class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums mt-0.5">{{ p.inUse }}</dd>
+          </div>
+          <div class="bg-panel px-3.5 py-2.5">
+            <dt class="text-[11px] text-zinc-500">Connected</dt>
+            <dd class="text-sm font-medium text-zinc-900 dark:text-zinc-100 mt-0.5 truncate">{{ p.since or "–" }}</dd>
+          </div>
+        </dl>
+
+        <div class="mt-auto flex items-center gap-2 px-5 py-4 mt-4 border-t border-line">
+{{#if removing is p.id}}
+          <span class="text-xs text-zinc-500 mr-auto">Remove this connection?</span>
+          <button onclick="{{ confirmRemove(p.id) }}" class="text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-full px-3 py-1.5 transition-colors">Remove</button>
+          <button onclick="{{ cancelRemove() }}" class="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 px-2 py-1.5">Cancel</button>
+{{/if}}
+{{#if removing is not p.id}}
+          <a href="{{ p.href }}" class="inline-flex items-center gap-1 text-sm bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-semibold rounded-full px-4 py-2 hover:opacity-90 transition-opacity">Manage <IconArrowUpRight class="w-3.5 h-3.5" /></a>
+          <ProviderForm provider="{{ p }}" onSaved="{{ updateProvider }}" />
+{{#if p.inUse is 0}}
+          <button onclick="{{ askRemove(p.id) }}" title="Remove connection" aria-label="{{ 'Remove ' + p.label }}" class="ml-auto w-9 h-9 flex items-center justify-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"><IconTrash class="w-4 h-4" /></button>
+{{/if}}
+{{#if p.inUse is not 0}}
+          <span class="ml-auto text-[11px] text-zinc-400 text-right leading-tight max-w-[8rem]" title="Delete its servers to remove this connection.">In use by {{ plural(p.inUse, "server") }}</span>
+{{/if}}
+{{/if}}
+        </div>
+      </article>
+{{#else}}
+      <p class="md:col-span-2 xl:col-span-3 rounded-2xl border border-dashed border-line px-5 py-10 text-center text-sm text-zinc-500">No connections match.</p>
+{{/each}}
+    </div>
 {{/if}}
 
 {{#if items.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
-        <div class="flex items-center justify-center gap-3 mb-4">
-          <span class="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-lg font-bold">L</span>
-          <span class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-lg font-bold">H</span>
-          <span class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg font-bold">D</span>
-          <span class="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center text-lg font-bold">V</span>
-          <span class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg font-bold">A</span>
-          <span class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg font-bold">U</span>
-          <span class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-lg font-bold">C</span>
-        </div>
-        <h2 class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">No providers connected</h2>
-        <p class="text-slate-500 text-sm max-w-sm mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr, AWS, UpCloud or Contabo account to create servers from here.</p>
-        <ProviderForm onSaved="{{ addProvider }}" />
-      </div>
-{{/if}}
-
-{{#if items.length is not 0}}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-{{#each p in items}}
-        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-
-          <div class="flex items-start justify-between gap-3 mb-5">
-            <div class="flex items-center gap-3 min-w-0">
-{{#if Logos.url(p.kind)}}
-              <BrandLogo kind="{{ p.kind }}" label="{{ p.label }}" size="lg" />
-{{/if}}
-{{#if not Logos.url(p.kind)}}
-              <span class="{{ p.tileClass }}">{{ p.tileLetter }}</span>
-{{/if}}
-              <div class="min-w-0">
-                <h3 class="text-slate-900 dark:text-slate-100 font-semibold truncate">{{ p.label }}</h3>
-                <p class="text-slate-500 text-xs">{{ p.kindName }}</p>
-              </div>
-            </div>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ p.status }}
-            </span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4 mb-5">
-            <div>
-              <p class="text-slate-500 text-xs mb-1">Servers</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ p.usageText }}</p>
-            </div>
-            <div>
-              <p class="text-slate-500 text-xs mb-1">Connected</p>
-              <p class="text-slate-900 dark:text-slate-100 text-sm">{{ p.since }}</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3 pt-5 border-t border-line">
-            
-                        <a href="{{ '/providers/provider-detail?id=' + p.id }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Manage</a>
-            <ProviderForm provider="{{ p }}" onSaved="{{ updateProvider }}" />
-
-{{#if removing is p.id}}
-            <button onclick="{{ confirmRemove(p.id) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-2 transition">Yes, remove</button>
-            <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
-{{/if}}
-
-{{#if removing is not p.id}}
-{{#if p.inUse is 0}}
-            <button onclick="{{ askRemove(p.id) }}" class="text-sm text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-900/50 rounded-full px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">Remove</button>
-{{/if}}
-{{#if p.inUse is not 0}}
-            <span class="text-slate-400 text-xs">Delete its servers to remove this connection.</span>
-{{/if}}
-{{/if}}
-          </div>
-
-        </div>
+    <section class="rounded-2xl border border-line bg-panel px-5 sm:px-10 py-10 sm:py-14 text-center mb-10">
+      <div class="flex items-center justify-center -space-x-2 mb-5">
+{{#each id in catalog}}
+        <span class="rounded-xl ring-4 ring-[var(--panel)]"><BrandLogo kind="{{ id }}" size="lg" /></span>
 {{/each}}
       </div>
+      <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Connect your first cloud account</h2>
+      <p class="text-zinc-500 text-sm max-w-md mx-auto mt-1.5 mb-6">Paste an API token from Hetzner, DigitalOcean, Vultr, Linode, AWS, UpCloud or Contabo, then create servers from here in a couple of clicks.</p>
+      <ProviderForm onSaved="{{ addProvider }}" />
+    </section>
 {{/if}}
 
-    </div>
+    <section aria-label="Supported providers">
+      <div class="flex items-end justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">{{ items.length is 0 ? "Supported providers" : "Connect another account" }}</h2>
+          <p class="text-xs text-zinc-500 mt-0.5">Pick a provider to open its connection form. You can connect several accounts of the same one.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+{{#each id in catalog}}
+        <ProviderForm start="{{ id }}" variant="tile" note="{{ isConnected(id) ? 'Connected · add another' : '' }}" onSaved="{{ addProvider }}" />
+{{/each}}
+      </div>
+    </section>
+
   </div>
 </div>
 {{/if}}
 {{#if not checkedAuth}}
-<PageLoader label="Loading providers..." />
+<PageLoader label="Loading providers…" />
 {{/if}}

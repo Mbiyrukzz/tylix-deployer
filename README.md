@@ -56,6 +56,36 @@ and `sourceproviders.avatar_url` / `display_name`).
   expiry, rate limit), the sites deploying from it and, for admins, its
   repositories. Data: `GET /api/source-providers/:id/profile`.
 
+## Passkeys, QR codes and dashboard (Nov 2026)
+
+After pulling: `npx tylix migrate` (adds `user_passkeys`).
+
+- **Passkeys**: Settings → Two-factor → Passkeys (needs the password to add
+  one). The login page has "Sign in with a passkey". A passkey must verify
+  the person (fingerprint, face or PIN), so it signs in without a password
+  or code. WebAuthn checks are in `app/services/PasskeyService.ts` (no
+  dependencies; ES256, EdDSA and RS256), routes in `app/routes/passkeys.ts`,
+  browser side in `app/useApi/passkey.ts`. Passkeys are bound to one origin:
+  `APP_URL` (or `PASSKEY_ORIGIN`) must be the address people use; localhost
+  works over http, anything else needs https.
+- **Authenticator QR code**: `POST /api/account/two-factor/setup` also
+  returns `qr`, an SVG data URL made on the server (`app/services/QrSvg.ts`,
+  the `@tylix/pdf` encoder), so the secret never goes to a QR service.
+- **Source control**: repositories are paginated (10/20/50/100 per page)
+  with All / Public / Private filters.
+- **Overview**: a status row (servers, sites, deploys, domains) leads the
+  page; problems moved from the top into a "Needs attention" card, and
+  failed sites sort below healthy ones in "Recently active projects".
+- **Settings → Members**: pictures, role counts, search, inline role
+  changes, confirm-in-place for remove / revoke / leave, and what each role
+  can do. Section sidebars share the main sidebar's look.
+- **Cloud and domain providers**: both list pages show each connection with
+  its provider's logo, a filter by provider, and a "Connect another account"
+  gallery of every supported provider. `ProviderForm` / `RegistrarForm`
+  take `start="<kind>" variant="tile"` for those tiles. New logos in
+  `public/logos` (from Simple Icons): `aws`, `route53`, `spaceship`.
+  Dynadot and Name.com have no Simple Icons logo, so they show a letter.
+
 ## App shell (Tylix Flux redesign, Nov 2026)
 
 Every Tylix page is its own document, so a plain link used to rebuild the

@@ -14,13 +14,13 @@ state
   // The connection this page belongs to (label and kind), for its logo.
   infoLabel: ""
   infoKind: ""
-  asideCls: "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:p-5"
+  asideCls: "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:px-3 lg:py-4"
   topCls: "hidden lg:flex items-center justify-between gap-2 mb-5"
   titleCls: "min-w-0"
-  btnCls: "flex items-center justify-center w-6 h-6 shrink-0 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/70 dark:hover:bg-white/[0.06] transition-colors"
-  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-900 dark:text-white text-sm font-medium"
-  offCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
-  disCls: "shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
+  btnCls: "flex items-center justify-center w-8 h-8 shrink-0 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-white/[0.05] transition-colors"
+  onCls: "relative shrink-0 flex items-center gap-3 h-9 px-3 rounded-xl bg-white text-zinc-900 text-[13.5px] font-medium shadow-sm ring-1 ring-black/[0.06] dark:ring-0"
+  offCls: "group shrink-0 flex items-center gap-3 h-9 px-3 rounded-xl text-zinc-600 dark:text-zinc-400 text-[13.5px] font-medium hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+  disCls: "shrink-0 flex items-center gap-3 h-9 px-3 rounded-xl text-zinc-400 dark:text-zinc-600 text-[13.5px] cursor-not-allowed select-none"
   badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
   footCls: "shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line"
   labelCls: ""
@@ -46,9 +46,9 @@ action
 
   applyLayout() {
     const asideBase = "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
-    const on = "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-900 dark:text-white text-sm font-medium"
-    const off = "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
-    const dis = "shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
+    const on = "relative shrink-0 flex items-center gap-3 h-9 px-3 rounded-xl bg-white text-zinc-900 text-[13.5px] font-medium shadow-sm ring-1 ring-black/[0.06] dark:ring-0"
+    const off = "group shrink-0 flex items-center gap-3 h-9 px-3 rounded-xl text-zinc-600 dark:text-zinc-400 text-[13.5px] font-medium hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+    const dis = "shrink-0 flex items-center gap-3 h-9 px-3 rounded-xl text-zinc-400 dark:text-zinc-600 text-[13.5px] cursor-not-allowed select-none"
     const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
 
     if this.collapsed {
@@ -62,7 +62,7 @@ action
       this.labelCls = "lg:hidden"
       this.chevCls = "w-4 h-4 transition-transform rotate-180"
     } else {
-      this.asideCls = asideBase + " lg:w-[240px] lg:p-5"
+      this.asideCls = asideBase + " lg:w-[240px] lg:px-3 lg:py-4"
       this.topCls = "hidden lg:flex items-center justify-between gap-2 mb-5"
       this.titleCls = "min-w-0"
       this.onCls = on
@@ -104,19 +104,17 @@ template
       <BrandLogo kind="{{ infoKind }}" label="{{ infoLabel }}" />
 {{/if}}
 {{#if not infoKind}}
-      <span class="w-9 h-9 shrink-0 rounded-xl border border-line bg-panel text-brand-500 flex items-center justify-center">
+      <span class="w-9 h-9 shrink-0 rounded-[10px] border border-line bg-panel text-zinc-700 dark:text-zinc-200 flex items-center justify-center">
         <IconServer class="w-5 h-5" />
       </span>
 {{/if}}
       <div class="{{ titleCls }}">
-        <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight truncate">{{ infoLabel or "Provider" }}</p>
-        <p class="text-slate-500 text-xs leading-tight truncate">{{ infoKind ? kindName() : "Manage this provider" }}</p>
+        <p class="text-zinc-900 dark:text-zinc-50 text-[15px] font-semibold tracking-tight leading-tight truncate">{{ infoLabel or "Provider" }}</p>
+        <p class="text-zinc-500 text-[11px] leading-tight truncate">{{ infoKind ? kindName() : "Manage this provider" }}</p>
       </div>
     </div>
     <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="{{ btnCls }}">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
-        <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" class="{{ chevCls }}"><rect x="3" y="3.5" width="14" height="13" rx="3" /><path d="M8 3.5v13" /><path d="M13 8l-2 2 2 2" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </button>
   </div>
 
@@ -129,106 +127,98 @@ template
 
 {{#if active is "overview"}}
   <a href="{{ '/providers/provider-detail?id=' + providerId }}" title="Overview" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconGauge class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Overview</span>
+    <IconGauge class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 {{#if active is not "overview"}}
   <a href="{{ '/providers/provider-detail?id=' + providerId }}" title="Overview" class="{{ offCls }}">
-    <IconGauge class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Overview</span>
+    <IconGauge class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Overview</span>
   </a>
 {{/if}}
 
 {{#if active is "machines"}}
   <a href="{{ '/providers/provider-machines?id=' + providerId }}" title="Machines" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconServer class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Machines</span>
+    <IconServer class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Machines</span>
   </a>
 {{/if}}
 {{#if active is not "machines"}}
   <a href="{{ '/providers/provider-machines?id=' + providerId }}" title="Machines" class="{{ offCls }}">
-    <IconServer class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Machines</span>
+    <IconServer class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Machines</span>
   </a>
 {{/if}}
 
 {{#if active is "firewalls"}}
   <a href="{{ '/providers/provider-firewalls?id=' + providerId }}" title="Firewalls" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconShieldCheck class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Firewalls</span>
+    <IconShieldCheck class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Firewalls</span>
   </a>
 {{/if}}
 {{#if active is not "firewalls"}}
   <a href="{{ '/providers/provider-firewalls?id=' + providerId }}" title="Firewalls" class="{{ offCls }}">
-    <IconShieldCheck class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Firewalls</span>
+    <IconShieldCheck class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Firewalls</span>
   </a>
 {{/if}}
 
 {{#if active is "volumes"}}
   <a href="{{ '/providers/provider-volumes?id=' + providerId }}" title="Volumes" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconCube class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Volumes</span>
+    <IconCube class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Volumes</span>
   </a>
 {{/if}}
 {{#if active is not "volumes"}}
   <a href="{{ '/providers/provider-volumes?id=' + providerId }}" title="Volumes" class="{{ offCls }}">
-    <IconCube class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Volumes</span>
+    <IconCube class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Volumes</span>
   </a>
 {{/if}}
 
 {{#if active is "images"}}
   <a href="{{ '/providers/provider-images?id=' + providerId }}" title="Images" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconPhotograph class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Images</span>
+    <IconPhotograph class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Images</span>
   </a>
 {{/if}}
 {{#if active is not "images"}}
   <a href="{{ '/providers/provider-images?id=' + providerId }}" title="Images" class="{{ offCls }}">
-    <IconPhotograph class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Images</span>
+    <IconPhotograph class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Images</span>
   </a>
 {{/if}}
 
 {{#if active is "ips"}}
   <a href="{{ '/providers/provider-ips?id=' + providerId }}" title="IP addresses" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconSignal class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">IP addresses</span>
+    <IconSignal class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">IP addresses</span>
   </a>
 {{/if}}
 {{#if active is not "ips"}}
   <a href="{{ '/providers/provider-ips?id=' + providerId }}" title="IP addresses" class="{{ offCls }}">
-    <IconSignal class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">IP addresses</span>
+    <IconSignal class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">IP addresses</span>
   </a>
 {{/if}}
 
 {{#if active is "domains"}}
   <a href="{{ '/providers/provider-domains?id=' + providerId }}" title="Domains" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconGlobe class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Domains</span>
+    <IconGlobe class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Domains</span>
   </a>
 {{/if}}
 {{#if active is not "domains"}}
   <a href="{{ '/providers/provider-domains?id=' + providerId }}" title="Domains" class="{{ offCls }}">
-    <IconGlobe class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Domains</span>
+    <IconGlobe class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Domains</span>
   </a>
 {{/if}}
 
 {{#if active is "billing"}}
   <a href="{{ '/providers/provider-billing?id=' + providerId }}" title="Billing" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <IconDocumentText class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" /> <span class="{{ labelCls }}">Billing</span>
+    <IconDocumentText class="w-[18px] h-[18px] shrink-0 text-zinc-900" /> <span class="{{ labelCls }}">Billing</span>
   </a>
 {{/if}}
 {{#if active is not "billing"}}
   <a href="{{ '/providers/provider-billing?id=' + providerId }}" title="Billing" class="{{ offCls }}">
-    <IconDocumentText class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">Billing</span>
+    <IconDocumentText class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">Billing</span>
   </a>
 {{/if}}
 
   <div class="{{ footCls }}">
     <a href="/providers" title="All providers" class="{{ offCls }}">
-      <IconArrowLeft class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" /> <span class="{{ labelCls }}">All providers</span>
+      <IconArrowLeft class="w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" /> <span class="{{ labelCls }}">All providers</span>
     </a>
     <span class="{{ disCls }}" aria-disabled="true" title="More (VPCs, load balancers, Kubernetes and more)">
-      <IconCog class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-700" />
+      <IconCog class="w-[18px] h-[18px] shrink-0 text-zinc-300 dark:text-zinc-700" />
       <span class="{{ labelCls }}">More</span>
       <span class="{{ badgeCls }}">Soon</span>
     </span>

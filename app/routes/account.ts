@@ -8,7 +8,7 @@
  * GET    /api/avatars/:userId/:hash                a profile picture (public: the hash is the key)
  * PUT    /api/account/password                     change password (needs the current one)
  * POST   /api/account/sign-out-everywhere          end every session (all devices), clear cookies
- * POST   /api/account/two-factor/setup             start setup, returns secret + otpauth URI
+ * POST   /api/account/two-factor/setup             start setup, returns secret + otpauth URI + QR code (SVG data URL)
  * POST   /api/account/two-factor/confirm           prove the app works, turns 2FA on, returns recovery codes once
  * POST   /api/account/two-factor/disable           needs password + a code
  * POST   /api/account/two-factor/recovery-codes    new set of codes, needs password + a code
@@ -44,6 +44,7 @@ import { SmsTwoFactorService } from "../services/SmsTwoFactorService.js";
 import type { SendResult } from "../services/SmsTwoFactorService.js";
 import { PasswordBreachService } from "../services/PasswordBreachService.js";
 import { passwordProblem } from "../validators/PasswordPolicy.js";
+import { qrDataUrl } from "../services/QrSvg.js";
 
 type Handler = Parameters<Router["get"]>[1];
 type FieldErrors = Record<string, string[]>;
@@ -319,7 +320,8 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                 });
             }
 
-            return res.json({ secret, uri: TwoFactorService.uri(user.email, secret) });
+            const uri = TwoFactorService.uri(user.email, secret);
+            return res.json({ secret, uri, qr: qrDataUrl(uri) });
         }),
     );
 

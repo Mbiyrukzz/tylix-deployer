@@ -2,8 +2,17 @@ component RegistrarForm
 
 import { IconPlus, IconX } from "tylix-icons"
 
+uses
+  Logos
+
 props
   registrar: Object
+  // Optional: preselect a kind ("hetzner") and show a logo tile instead of
+  // the Connect button: <RegistrarForm start="hetzner" variant="tile" onSaved=... />
+  start: String
+  variant: String
+  // The tile's second line (default "Connect").
+  note: String
   onSaved: Function
 
 state
@@ -353,6 +362,9 @@ action
       this.kind = this.registrar.kind
       this.placeholder = "Leave blank to keep the current credentials"
     }
+    if not this.registrar and this.start {
+      this.kind = this.start
+    }
     this.syncMode()
     this.showModal = true
 
@@ -444,9 +456,19 @@ template
     Edit
   </button>
 {{/if}}
-{{#if not registrar}}
+{{#if not registrar and variant is not "tile"}}
   <button onclick="{{ open() }}" class="inline-flex items-center gap-1.5 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
     <IconPlus class="w-4 h-4" /> Connect domain provider
+  </button>
+{{/if}}
+{{#if not registrar and variant is "tile"}}
+  <button onclick="{{ open() }}" class="group w-full h-full flex items-center gap-3 rounded-xl border border-line bg-panel px-3.5 py-3 text-left hover:border-line-strong hover:shadow-sm transition-all">
+    <BrandLogo kind="{{ start }}" />
+    <span class="min-w-0 flex-1">
+      <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ Logos.name(start) or start }}</span>
+      <span class="{{ note ? 'block text-[11px] text-emerald-600 dark:text-emerald-400' : 'block text-[11px] text-zinc-500' }}">{{ note or "Connect" }}</span>
+    </span>
+    <IconPlus class="w-4 h-4 shrink-0 text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
   </button>
 {{/if}}
 
@@ -482,7 +504,12 @@ template
 {{#each k in kinds}}
 {{#if kind is k.id}}
         <button onclick="{{ pick(k.id) }}" aria-pressed="true" class="flex items-center gap-3 rounded-xl border-2 border-brand-500 bg-brand-500/5 px-3 py-3 text-left transition-colors">
+{{#if Logos.url(k.id)}}
+          <BrandLogo kind="{{ k.id }}" label="{{ k.name }}" />
+{{/if}}
+{{#if not Logos.url(k.id)}}
           <span class="{{ k.tileClass }}">{{ k.letter }}</span>
+{{/if}}
           <span class="min-w-0">
             <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
             <span class="block text-slate-500 text-xs truncate">{{ k.sub }}</span>
@@ -491,7 +518,12 @@ template
 {{/if}}
 {{#if kind is not k.id}}
         <button onclick="{{ pick(k.id) }}" aria-pressed="false" class="flex items-center gap-3 rounded-xl border-2 border-line px-3 py-3 text-left hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+{{#if Logos.url(k.id)}}
+          <BrandLogo kind="{{ k.id }}" label="{{ k.name }}" />
+{{/if}}
+{{#if not Logos.url(k.id)}}
           <span class="{{ k.tileClass }}">{{ k.letter }}</span>
+{{/if}}
           <span class="min-w-0">
             <span class="block text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ k.name }}</span>
             <span class="block text-slate-500 text-xs truncate">{{ k.sub }}</span>
