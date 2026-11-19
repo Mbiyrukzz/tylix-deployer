@@ -157,8 +157,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
@@ -185,7 +184,7 @@ template
       <LockedBanner />
 
       <div class="mb-8">
-        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
+        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
         <p class="text-slate-500 text-sm">Redirects</p>
       </div>
 
@@ -263,7 +262,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ add() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
+              <button onclick="{{ add() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
                 {{#if saving}}Testing and saving…{{/if}}{{#if not saving}}Add redirect{{/if}}
               </button>
 {{/if}}

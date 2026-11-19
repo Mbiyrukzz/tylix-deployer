@@ -431,8 +431,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
@@ -882,10 +881,10 @@ template
 {{/if}}
 {{#if not Billing.locked}}
 {{#if submitting}}
-            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
+            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
 {{/if}}
 {{#if not submitting}}
-            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create site</button>
+            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create site</button>
 {{/if}}
 {{/if}}
           </div>

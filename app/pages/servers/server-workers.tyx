@@ -77,7 +77,7 @@ action
       return { text: "Not loaded", color: "#94a3b8" }
     }
     if s.running is s.total {
-      return { text: "Running " + s.running + "/" + s.total, color: "#f97316" }
+      return { text: "Running " + s.running + "/" + s.total, color: "#e0393f" }
     }
     if s.running is 0 {
       return { text: s.states[0].toLowerCase(), color: "#f43f5e" }
@@ -252,8 +252,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="workers" serverId="{{ serverId }}" />
 {{/if}}
@@ -278,7 +277,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Workers</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Workers</h1>
       <p class="text-slate-500 text-sm mb-6">Long-running processes kept alive by Supervisor: queue workers, Reverb, or any command.</p>
 
 {{#if error}}
@@ -324,7 +323,7 @@ template
 
         <div class="mt-5">
 {{#if busy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -337,7 +336,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Create worker</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Create worker</button>
 {{/if}}
 {{/if}}
         </div>

@@ -1,7 +1,8 @@
 <script>
 // The slim bar at the top while a page makes requests (useApi,
 // capabilities, prefetch). Navigation between pages shows the same bar
-// from public/app-shell.js, so the two look like one.
+// from public/app-shell.js, so the two look like one. The flux-loadbar
+// class lets the shell remove a swapped-out page's bar.
 //
 // Tylix gives it one prop, "loading":
 //   loading.active    number of requests in flight
@@ -13,9 +14,10 @@ props
 <template>
   <div
     aria-hidden="true"
+    class="flux-loadbar"
     style="{{
       'position:fixed;top:0;left:0;height:2px;z-index:99999;pointer-events:none;' +
-      'background:linear-gradient(90deg,#f97316,#e879f9);box-shadow:0 0 10px rgb(249 115 22 / 0.6);' +
+      'background:#e0393f;' +
       'transition:width 0.2s ease, opacity 0.3s ease;' +
       'width:' + loading.progress + '%;' +
       'opacity:' + (loading.visible ? 1 : 0)

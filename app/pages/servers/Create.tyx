@@ -480,8 +480,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-1 bg-page transition-colors">
     <div class="min-w-0">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
 
@@ -492,7 +491,7 @@ template
       <LockedBanner />
 
       <div class="mb-6 sm:mb-8">
-        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Create server</h1>
+        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Create server</h1>
         <p class="text-slate-500 text-sm">Provision a new machine at your cloud provider, or add one you already have.</p>
       </div>
 
@@ -875,18 +874,18 @@ template
 {{#if not Billing.locked}}
 {{#if custom}}
 {{#if saving}}
-            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Adding…</button>
+            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 opacity-50">Adding…</button>
 {{/if}}
 {{#if not saving}}
-            <button onclick="{{ submitCustom() }}" class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Add server</button>
+            <button onclick="{{ submitCustom() }}" class="min-h-[48px] text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Add server</button>
 {{/if}}
 {{/if}}
 {{#if not custom}}
 {{#if saving}}
-            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
+            <button disabled class="min-h-[48px] text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 opacity-50">Creating…</button>
 {{/if}}
 {{#if not saving}}
-            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</button>
+            <button onclick="{{ submit() }}" class="min-h-[48px] text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</button>
 {{/if}}
 {{/if}}
 {{/if}}

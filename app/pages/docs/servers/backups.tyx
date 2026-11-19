@@ -10,10 +10,10 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Backups</h1>
-      <p class="text-zinc-500 text-sm mt-2 mb-8">The Backups page schedules MySQL backups for this server. Open it with Backups in the menu on the left. The schedule runs on the server itself, so it keeps working even when Tylix Deploy is offline.</p>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Backups</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">The Backups page schedules MySQL backups for this server. Open it with Backups in the menu on the left. The schedule runs on the server itself, so it keeps working even when Tylix Flux is offline.</p>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
         <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">You need at least one database first. If there are none, the page says so and points you to the <a href="/docs/servers/databases" class="text-brand-600 dark:text-brand-500 hover:underline">Database</a> page.</p>

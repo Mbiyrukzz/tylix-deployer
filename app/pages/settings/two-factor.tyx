@@ -354,13 +354,12 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="settings" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <SettingsSidebar active="two-factor" />
     <div class="min-w-0">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Two-factor authentication</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Two-factor authentication</h1>
       <p class="text-slate-500 text-sm mb-8">Ask for a code each time you log in: from an authenticator app, by text message, or either.</p>
 
 {{#if loading}}
@@ -384,12 +383,12 @@ template
         </div>
         <p class="text-slate-500 text-sm mb-5">This account can hold SSH keys and cloud tokens, so a second step at login is worth having. You'll need an authenticator app such as Google Authenticator, Authy or 1Password.</p>
 {{#if busy}}
-        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+        <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">
           Starting…
         </button>
 {{/if}}
 {{#if not busy}}
-        <button onclick="{{ startSetup() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
+        <button onclick="{{ startSetup() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
           Set up authenticator app
         </button>
 {{/if}}
@@ -400,8 +399,8 @@ template
       <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Authenticator app</h2>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> On
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> On
           </span>
         </div>
         <p class="text-slate-500 text-sm">Logging in asks for a code from your authenticator app.</p>
@@ -457,7 +456,7 @@ template
           </button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ submitMode() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
+          <button onclick="{{ submitMode() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
             Confirm
           </button>
           <button onclick="{{ cancelMode() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
@@ -473,8 +472,8 @@ template
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Text message (SMS)</h2>
 {{#if smsEnabled}}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> On
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> On
           </span>
 {{/if}}
 {{#if not smsEnabled}}
@@ -508,10 +507,10 @@ template
 
         <div class="mt-6">
 {{#if smsBusy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
 {{/if}}
 {{#if not smsBusy}}
-          <button onclick="{{ startSms() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Send code</button>
+          <button onclick="{{ startSms() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Send code</button>
 {{/if}}
         </div>
 {{/if}}
@@ -530,10 +529,10 @@ template
 {{/if}}
         <div class="flex items-center gap-3 mt-6">
 {{#if smsBusy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Checking…</button>
 {{/if}}
 {{#if not smsBusy}}
-          <button onclick="{{ confirmSms() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Turn on text messages</button>
+          <button onclick="{{ confirmSms() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Turn on text messages</button>
           <button onclick="{{ sendSmsCode() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Resend</button>
           <button onclick="{{ cancelSms() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{/if}}
@@ -559,7 +558,7 @@ template
           <button disabled class="text-sm text-white bg-brand-600 rounded-lg px-4 py-2 opacity-50">Working…</button>
 {{/if}}
 {{#if not smsBusy}}
-          <button onclick="{{ disableSms() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Turn off</button>
+          <button onclick="{{ disableSms() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Turn off</button>
           <button onclick="{{ sendSmsCode() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Text me a code</button>
           <button onclick="{{ cancelSms() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{/if}}
@@ -594,12 +593,12 @@ template
 
         <div class="flex items-center gap-3 mt-6">
 {{#if busy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">
             Checking…
           </button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ confirmSetup() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
+          <button onclick="{{ confirmSetup() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
             Turn on authenticator app
           </button>
           <button onclick="{{ cancelSetup() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">
@@ -635,7 +634,7 @@ template
             Copy all
           </button>
 {{/if}}
-          <button onclick="{{ finishCodes() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
+          <button onclick="{{ finishCodes() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
             I've saved them
           </button>
         </div>

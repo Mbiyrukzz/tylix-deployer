@@ -141,8 +141,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_1fr] bg-page transition-colors">
-  <Sidebar active="registrars" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-1 bg-page transition-colors">
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
@@ -152,7 +151,7 @@ template
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div class="min-w-0">
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Domain providers</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Domain providers</h1>
           <p class="text-slate-500 text-sm">Registrars and DNS hosts whose domains you manage here.</p>
         </div>
         <RegistrarForm onSaved="{{ addRegistrar }}" />
@@ -214,8 +213,8 @@ template
                 <p class="text-slate-500 text-xs">{{ r.kindName }}</p>
               </div>
             </div>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> {{ r.status }}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ r.status }}
             </span>
           </div>
 
@@ -228,7 +227,7 @@ template
           <p class="text-slate-500 text-xs mb-5">Connected {{ r.since }}</p>
 
           <div class="flex items-center gap-3 pt-5 border-t border-line">
-            <a href="{{ '/registrars/registrar-domains?id=' + r.id }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Manage</a>
+            <a href="{{ '/registrars/registrar-domains?id=' + r.id }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Manage</a>
             <RegistrarForm registrar="{{ r }}" onSaved="{{ updateRegistrar }}" />
 
 {{#if removing is r.id}}

@@ -214,8 +214,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="cron" serverId="{{ serverId }}" />
 {{/if}}
@@ -240,7 +239,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Cron jobs</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Cron jobs</h1>
       <p class="text-slate-500 text-sm mb-6">Commands that run on a schedule. Each job's output is appended to its own log on the server.</p>
 
 {{#if error}}
@@ -291,7 +290,7 @@ template
 
         <div class="mt-5">
 {{#if busy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -304,7 +303,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Create cron job</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Create cron job</button>
 {{/if}}
 {{/if}}
         </div>

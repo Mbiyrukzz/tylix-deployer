@@ -1,4 +1,4 @@
-// Who may do what in Tylix Deploy (@tylix/permissions).
+// Who may do what in Tylix Flux (@tylix/permissions).
 //
 // Roles come from team membership: a user's role in their CURRENT team
 // (team_members.role: owner, admin or member) is their role here. There is
@@ -101,7 +101,7 @@ function teamStore(): PermissionStore {
         },
 
         async setAssignments() {
-            throw new Error("Roles in Tylix Deploy come from team membership: change them on the Team page (Settings → Team).");
+            throw new Error("Roles in Tylix Flux come from team membership: change them on the Team page (Settings → Team).");
         },
 
         async subjectsWithRole() {

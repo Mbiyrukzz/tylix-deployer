@@ -10,13 +10,13 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Firewall</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Firewall</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">The Firewall page controls which connections may reach this server. Open it with Firewall in the menu on the left. Rules are applied with UFW over SSH, and each one decides whether a port is open to everyone, to one address, or to no one.</p>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
-        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">The first time you open this page for a server that has no rules, Tylix Deploy sets up the defaults for you: SSH, HTTP and HTTPS. This is how servers you added yourself get a firewall.</p>
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">The first time you open this page for a server that has no rules, Tylix Flux sets up the defaults for you: SSH, HTTP and HTTPS. This is how servers you added yourself get a firewall.</p>
       </div>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The buttons at the top</h2>
@@ -70,7 +70,7 @@ template
       <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Select Add rule. The button says "Applying…" while the rule is sent to the server. When it works, a message says "Rule added." and the rule appears in the list.</p>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
-        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Be careful with Deny rules. Tylix Deploy itself connects over SSH, so blocking the SSH port stops it reaching the server.</p>
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Be careful with Deny rules. Tylix Flux itself connects over SSH, so blocking the SSH port stops it reaching the server.</p>
       </div>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>

@@ -10,12 +10,12 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Redirects</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Redirects</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">The Redirects page sends an old address on a site somewhere else. Open it with Redirects under Tools in the menu on the left of any site.</p>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A redirect sends visitors from an old address on this site to a new one. It is written into the site's nginx configuration for you. Before anything is applied, Tylix Deploy tests the change with <span class="font-mono text-xs">nginx -t</span>, and if the test fails the change is rolled back, so a mistake cannot take the site down. The query string, the part after a question mark, is kept. The page is available once the site is Ready.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A redirect sends visitors from an old address on this site to a new one. It is written into the site's nginx configuration for you. Before anything is applied, Tylix Flux tests the change with <span class="font-mono text-xs">nginx -t</span>, and if the test fails the change is rolled back, so a mistake cannot take the site down. The query string, the part after a question mark, is kept. The page is available once the site is Ready.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Adding a redirect</h2>
 
@@ -94,7 +94,7 @@ template
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A red box with text in a code font</p>
-          <p class="text-zinc-500 text-xs mt-0.5">nginx or Tylix Deploy refused the redirect, and the box shows why. Nothing was changed. Correct the address and add it again.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">nginx or Tylix Flux refused the redirect, and the box shows why. Nothing was changed. Correct the address and add it again.</p>
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't save the redirect. / Couldn't remove the redirect.</p>

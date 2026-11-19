@@ -10,9 +10,9 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Domain providers</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">DNS records</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">DNS records</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">DNS records tell the internet where your domain's website and email live. This page shows the nameservers and the records of one domain, and lets you change them. Open it by selecting a domain name, or DNS, on the Domains page.</p>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">

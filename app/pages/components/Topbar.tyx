@@ -1,0 +1,207 @@
+component Topbar
+
+import { IconSearch, IconSun, IconMoon, IconPlus, IconLogout, IconCog, IconUsers, IconBookOpen, IconKeyboard, IconReceiptTax, IconChevronRight } from "tylix-icons"
+
+// The bar above every app page. Mounted once with the layout; the
+// breadcrumb follows in-place navigation through the flux:navigated event.
+
+uses
+  Auth
+
+state
+  path: "/"
+  title: ""
+  dark: true
+  menuOpen: false
+
+action
+  // The app shell (public/app-shell.js). Read through Reflect so the .tyx
+  // typechecker, which doesn't know about it, types it as any.
+  shell() {
+    return Reflect.get(window, "__flux")
+  }
+
+  section() {
+    const p = this.path
+    if p.startsWith("/dashboard") {
+      return { label: "Overview", href: "/dashboard" }
+    }
+    if p.startsWith("/servers") {
+      return { label: "Servers", href: "/servers" }
+    }
+    if p.startsWith("/providers") {
+      return { label: "Cloud providers", href: "/providers" }
+    }
+    if p.startsWith("/registrars") {
+      return { label: "Domains", href: "/registrars" }
+    }
+    if p.startsWith("/source-control") {
+      return { label: "Source control", href: "/source-control" }
+    }
+    if p.startsWith("/team") {
+      return { label: "Team", href: "/team" }
+    }
+    if p.startsWith("/settings") {
+      return { label: "Settings", href: "/settings" }
+    }
+    return { label: "Tylix Flux", href: "/dashboard" }
+  }
+
+  // The page's own title, when it says more than the section name.
+  pageTitle() {
+    const t = String(this.title or "").split(" · ")[0].split(" | ")[0].trim()
+    const s = this.section().label
+    if not t or t.toLowerCase() is s.toLowerCase() or t is "Dashboard" {
+      return ""
+    }
+    return t
+  }
+
+  refresh() {
+    this.path = window.location.pathname
+    this.title = document.title
+    this.menuOpen = false
+  }
+
+  openPalette() {
+    this.menuOpen = false
+    if this.shell() {
+      this.shell().emit("flux:palette", {})
+    }
+  }
+
+  toggleTheme() {
+    if this.shell() {
+      this.dark = this.shell().theme() is "dark"
+    }
+  }
+
+  toggleMenu() {
+    this.menuOpen = not this.menuOpen
+  }
+
+  closeMenu() {
+    this.menuOpen = false
+  }
+
+  initial() {
+    const u = Auth.user
+    if not u {
+      return "?"
+    }
+    const source = u.name or u.email or "?"
+    return String(source).charAt(0).toUpperCase()
+  }
+
+  userName() {
+    const u = Auth.user
+    return u ? (u.name or "Your account") : "Your account"
+  }
+
+  userEmail() {
+    const u = Auth.user
+    return u ? (u.email or "") : ""
+  }
+
+  async logout() {
+    this.menuOpen = false
+    await Auth.logout().catch((err) => console.error("logout failed:", err))
+    window.location.replace("/login")
+  }
+
+onMount
+  async {
+    this.refresh()
+    this.dark = document.documentElement.classList.contains("dark")
+    const flux = this.shell()
+    if flux {
+      flux.on(window, "flux:navigated", () => this.refresh())
+      flux.on(window, "flux:theme", (e) => {
+        this.dark = e.detail.mode is "dark"
+      })
+      flux.on(document, "click", (e) => {
+        const wrap = document.getElementById("flux-user-menu")
+        if this.menuOpen and wrap and not wrap.contains(e.target) {
+          this.menuOpen = false
+        }
+      })
+      flux.on(document, "keydown", (e) => {
+        if e.key is "Escape" {
+          this.menuOpen = false
+        }
+      })
+    }
+    // Pages set their title as they load; pick it up once they have.
+    if flux {
+      flux.later(600, () => {
+        this.title = document.title
+      })
+    }
+  }
+
+template
+<header class="flux-topbar sticky top-0 z-30 h-14 lg:h-16 shrink-0 border-b border-line bg-white/80 dark:bg-[#09090a]/80 backdrop-blur-xl">
+  <div class="h-full px-4 sm:px-6 lg:px-8 flex items-center gap-3">
+
+    <a href="/dashboard" class="lg:hidden flex items-center gap-2.5 min-w-0">
+      <img src="/flux-mark.svg" alt="" class="w-8 h-8 rounded-[9px] shrink-0" />
+      <span class="text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 truncate">Tylix Flux</span>
+    </a>
+
+    <nav aria-label="Breadcrumb" class="hidden lg:flex items-center gap-1.5 min-w-0 text-sm">
+      <a href="{{ section().href }}" class="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors whitespace-nowrap">{{ section().label }}</a>
+{{#if pageTitle()}}
+      <IconChevronRight class="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-600 shrink-0" />
+      <span class="font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ pageTitle() }}</span>
+{{/if}}
+    </nav>
+
+    <div class="flex-1"></div>
+
+    <button onclick="{{ openPalette() }}" class="hidden md:flex items-center gap-2.5 h-9 w-72 rounded-full border border-line bg-panel pl-3.5 pr-2 text-sm text-zinc-500 hover:border-line-strong hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+      <IconSearch class="w-4 h-4 shrink-0" />
+      <span class="flex-1 text-left truncate">Search or jump to…</span>
+      <span class="flux-kbd">⌘K</span>
+    </button>
+
+    <button onclick="{{ openPalette() }}" aria-label="Search" class="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] transition-colors">
+      <IconSearch class="w-[18px] h-[18px]" />
+    </button>
+
+    <a href="/servers/create" class="hidden sm:inline-flex items-center gap-1.5 h-9 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 pl-3 pr-3.5 text-sm font-semibold hover:opacity-90 transition-opacity">
+      <IconPlus class="w-4 h-4" />
+      New server
+    </a>
+
+    <button onclick="{{ toggleTheme() }}" aria-label="Switch between light and dark" title="Theme" class="w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] transition-colors">
+{{#if dark}}
+      <IconSun class="w-[18px] h-[18px]" />
+{{/if}}
+{{#if not dark}}
+      <IconMoon class="w-[18px] h-[18px]" />
+{{/if}}
+    </button>
+
+    <div id="flux-user-menu" class="relative">
+      <button onclick="{{ toggleMenu() }}" aria-haspopup="menu" aria-expanded="{{ menuOpen }}" aria-label="Account" class="w-9 h-9 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-sm font-semibold flex items-center justify-center ring-2 ring-transparent hover:ring-line-strong transition">
+        {{ initial() }}
+      </button>
+{{#if menuOpen}}
+      <div role="menu" class="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-line bg-panel p-1.5 shadow-pop animate-flux-in origin-top-right z-50">
+        <div class="px-3 py-2.5">
+          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ userName() }}</p>
+          <p class="text-xs text-zinc-500 truncate">{{ userEmail() }}</p>
+        </div>
+        <div class="h-px bg-line my-1"></div>
+        <a role="menuitem" href="/settings" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconCog class="w-4 h-4 text-zinc-400" /> Settings</a>
+        <a role="menuitem" href="/team" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconUsers class="w-4 h-4 text-zinc-400" /> Team &amp; roles</a>
+        <a role="menuitem" href="/settings/billing" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconReceiptTax class="w-4 h-4 text-zinc-400" /> Billing</a>
+        <a role="menuitem" href="/docs" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconBookOpen class="w-4 h-4 text-zinc-400" /> Documentation</a>
+        <button role="menuitem" onclick="{{ openPalette() }}" class="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconKeyboard class="w-4 h-4 text-zinc-400" /> <span class="flex-1 text-left">Shortcuts &amp; search</span><span class="flux-kbd">⌘K</span></button>
+        <div class="h-px bg-line my-1"></div>
+        <button role="menuitem" onclick="{{ logout() }}" class="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-500/10"><IconLogout class="w-4 h-4" /> Sign out</button>
+      </div>
+{{/if}}
+    </div>
+  </div>
+</header>

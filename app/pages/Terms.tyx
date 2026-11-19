@@ -11,11 +11,11 @@ template
 
       <a href="/" class="inline-flex items-center gap-2.5 mb-8">
         <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
-        <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
+        <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Flux</span>
       </a>
 
       <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Terms of Service</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Terms of Service</h1>
       <p class="text-slate-500 text-sm mb-10">Effective {{ effective }}</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
@@ -52,13 +52,13 @@ template
 
           <section id="agreement" class="mb-8 sm:mb-10 scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">1. Agreement</h2>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">These Terms of Service ("Terms") are a contract between you and Ashmif Office Solutions Ltd, a company registered in Kenya ("we", "us", "Tylix"). They govern your access to and use of Tylix Deploy, including the website, dashboard, APIs and everything we provide through them (the "Service").</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">These Terms of Service ("Terms") are a contract between you and Ashmif Office Solutions Ltd, a company registered in Kenya ("we", "us", "Tylix"). They govern your access to and use of Tylix Flux, including the website, dashboard, APIs and everything we provide through them (the "Service").</p>
             <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">By creating an account, ticking the agreement box, or using the Service, you accept these Terms and our <a href="/privacy" class="text-brand-700 dark:text-brand-400 hover:underline">Privacy Policy</a>. If you use the Service for a company or team, you confirm you have authority to bind it, and "you" includes that organisation. You must be at least 18 years old.</p>
           </section>
 
           <section id="service" class="mb-8 sm:mb-10 scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">2. The service</h2>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Tylix Deploy is a server management and deployment platform. Depending on your plan, you can:</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Tylix Flux is a server management and deployment platform. Depending on your plan, you can:</p>
             <ul class="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
               <li>provision servers at connected cloud providers, or connect your own servers over SSH;</li>
               <li>create sites (Tylix, Laravel, PHP, Node.js, WordPress, MERN, Angular and others), connect Git repositories, and deploy them with editable scripts and environment variables;</li>
@@ -139,7 +139,7 @@ template
 
           <section id="backups" class="mb-8 sm:mb-10 scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">10. Backups and your data</h2>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Tylix Deploy is not a backup service. Unless we expressly state otherwise for a specific feature, we do not back up the contents of your servers, sites or databases. Keep your own backups of anything you cannot afford to lose. Deleting a server or database through the Service is permanent.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Tylix Flux is not a backup service. Unless we expressly state otherwise for a specific feature, we do not back up the contents of your servers, sites or databases. Keep your own backups of anything you cannot afford to lose. Deleting a server or database through the Service is permanent.</p>
           </section>
 
           <section id="availability" class="mb-8 sm:mb-10 scroll-mt-24">

@@ -1,0 +1,399 @@
+component CommandPalette
+
+import { IconSearch, IconServer, IconGlobe, IconCloud, IconLayoutDashboard, IconCode, IconCog, IconUsers, IconBolt, IconArrowRight, IconBookOpen, IconSun, IconLogout, IconPlus, IconSidebar, IconActivity, IconKeyRound, IconReceiptTax, IconShieldCheck } from "tylix-icons"
+
+// Cmd/Ctrl+K (or /) from anywhere in the app: jump to a page, a server, a
+// site, a cloud account or a registrar, or run an action. Mounted once with
+// the layout, so its index of servers and sites is loaded on first open and
+// refreshed in the background after that.
+
+uses
+  Auth
+
+state
+  open: false
+  query: ""
+  active: 0
+  records: []
+  loadedAt: 0
+  loading: false
+  lastFocus: null
+
+computed
+  results() {
+    const q = this.query.trim().toLowerCase()
+    const all = this.commands().concat(this.records)
+
+    if not q {
+      const picks = all.filter((r) => r.group is "Jump to" or r.group is "Actions")
+      const recent = this.records.filter((r) => r.kind is "server").slice(0, 4)
+      return this.withHeaders(picks.slice(0, 7).concat(recent).concat(picks.slice(7)))
+    }
+
+    const scored = all.map((r) => ({ r: r, s: this.score(r, q) })).filter((x) => x.s > 0)
+    scored.sort((a, b) => b.s - a.s)
+    return this.withHeaders(scored.slice(0, 40).map((x) => x.r))
+  }
+
+action
+  // The app shell (public/app-shell.js). Read through Reflect so the .tyx
+  // typechecker, which doesn't know about it, types it as any.
+  shell() {
+    return Reflect.get(window, "__flux")
+  }
+
+  commands() {
+    return [
+      { id: "go-overview", group: "Jump to", kind: "page", label: "Overview", hint: "Dashboard", keys: "G D", href: "/dashboard" },
+      { id: "go-servers", group: "Jump to", kind: "server", label: "Servers", hint: "Every server and its sites", keys: "G S", href: "/servers" },
+      { id: "go-providers", group: "Jump to", kind: "cloud", label: "Cloud providers", hint: "Accounts, machines, volumes, IPs", keys: "G P", href: "/providers" },
+      { id: "go-domains", group: "Jump to", kind: "domain", label: "Domains", hint: "Registrars, DNS and renewals", keys: "G R", href: "/registrars" },
+      { id: "go-source", group: "Jump to", kind: "code", label: "Source control", hint: "GitHub, GitLab, Bitbucket", keys: "G C", href: "/source-control" },
+      { id: "go-team", group: "Jump to", kind: "team", label: "Team & roles", hint: "Members, invites, activity", keys: "G T", href: "/team" },
+      { id: "go-settings", group: "Jump to", kind: "settings", label: "Settings", hint: "Profile, password, two-factor", keys: "G ,", href: "/settings" },
+      { id: "new-server", group: "Actions", kind: "new", label: "Create a server", hint: "Provision on a connected cloud", href: "/servers/create" },
+      { id: "theme", group: "Actions", kind: "theme", label: "Switch light / dark", hint: "Theme", run: "theme" },
+      { id: "sidebar", group: "Actions", kind: "sidebar", label: "Collapse or expand the sidebar", hint: "Layout", keys: "[", run: "sidebar" },
+      { id: "billing", group: "Actions", kind: "billing", label: "Billing & invoices", hint: "Plan, payments, invoices", href: "/settings/billing" },
+      { id: "password", group: "Actions", kind: "key", label: "Change password", hint: "Signed-in devices too", href: "/settings/password" },
+      { id: "twofactor", group: "Actions", kind: "shield", label: "Two-factor authentication", hint: "Authenticator app or SMS", href: "/settings/two-factor" },
+      { id: "activity", group: "Actions", kind: "activity", label: "Team activity", hint: "Who changed what", href: "/team/activity" },
+      { id: "docs", group: "Help", kind: "docs", label: "Documentation", hint: "Guides for every page", href: "/docs" },
+      { id: "status", group: "Help", kind: "activity", label: "System status", hint: "Uptime and incidents", href: "/status" },
+      { id: "logout", group: "Help", kind: "logout", label: "Sign out", hint: Auth.user ? Auth.user.email : "", run: "logout" }
+    ]
+  }
+
+  // Each group's first row carries the header text.
+  withHeaders(list) {
+    let last = ""
+    return list.map((r) => {
+      const header = r.group is not last ? r.group : ""
+      last = r.group
+      return Object.assign({}, r, { header: header })
+    })
+  }
+
+  // Prefix beats word start beats substring beats letters in order.
+  score(r, q) {
+    const label = String(r.label or "").toLowerCase()
+    const hint = String(r.hint or "").toLowerCase()
+    let s = 0
+    if label is q {
+      s = 120
+    } else if label.startsWith(q) {
+      s = 100
+    } else if (" " + label).includes(" " + q) {
+      s = 70
+    } else if label.includes(q) {
+      s = 50
+    } else if hint.includes(q) {
+      s = 25
+    } else if this.subsequence(label, q) {
+      s = 10
+    }
+    if s > 0 and r.group is "Jump to" {
+      s = s + 5
+    }
+    return s
+  }
+
+  subsequence(text, q) {
+    let i = 0
+    let j = 0
+    while (j < text.length && i < q.length) {
+      if text[j] is q[i] {
+        i = i + 1
+      }
+      j = j + 1
+    }
+    return i is q.length
+  }
+
+  rowCls(i) {
+    const base = "w-full flex items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors "
+    if i is this.active {
+      return base + "bg-zinc-100 dark:bg-white/[0.06]"
+    }
+    return base + "hover:bg-zinc-50 dark:hover:bg-white/[0.03]"
+  }
+
+  tileCls(r) {
+    const base = "w-8 h-8 shrink-0 rounded-lg flex items-center justify-center "
+    if r.kind is "server" or r.kind is "site" {
+      return base + "bg-zinc-900 text-white dark:bg-white/[0.08] dark:text-zinc-100"
+    }
+    if r.kind is "new" {
+      return base + "bg-brand-500 text-white"
+    }
+    if r.kind is "logout" {
+      return base + "bg-brand-500/10 text-brand-600 dark:text-brand-400"
+    }
+    return base + "border border-line bg-sunken text-zinc-500 dark:text-zinc-400"
+  }
+
+  statusDot(r) {
+    if r.status is "online" or r.status is "ready" {
+      return "w-1.5 h-1.5 rounded-full bg-emerald-500"
+    }
+    if r.status is "offline" or r.status is "failed" {
+      return "w-1.5 h-1.5 rounded-full bg-brand-500"
+    }
+    return "w-1.5 h-1.5 rounded-full bg-amber-400"
+  }
+
+  rows(res) {
+    if res.ok and Array.isArray(res.data) {
+      return res.data
+    }
+    if res.ok and res.data and Array.isArray(res.data.data) {
+      return res.data.data
+    }
+    return []
+  }
+
+  async loadRecords() {
+    if this.loading or Date.now() - this.loadedAt < 60000 {
+      return null
+    }
+    this.loading = true
+    const all = await Promise.all([
+      useApi("/api/servers"),
+      useApi("/api/sites"),
+      useApi("/api/providers"),
+      useApi("/api/registrars")
+    ])
+    const servers = this.rows(all[0])
+    const sites = this.rows(all[1])
+    const providers = this.rows(all[2])
+    const registrars = this.rows(all[3])
+
+    const serverRows = servers.map((x) => ({ id: "server-" + x.id, group: "Servers", kind: "server", label: x.name or ("Server " + x.id), hint: [x.ip_address or x.ip or "", x.status or ""].filter((y) => y).join(" · "), status: x.status, href: "/servers/server-detail?id=" + x.id }))
+    const siteRows = sites.map((x) => {
+      const host = servers.find((y) => y.id is x.server_id)
+      return { id: "site-" + x.id, group: "Sites", kind: "site", label: x.domain or ("Site " + x.id), hint: [host ? host.name : "", x.type or ""].filter((y) => y).join(" · "), status: x.status, href: "/servers/site-detail?id=" + x.id }
+    })
+    const providerRows = providers.map((x) => ({ id: "provider-" + x.id, group: "Cloud accounts", kind: "cloud", label: x.label or x.kind, hint: x.kind or "", status: "", href: "/providers/provider-detail?id=" + x.id }))
+    const registrarRows = registrars.map((x) => ({ id: "registrar-" + x.id, group: "Registrars", kind: "domain", label: x.label or x.kind, hint: x.kind or "", status: "", href: "/registrars/registrar-domains?id=" + x.id }))
+    const list = serverRows.concat(siteRows).concat(providerRows).concat(registrarRows)
+    this.records = list
+    this.loadedAt = Date.now()
+    this.loading = false
+  }
+
+  show() {
+    if this.open {
+      this.focusInput()
+      return null
+    }
+    this.lastFocus = document.activeElement
+    this.query = ""
+    this.active = 0
+    this.open = true
+    this.focusInput()
+    this.loadRecords()
+  }
+
+  hide() {
+    this.open = false
+    const back = this.lastFocus
+    this.lastFocus = null
+    if back and back.focus {
+      try {
+        back.focus()
+      } catch (err) {
+        // The element is gone (the page changed); focus stays on the body.
+      }
+    }
+  }
+
+  toggle() {
+    if this.open {
+      this.hide()
+    } else {
+      this.show()
+    }
+  }
+
+  focusInput() {
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById("flux-palette-input")
+      if el {
+        el.focus()
+      }
+    })
+  }
+
+  onInput() {
+    this.active = 0
+  }
+
+  move(delta) {
+    const n = this.results.length
+    if n is 0 {
+      return null
+    }
+    this.active = (this.active + delta + n) % n
+    window.requestAnimationFrame(() => {
+      const row = document.getElementById("flux-pal-" + this.active)
+      if row {
+        row.scrollIntoView({ block: "nearest" })
+      }
+    })
+  }
+
+  onKey(e) {
+    if e.key is "ArrowDown" or (e.key is "Tab" and not e.shiftKey) {
+      e.preventDefault()
+      this.move(1)
+    } else if e.key is "ArrowUp" or (e.key is "Tab" and e.shiftKey) {
+      e.preventDefault()
+      this.move(-1)
+    } else if e.key is "Enter" {
+      e.preventDefault()
+      const r = this.results[this.active]
+      if r {
+        this.run(r)
+      }
+    } else if e.key is "Escape" {
+      e.preventDefault()
+      this.hide()
+    }
+  }
+
+  run(r) {
+    this.open = false
+    this.lastFocus = null
+    const flux = this.shell()
+    if r.run is "theme" {
+      if flux {
+        flux.theme()
+      }
+      return null
+    }
+    if r.run is "sidebar" {
+      if flux {
+        flux.sidebar()
+      }
+      return null
+    }
+    if r.run is "logout" {
+      Auth.logout().catch((err) => console.error("logout failed:", err))
+      return null
+    }
+    if r.href {
+      if flux {
+        flux.navigate(r.href)
+      } else {
+        window.location.href = r.href
+      }
+    }
+  }
+
+  typing(e) {
+    const t = e.target
+    if not t or not t.tagName {
+      return false
+    }
+    return t.tagName is "INPUT" or t.tagName is "TEXTAREA" or t.tagName is "SELECT" or t.isContentEditable
+  }
+
+onMount
+  async {
+    const flux = this.shell()
+    if not flux {
+      return null
+    }
+    flux.on(document, "keydown", (e) => {
+      const k = String(e.key or "").toLowerCase()
+      const mod = e.metaKey or e.ctrlKey
+      if mod and k is "k" {
+        e.preventDefault()
+        this.toggle()
+      } else if k is "/" and not this.open and not this.typing(e) and not e.metaKey and not e.ctrlKey {
+        e.preventDefault()
+        this.show()
+      }
+    })
+    flux.on(window, "flux:palette", () => this.show())
+    flux.on(window, "flux:navigated", () => {
+      this.loadedAt = 0
+    })
+  }
+
+template
+<div class="contents">
+{{#if open}}
+<div class="fixed inset-0 z-[85] flex items-start justify-center px-3 sm:px-4 pt-[8vh] sm:pt-[12vh]" role="dialog" aria-modal="true" aria-label="Search and commands">
+  <button onclick="{{ hide() }}" tabindex="-1" aria-label="Close" class="absolute inset-0 w-full h-full bg-black/50 backdrop-blur-[3px] cursor-default"></button>
+  <div class="relative w-full max-w-[640px] rounded-2xl border border-line bg-panel shadow-pop overflow-hidden animate-flux-in">
+    <div class="flex items-center gap-3 px-4 h-14 border-b border-line">
+      <IconSearch class="w-5 h-5 shrink-0 text-zinc-400" />
+      <input id="flux-palette-input" type="text" bind:value="{{ query }}" oninput="{{ onInput() }}" onkeydown="{{ onKey($event) }}" placeholder="Search servers, sites, pages and actions…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="flux-pal-list" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 text-[15px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500" />
+{{#if loading}}
+      <span class="w-4 h-4 shrink-0 rounded-full border-2 border-zinc-300 dark:border-zinc-700 border-t-brand-500 animate-spin" aria-hidden="true"></span>
+{{/if}}
+      <button onclick="{{ hide() }}" class="flux-kbd hover:text-zinc-900 dark:hover:text-zinc-100">Esc</button>
+    </div>
+
+    <div id="flux-pal-list" role="listbox" class="max-h-[min(60vh,480px)] overflow-y-auto overscroll-contain p-2">
+{{#each r, i in results}}
+{{#if r.header}}
+      <p class="px-3 pt-3 pb-1.5 flux-eyebrow">{{ r.header }}</p>
+{{/if}}
+      <button id="{{ 'flux-pal-' + i }}" role="option" aria-selected="{{ i is active }}" onclick="{{ run(r) }}" onmousemove="{{ active = i }}" class="{{ rowCls(i) }}">
+        <span class="{{ tileCls(r) }}">
+{{#if r.kind is "server"}}<IconServer class="w-4 h-4" />{{/if}}
+{{#if r.kind is "site"}}<IconGlobe class="w-4 h-4" />{{/if}}
+{{#if r.kind is "cloud"}}<IconCloud class="w-4 h-4" />{{/if}}
+{{#if r.kind is "domain"}}<IconGlobe class="w-4 h-4" />{{/if}}
+{{#if r.kind is "page"}}<IconLayoutDashboard class="w-4 h-4" />{{/if}}
+{{#if r.kind is "code"}}<IconCode class="w-4 h-4" />{{/if}}
+{{#if r.kind is "team"}}<IconUsers class="w-4 h-4" />{{/if}}
+{{#if r.kind is "settings"}}<IconCog class="w-4 h-4" />{{/if}}
+{{#if r.kind is "new"}}<IconPlus class="w-4 h-4" />{{/if}}
+{{#if r.kind is "theme"}}<IconSun class="w-4 h-4" />{{/if}}
+{{#if r.kind is "sidebar"}}<IconSidebar class="w-4 h-4" />{{/if}}
+{{#if r.kind is "billing"}}<IconReceiptTax class="w-4 h-4" />{{/if}}
+{{#if r.kind is "key"}}<IconKeyRound class="w-4 h-4" />{{/if}}
+{{#if r.kind is "shield"}}<IconShieldCheck class="w-4 h-4" />{{/if}}
+{{#if r.kind is "activity"}}<IconActivity class="w-4 h-4" />{{/if}}
+{{#if r.kind is "docs"}}<IconBookOpen class="w-4 h-4" />{{/if}}
+{{#if r.kind is "logout"}}<IconLogout class="w-4 h-4" />{{/if}}
+        </span>
+        <span class="flex-1 min-w-0">
+          <span class="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            <span class="truncate">{{ r.label }}</span>
+{{#if r.status}}
+            <span class="{{ statusDot(r) }}"></span>
+{{/if}}
+          </span>
+{{#if r.hint}}
+          <span class="block truncate text-xs text-zinc-500 mt-px">{{ r.hint }}</span>
+{{/if}}
+        </span>
+{{#if r.keys}}
+        <span class="flux-kbd shrink-0">{{ r.keys }}</span>
+{{/if}}
+{{#if i is active}}
+        <IconArrowRight class="w-4 h-4 shrink-0 text-zinc-400" />
+{{/if}}
+      </button>
+{{#else}}
+      <div class="px-3 py-12 text-center">
+        <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Nothing matches “{{ query }}”</p>
+        <p class="text-xs text-zinc-500 mt-1">Try a server name, a domain or a page.</p>
+      </div>
+{{/each}}
+    </div>
+
+    <div class="hidden sm:flex items-center gap-4 px-4 h-10 border-t border-line text-[11px] text-zinc-500">
+      <span class="inline-flex items-center gap-1.5"><span class="flux-kbd">↑</span><span class="flux-kbd">↓</span> move</span>
+      <span class="inline-flex items-center gap-1.5"><span class="flux-kbd">↵</span> open</span>
+      <span class="inline-flex items-center gap-1.5"><span class="flux-kbd">G</span> then a letter jumps anywhere</span>
+      <span class="ml-auto inline-flex items-center gap-1.5"><IconBolt class="w-3.5 h-3.5 text-brand-500" /> Tylix Flux</span>
+    </div>
+  </div>
+</div>
+{{/if}}
+</div>

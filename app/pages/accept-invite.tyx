@@ -100,7 +100,7 @@ template
       <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Log in to continue</h1>
       <p class="text-slate-500 text-sm mb-6">Log in or register with the email address this invitation was sent to. You'll come back here automatically.</p>
       <div class="flex items-center gap-3">
-        <a href="/login" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Log in</a>
+        <a href="/login" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Log in</a>
         <a href="/register" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">Register</a>
       </div>
 {{/if}}
@@ -117,7 +117,7 @@ template
 
 {{#if alreadyMember}}
       <p class="text-slate-600 dark:text-slate-300 text-sm mb-6">You're already on this team.</p>
-      <a href="/settings/team" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Open the team</a>
+      <a href="/settings/team" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Open the team</a>
 {{/if}}
 
 {{#if not alreadyMember}}
@@ -164,12 +164,12 @@ template
 {{/if}}
 
 {{#if busy}}
-      <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Joining…</button>
+      <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Joining…</button>
 {{/if}}
 {{#if not busy}}
 {{#if confirmed}}
 {{#if conflicts.length is 0}}
-      <button onclick="{{ accept() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Join team</button>
+      <button onclick="{{ accept() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Join team</button>
 {{/if}}
 {{/if}}
 {{/if}}

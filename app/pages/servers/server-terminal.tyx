@@ -116,7 +116,7 @@ action
 
   dotClass(status) {
     if status is "online" {
-      return "bg-brand-500"
+      return "bg-emerald-500"
     }
     if status is "offline" {
       return "bg-rose-500"
@@ -125,7 +125,7 @@ action
   }
 
   buildChips() {
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
     const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-brand-500/50 transition-all"
 
     this.chips = Servers.data.map((s) => ({
@@ -511,9 +511,9 @@ action
       theme: {
         background: "rgba(2, 6, 23, 0)",
         foreground: "#e2e8f0",
-        cursor: "#f97316",
+        cursor: "#e0393f",
         cursorAccent: "#020617",
-        selectionBackground: "#f9731640",
+        selectionBackground: "#e0393f40",
         black: "#0f172a",
         red: "#f43f5e",
         green: "#10b981",
@@ -642,8 +642,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <ServerSidebar active="terminal" serverId="{{ serverId }}" />
     <div class="min-w-0">
     <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
@@ -655,14 +654,14 @@ template
       <LockedBanner />
 
       <div class="mb-6">
-        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-2">Terminal</h1>
+        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 mb-2">Terminal</h1>
         <p class="text-slate-500 text-sm">Open a shell on any of your servers. Switching servers ends the current session.</p>
       </div>
 
 {{#if chips.length is 0}}
       <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-8 text-center mb-6">
         <p class="text-slate-500 text-sm mb-3">No servers yet. Add one to open a terminal on it.</p>
-        <a href="/servers" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">Add a server</a>
+        <a href="/servers" class="inline-flex text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">Add a server</a>
       </div>
 {{/if}}
 
@@ -702,7 +701,7 @@ template
           <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/80">
             <div class="flex items-center gap-3 min-w-0">
 {{#if phase is "connected"}}
-              <span class="w-2.5 h-2.5 rounded-full bg-brand-500 shrink-0"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
 {{/if}}
 {{#if phase is "connecting"}}
               <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
@@ -724,7 +723,7 @@ template
               <p class="text-slate-500 text-sm">No server selected</p>
 {{/if}}
 {{#if phase is "connected"}}
-              <span class="hidden sm:inline-flex items-center rounded-full bg-brand-500/10 text-brand-400 text-xs font-medium px-2.5 py-0.5">Connected</span>
+              <span class="hidden sm:inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">Connected</span>
 {{/if}}
 {{#if phase is "connecting"}}
               <span class="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">Connecting</span>
@@ -760,7 +759,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ connect() }}" class="text-xs bg-brand-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-brand-400 transition-all">Reconnect</button>
+              <button onclick="{{ connect() }}" class="text-xs bg-brand-500 text-white font-semibold rounded-full px-4 py-1.5 hover:bg-brand-400 transition-all">Reconnect</button>
 {{/if}}
 {{/if}}
               <button onclick="{{ toggleExpand() }}" title="Expand or collapse (Esc to exit)" aria-label="Toggle expanded terminal" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-brand-500/60 rounded-full px-3 py-1.5 transition-colors">
@@ -812,7 +811,7 @@ template
                 </button>
 {{/if}}
 {{#if not Billing.locked}}
-                <button onclick="{{ connect() }}" class="text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Connect</button>
+                <button onclick="{{ connect() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Connect</button>
 {{/if}}
 {{/if}}
 {{#if not server}}
@@ -842,7 +841,7 @@ template
                 <p class="text-brand-400 text-xs mt-2">{{ smsNote }}</p>
 {{/if}}
                 <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
-                  <button onclick="{{ submitCode() }}" class="text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-brand-400 transition-all">Verify and connect</button>
+                  <button onclick="{{ submitCode() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-brand-400 transition-all">Verify and connect</button>
                   <button onclick="{{ cancelCode() }}" class="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-full px-4 py-2 transition-colors">Cancel</button>
                 </div>
 {{#if hasSms}}

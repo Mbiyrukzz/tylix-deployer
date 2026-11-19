@@ -340,8 +340,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="databases" serverId="{{ serverId }}" />
 {{/if}}
@@ -367,7 +366,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Databases</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 mb-1">Databases</h1>
       <p class="text-slate-500 text-sm mb-8">MySQL users and databases on this server. Create a user first, then a database owned by that user.</p>
 
 {{#if actionError}}
@@ -392,7 +391,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ openModal('user') }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create user</button>
+          <button onclick="{{ openModal('user') }}" class="shrink-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create user</button>
 {{/if}}
         </div>
 
@@ -454,7 +453,7 @@ template
             <p class="text-slate-500 text-sm mt-1">Use "Connection details" to copy the values for a site's .env.</p>
           </div>
 {{#if users.length is 0}}
-          <button disabled class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Create database</button>
+          <button disabled class="shrink-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 opacity-50">Create database</button>
 {{/if}}
 {{#if users.length is not 0}}
 {{#if Billing.locked}}
@@ -467,7 +466,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ openModal('database') }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create database</button>
+          <button onclick="{{ openModal('database') }}" class="shrink-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create database</button>
 {{/if}}
 {{/if}}
         </div>
@@ -554,7 +553,7 @@ template
           <div class="flex items-center justify-end gap-3">
             <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{#if busy}}
-            <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
+            <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -567,7 +566,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ createUser() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create user</button>
+            <button onclick="{{ createUser() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create user</button>
 {{/if}}
 {{/if}}
           </div>
@@ -638,7 +637,7 @@ template
           <div class="flex items-center justify-end gap-3">
             <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{#if busy}}
-            <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
+            <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -651,7 +650,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ createDatabase() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create database</button>
+            <button onclick="{{ createDatabase() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Create database</button>
 {{/if}}
 {{/if}}
           </div>
@@ -698,7 +697,7 @@ template
 {{/if}}
             <div class="flex items-center gap-3">
               <button onclick="{{ copy(credsPass) }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Copy password</button>
-              <button onclick="{{ copy(envText) }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Copy .env</button>
+              <button onclick="{{ copy(envText) }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Copy .env</button>
             </div>
           </div>
         </div>

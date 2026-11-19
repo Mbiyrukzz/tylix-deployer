@@ -23,7 +23,7 @@ state
   hasPrev: false
   hasNext: false
   rangeText: ""
-  panelCls: "rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden"
+  panelCls: "rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden"
 
 action
   ago(iso) {
@@ -124,7 +124,7 @@ action
     this.canDelete = d.can_delete
     this.retention = d.retention.label
 
-    const panelBase = "rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden"
+    const panelBase = "rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden"
     if d.scope is "self" {
       this.panelCls = panelBase + " lg:col-span-2"
     } else {
@@ -264,15 +264,14 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_1fr] bg-page transition-colors">
-    <Sidebar active="team" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <TeamSidebar active="activity" />
     <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <div class="space-y-4">
-        <div class="h-40 rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-40 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
           <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
@@ -283,11 +282,10 @@ template
 
 {{#if not loading}}
 
-      <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">
-        <div class="h-20 bg-gradient-to-r from-brand-500/25 via-brand-500/10 to-transparent"></div>
-        <div class="px-6 sm:px-8 pb-6 -mt-10">
-          <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-            <span class="w-20 h-20 shrink-0 rounded-2xl bg-brand-500 text-white flex items-center justify-center ring-4 ring-white dark:ring-slate-900 shadow-lg">
+      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">
+        <div class="px-6 sm:px-8 py-6">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <span class="w-14 h-14 shrink-0 rounded-2xl bg-brand-500 text-white flex items-center justify-center">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-9 h-9">
                 <circle cx="10" cy="10" r="7.25" />
                 <path d="M10 5.5V10l3 2" stroke-linecap="round" stroke-linejoin="round" />
@@ -295,11 +293,11 @@ template
             </span>
             <div class="min-w-0 flex-1 sm:pb-1">
 {{#if scope is "team"}}
-              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">Team activity</h1>
+              <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">Team activity</h1>
               <p class="text-slate-500 text-sm mt-0.5">Everything members have added to the team.</p>
 {{/if}}
 {{#if scope is "self"}}
-              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">Your activity</h1>
+              <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">Your activity</h1>
               <p class="text-slate-500 text-sm mt-0.5">Everything you've added to the team.</p>
 {{/if}}
             </div>
@@ -310,22 +308,22 @@ template
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Total actions</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ totalText }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ totalText }}</p>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Viewing</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ selectedName }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ selectedName }}</p>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Members</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ memberCount }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ memberCount }}</p>
         </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
 
 {{#if scope is "team"}}
-        <div class="rounded-3xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between px-3 pt-2 pb-3">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm">Filter by member</h2>
 {{#if userId}}

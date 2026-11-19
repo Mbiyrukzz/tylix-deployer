@@ -30,8 +30,8 @@ onMount
 
 template
   <main class="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-    <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Tylix Deploy</p>
-    <h1 class="text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-2">Changelog</h1>
+    <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Tylix Flux</p>
+    <h1 class="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-2">Changelog</h1>
     <p class="text-sm text-zinc-500 mb-10">New features, improvements and fixes.</p>
 
 {{#if loading}}

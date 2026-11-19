@@ -8,11 +8,11 @@ props
 
 state
   collapsed: false
-  asideCls: "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:p-5"
+  asideCls: "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:p-5"
   topCls: "hidden lg:flex items-center justify-between gap-2 mb-5"
   titleCls: "min-w-0"
   btnCls: "flex items-center justify-center w-6 h-6 shrink-0 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/70 dark:hover:bg-white/[0.06] transition-colors"
-  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-900 dark:text-white text-sm font-medium"
   offCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
   disCls: "shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
   badgeCls: "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
@@ -22,8 +22,8 @@ state
 
 action
   applyLayout() {
-    const asideBase = "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
-    const on = "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+    const asideBase = "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
+    const on = "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-900 dark:text-white text-sm font-medium"
     const off = "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
     const dis = "shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 dark:text-slate-600 text-sm cursor-not-allowed select-none"
     const badge = "ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-line text-slate-400 dark:text-slate-600"
@@ -76,7 +76,7 @@ template
 
   <div class="{{ topCls }}">
     <div class="flex items-center gap-3 min-w-0">
-      <span class="w-9 h-9 shrink-0 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm">
+      <span class="w-9 h-9 shrink-0 rounded-xl border border-line bg-panel text-brand-500 flex items-center justify-center">
         <IconServer class="w-5 h-5" />
       </span>
       <div class="{{ titleCls }}">

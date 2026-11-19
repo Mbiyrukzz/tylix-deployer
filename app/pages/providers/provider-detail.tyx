@@ -71,7 +71,7 @@ state
   hasTransfer: false
   transferText: ""
   transferPct: 0
-  transferColor: "#f97316"
+  transferColor: "#10b981"
   transferDash: "0 226.2"
   notices: []
   noticesClear: false
@@ -266,7 +266,7 @@ action
         this.hasTransfer = true
         this.transferText = used + " of " + quota + " GB"
         this.transferPct = pct
-        this.transferColor = this.toneColor(pct, "#f97316")
+        this.transferColor = this.toneColor(pct, "#10b981")
         this.transferDash = Math.min(226.2, Math.round(pct * 2.262 * 10) / 10) + " 226.2"
       }
     }
@@ -374,8 +374,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-  <Sidebar active="providers" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
   <ProviderSidebar active="overview" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -399,7 +398,7 @@ template
         <div class="flex items-center gap-4 min-w-0">
           <span class="{{ tileClass }}">{{ tileLetter }}</span>
           <div class="min-w-0">
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ provider.label }}</h1>
+            <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ provider.label }}</h1>
             <p class="text-slate-500 text-sm">{{ kindName }} · connected {{ provider.created_at.slice(0, 10) }}</p>
 {{#if summaryReady}}
             <p class="text-slate-500 text-xs mt-0.5">{{ summaryLine }}</p>
@@ -416,7 +415,7 @@ template
         </button>
 {{/if}}
 {{#if not Billing.locked}}
-        <a href="{{ createHref }}" class="inline-flex items-center shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</a>
+        <a href="{{ createHref }}" class="inline-flex items-center shrink-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</a>
 {{/if}}
       </div>
 
@@ -566,7 +565,7 @@ template
           <div class="relative w-32 h-32 mx-auto mb-5">
             <svg viewBox="0 0 100 100" class="w-32 h-32">
               <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#f97316" stroke-width="10" stroke-dasharray="{{ mRunDash }}" stroke-dashoffset="{{ mRunOff }}" transform="rotate(-90 50 50)" />
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="{{ mRunDash }}" stroke-dashoffset="{{ mRunOff }}" transform="rotate(-90 50 50)" />
               <circle cx="50" cy="50" r="36" fill="none" stroke="#94a3b8" stroke-width="10" stroke-dasharray="{{ mOffDash }}" stroke-dashoffset="{{ mOffOff }}" transform="rotate(-90 50 50)" />
               <circle cx="50" cy="50" r="36" fill="none" stroke="#f59e0b" stroke-width="10" stroke-dasharray="{{ mOthDash }}" stroke-dashoffset="{{ mOthOff }}" transform="rotate(-90 50 50)" />
             </svg>
@@ -577,7 +576,7 @@ template
           </div>
           <div class="space-y-1.5">
             <div class="flex items-center justify-between text-xs">
-              <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-brand-500"></span> Running</span>
+              <span class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Running</span>
               <span class="font-mono text-slate-900 dark:text-slate-100">{{ runningCount }}</span>
             </div>
             <div class="flex items-center justify-between text-xs">
@@ -599,7 +598,7 @@ template
           <div class="relative w-32 h-32 mx-auto mb-5">
             <svg viewBox="0 0 100 100" class="w-32 h-32">
               <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#f97316" stroke-width="10" stroke-dasharray="{{ vAttDash }}" stroke-dashoffset="{{ vAttOff }}" transform="rotate(-90 50 50)" />
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="{{ vAttDash }}" stroke-dashoffset="{{ vAttOff }}" transform="rotate(-90 50 50)" />
               <circle cx="50" cy="50" r="36" fill="none" stroke="#f59e0b" stroke-width="10" stroke-dasharray="{{ vFreeDash }}" stroke-dashoffset="{{ vFreeOff }}" transform="rotate(-90 50 50)" />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
@@ -742,7 +741,7 @@ template
         </button>
 {{/if}}
 {{#if not Billing.locked}}
-        <a href="{{ createHref }}" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 hover:bg-brand-400 transition-all">Create the first one</a>
+        <a href="{{ createHref }}" class="inline-flex text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 hover:bg-brand-400 transition-all">Create the first one</a>
 {{/if}}
       </div>
 {{/if}}
@@ -765,8 +764,8 @@ template
             </div>
             <div class="text-right shrink-0">
 {{#if pr.status is "done"}}
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-                <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Ready
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
               </span>
 {{/if}}
 {{#if pr.status is "failed"}}

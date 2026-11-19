@@ -1,15 +1,14 @@
 page Dashboard
 
-import { IconDatabase, IconUser, IconFolder, IconMail, IconCloud, IconCube, IconExclamationTriangle } from "tylix-icons"
+import { IconServer, IconGlobe, IconPlus, IconArrowUpRight, IconGitCommit, IconMail, IconRocket } from "tylix-icons"
 
-title "Dashboard"
+title "Overview"
 
 needs
   Auth
 
 uses
   Servers
-  Provisions
   Providers
   Registrars
   Mail
@@ -21,60 +20,68 @@ background
   Mail
   Billing
 
-meta
-  transition "fade"
-
 state
   checkedAuth: false
   greeting: ""
+  firstName: ""
   todayText: ""
+  summary: ""
+
   fleet: []
   recentSites: []
+  attention: []
   baseAttention: []
   domainItems: []
-  attention: []
-  hasAttention: false
   newSiteHref: "/servers"
+
+  totalServers: 0
   onlineCount: 0
   offlineCount: 0
   pendingCount: 0
-  totalServers: 0
   siteCount: 0
   readyCount: 0
   buildingCount: 0
   failedCount: 0
-  healthState: "empty"
-  healthText: ""
-  sOnDash: "0 226.2"
-  sOnOff: "0"
-  sOffDash: "0 226.2"
-  sOffOff: "0"
-  sPenDash: "0 226.2"
-  sPenOff: "0"
-  readyStyle: "width: 0%"
-  buildStyle: "width: 0%"
-  failStyle: "width: 0%"
-  stepsDone: 0
-  setupDone: false
-  progressStyle: "width: 0%"
-  step1: false
-  step2: false
-  step3: false
+
+  range: "weekly"
+  chartReady: false
+  chartFailed: false
+  bars: []
+  yTicks: []
+  deployTotal: 0
+  deltaText: ""
+  deltaUp: true
+  hasDelta: false
+  compareText: ""
+  inProgress: 0
+  recentDeploys: []
+  focusIndex: -1
+  hoverIndex: -1
+
+  donut: []
+
   cloudReady: false
-  providerCount: 0
   providerCards: []
   domainsReady: false
   registrarCount: 0
-  registrarCards: []
   domainCount: 0
   domainsShown: []
   expiringCount: 0
   expiredCount: 0
-  showAllDomains: false
   teamReady: false
   teamCount: 0
-  teamStaff: 0
   teamMembers: []
+
+  step1: false
+  step2: false
+  step3: false
+  stepsDone: 0
+  setupDone: false
+
+computed
+  shownFocus() {
+    return this.hoverIndex >= 0 ? this.hoverIndex : this.focusIndex
+  }
 
 action
   plural(n, word) {
@@ -86,183 +93,284 @@ action
 
   typeLabel(t) {
     const labels = [
-      ["tylix", "Tylix"],
-      ["laravel", "Laravel"],
-      ["php", "PHP"],
-      ["nodejs", "Node.js"],
-      ["nextjs", "Next.js"],
-      ["wordpress", "WordPress"],
-      ["mern", "MERN"],
-      ["angular", "Angular"],
-      ["fastapi", "FastAPI"],
-      ["django", "Django"],
-      ["java", "Java"],
-      ["go", "Go"],
-      ["ruby", "Ruby"],
-      ["dotnet", ".NET"],
-      ["rust", "Rust"],
-      ["static", "Static"]
+      ["tylix", "Tylix"], ["laravel", "Laravel"], ["php", "PHP"], ["nodejs", "Node.js"], ["nextjs", "Next.js"],
+      ["wordpress", "WordPress"], ["mern", "MERN"], ["angular", "Angular"], ["fastapi", "FastAPI"], ["django", "Django"],
+      ["java", "Java"], ["go", "Go"], ["ruby", "Ruby"], ["dotnet", ".NET"], ["rust", "Rust"], ["static", "Static"]
     ]
     const hit = labels.find((l) => l[0] is t)
-    return hit ? hit[1] : t
+    return hit ? hit[1] : (t or "App")
   }
 
-  siteHref(id) {
-    return "/servers/site-detail?id=" + id
-  }
-
-  // Length of one donut segment, out of a ring that is 226.2 long.
-  arcDash(v, total) {
-    if total is 0 {
-      return "0 226.2"
-    }
-    return (Math.round(v / total * 2262) / 10) + " 226.2"
-  }
-
-  // Where a segment starts: minus everything drawn before it.
-  arcOffset(v, total) {
-    if total is 0 {
-      return "0"
-    }
-    return "-" + (Math.round(v / total * 2262) / 10)
-  }
-
-  rowsOf(res) {
+  rows(res) {
     if res.ok and Array.isArray(res.data) {
       return res.data
     }
-    return []
-  }
-
-  // Like rowsOf, but also accepts { domains: [...] }.
-  listOf(res) {
-    if not res.ok {
-      return []
-    }
-    if Array.isArray(res.data) {
-      return res.data
-    }
-    if res.data and Array.isArray(res.data.domains) {
-      return res.data.domains
+    if res.ok and res.data and Array.isArray(res.data.data) {
+      return res.data.data
     }
     return []
   }
 
-  // Flips the domain list between 5 rows and all rows.
-  toggleDomains() {
-    this.showAllDomains = this.showAllDomains ? false : true
+  // Two letters for a project tile: "mailinflow.com" -> "MA", "api.regilient.com" -> "RE".
+  monogram(domain) {
+    const parts = String(domain or "?").split(".").filter((p) => p.length > 0)
+    let word = parts[0] or "?"
+    const generic = word is "www" or word is "api" or word is "app" or word is "docs"
+    if generic and parts.length > 2 {
+      word = parts[1]
+    }
+    return word.slice(0, 2).toUpperCase()
   }
 
-  decorateServer(s, sites) {
-    const n = sites.filter((x) => x.server_id is s.id).length
-    return Object.assign({}, s, {
-      href: "/servers/server-detail?id=" + s.id,
-      siteLabel: this.plural(n, "site")
+  tileTone(i) {
+    const tones = [
+      "bg-emerald-300 text-emerald-950",
+      "bg-sky-300 text-sky-950",
+      "bg-amber-300 text-amber-950",
+      "bg-pink-300 text-pink-950",
+      "bg-violet-300 text-violet-950",
+      "bg-lime-300 text-lime-950"
+    ]
+    return tones[i % tones.length]
+  }
+
+  sitePill(status) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset "
+    if status is "ready" {
+      return { text: "Ready", cls: base + "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20", dot: "w-1.5 h-1.5 rounded-full bg-emerald-500" }
+    }
+    if status is "failed" {
+      return { text: "Failed", cls: base + "bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-brand-500/20", dot: "w-1.5 h-1.5 rounded-full bg-brand-500" }
+    }
+    return { text: "Building", cls: base + "bg-amber-400/10 text-amber-600 dark:text-amber-300 ring-amber-400/25", dot: "w-1.5 h-1.5 rounded-full bg-amber-400 animate-flux-pulse" }
+  }
+
+  deployPill(status) {
+    const base = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset "
+    if status is "success" {
+      return { text: "Live", cls: base + "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20" }
+    }
+    if status is "failed" {
+      return { text: "Failed", cls: base + "bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-brand-500/20" }
+    }
+    if status is "cancelled" {
+      return { text: "Cancelled", cls: base + "bg-zinc-500/10 text-zinc-500 ring-zinc-500/20" }
+    }
+    if status is "queued" {
+      return { text: "Queued", cls: base + "bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 ring-zinc-500/20" }
+    }
+    return { text: "Deploying", cls: base + "bg-amber-400/10 text-amber-600 dark:text-amber-300 ring-amber-400/25" }
+  }
+
+  serverDot(status) {
+    if status is "online" {
+      return "w-2 h-2 rounded-full bg-emerald-500"
+    }
+    if status is "offline" {
+      return "w-2 h-2 rounded-full bg-brand-500"
+    }
+    return "w-2 h-2 rounded-full bg-amber-400 animate-flux-pulse"
+  }
+
+  serverLabel(status) {
+    if status is "online" {
+      return "Online"
+    }
+    if status is "offline" {
+      return "Offline"
+    }
+    return "Setting up"
+  }
+
+  ago(value) {
+    if not value {
+      return ""
+    }
+    const raw = String(value)
+    const t = new Date(raw.includes("T") ? raw : raw.replace(" ", "T") + "Z").getTime()
+    if Number.isNaN(t) {
+      return ""
+    }
+    const s = Math.max(0, Math.round((Date.now() - t) / 1000))
+    if s < 60 {
+      return "just now"
+    }
+    if s < 3600 {
+      return Math.round(s / 60) + "m ago"
+    }
+    if s < 86400 {
+      return Math.round(s / 3600) + "h ago"
+    }
+    return Math.round(s / 86400) + "d ago"
+  }
+
+  duration(sec) {
+    if sec is null or sec is undefined {
+      return ""
+    }
+    if sec < 60 {
+      return sec + "s"
+    }
+    return Math.floor(sec / 60) + "m " + String(sec % 60).padStart(2, "0") + "s"
+  }
+
+  // ---------- deployments chart ----------
+
+  rangeBtn(r) {
+    return this.range is r ? "true" : "false"
+  }
+
+  async setRange(r) {
+    if r is this.range and this.chartReady {
+      return null
+    }
+    this.range = r
+    await this.loadChart()
+  }
+
+  // A round top for the y axis that splits into thirds: 3, 6, 9, 12, 24, 48, 72...
+  niceMax(n) {
+    if n <= 3 {
+      return 3
+    }
+    const steps = [3, 6, 9, 12, 15, 24, 30, 36, 48, 60, 72, 90, 120, 150, 240, 300, 480, 600, 900, 1200]
+    const hit = steps.find((c) => c >= n)
+    return hit or Math.ceil(n / 300) * 300
+  }
+
+  barCls(i) {
+    const base = "relative w-full rounded-[10px] transition-[height,background-color] duration-300 "
+    if i is this.shownFocus {
+      return base + "bg-brand-500"
+    }
+    return base + "flux-hatch border border-line"
+  }
+
+  capCls(i) {
+    if i is this.shownFocus {
+      return "absolute top-2 left-1/2 -translate-x-1/2 w-3.5 h-[3px] rounded-full bg-white/80"
+    }
+    return "absolute top-2 left-1/2 -translate-x-1/2 w-3.5 h-[3px] rounded-full bg-zinc-400 dark:bg-zinc-300"
+  }
+
+  labelCls(i) {
+    if i is this.shownFocus {
+      return "text-[11px] font-medium text-zinc-900 dark:text-zinc-100"
+    }
+    return "text-[11px] text-zinc-500"
+  }
+
+  async loadChart() {
+    const res = await useApi("/api/insights/deployments?range=" + this.range)
+    if not res.ok or not res.data or not Array.isArray(res.data.buckets) {
+      this.chartFailed = true
+      this.chartReady = true
+      return null
+    }
+    const d = res.data
+    const top = Math.max(0, ...d.buckets.map((b) => b.total))
+    const max = this.niceMax(top)
+    this.yTicks = [max, Math.round(max * 2 / 3), Math.round(max / 3), 0]
+    this.bars = d.buckets.map((b) => Object.assign({}, b, {
+      style: "height: " + Math.max(b.total > 0 ? 10 : 6, Math.round(b.total / max * 100)) + "%",
+      tip: this.plural(b.total, "deploy") + (b.failed > 0 ? " · " + b.failed + " failed" : "")
+    }))
+    let focus = -1
+    d.buckets.forEach((b, i) => {
+      if b.total > 0 and (focus < 0 or b.total >= d.buckets[focus].total) {
+        focus = i
+      }
+    })
+    this.focusIndex = focus
+    this.hoverIndex = -1
+    this.deployTotal = d.total
+    this.inProgress = d.in_progress or 0
+
+    const prev = d.previous_total or 0
+    this.hasDelta = prev > 0
+    if prev > 0 {
+      const pct = Math.round((d.total - prev) / prev * 1000) / 10
+      this.deltaUp = pct >= 0
+      this.deltaText = (pct >= 0 ? "▲ " : "▼ ") + Math.abs(pct) + "%"
+    }
+    let period = "previous 12 weeks"
+    if this.range is "daily" {
+      period = "previous 14 days"
+    } else if this.range is "monthly" {
+      period = "previous 12 months"
+    }
+    const parts = ["vs " + prev + " in the " + period]
+    if typeof d.success_rate is "number" {
+      parts.push(d.success_rate + "% succeeded")
+    }
+    this.compareText = parts.join(" · ")
+
+    this.recentDeploys = (d.recent or []).slice(0, 6).map((x) => Object.assign({}, x, {
+      pill: this.deployPill(x.status),
+      when: this.ago(x.created_at),
+      took: this.duration(x.duration_seconds),
+      title: x.commit_message or ("Deploy of " + (x.branch or "the default branch")),
+      href: "/servers/site-deploy?id=" + x.site_id
+    }))
+    this.chartFailed = false
+    this.chartReady = true
+  }
+
+  // ---------- fleet donut ----------
+
+  buildDonut() {
+    const total = this.totalServers
+    const C = 226.2
+    const gap = total > 1 ? 3 : 0
+    const parts = [
+      { key: "online", label: "Online", value: this.onlineCount, stroke: "#10b981", dot: "bg-emerald-500" },
+      { key: "pending", label: "Setting up", value: this.pendingCount, stroke: "#fbbf24", dot: "bg-amber-400" },
+      { key: "offline", label: "Offline", value: this.offlineCount, stroke: "#e0393f", dot: "bg-brand-500" }
+    ]
+    let offset = 0
+    this.donut = parts.map((p) => {
+      const len = total is 0 ? 0 : p.value / total * C
+      const seg = Object.assign({}, p, {
+        pct: total is 0 ? 0 : Math.round(p.value / total * 100),
+        dash: Math.max(0, len - (p.value > 0 ? gap : 0)) + " " + C,
+        offset: String(-offset),
+        show: p.value > 0
+      })
+      offset = offset + len
+      return seg
     })
   }
 
-  decorateSite(site, servers) {
-    const host = servers.find((x) => x.id is site.server_id)
-    return Object.assign({}, site, {
-      href: this.siteHref(site.id),
-      typeText: this.typeLabel(site.type),
-      serverName: host ? host.name : "Unknown server"
-    })
-  }
+  // ---------- attention ----------
 
-  kindStyle(kind) {
-    let name = "Linode (Akamai)"
-    let letter = "L"
-    let cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-brand-500/10 text-brand-700 dark:text-brand-500"
-
-    if kind is "hetzner" {
-      name = "Hetzner Cloud"
-      letter = "H"
-      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
-    }
-    if kind is "digitalocean" {
-      name = "DigitalOcean"
-      letter = "D"
-      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400"
-    }
-    if kind is "vultr" {
-      name = "Vultr"
-      letter = "V"
-      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400"
-    }
-    if kind is "aws" {
-      name = "Amazon Web Services"
-      letter = "A"
-      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
-    }
-    if kind is "upcloud" {
-      name = "UpCloud"
-      letter = "U"
-      cls = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-    }
-
-    return { name: name, letter: letter, cls: cls }
-  }
-
-  // Merges server and domain attention items into the list the page shows.
   rebuildAttention() {
     const all = this.baseAttention.concat(this.domainItems)
-    this.attention = all.slice(0, 8)
-    this.hasAttention = all.length > 0
-  }
-
-  // Provider cards come from the shared stores. No extra requests.
-  async loadProviders() {
-    await Promise.all([Providers.load(), Provisions.load()])
-
-    const provRows = Provisions.data
-    this.providerCount = Providers.data.length
-    this.providerCards = Providers.data.map((p) => this.decorateProvider(p, provRows))
-    this.cloudReady = true
-  }
-
-  decorateProvider(p, provRows) {
-    const style = this.kindStyle(p.kind)
-    const created = provRows.filter((r) => r.provider_id is p.id and r.has_instance and r.status is not "deleted").length
-
-    return {
-      id: p.id,
-      label: p.label,
-      kindName: style.name,
-      tileLetter: style.letter,
-      tileClass: style.cls,
-      logo: Logos.url(p.kind),
-      href: "/providers/provider-detail?id=" + p.id,
-      createdText: this.plural(created, "server") + " created here"
+    this.attention = all.slice(0, 6)
+    const n = all.length
+    if this.totalServers is 0 {
+      this.summary = "Connect a server to start deploying. It takes about two minutes."
+    } else if n is 0 {
+      this.summary = "Everything is running: " + this.plural(this.onlineCount, "server") + " online and " + this.plural(this.readyCount, "site") + " live."
+    } else {
+      const lead = all.slice(0, 2).map((a) => a.short).join(" and ")
+      const head = n is 1 ? "1 thing needs" : n + " things need"
+      this.summary = head + " you today: " + lead + (n > 2 ? ", and more below." : ".")
     }
   }
 
-  registrarName(kind) {
-    const names = [
-      ["porkbun", "Porkbun"],
-      ["cloudflare", "Cloudflare"],
-      ["godaddy", "GoDaddy"],
-      ["namecheap", "Namecheap"],
-      ["namecom", "Name.com"],
-      ["name_com", "Name.com"],
-      ["dynadot", "Dynadot"],
-      ["route53", "Route 53"],
-      ["spaceship", "Spaceship"]
-    ]
-    const hit = names.find((n) => n[0] is kind)
-    return hit ? hit[1] : kind
-  }
+  // ---------- connections ----------
 
-  registrarTile(i) {
-    const base = "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold "
-    const tones = [
-      "bg-brand-500/10 text-brand-700 dark:text-brand-500",
-      "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-      "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-      "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-      "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-    ]
-    return base + tones[i % tones.length]
+  async loadProviders() {
+    await Providers.load()
+    this.providerCards = Providers.data.slice(0, 4).map((p) => ({
+      id: p.id,
+      label: p.label or p.kind,
+      kind: p.kind,
+      logo: Logos.url(p.kind),
+      letter: String(p.label or p.kind or "?").charAt(0).toUpperCase(),
+      href: "/providers/provider-detail?id=" + p.id
+    }))
+    this.cloudReady = true
   }
 
   daysUntil(raw) {
@@ -276,132 +384,99 @@ action
     return Math.ceil((t - Date.now()) / 86400000)
   }
 
-  // One domain row. A domain with no readable expiry date sorts last.
-  decorateDomain(d, registrarLabel) {
+  decorateDomain(d, registrar) {
     const name = d.name or d.domain or d.domain_name or ""
     const raw = d.expires_at or d.expires or d.expiry or d.expiration_date or d.expiresAt or ""
     const days = this.daysUntil(raw)
-
     let sortDays = 99999
-    let label = "Active"
-    let dayText = "-"
+    let text = "No expiry date"
+    let cls = "text-zinc-500"
     let note = ""
-    let badge = "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
-
     if days is not null {
       sortDays = days
       if days < 0 {
-        label = "Expired"
-        dayText = "Expired " + Math.abs(days) + "d ago"
-        note = "expired " + Math.abs(days) + " days ago"
-        badge = "bg-rose-500/10 text-rose-600 dark:text-rose-500"
+        text = "Expired " + Math.abs(days) + "d ago"
+        cls = "text-brand-600 dark:text-brand-400"
+        note = "expired " + this.plural(Math.abs(days), "day") + " ago"
       } else if days <= 30 {
-        label = "Expiring"
-        dayText = days + " days left"
+        text = days + " days left"
+        cls = "text-amber-600 dark:text-amber-300"
         note = "expires in " + this.plural(days, "day")
-        badge = "bg-yellow-400/10 text-yellow-600 dark:text-yellow-400"
       } else {
-        dayText = days + " days left"
-        badge = "bg-brand-500/10 text-brand-600 dark:text-brand-500"
+        text = days + " days left"
       }
-    } else {
-      label = "No expiry data"
     }
-
-    return {
-      name: name,
-      registrar: registrarLabel,
-      expiresText: raw ? String(raw).slice(0, 10) : "-",
-      days: sortDays,
-      dayText: dayText,
-      label: label,
-      note: note,
-      badge: badge,
-      href: "/registrars"
-    }
+    return { name: name, registrar: registrar, days: sortDays, text: text, cls: cls, note: note }
   }
 
-  async loadRegistrar(r) {
-    const res = await useApi("/api/registrars/" + r.id + "/domains")
-    return { registrar: r, res: res }
-  }
-
-  // One registrar card plus its decorated domain rows.
-  registrarPart(l, i) {
-    const r = l.registrar
-    const name = r.label or this.registrarName(r.kind)
-    const rows = this.listOf(l.res).map((d) => this.decorateDomain(d, name)).filter((d) => d.name is not "")
-
-    return {
-      card: {
-        id: r.id,
-        label: name,
-        tileLetter: String(name).charAt(0).toUpperCase(),
-        tileClass: this.registrarTile(i),
-        logo: Logos.url(r.kind),
-        href: "/registrars",
-        countText: this.plural(rows.length, "domain"),
-        failed: not l.res.ok,
-        expiring: rows.filter((d) => d.days <= 30).length
-      },
-      rows: rows
+  domainRows(res) {
+    if res.ok and Array.isArray(res.data) {
+      return res.data
     }
+    if res.ok and res.data and Array.isArray(res.data.domains) {
+      return res.data.domains
+    }
+    return []
   }
 
-  // The registrar list comes from the Registrars capability.
-  // Only the per-registrar domain lookups still call the API directly.
   async loadDomains() {
     await Registrars.load()
     const list = Registrars.data
     this.registrarCount = list.length
-
     if list.length is 0 {
       this.domainsReady = true
       return null
     }
-
-    const loaded = await Promise.all(list.map((r) => this.loadRegistrar(r)))
-    const parts = loaded.map((l, i) => this.registrarPart(l, i))
-    const rows = parts.reduce((acc, p) => acc.concat(p.rows), [])
-    rows.sort((a, b) => a.days - b.days)
-
-    this.registrarCards = parts.map((p) => p.card)
-    this.domainCount = rows.length
-    this.domainsShown = rows.slice(0, 8)
-    this.expiredCount = rows.filter((d) => d.days < 0).length
-    this.expiringCount = rows.filter((d) => d.days >= 0 and d.days <= 30).length
-    this.domainItems = rows
+    const loaded = await Promise.all(list.map((r) => useApi("/api/registrars/" + r.id + "/domains").then((res) => ({ r: r, res: res }))))
+    const all = loaded.flatMap((l) => {
+      const label = l.r.label or l.r.kind
+      return this.domainRows(l.res).map((d) => this.decorateDomain(d, label)).filter((d) => d.name is not "")
+    })
+    all.sort((a, b) => a.days - b.days)
+    this.domainCount = all.length
+    this.domainsShown = all.slice(0, 5)
+    this.expiredCount = all.filter((d) => d.days < 0).length
+    this.expiringCount = all.filter((d) => d.days >= 0 and d.days <= 30).length
+    this.domainItems = all
       .filter((d) => d.days <= 30)
-      .slice(0, 4)
-      .map((d) => ({ text: d.name + " " + d.note, hint: "Renew it at " + d.registrar, href: d.href }))
+      .slice(0, 3)
+      .map((d) => ({ tone: d.days < 0 ? "error" : "warn", text: d.name + " " + d.note, hint: "Renew at " + d.registrar, short: d.name + " " + d.note, href: "/registrars" }))
     this.rebuildAttention()
     this.domainsReady = true
   }
 
   initial(m) {
-    const source = m.name or m.email or "?"
-    return String(source).charAt(0).toUpperCase()
-  }
-
-  roleText(role) {
-    const r = String(role or "member")
-    return r.charAt(0).toUpperCase() + r.slice(1)
+    return String(m.name or m.email or "?").charAt(0).toUpperCase()
   }
 
   async loadTeam() {
     const res = await useApi("/api/team/members")
-
     if res.ok and res.data and Array.isArray(res.data.members) {
-      const members = res.data.members.map((m) => Object.assign({}, m, {
-        initial: this.initial(m),
-        roleLabel: this.roleText(m.role)
+      this.teamCount = res.data.members.length
+      this.teamMembers = res.data.members.slice(0, 5).map((m) => Object.assign({}, m, {
+        letter: this.initial(m),
+        roleText: String(m.role or "member").charAt(0).toUpperCase() + String(m.role or "member").slice(1)
       }))
-      this.teamCount = members.length
-      this.teamStaff = members.filter((m) => m.role is "owner" or m.role is "admin").length
-      this.teamMembers = members.slice(0, 6)
     }
-
     this.teamReady = true
+  }
+
+  attentionDot(tone) {
+    if tone is "error" {
+      return "mt-1.5 w-2 h-2 shrink-0 rounded-full bg-brand-500"
+    }
+    return "mt-1.5 w-2 h-2 shrink-0 rounded-full bg-amber-400"
+  }
+
+  stepCls(done) {
+    if done {
+      return "w-6 h-6 shrink-0 rounded-full bg-emerald-500 text-white flex items-center justify-center"
+    }
+    return "w-6 h-6 shrink-0 rounded-full border border-line-strong text-zinc-400 flex items-center justify-center text-[11px] font-semibold"
+  }
+
+  progressStyle() {
+    return "width:" + Math.round(this.stepsDone / 3 * 100) + "%"
   }
 
 onMount
@@ -413,7 +488,6 @@ onMount
 
     const now = new Date()
     this.todayText = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
-
     const hour = now.getHours()
     let greeting = "Good evening"
     if hour < 12 {
@@ -422,103 +496,75 @@ onMount
       greeting = "Good afternoon"
     }
     this.greeting = greeting
+    this.firstName = String(Auth.user.name or "").split(" ")[0] or "there"
 
+    const chartLoad = this.loadChart()
     const serversLoad = Servers.load()
     const sitesRes = await useApi("/api/sites")
     await serversLoad
 
     const list = Servers.data
-    let sites = []
-    if sitesRes.ok and Array.isArray(sitesRes.data) {
-      sites = sitesRes.data
-    }
+    const sites = this.rows(sitesRes)
 
-    const total = list.length
-    const online = list.filter((s) => s.status is "online").length
-    const offline = list.filter((s) => s.status is "offline").length
-    const pending = list.filter((s) => s.status is "pending").length
-
-    const ready = sites.filter((x) => x.status is "ready").length
-    const failed = sites.filter((x) => x.status is "failed").length
-    const building = sites.filter((x) => x.status is "creating" or x.status is "pending").length
-
-    this.totalServers = total
-    this.onlineCount = online
-    this.offlineCount = offline
-    this.pendingCount = pending
+    this.totalServers = list.length
+    this.onlineCount = list.filter((s) => s.status is "online").length
+    this.offlineCount = list.filter((s) => s.status is "offline").length
+    this.pendingCount = this.totalServers - this.onlineCount - this.offlineCount
     this.siteCount = sites.length
-    this.readyCount = ready
-    this.failedCount = failed
-    this.buildingCount = building
+    this.readyCount = sites.filter((x) => x.status is "ready").length
+    this.failedCount = sites.filter((x) => x.status is "failed").length
+    this.buildingCount = sites.filter((x) => x.status is "creating" or x.status is "pending" or x.status is "deploying").length
+    this.newSiteHref = list.length is 1 ? "/servers/server-sites?id=" + list[0].id : "/servers"
 
-    if total is 1 {
-      this.newSiteHref = "/servers/server-sites?id=" + list[0].id
-    } else {
-      this.newSiteHref = "/servers"
-    }
-
-    this.fleet = list.map((s) => this.decorateServer(s, sites))
+    this.fleet = list.slice(0, 6).map((s) => ({
+      id: s.id,
+      name: s.name,
+      ip: s.ip_address or s.ip or "",
+      status: s.status,
+      dot: this.serverDot(s.status),
+      label: this.serverLabel(s.status),
+      sites: this.plural(sites.filter((x) => x.server_id is s.id).length, "site"),
+      href: "/servers/server-detail?id=" + s.id
+    }))
 
     Insights.analyze(list, sites)
+    this.buildDonut()
 
-    const sorted = sites.slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-    this.recentSites = sorted.slice(0, 5).map((x) => this.decorateSite(x, list))
+    const byRecent = sites.slice().sort((a, b) => String(b.updated_at or b.created_at or "").localeCompare(String(a.updated_at or a.created_at or "")))
+    this.recentSites = byRecent.slice(0, 5).map((x, i) => {
+      const host = list.find((s) => s.id is x.server_id)
+      return {
+        id: x.id,
+        domain: x.domain,
+        mono: this.monogram(x.domain),
+        tone: this.tileTone(i),
+        meta: this.typeLabel(x.type) + " · " + (host ? host.name : "Unknown server"),
+        pill: this.sitePill(x.status),
+        href: "/servers/site-detail?id=" + x.id
+      }
+    })
 
-    const offlineItems = list
-      .filter((s) => s.status is "offline")
-      .map((s) => ({ text: s.name + " is offline", hint: "Check connectivity", href: "/servers/server-detail?id=" + s.id }))
-    const failedItems = sites
-      .filter((x) => x.status is "failed")
-      .map((x) => ({ text: x.domain + " failed to deploy", hint: "View the deployment log", href: this.siteHref(x.id) }))
-
-    this.baseAttention = offlineItems.concat(failedItems)
+    const offline = list.filter((s) => s.status is "offline").map((s) => ({
+      tone: "error", text: s.name + " is offline", hint: "Check the server's connection", short: s.name + " is offline", href: "/servers/server-detail?id=" + s.id
+    }))
+    const failed = sites.filter((x) => x.status is "failed").map((x) => ({
+      tone: "error", text: x.domain + " failed to deploy", hint: "Open the deployment log", short: x.domain + " failed to deploy", href: "/servers/site-deploy?id=" + x.id
+    }))
+    const building = sites.filter((x) => x.status is "creating" or x.status is "pending").map((x) => ({
+      tone: "warn", text: x.domain + " is being set up", hint: "It goes live on its own", short: "a build in progress on " + x.domain, href: "/servers/site-detail?id=" + x.id
+    }))
+    this.baseAttention = offline.concat(failed).concat(building)
     this.rebuildAttention()
 
-    if total is 0 {
-      this.healthState = "empty"
-      this.healthText = "No servers connected yet"
-    } else if offline + failed > 0 {
-      this.healthState = "warn"
-      this.healthText = this.plural(offline + failed, "issue") + " need attention"
-    } else {
-      this.healthState = "ok"
-      this.healthText = "All systems operational"
-    }
-
-    this.sOnDash = this.arcDash(online, total)
-    this.sOnOff = this.arcOffset(0, total)
-    this.sOffDash = this.arcDash(offline, total)
-    this.sOffOff = this.arcOffset(online, total)
-    this.sPenDash = this.arcDash(pending, total)
-    this.sPenOff = this.arcOffset(online + offline, total)
-
-    if sites.length > 0 {
-      this.readyStyle = "width: " + Math.round(ready / sites.length * 100) + "%"
-      this.buildStyle = "width: " + Math.round(building / sites.length * 100) + "%"
-      this.failStyle = "width: " + Math.round(failed / sites.length * 100) + "%"
-    }
-
-    this.step1 = total > 0
+    this.step1 = this.totalServers > 0
     this.step2 = sites.length > 0
-    this.step3 = ready > 0
+    this.step3 = this.readyCount > 0
+    this.stepsDone = [this.step1, this.step2, this.step3].filter((x) => x).length
+    this.setupDone = this.stepsDone is 3
 
-    let done = 0
-    if this.step1 {
-      done = done + 1
-    }
-    if this.step2 {
-      done = done + 1
-    }
-    if this.step3 {
-      done = done + 1
-    }
-    this.stepsDone = done
-    this.setupDone = done is 3
-    this.progressStyle = "width: " + Math.round((done / 3) * 100) + "%"
-
+    await chartLoad
     this.checkedAuth = true
 
-    // These fill in after the page is already on screen.
     this.loadProviders()
     this.loadDomains()
     this.loadTeam()
@@ -526,810 +572,376 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+<div class="min-w-0 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+  <div class="max-w-[1440px] mx-auto">
 
-    <Sidebar active="overview" />
+    <LockedBanner />
 
-    <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
-    <div class="max-w-[1600px] mx-auto">
-
-      <LockedBanner />
-
-      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-6">
-        <div class="min-w-0">
-          <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3 truncate">{{ todayText }}</p>
-          <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100 break-words">
-            {{ greeting }},
-            <br class="hidden sm:block" />
-            <span class="text-brand-500">{{ Auth.user.name }}</span>
-          </h1>
-          <div class="mt-4 inline-flex items-center gap-2.5 rounded-full border border-stone-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3.5 py-1.5">
-{{#if healthState is "ok"}}
-            <span class="w-2 h-2 shrink-0 rounded-full bg-brand-500"></span>
-{{/if}}
-{{#if healthState is "warn"}}
-            <span class="w-2 h-2 shrink-0 rounded-full bg-yellow-400"></span>
-{{/if}}
-{{#if healthState is "empty"}}
-            <span class="w-2 h-2 shrink-0 rounded-full bg-zinc-400"></span>
-{{/if}}
-            <span class="text-zinc-700 dark:text-zinc-300 text-sm font-medium">{{ healthText }}</span>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
+    <header class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-7">
+      <div class="min-w-0">
+        <p class="flux-eyebrow mb-2">{{ todayText }}</p>
+        <h1 class="text-[26px] sm:text-[30px] leading-tight font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{{ greeting }}, {{ firstName }}</h1>
+        <p class="text-zinc-500 text-sm mt-1.5 max-w-2xl">{{ summary }}</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
 {{#if Billing.locked}}
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-stone-200 dark:bg-white/5 text-zinc-400 border border-stone-300 dark:border-white/10 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            New server
-          </button>
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-stone-200 dark:bg-white/5 text-zinc-400 border border-stone-300 dark:border-white/10 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            New site
-          </button>
+        <span class="inline-flex items-center gap-1.5 h-9 rounded-full border border-line px-4 text-sm text-zinc-500 cursor-not-allowed" title="Pay to continue">New site</span>
+        <span class="inline-flex items-center gap-1.5 h-9 rounded-full border border-line px-4 text-sm text-zinc-500 cursor-not-allowed" title="Pay to continue">Create server</span>
 {{/if}}
 {{#if not Billing.locked}}
-          <a href="/servers" class="inline-flex text-sm text-zinc-700 dark:text-zinc-200 border border-stone-300 dark:border-white/15 rounded-full px-5 py-2.5 hover:bg-white dark:hover:bg-white/5 transition-colors">
-            New server
-          </a>
-          <a href="{{ newSiteHref }}" class="inline-flex text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2.5 hover:bg-brand-400 transition-colors">
-            New site
-          </a>
+        <a href="{{ newSiteHref }}" class="inline-flex items-center gap-1.5 h-9 rounded-full border border-line bg-panel px-4 text-sm font-medium text-zinc-800 dark:text-zinc-200 hover:border-line-strong transition-colors"><IconRocket class="w-4 h-4 text-zinc-400" /> New site</a>
+        <a href="/servers/create" class="inline-flex items-center gap-1.5 h-9 rounded-full bg-brand-500 px-4 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"><IconPlus class="w-4 h-4" /> Create server</a>
 {{/if}}
-        </div>
       </div>
+    </header>
 
-{{#if hasAttention}}
-      <div class="rounded-3xl border border-line bg-panel overflow-hidden mb-4">
-        <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-4">
-          <h2 class="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-            <IconExclamationTriangle class="w-4 h-4 text-yellow-400" /> Needs attention
-          </h2>
-          <span class="text-zinc-500 text-xs hidden sm:inline">Things that stopped working or expire soon</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+{{#if attention.length > 0}}
+    <section aria-label="Needs attention" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
 {{#each item in attention}}
-          <a href="{{ item.href }}" class="flex items-center justify-between gap-4 px-5 sm:px-6 py-3.5 border-t border-stone-100 dark:border-white/5 border-l-2 border-l-yellow-400 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
-            <div class="min-w-0">
-              <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium truncate">{{ item.text }}</p>
-              <p class="text-zinc-500 text-xs mt-0.5 truncate">{{ item.hint }}</p>
-            </div>
-            <span class="text-zinc-400 text-sm shrink-0">&rarr;</span>
-          </a>
+      <a href="{{ item.href }}" class="group flex items-start gap-3 rounded-2xl border border-line bg-panel px-4 py-3.5 hover:border-line-strong transition-colors">
+        <span class="{{ attentionDot(item.tone) }}"></span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ item.text }}</span>
+          <span class="block text-xs text-zinc-500 mt-0.5 truncate">{{ item.hint }}</span>
+        </span>
+        <IconArrowUpRight class="w-4 h-4 shrink-0 text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+      </a>
 {{/each}}
-        </div>
-      </div>
+    </section>
 {{/if}}
 
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
 
-        <div class="relative overflow-hidden xl:col-span-8 rounded-3xl border border-line bg-panel p-5 sm:p-7">
-          <svg class="pointer-events-none absolute inset-0 w-full h-full text-zinc-400/25 dark:text-white/[0.07]" aria-hidden="true">
-            <defs>
-              <pattern id="flowdots" width="22" height="22" patternUnits="userSpaceOnUse">
-                <circle cx="1" cy="1" r="1" fill="currentColor" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#flowdots)" />
-          </svg>
-
-          <div class="relative">
-            <div class="flex items-start justify-between gap-4 mb-6">
-              <div class="min-w-0">
-                <h2 class="text-3xl sm:text-4xl font-light uppercase tracking-wide leading-[1.05] text-zinc-900 dark:text-zinc-100">Fleet<br />flow</h2>
-                <p class="text-zinc-500 text-xs mt-3">Where your servers are put to work.</p>
-              </div>
-{{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="shrink-0 inline-flex items-center gap-2 text-xs bg-stone-100 dark:bg-white/5 text-zinc-400 border border-stone-200 dark:border-white/10 rounded-full px-4 py-2 cursor-not-allowed select-none">
-                Add server
-              </button>
-{{/if}}
-{{#if not Billing.locked}}
-              <a href="/servers" class="shrink-0 inline-flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-200 bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-full px-4 py-2 hover:bg-stone-200 dark:hover:bg-white/10 transition-colors">
-                Add server <span class="text-brand-500">+</span>
-              </a>
-{{/if}}
-            </div>
-
-            <div class="flex flex-col md:flex-row md:items-stretch">
-
-              <div class="flex items-center mb-4 md:mb-0 md:h-[288px] md:w-48 shrink-0">
-                <div class="flex items-stretch h-16 w-full rounded-xl overflow-hidden">
-                  <div class="flex-1 min-w-0 bg-zinc-200 dark:bg-zinc-800 px-4 flex flex-col justify-center">
-                    <p class="text-[11px] uppercase tracking-widest text-zinc-500">Servers</p>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{{ totalServers }} connected</p>
-                  </div>
-                  <div class="w-16 shrink-0 bg-brand-500 flex items-center justify-center text-white">
-                    <IconDatabase class="w-6 h-6" />
-                  </div>
-                </div>
-              </div>
-
-              <svg viewBox="0 0 200 288" preserveAspectRatio="none" class="hidden md:block flex-1 min-w-0 h-[288px]" aria-hidden="true">
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 36, 200 36" stroke-width="{{ siteCount is 0 ? 3 : 10 }}" class="{{ siteCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 108, 200 108" stroke-width="{{ domainCount is 0 ? 3 : 10 }}" class="{{ domainCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 180, 200 180" stroke-width="{{ providerCount is 0 ? 3 : 10 }}" class="{{ providerCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
-                <path vector-effect="non-scaling-stroke" fill="none" d="M0 144 C 100 144, 100 252, 200 252" stroke-width="{{ teamCount is 0 ? 3 : 10 }}" class="{{ teamCount is 0 ? 'stroke-zinc-300 dark:stroke-zinc-700' : 'stroke-brand-500' }}" />
-              </svg>
-
-              <div class="md:w-56 shrink-0 space-y-2 md:space-y-0">
-
-                <a href="/servers" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ siteCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
-                  <div class="min-w-0">
-                    <p class="text-[11px] text-zinc-500">Sites</p>
-                    <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ siteCount }} total</p>
-                    <p class="text-[11px] text-zinc-500">{{ readyCount }} live</p>
-                  </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ siteCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
-                    <span class="h-0.5 w-3.5 rounded-full {{ siteCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
-                  </span>
-                </a>
-
-                <a href="/registrars" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ domainCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
-                  <div class="min-w-0">
-                    <p class="text-[11px] text-zinc-500">Domains</p>
-                    <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ domainCount }} total</p>
-                    <p class="text-[11px] text-zinc-500">{{ expiringCount }} expiring</p>
-                  </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ domainCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
-                    <span class="h-0.5 w-3.5 rounded-full {{ domainCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
-                  </span>
-                </a>
-
-                <a href="/providers" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ providerCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
-                  <div class="min-w-0">
-                    <p class="text-[11px] text-zinc-500">Cloud providers</p>
-                    <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ providerCount }} connected</p>
-                    <p class="text-[11px] text-zinc-500">{{ registrarCount }} registrars</p>
-                  </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ providerCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
-                    <span class="h-0.5 w-3.5 rounded-full {{ providerCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
-                  </span>
-                </a>
-
-                <a href="/team" class="flex items-center justify-between gap-3 md:h-[72px] py-3 md:py-0 pl-4 pr-1 border-l-2 {{ teamCount is 0 ? 'border-zinc-300 dark:border-zinc-700' : 'border-brand-500' }}">
-                  <div class="min-w-0">
-                    <p class="text-[11px] text-zinc-500">Team</p>
-                    <p class="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">{{ teamCount }} members</p>
-                    <p class="text-[11px] text-zinc-500">{{ teamStaff }} owner or admin</p>
-                  </div>
-                  <span class="flex h-6 w-11 shrink-0 items-center justify-center rounded-full {{ teamCount is 0 ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-brand-500' }}">
-                    <span class="h-0.5 w-3.5 rounded-full {{ teamCount is 0 ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-white' }}"></span>
-                  </span>
-                </a>
-
-              </div>
-            </div>
-
-            <div class="mt-6 pt-5 border-t border-line flex flex-wrap items-center gap-x-8 gap-y-3">
-              <div class="flex items-baseline gap-2">
-                <span class="text-4xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">{{ onlineCount }}</span>
-                <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Servers online</span>
-              </div>
-              <div class="hidden sm:block w-px h-8 bg-stone-200 dark:bg-white/[0.08]"></div>
-              <div class="flex items-baseline gap-2">
-                <span class="text-4xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">{{ readyCount }}</span>
-                <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Sites live</span>
-              </div>
-              <p class="text-xs text-zinc-500 sm:ml-auto">{{ healthText }}</p>
-            </div>
+      <section class="xl:col-span-2 rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Deployments across projects</h2>
+          <div class="flux-segmented" role="group" aria-label="Range">
+            <button aria-pressed="{{ rangeBtn('daily') }}" onclick="{{ setRange('daily') }}">Daily</button>
+            <button aria-pressed="{{ rangeBtn('weekly') }}" onclick="{{ setRange('weekly') }}">Weekly</button>
+            <button aria-pressed="{{ rangeBtn('monthly') }}" onclick="{{ setRange('monthly') }}">Monthly</button>
           </div>
         </div>
 
-        <div class="xl:col-span-4 rounded-3xl border border-line bg-panel p-5 sm:p-7 flex flex-col">
-          <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 text-center">Fleet status</h2>
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-5">
+          <p class="text-[40px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ deployTotal }}</p>
+{{#if hasDelta}}
+          <span class="{{ deltaUp ? 'flux-pill bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'flux-pill bg-brand-500/10 text-brand-600 dark:text-brand-400' }}">{{ deltaText }}</span>
+{{/if}}
+          <p class="text-xs text-zinc-500">{{ compareText }}</p>
+{{#if inProgress > 0}}
+          <span class="flux-pill bg-amber-400/10 text-amber-600 dark:text-amber-300"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-flux-pulse"></span>{{ inProgress }} in progress</span>
+{{/if}}
+        </div>
 
-          <div class="relative w-44 h-44 mx-auto my-6">
-            <svg viewBox="0 0 100 100" class="w-44 h-44">
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#71717a" stroke-opacity="0.2" stroke-width="10" />
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#f97316" stroke-width="10" stroke-dasharray="{{ sOnDash }}" stroke-dashoffset="{{ sOnOff }}" transform="rotate(-90 50 50)" />
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#f43f5e" stroke-width="10" stroke-dasharray="{{ sOffDash }}" stroke-dashoffset="{{ sOffOff }}" transform="rotate(-90 50 50)" />
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#facc15" stroke-width="10" stroke-dasharray="{{ sPenDash }}" stroke-dashoffset="{{ sPenOff }}" transform="rotate(-90 50 50)" />
+{{#if chartFailed}}
+        <div class="h-60 mt-6 rounded-xl border border-dashed border-line flex flex-col items-center justify-center text-center px-6">
+          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Deployment history isn't available right now</p>
+          <button onclick="{{ loadChart() }}" class="mt-2 text-sm text-brand-600 dark:text-brand-400 hover:underline">Try again</button>
+        </div>
+{{/if}}
+{{#if not chartFailed}}
+        <div class="relative mt-8 h-64" onmouseleave="{{ hoverIndex = -1 }}">
+          <div class="absolute inset-y-0 left-0 w-8 flex flex-col justify-between pb-6 text-[11px] text-zinc-500 tabular-nums">
+{{#each t in yTicks}}
+            <span class="leading-none -translate-y-1/2">{{ t }}</span>
+{{/each}}
+          </div>
+          <div class="absolute left-9 right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none" aria-hidden="true">
+            <div class="h-px bg-line"></div>
+            <div class="h-px bg-line"></div>
+            <div class="h-px bg-line"></div>
+            <div class="h-px bg-line"></div>
+          </div>
+          <div class="absolute left-9 right-0 inset-y-0 flex items-stretch gap-1.5 sm:gap-2.5">
+{{#each b, i in bars}}
+            <div class="flex-1 min-w-0 flex flex-col items-center gap-2" onmouseenter="{{ hoverIndex = i }}">
+              <div class="relative flex-1 w-full max-w-[46px] flex items-end">
+                <div class="{{ barCls(i) }}" style="{{ b.style }}">
+                  <span class="{{ capCls(i) }}"></span>
+{{#if i is shownFocus}}
+                  <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-full bg-brand-950 text-brand-100 ring-1 ring-brand-500/40 px-2 py-0.5 text-[11px] font-medium">{{ b.tip }}</span>
+{{/if}}
+                </div>
+              </div>
+              <span class="{{ labelCls(i) }}">{{ b.label }}</span>
+            </div>
+{{/each}}
+          </div>
+        </div>
+{{/if}}
+      </section>
+
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6 flex flex-col">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Fleet health</h2>
+          <a href="/servers" class="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-4">View servers</a>
+        </div>
+        <div class="flex-1 flex flex-col sm:flex-row xl:flex-col items-center gap-6 mt-5">
+          <div class="relative w-44 h-44 shrink-0">
+            <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
+              <circle cx="50" cy="50" r="36" fill="none" stroke-width="11" class="stroke-zinc-200 dark:stroke-white/[0.06]" />
+{{#each seg in donut}}
+{{#if seg.show}}
+              <circle cx="50" cy="50" r="36" fill="none" stroke-width="11" stroke="{{ seg.stroke }}" stroke-dasharray="{{ seg.dash }}" stroke-dashoffset="{{ seg.offset }}" class="transition-all duration-500" />
+{{/if}}
+{{/each}}
             </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-4xl font-light text-zinc-900 dark:text-zinc-100">{{ totalServers }}</span>
-              <span class="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">servers</span>
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span class="text-[28px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">{{ Insights.healthPct }}%</span>
+              <span class="text-[11px] text-zinc-500 mt-1">of {{ plural(totalServers, "server") }} online</span>
             </div>
           </div>
-
-          <div class="space-y-2.5 mt-auto">
-            <div class="flex items-center justify-between rounded-xl bg-stone-50 dark:bg-white/[0.03] px-4 py-2.5 text-xs">
-              <span class="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><span class="w-2 h-2 rounded-full bg-brand-500"></span> Online</span>
-              <span class="font-mono text-zinc-900 dark:text-zinc-100">{{ onlineCount }}</span>
-            </div>
-            <div class="flex items-center justify-between rounded-xl bg-stone-50 dark:bg-white/[0.03] px-4 py-2.5 text-xs">
-              <span class="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Offline</span>
-              <span class="font-mono text-zinc-900 dark:text-zinc-100">{{ offlineCount }}</span>
-            </div>
-            <div class="flex items-center justify-between rounded-xl bg-stone-50 dark:bg-white/[0.03] px-4 py-2.5 text-xs">
-              <span class="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><span class="w-2 h-2 rounded-full bg-yellow-400"></span> Untested</span>
-              <span class="font-mono text-zinc-900 dark:text-zinc-100">{{ pendingCount }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
-
-        <div class="xl:col-span-4 rounded-3xl border border-line bg-panel p-5 sm:p-7">
-          <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-5">Details</h2>
-
-          <div class="grid grid-cols-2 gap-3">
-
-            <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[11px] text-zinc-500">Online</p>
-                  <p class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{{ onlineCount }}<span class="text-zinc-500 text-xs font-normal"> / {{ totalServers }}</span></p>
-                </div>
-                <IconDatabase class="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
-              </div>
-            </div>
-
-            <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[11px] text-zinc-500">Sites live</p>
-                  <p class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{{ readyCount }}<span class="text-zinc-500 text-xs font-normal"> / {{ siteCount }}</span></p>
-                </div>
-                <IconFolder class="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
-              </div>
-            </div>
-
-            <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[11px] text-zinc-500">Building</p>
-                  <p class="text-lg font-semibold text-yellow-600 dark:text-yellow-400 mt-1">{{ buildingCount }}</p>
-                </div>
-                <span class="w-2 h-2 rounded-full bg-yellow-400 shrink-0 mt-2"></span>
-              </div>
-            </div>
-
-            <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[11px] text-zinc-500">Failed</p>
-                  <p class="text-lg font-semibold text-rose-600 dark:text-rose-500 mt-1">{{ failedCount }}</p>
-                </div>
-                <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0 mt-2"></span>
-              </div>
-            </div>
-
-            <a href="/registrars" class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-colors">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[11px] text-zinc-500">Expiring domains</p>
-                  <p class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{{ expiringCount }}<span class="text-zinc-500 text-xs font-normal"> · {{ expiredCount }} expired</span></p>
-                </div>
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 text-zinc-500 shrink-0 mt-0.5">
-                  <circle cx="10" cy="10" r="7.5" />
-                  <path d="M2.5 10h15M10 2.5c2.2 2.2 3.2 4.7 3.2 7.5S12.2 15.3 10 17.5C7.8 15.3 6.8 12.8 6.8 10S7.8 4.7 10 2.5z" stroke-linejoin="round" />
-                </svg>
-              </div>
-            </a>
-
-{{#if Mail.available}}
-            <a href="/dashboard/mail" class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-colors">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[11px] text-zinc-500">Unread mail</p>
-                  <p class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{{ Mail.unread }}</p>
-                </div>
-                <IconMail class="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
-              </div>
-            </a>
-{{/if}}
-{{#if not Mail.available}}
-            <div class="rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[11px] text-zinc-500">Signed in</p>
-                  <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mt-1 truncate">{{ Auth.user.name }}</p>
-                </div>
-                <IconUser class="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
-              </div>
-            </div>
-{{/if}}
-
-          </div>
-        </div>
-
-        <div class="xl:col-span-8 rounded-3xl border border-line bg-panel overflow-hidden">
-          <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
-            <div class="min-w-0">
-              <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Servers</h2>
-              <p class="text-zinc-500 text-xs mt-1">{{ totalServers }} connected</p>
-            </div>
-            <a href="/servers" class="text-brand-600 dark:text-brand-500 text-sm hover:underline shrink-0">Manage all</a>
-          </div>
-
-          <div class="hidden sm:grid grid-cols-[minmax(0,1fr)_100px_110px] gap-4 px-6 py-2 border-t border-stone-100 dark:border-white/5 bg-stone-50 dark:bg-white/[0.02] text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-            <span>Server</span>
-            <span>Sites</span>
-            <span>Status</span>
-          </div>
-
-{{#if not Servers.loading}}
-{{#if Servers.data.length is 0}}
-          <div class="px-6 py-12 text-center border-t border-stone-100 dark:border-white/5">
-            <h3 class="text-zinc-900 dark:text-zinc-100 font-medium mb-1.5">No servers yet</h3>
-            <p class="text-zinc-500 text-sm max-w-sm mx-auto mb-5">
-              Provision a server at one of your cloud providers or connect your own over SSH, then start deploying to it.
-            </p>
-{{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-stone-200 dark:bg-white/5 text-zinc-400 border border-stone-300 dark:border-white/10 rounded-full px-5 py-2 cursor-not-allowed select-none">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-              </svg>
-              Add your first server
-            </button>
-{{/if}}
-{{#if not Billing.locked}}
-            <a href="/servers" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">
-              Add your first server
-            </a>
-{{/if}}
-          </div>
-{{/if}}
-{{/if}}
-
-{{#each s in fleet}}
-          <a href="{{ s.href }}" class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_100px_110px] items-center gap-4 px-5 sm:px-6 py-3.5 border-t border-stone-100 dark:border-white/5 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
-            <div class="min-w-0">
-              <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium truncate">{{ s.name }}</p>
-              <p class="text-zinc-500 text-xs font-mono truncate">{{ s.ssh_user }}@{{ s.host }}:{{ s.port }}</p>
-            </div>
-            <span class="hidden sm:inline text-sm text-zinc-600 dark:text-zinc-400">{{ s.siteLabel }}</span>
-            <div>
-{{#if s.status is "online"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 dark:text-brand-500"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>Online</span>
-{{/if}}
-{{#if s.status is "offline"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Offline</span>
-{{/if}}
-{{#if s.status is "pending"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>Not tested</span>
-{{/if}}
-            </div>
-          </a>
+          <ul class="w-full space-y-2.5">
+{{#each seg in donut}}
+            <li class="flex items-center gap-2.5 text-sm">
+              <span class="w-2 h-2 rounded-full {{ seg.dot }}"></span>
+              <span class="text-zinc-700 dark:text-zinc-300">{{ seg.label }}</span>
+              <span class="text-zinc-500 tabular-nums">{{ seg.pct }}%</span>
+              <span class="ml-auto text-zinc-900 dark:text-zinc-100 font-medium tabular-nums">{{ seg.value }}</span>
+            </li>
 {{/each}}
+            <li class="flex items-center gap-2.5 text-sm pt-2.5 border-t border-line">
+              <span class="text-zinc-500">Busiest</span>
+              <span class="ml-auto text-zinc-900 dark:text-zinc-100 font-medium truncate max-w-[70%] text-right">{{ Insights.busiest }}</span>
+            </li>
+          </ul>
         </div>
-      </div>
+      </section>
+    </div>
 
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
 
-        <div class="xl:col-span-8 rounded-3xl border border-line bg-panel overflow-hidden">
-          <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
-            <div class="min-w-0">
-              <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Recent sites</h2>
-              <p class="text-zinc-500 text-xs mt-1">{{ siteCount }} total · latest deployments</p>
-            </div>
-          </div>
-
-{{#if siteCount is not 0}}
-          <div class="px-5 sm:px-6 pb-4">
-            <div class="flex h-1.5 rounded-full bg-stone-200 dark:bg-white/10 overflow-hidden">
-              <div class="h-full bg-brand-500 transition-all" style="{{ readyStyle }}"></div>
-              <div class="h-full bg-yellow-400 transition-all" style="{{ buildStyle }}"></div>
-              <div class="h-full bg-rose-500 transition-all" style="{{ failStyle }}"></div>
-            </div>
-            <p class="text-zinc-500 text-xs mt-2">{{ readyCount }} live · {{ buildingCount }} building · {{ failedCount }} failed</p>
-          </div>
-{{/if}}
-
-          <div class="hidden sm:grid grid-cols-[minmax(0,1fr)_160px_110px] gap-4 px-6 py-2 border-t border-stone-100 dark:border-white/5 bg-stone-50 dark:bg-white/[0.02] text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-            <span>Site</span>
-            <span>Server</span>
-            <span>Status</span>
-          </div>
-
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Recently active projects</h2>
+          <a href="/servers" class="text-xs text-brand-600 dark:text-brand-400 underline underline-offset-4">View all</a>
+        </div>
 {{#if siteCount is 0}}
-          <div class="px-6 py-12 text-center border-t border-stone-100 dark:border-white/5">
-            <h3 class="text-zinc-900 dark:text-zinc-100 font-medium mb-1.5">Nothing deployed yet</h3>
-            <p class="text-zinc-500 text-sm max-w-sm mx-auto mb-5">
-              Sites are created on a server. Pick a server, then choose a framework and a repository.
-            </p>
-{{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-stone-200 dark:bg-white/5 text-zinc-400 border border-stone-300 dark:border-white/10 rounded-full px-5 py-2 cursor-not-allowed select-none">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-              </svg>
-              Create a site
-            </button>
-{{/if}}
+        <div class="rounded-xl border border-dashed border-line px-5 py-10 text-center">
+          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Nothing deployed yet</p>
+          <p class="text-xs text-zinc-500 mt-1">Create a site on a server and it shows up here.</p>
 {{#if not Billing.locked}}
-{{#if totalServers is 0}}
-            <a href="/servers" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">
-              Add a server first
-            </a>
+          <a href="{{ newSiteHref }}" class="inline-flex items-center gap-1.5 mt-4 h-8 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 px-3.5 text-xs font-semibold">New site</a>
 {{/if}}
-{{#if totalServers is not 0}}
-            <a href="{{ newSiteHref }}" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">
-              Create a site
-            </a>
-{{/if}}
-{{/if}}
-          </div>
-{{/if}}
-
-{{#each site in recentSites}}
-          <a href="{{ site.href }}" class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_160px_110px] items-center gap-4 px-5 sm:px-6 py-3.5 border-t border-stone-100 dark:border-white/5 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
-            <div class="min-w-0">
-              <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium truncate">{{ site.domain }}</p>
-              <p class="text-zinc-500 text-xs truncate">{{ site.typeText }}<span class="sm:hidden"> · {{ site.serverName }}</span></p>
-            </div>
-            <span class="hidden sm:inline text-sm text-zinc-600 dark:text-zinc-400 truncate">{{ site.serverName }}</span>
-            <div>
-{{#if site.status is "ready"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 dark:text-brand-500"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>Ready</span>
-{{/if}}
-{{#if site.status is "failed"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Failed</span>
-{{/if}}
-{{#if site.status is "creating"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>Creating</span>
-{{/if}}
-{{#if site.status is "pending"}}
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>Queued</span>
-{{/if}}
-            </div>
-          </a>
-{{/each}}
         </div>
+{{/if}}
+        <ul class="space-y-1">
+{{#each p in recentSites}}
+          <li>
+            <a href="{{ p.href }}" class="flex items-center gap-3 rounded-xl -mx-2 px-2 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors">
+              <span class="w-9 h-9 shrink-0 rounded-[10px] text-[11px] font-bold flex items-center justify-center {{ p.tone }}">{{ p.mono }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ p.domain }}</span>
+                <span class="block text-xs text-zinc-500 font-mono truncate">{{ p.meta }}</span>
+              </span>
+              <span class="{{ p.pill.cls }}"><span class="{{ p.pill.dot }}"></span>{{ p.pill.text }}</span>
+            </a>
+          </li>
+{{/each}}
+        </ul>
+      </section>
 
-        <div class="xl:col-span-4 space-y-4 min-w-0">
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Latest deployments</h2>
+          <span class="text-xs text-zinc-500">{{ plural(deployTotal, "deploy") }} this period</span>
+        </div>
+{{#if recentDeploys.length is 0}}
+        <div class="rounded-xl border border-dashed border-line px-5 py-10 text-center">
+          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">No deployments yet</p>
+          <p class="text-xs text-zinc-500 mt-1">Every push you deploy lands here with its commit.</p>
+        </div>
+{{/if}}
+        <ul class="divide-y divide-line">
+{{#each d in recentDeploys}}
+          <li>
+            <a href="{{ d.href }}" class="flex items-start gap-3 py-2.5 group">
+              <span class="mt-0.5 w-7 h-7 shrink-0 rounded-lg border border-line bg-sunken flex items-center justify-center text-zinc-400"><IconGitCommit class="w-4 h-4" /></span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm text-zinc-900 dark:text-zinc-100 truncate group-hover:underline underline-offset-4">{{ d.title }}</span>
+                <span class="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-0.5 min-w-0">
+                  <span class="truncate">{{ d.domain }}</span>
+{{#if d.commit}}
+                  <span class="text-zinc-400 dark:text-zinc-600">·</span>
+                  <span class="font-mono">{{ d.commit }}</span>
+{{/if}}
+{{#if d.took}}
+                  <span class="text-zinc-400 dark:text-zinc-600">·</span>
+                  <span class="tabular-nums">{{ d.took }}</span>
+{{/if}}
+                </span>
+              </span>
+              <span class="flex flex-col items-end gap-1 shrink-0">
+                <span class="{{ d.pill.cls }}">{{ d.pill.text }}</span>
+                <span class="text-[11px] text-zinc-500">{{ d.when }}</span>
+              </span>
+            </a>
+          </li>
+{{/each}}
+        </ul>
+      </section>
+
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6 lg:col-span-2 xl:col-span-1">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Servers</h2>
+          <a href="/servers" class="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-4">All {{ totalServers }}</a>
+        </div>
+{{#if totalServers is 0}}
+        <div class="rounded-xl border border-dashed border-line px-5 py-10 text-center">
+          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">No servers yet</p>
+          <p class="text-xs text-zinc-500 mt-1">Create one on a connected cloud, or add one you already run.</p>
+{{#if not Billing.locked}}
+          <a href="/servers/create" class="inline-flex items-center gap-1.5 mt-4 h-8 rounded-full bg-brand-500 text-white px-3.5 text-xs font-semibold">Create server</a>
+{{/if}}
+        </div>
+{{/if}}
+        <ul class="space-y-1">
+{{#each s in fleet}}
+          <li>
+            <a href="{{ s.href }}" class="flex items-center gap-3 rounded-xl -mx-2 px-2 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors">
+              <span class="relative w-9 h-9 shrink-0 rounded-[10px] border border-line bg-sunken flex items-center justify-center text-zinc-500">
+                <IconServer class="w-4 h-4" />
+                <span class="absolute -bottom-0.5 -right-0.5 p-[2px] rounded-full bg-panel"><span class="block {{ s.dot }}"></span></span>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ s.name }}</span>
+                <span class="block text-xs text-zinc-500 font-mono truncate">{{ s.ip or s.label }}</span>
+              </span>
+              <span class="text-xs text-zinc-500 shrink-0">{{ s.sites }}</span>
+            </a>
+          </li>
+{{/each}}
+        </ul>
+      </section>
+    </div>
+
+    <div class="{{ setupDone ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4' }}">
 
 {{#if not setupDone}}
-          <div class="rounded-3xl border border-line bg-panel p-5 sm:p-7">
-            <div class="flex items-center justify-between mb-1">
-              <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Get deployed</h2>
-              <span class="text-xs font-mono text-zinc-500">{{ stepsDone }}/3</span>
-            </div>
-            <p class="text-zinc-500 text-xs mb-4">Three steps to your first live site.</p>
-            <div class="h-1.5 rounded-full bg-stone-200 dark:bg-white/10 mb-5 overflow-hidden">
-              <div class="h-full rounded-full bg-brand-500 transition-all" style="{{ progressStyle }}"></div>
-            </div>
-
-            <div class="space-y-4">
-              <div class="flex items-start gap-3">
-{{#if step1}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-brand-500 text-white text-[11px] flex items-center justify-center">✓</span>
-{{/if}}
-{{#if not step1}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full border border-stone-300 dark:border-white/20 text-zinc-500 text-[11px] flex items-center justify-center">1</span>
-{{/if}}
-                <div>
-                  <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Connect a server</p>
-{{#if Billing.locked}}
-                  <p class="text-zinc-400 text-xs">View only. Pay to continue.</p>
-{{/if}}
-{{#if not Billing.locked}}
-                  <a href="/servers" class="text-brand-600 dark:text-brand-500 text-xs hover:underline">Add or provision a server</a>
-{{/if}}
-                </div>
-              </div>
-
-              <div class="flex items-start gap-3">
-{{#if step2}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-brand-500 text-white text-[11px] flex items-center justify-center">✓</span>
-{{/if}}
-{{#if not step2}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full border border-stone-300 dark:border-white/20 text-zinc-500 text-[11px] flex items-center justify-center">2</span>
-{{/if}}
-                <div>
-                  <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Create a site</p>
-{{#if Billing.locked}}
-                  <p class="text-zinc-400 text-xs">View only. Pay to continue.</p>
-{{/if}}
-{{#if not Billing.locked}}
-                  <a href="{{ newSiteHref }}" class="text-brand-600 dark:text-brand-500 text-xs hover:underline">Pick a framework and repo</a>
-{{/if}}
-                </div>
-              </div>
-
-              <div class="flex items-start gap-3">
-{{#if step3}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-brand-500 text-white text-[11px] flex items-center justify-center">✓</span>
-{{/if}}
-{{#if not step3}}
-                <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full border border-stone-300 dark:border-white/20 text-zinc-500 text-[11px] flex items-center justify-center">3</span>
-{{/if}}
-                <div>
-                  <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Deploy and add SSL</p>
-                  <p class="text-zinc-500 text-xs">Run your script, then enable Let's Encrypt.</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Get to your first deploy</h2>
+          <span class="text-xs text-zinc-500 tabular-nums">{{ stepsDone }} of 3</span>
+        </div>
+        <div class="h-1 rounded-full bg-zinc-200 dark:bg-white/[0.06] mt-4 overflow-hidden">
+          <div class="h-full rounded-full bg-brand-500 transition-all duration-500" style="{{ progressStyle() }}"></div>
+        </div>
+        <ol class="mt-5 space-y-4">
+          <li class="flex items-start gap-3">
+            <span class="{{ stepCls(step1) }}">{{ step1 ? '✓' : '1' }}</span>
+            <div class="min-w-0"><a href="/servers" class="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:underline underline-offset-4">Connect a server</a><p class="text-xs text-zinc-500 mt-0.5">Create one on a cloud provider or add your own.</p></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="{{ stepCls(step2) }}">{{ step2 ? '✓' : '2' }}</span>
+            <div class="min-w-0"><a href="{{ newSiteHref }}" class="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:underline underline-offset-4">Create a site</a><p class="text-xs text-zinc-500 mt-0.5">Point a domain at a repository.</p></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="{{ stepCls(step3) }}">{{ step3 ? '✓' : '3' }}</span>
+            <div class="min-w-0"><p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Go live</p><p class="text-xs text-zinc-500 mt-0.5">Deploy once; SSL is set up for you.</p></div>
+          </li>
+        </ol>
+      </section>
 {{/if}}
 
-{{#if teamReady}}
-{{#if teamCount is not 0}}
-          <div class="rounded-3xl border border-line bg-panel p-5 sm:p-7">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Team</h2>
-              <a href="/team" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Manage</a>
-            </div>
-            <div class="space-y-3">
-{{#each m in teamMembers}}
-              <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-8 h-8 shrink-0 rounded-full bg-stone-200 dark:bg-white/10 flex items-center justify-center text-zinc-700 dark:text-zinc-200 text-xs font-semibold">{{ m.initial }}</div>
-                  <div class="min-w-0">
-                    <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium truncate">{{ m.name }}</p>
-                    <p class="text-zinc-500 text-xs truncate">{{ m.email }}</p>
-                  </div>
-                </div>
-                <span class="shrink-0 text-[11px] font-medium text-zinc-500">{{ m.roleLabel }}</span>
-              </div>
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Domains</h2>
+          <a href="/registrars" class="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-4">{{ domainCount ? 'All ' + domainCount : 'Registrars' }}</a>
+        </div>
+{{#if not domainsReady}}
+        <div class="space-y-2">
+          <div class="h-10 rounded-xl bg-zinc-100 dark:bg-white/[0.03] animate-pulse"></div>
+          <div class="h-10 rounded-xl bg-zinc-100 dark:bg-white/[0.03] animate-pulse"></div>
+        </div>
+{{/if}}
+{{#if domainsReady}}
+{{#if registrarCount is 0}}
+        <div class="rounded-xl border border-dashed border-line px-5 py-8 text-center">
+          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">No registrar connected</p>
+          <p class="text-xs text-zinc-500 mt-1">Connect one to manage DNS and renewals here.</p>
+          <a href="/registrars" class="inline-block mt-3 text-xs text-brand-600 dark:text-brand-400 underline underline-offset-4">Connect a registrar</a>
+        </div>
+{{/if}}
+{{#if registrarCount is not 0}}
+        <div class="flex items-center gap-2 mb-3">
+          <span class="flux-pill bg-amber-400/10 text-amber-600 dark:text-amber-300">{{ expiringCount }} expiring</span>
+          <span class="flux-pill bg-brand-500/10 text-brand-600 dark:text-brand-400">{{ expiredCount }} expired</span>
+        </div>
+        <ul class="divide-y divide-line">
+{{#each d in domainsShown}}
+          <li class="flex items-center gap-3 py-2.5">
+            <IconGlobe class="w-4 h-4 shrink-0 text-zinc-400" />
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm text-zinc-900 dark:text-zinc-100 truncate">{{ d.name }}</span>
+              <span class="block text-[11px] text-zinc-500 truncate">{{ d.registrar }}</span>
+            </span>
+            <span class="text-xs shrink-0 tabular-nums {{ d.cls }}">{{ d.text }}</span>
+          </li>
+{{#else}}
+          <li class="py-6 text-center text-xs text-zinc-500">No domains found at your registrars.</li>
 {{/each}}
-            </div>
-{{#if teamCount is 1}}
-            <p class="text-zinc-500 text-xs mt-4 pt-3 border-t border-stone-100 dark:border-white/5">It's just you for now. Invite people from the team page.</p>
-{{/if}}
-          </div>
+        </ul>
 {{/if}}
 {{/if}}
+      </section>
 
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Cloud accounts</h2>
+          <a href="/providers" class="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline underline-offset-4">Manage</a>
         </div>
-      </div>
-
-{{#if Insights.loaded}}
-      <div class="rounded-3xl border border-line bg-panel overflow-hidden mb-4">
-        <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
-          <div class="min-w-0">
-            <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 truncate">Fleet insights</h2>
-            <p class="text-zinc-500 text-xs mt-1 truncate">{{ Insights.headline }}</p>
-          </div>
-{{#if Insights.rows.length > 2}}
-          <button onclick="{{ Insights.toggle() }}" class="shrink-0 text-sm text-zinc-700 dark:text-zinc-200 border border-stone-300 dark:border-white/15 rounded-full px-4 py-1.5 hover:bg-stone-50 dark:hover:bg-white/5 transition-colors">
-            {{ Insights.showAll ? "Show fewer" : "Show all " + Insights.rows.length }}
-          </button>
-{{/if}}
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-line border-t border-line">
-          <div class="bg-panel p-5 sm:p-6">
-            <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-wider mb-2">Fleet health</p>
-            <p class="text-3xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">{{ Insights.healthPct }}%</p>
-            <div class="h-1.5 rounded-full bg-stone-200 dark:bg-white/10 mt-3 overflow-hidden">
-              <div class="h-full rounded-full bg-brand-500 transition-all" style="{{ 'width: ' + Insights.healthPct + '%' }}"></div>
-            </div>
-            <p class="text-zinc-500 text-xs mt-2">{{ `${Insights.rows.filter((r) => r.label is "Online").length} of ${Insights.rows.length} servers online` }}</p>
-          </div>
-
-          <div class="bg-panel p-5 sm:p-6">
-            <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-wider mb-2">Busiest server</p>
-            <p class="text-3xl font-light tracking-tight text-zinc-900 dark:text-zinc-100 truncate">{{ Insights.busiest }}</p>
-            <p class="text-zinc-500 text-xs mt-3">Hosting the most sites</p>
-          </div>
-
-          <div class="bg-panel p-5 sm:p-6">
-            <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-wider mb-2">Idle servers</p>
-            <p class="text-3xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">{{ Insights.rows.filter((r) => r.count is 0).length }}</p>
-            <p class="text-zinc-500 text-xs mt-3 truncate">{{ (Insights.rows.filter((r) => r.count is 0).length is 0) ? "Every server hosts a site" : Insights.rows.filter((r) => r.count is 0).map((r) => r.name).join(", ") + " have no sites" }}</p>
-          </div>
-        </div>
-
-        <div>
-{{#each r in (Insights.showAll ? Insights.rows : Insights.rows.slice(0, 2))}}
-          <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-3.5 border-t border-stone-100 dark:border-white/5">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="w-2 h-2 shrink-0 rounded-full {{ r.dot }}"></span>
-              <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium truncate">{{ r.name }}</p>
-            </div>
-            <p class="text-zinc-500 text-xs shrink-0">{{ r.label }} · {{ r.count is 1 ? "1 site" : r.count + " sites" }}</p>
-          </div>
-{{/each}}
-        </div>
-      </div>
-{{/if}}
-
-      <div class="rounded-3xl border border-line bg-panel p-5 sm:p-7 mb-4">
-        <div class="flex items-center justify-between gap-4 mb-5">
-          <div class="min-w-0">
-            <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Cloud providers</h2>
-            <p class="text-zinc-500 text-xs mt-1">Open a provider to see its machines, volumes, IP addresses and spend.</p>
-          </div>
-          <a href="/providers" class="text-brand-600 dark:text-brand-500 text-sm hover:underline shrink-0">Manage all</a>
-        </div>
-
 {{#if not cloudReady}}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div class="h-20 rounded-2xl bg-stone-100 dark:bg-white/5 animate-pulse"></div>
-          <div class="h-20 rounded-2xl bg-stone-100 dark:bg-white/5 animate-pulse"></div>
-          <div class="h-20 rounded-2xl bg-stone-100 dark:bg-white/5 animate-pulse"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="h-16 rounded-xl bg-zinc-100 dark:bg-white/[0.03] animate-pulse"></div>
+          <div class="h-16 rounded-xl bg-zinc-100 dark:bg-white/[0.03] animate-pulse"></div>
         </div>
 {{/if}}
-
 {{#if cloudReady}}
-{{#if providerCount is 0}}
-        <div class="rounded-2xl border border-dashed border-stone-300 dark:border-white/15 p-8 text-center">
-          <h3 class="text-zinc-900 dark:text-zinc-100 font-medium mb-1.5">No cloud providers connected</h3>
-          <p class="text-zinc-500 text-sm max-w-md mx-auto mb-5">Connect a Linode, Hetzner, DigitalOcean, Vultr or UpCloud account to create servers from here.</p>
-{{#if Billing.locked}}
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-stone-200 dark:bg-white/5 text-zinc-400 border border-stone-300 dark:border-white/10 rounded-full px-5 py-2 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            Connect a provider
-          </button>
-{{/if}}
-{{#if not Billing.locked}}
-          <a href="/providers" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">Connect a provider</a>
-{{/if}}
+{{#if providerCards.length is 0}}
+        <div class="rounded-xl border border-dashed border-line px-5 py-8 text-center">
+          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">No cloud connected</p>
+          <p class="text-xs text-zinc-500 mt-1">AWS, Hetzner, DigitalOcean, Vultr, Linode and more.</p>
+          <a href="/providers" class="inline-block mt-3 text-xs text-brand-600 dark:text-brand-400 underline underline-offset-4">Connect a provider</a>
         </div>
 {{/if}}
-{{#if providerCount is not 0}}
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-2">
 {{#each c in providerCards}}
-          <a href="{{ c.href }}" class="group flex items-center justify-between gap-3 rounded-2xl bg-stone-50 dark:bg-white/[0.03] p-4 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-colors">
-            <div class="flex items-center gap-3 min-w-0">
+          <a href="{{ c.href }}" class="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-3 py-3 hover:border-line-strong transition-colors min-w-0">
 {{#if c.logo}}
-              <span class="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
-                <img src="{{ c.logo }}" alt="" class="w-6 h-6" />
-              </span>
+            <img src="{{ c.logo }}" alt="" class="w-7 h-7 shrink-0 rounded-md object-contain" />
 {{/if}}
 {{#if not c.logo}}
-              <span class="{{ c.tileClass }}">{{ c.tileLetter }}</span>
+            <span class="w-7 h-7 shrink-0 rounded-md bg-zinc-200 dark:bg-white/[0.06] text-xs font-semibold flex items-center justify-center">{{ c.letter }}</span>
 {{/if}}
-              <div class="min-w-0">
-                <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold truncate">{{ c.label }}</h3>
-                <p class="text-zinc-500 text-xs truncate">{{ c.kindName }} · {{ c.createdText }}</p>
-              </div>
-            </div>
-            <span class="text-zinc-400 group-hover:text-brand-500 text-sm transition-colors">&rarr;</span>
+            <span class="min-w-0">
+              <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ c.label }}</span>
+              <span class="block text-[11px] text-zinc-500 truncate">{{ c.kind }}</span>
+            </span>
           </a>
 {{/each}}
         </div>
 {{/if}}
-{{/if}}
-      </div>
-
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
-
-        <div class="xl:col-span-8 rounded-3xl border border-line bg-panel overflow-hidden">
-          <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4">
-            <div class="min-w-0">
-              <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Domains</h2>
-              <p class="text-zinc-500 text-xs mt-1 truncate">{{ (domainCount is 0) ? "Closest to expiry first" : domainCount + " domains across " + registrarCount + (registrarCount is 1 ? " registrar" : " registrars") + ", closest to expiry first" }}</p>
-            </div>
-            <div class="flex items-center gap-3 shrink-0">
-{{#if domainsShown.length > 5}}
-              <button onclick="{{ toggleDomains() }}" class="text-sm text-zinc-700 dark:text-zinc-200 border border-stone-300 dark:border-white/15 rounded-full px-4 py-1.5 hover:bg-stone-50 dark:hover:bg-white/5 transition-colors">
-                {{ showAllDomains ? "Show fewer" : "Show all " + domainsShown.length }}
-              </button>
-{{/if}}
-              <a href="/registrars" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Manage all</a>
-            </div>
-          </div>
-
-{{#if not domainsReady}}
-          <div class="px-5 sm:px-6 pb-6">
-            <div class="h-44 rounded-2xl bg-stone-100 dark:bg-white/5 animate-pulse"></div>
-          </div>
-{{/if}}
-
-{{#if domainsReady}}
-{{#if registrarCount is 0}}
-          <div class="px-6 py-12 text-center border-t border-stone-100 dark:border-white/5">
-            <h3 class="text-zinc-900 dark:text-zinc-100 font-medium mb-1.5">No domain registrars connected</h3>
-            <p class="text-zinc-500 text-sm max-w-md mx-auto mb-5">Connect Porkbun, Cloudflare, GoDaddy or another registrar to see your domains, expiry dates and DNS next to your servers.</p>
-{{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-stone-200 dark:bg-white/5 text-zinc-400 border border-stone-300 dark:border-white/10 rounded-full px-5 py-2 cursor-not-allowed select-none">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-              </svg>
-              Connect a registrar
-            </button>
-{{/if}}
-{{#if not Billing.locked}}
-            <a href="/registrars" class="inline-flex items-center text-sm font-semibold bg-brand-500 text-white rounded-full px-5 py-2 hover:bg-brand-400 transition-colors">Connect a registrar</a>
-{{/if}}
-          </div>
-{{/if}}
-
-{{#if registrarCount is not 0}}
-{{#if domainCount is not 0}}
-          <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 sm:px-6 py-2.5 border-t border-stone-100 dark:border-white/5 text-xs">
-            <span class="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-500"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>{{ expiredCount }} expired</span>
-            <span class="inline-flex items-center gap-1.5 text-yellow-600 dark:text-yellow-400"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>{{ expiringCount }} expiring</span>
-            <span class="inline-flex items-center gap-1.5 text-brand-600 dark:text-brand-500"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>{{ domainCount - expiredCount - expiringCount }} healthy</span>
-          </div>
-
-          <div class="hidden sm:grid grid-cols-[minmax(0,1fr)_150px_110px] gap-4 px-6 py-2 border-t border-stone-100 dark:border-white/5 bg-stone-50 dark:bg-white/[0.02] text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-            <span>Domain</span>
-            <span>Expires</span>
-            <span>Status</span>
-          </div>
-{{/if}}
-
-{{#if domainCount is 0}}
-          <div class="px-6 py-12 text-center border-t border-stone-100 dark:border-white/5">
-            <p class="text-zinc-900 dark:text-zinc-100 font-medium mb-1.5">No domains found</p>
-            <p class="text-zinc-500 text-sm max-w-sm mx-auto">Your connected registrars returned no domains. Open the registrar to check the connection.</p>
-          </div>
-{{/if}}
-
-{{#each d in (showAllDomains ? domainsShown : domainsShown.slice(0, 5))}}
-          <a href="{{ d.href }}" class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_150px_110px] items-center gap-4 px-5 sm:px-6 py-3.5 border-t border-stone-100 dark:border-white/5 hover:bg-stone-50 dark:hover:bg-white/[0.03] transition-colors">
-            <div class="min-w-0">
-              <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium font-mono truncate">{{ d.name }}</p>
-              <p class="text-zinc-500 text-xs truncate">{{ d.registrar }}</p>
-            </div>
-            <div class="hidden sm:block min-w-0">
-              <p class="text-zinc-700 dark:text-zinc-300 text-sm truncate">{{ d.expiresText }}</p>
-              <p class="text-zinc-500 text-xs truncate">{{ d.dayText }}</p>
-            </div>
-            <span class="inline-flex justify-self-start rounded-md px-2 py-0.5 text-[11px] font-semibold {{ d.badge }}">{{ d.label }}</span>
-          </a>
-{{/each}}
-{{/if}}
-{{/if}}
-        </div>
-
-        <div class="xl:col-span-4 rounded-3xl border border-line bg-panel p-5 sm:p-7 content-start">
-          <div class="flex items-center justify-between mb-5">
-            <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Registrars</h2>
-            <a href="/registrars" class="text-brand-600 dark:text-brand-500 text-sm hover:underline">Manage</a>
-          </div>
-
-{{#if not domainsReady}}
-          <div class="h-32 rounded-2xl bg-stone-100 dark:bg-white/5 animate-pulse"></div>
-{{/if}}
-
-{{#if domainsReady}}
-{{#if registrarCount is 0}}
-          <p class="text-zinc-500 text-sm">None connected yet.</p>
-{{/if}}
-          <div class="space-y-2">
-{{#each r in registrarCards}}
-            <a href="{{ r.href }}" class="flex items-center justify-between gap-3 rounded-2xl bg-stone-50 dark:bg-white/[0.03] px-3 py-3 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-colors">
-              <div class="flex items-center gap-3 min-w-0">
-{{#if r.logo}}
-                <span class="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
-                  <img src="{{ r.logo }}" alt="" class="w-6 h-6" />
-                </span>
-{{/if}}
-{{#if not r.logo}}
-                <span class="{{ r.tileClass }}">{{ r.tileLetter }}</span>
-{{/if}}
-                <div class="min-w-0">
-                  <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold truncate">{{ r.label }}</p>
-{{#if r.failed}}
-                  <p class="text-yellow-600 dark:text-yellow-400 text-xs">Couldn't load domains</p>
-{{/if}}
-{{#if not r.failed}}
-                  <p class="text-zinc-500 text-xs">{{ r.countText }}</p>
-{{/if}}
-                </div>
-              </div>
-{{#if r.expiring is not 0}}
-              <span class="shrink-0 inline-flex rounded-md bg-yellow-400/10 px-2 py-0.5 text-[11px] font-semibold text-yellow-600 dark:text-yellow-400">{{ r.expiring }} due</span>
-{{/if}}
-            </a>
+{{#if teamReady}}
+{{#if teamCount > 0}}
+        <div class="mt-5 pt-4 border-t border-line flex items-center gap-3">
+          <div class="flex -space-x-2">
+{{#each m in teamMembers}}
+            <span title="{{ m.roleText }}" class="w-7 h-7 rounded-full ring-2 ring-white dark:ring-[#111113] bg-zinc-900 text-white dark:bg-zinc-200 dark:text-zinc-900 text-[11px] font-semibold flex items-center justify-center">{{ m.letter }}</span>
 {{/each}}
           </div>
+          <a href="/team" class="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">{{ plural(teamCount, "member") }} on your team</a>
+{{#if Mail.available}}
+          <a href="/dashboard/mail" class="ml-auto inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><IconMail class="w-3.5 h-3.5" /> {{ Mail.unread }} mail</a>
 {{/if}}
         </div>
-      </div>
+{{/if}}
+{{/if}}
+      </section>
+    </div>
 
-    </div>
-    </div>
   </div>
+</div>
 {{/if}}
-
 {{#if not checkedAuth}}
-<PageLoader label="Loading dashboard" />
+<PageLoader label="Loading your overview" />
 {{/if}}

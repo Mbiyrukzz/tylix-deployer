@@ -343,8 +343,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-  <Sidebar active="providers" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
   <ProviderSidebar active="images" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -357,7 +356,7 @@ template
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Images</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Images</h1>
           <p class="text-slate-500 text-sm">Your own images at {{ kindName }}, to rebuild or clone servers from.</p>
         </div>
 {{#if not locked}}
@@ -371,7 +370,7 @@ template
         </button>
 {{/if}}
 {{#if not Billing.locked}}
-        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create image</button>
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create image</button>
 {{/if}}
 {{/if}}
       </div>
@@ -459,7 +458,7 @@ template
         <div class="flex items-center justify-end gap-3 mt-6">
           <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if creating}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not creating}}
 {{#if Billing.locked}}
@@ -472,7 +471,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create image</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create image</button>
 {{/if}}
 {{/if}}
         </div>
@@ -521,7 +520,7 @@ template
             <div class="flex items-center justify-end gap-3 mt-3">
               <button onclick="{{ cancelRename() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if renameBusy}}
-              <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+              <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not renameBusy}}
 {{#if Billing.locked}}
@@ -534,7 +533,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ saveRename() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save name</button>
+              <button onclick="{{ saveRename() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save name</button>
 {{/if}}
 {{/if}}
             </div>

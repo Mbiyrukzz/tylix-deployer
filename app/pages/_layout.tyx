@@ -1,16 +1,58 @@
 <script>
+// Tylix Flux layout.
+//
+// App pages (dashboard, servers, providers, ...) get the app shell: a
+// sidebar, a top bar and the command palette. They mount once per visit:
+// public/app-shell.js swaps only the page inside <main> when you move
+// between app pages, and every later copy of this layout (one comes with
+// each swapped-in page) renders just the slot.
+//
+// Public pages (home, docs, pricing, sign in) keep the marketing navbar
+// and footer.
+action
+  embedded() {
+    return Reflect.get(window, "__fluxSwap") is true
+  }
+
+  appShell() {
+    const flux = Reflect.get(window, "__flux")
+    if not flux {
+      return false
+    }
+    return flux.isAppPath(window.location.pathname)
+  }
 </script>
 <template>
-<div class="min-h-screen min-h-dvh flex flex-col bg-page text-zinc-800 dark:text-zinc-200 antialiased selection:bg-brand-500/25 transition-colors">
-<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:rounded-full focus:bg-brand-500 focus:text-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold">Skip to content</a>
-<Navbar />
-<AnnouncementBanner />
-
-<main id="main" class="flex-1 min-w-0 app-main">
+<div class="contents">
+{{#if embedded()}}
 <div data-tylix-slot="true"></div>
-</main>
-
-<SiteFooter />
-<PwaPrompt />
+{{/if}}
+{{#if not embedded() and appShell()}}
+<div class="flux-app min-h-screen min-h-dvh bg-page text-zinc-800 dark:text-zinc-200 antialiased selection:bg-brand-500/25">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[90] focus:rounded-full focus:bg-brand-500 focus:text-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold">Skip to content</a>
+  <Sidebar />
+  <div class="flux-column min-w-0 flex flex-col min-h-screen min-h-dvh">
+    <Topbar />
+    <AnnouncementBanner />
+    <main id="main" tabindex="-1" class="flux-main relative flex-1 min-w-0 outline-none">
+      <div data-tylix-slot="true"></div>
+    </main>
+  </div>
+  <CommandPalette />
+  <PwaPrompt />
+</div>
+{{/if}}
+{{#if not embedded() and not appShell()}}
+<div class="min-h-screen min-h-dvh flex flex-col bg-page text-zinc-800 dark:text-zinc-200 antialiased selection:bg-brand-500/25">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[90] focus:rounded-full focus:bg-brand-500 focus:text-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold">Skip to content</a>
+  <Navbar />
+  <AnnouncementBanner />
+  <main id="main" class="flex-1 min-w-0 app-main">
+    <div data-tylix-slot="true"></div>
+  </main>
+  <SiteFooter />
+  <PwaPrompt />
+</div>
+{{/if}}
 </div>
 </template>

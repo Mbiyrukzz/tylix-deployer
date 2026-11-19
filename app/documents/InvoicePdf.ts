@@ -18,7 +18,7 @@ export interface InvoiceParty {
     email: string;
 }
 
-const BRAND = "#f97316";
+const BRAND = "#e0393f";
 const INK = "#18181b";
 const MUTED = "#71717a";
 const LINE = "#e4e4e7";
@@ -31,7 +31,7 @@ const STATUS: Record<string, { label: string; color: string; background: string 
 
 export function seller() {
     return {
-        name: process.env.INVOICE_COMPANY_NAME || "Tylix Deploy",
+        name: process.env.INVOICE_COMPANY_NAME || "Tylix Flux",
         address: (process.env.INVOICE_COMPANY_ADDRESS || "").split("|").map((l) => l.trim()).filter(Boolean),
         email: process.env.INVOICE_COMPANY_EMAIL || process.env.MAIL_FROM || "",
         taxId: process.env.INVOICE_TAX_ID || "",
@@ -198,12 +198,12 @@ export function invoicePdf(invoice: InvoiceAttributes, billedTo: InvoiceParty) {
                         text:
                             invoice.status === "paid"
                                 ? `Paid${paid ? " on " + paid : ""} through Paystack${invoice.paystack_reference ? " (reference " + invoice.paystack_reference + ")" : ""}. Keep this invoice for your records.`
-                                : "Pay from Settings → Billing in Tylix Deploy. Your servers and sites keep running while a payment is pending.",
+                                : "Pay from Settings → Billing in Tylix Flux. Your servers and sites keep running while a payment is pending.",
                         color: MUTED,
                     },
                 ],
                 padding: 14,
-                background: "#fff7ed",
+                background: "#fef3f2",
                 border: { color: "#fed7aa" },
                 radius: 8,
             },

@@ -198,8 +198,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="ssh-keys" serverId="{{ serverId }}" />
 {{/if}}
@@ -224,7 +223,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">SSH Keys</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">SSH Keys</h1>
       <p class="text-slate-500 text-sm mb-6">Give people or machines SSH access to this server, as any user on it.</p>
 
 {{#if error}}
@@ -237,7 +236,7 @@ template
         <p class="text-amber-800 dark:text-amber-400 text-sm mb-3">This is the only time it is shown. It is not stored anywhere.</p>
         <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 overflow-x-auto mb-3">{{ generated }}</pre>
         <div class="flex gap-3">
-          <button onclick="{{ downloadPrivate() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Download</button>
+          <button onclick="{{ downloadPrivate() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Download</button>
           <button onclick="{{ dismissPrivate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">I've saved it</button>
         </div>
       </div>
@@ -292,7 +291,7 @@ template
 
         <div class="mt-4">
 {{#if busy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Deploying…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Deploying…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -305,7 +304,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ deploy() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Deploy key</button>
+          <button onclick="{{ deploy() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Deploy key</button>
 {{/if}}
 {{/if}}
         </div>

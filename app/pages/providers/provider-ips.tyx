@@ -129,7 +129,7 @@ action
 
   applyFilter() {
     const keys = ["ALL", "v4", "v6"]
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
     const idleCls = "inline-flex items-center gap-2 rounded-full border border-line bg-panel text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-brand-500/50 transition-all"
 
     this.shown = this.filter is "ALL" ? this.list : this.list.filter((ip) => ip.version is this.filter)
@@ -436,8 +436,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-  <Sidebar active="providers" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
   <ProviderSidebar active="ips" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -448,11 +447,11 @@ template
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">IP addresses</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">IP addresses</h1>
           <p class="text-slate-500 text-sm">Addresses in this {{ kindName }} account and their reverse DNS.</p>
         </div>
 {{#if not locked}}
-        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Allocate address</button>
+        <button onclick="{{ openCreate() }}" class="inline-flex items-center text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Allocate address</button>
 {{/if}}
       </div>
 
@@ -575,10 +574,10 @@ template
         <div class="flex items-center justify-end gap-3 mt-6">
           <button onclick="{{ closeCreate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if creating}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Allocating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Allocating…</button>
 {{/if}}
 {{#if not creating}}
-          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Allocate</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Allocate</button>
 {{/if}}
         </div>
       </div>
@@ -658,10 +657,10 @@ template
             <div class="flex items-center justify-end gap-3 mt-3">
               <button onclick="{{ cancelRdns() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if rdnsBusy}}
-              <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+              <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not rdnsBusy}}
-              <button onclick="{{ saveRdns() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
+              <button onclick="{{ saveRdns() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
 {{/if}}
             </div>
           </div>

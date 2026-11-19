@@ -228,13 +228,12 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="settings" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <SettingsSidebar active="team" />
     <div class="min-w-0">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Members</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Members</h1>
       <p class="text-slate-500 text-sm mb-8">Everyone on your team sees the same servers, providers and sites.</p>
 
 {{#if loading}}
@@ -333,10 +332,10 @@ template
 
         <div class="mt-6">
 {{#if busy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Sending…</button>
 {{/if}}
 {{#if not busy}}
-          <button onclick="{{ invite() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Send invitation</button>
+          <button onclick="{{ invite() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Send invitation</button>
 {{/if}}
         </div>
       </div>

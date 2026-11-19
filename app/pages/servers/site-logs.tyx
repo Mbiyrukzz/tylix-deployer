@@ -416,8 +416,7 @@ onMount
   }
 
 template
-  <div id="site-logs-root" class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div id="site-logs-root" class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
@@ -591,8 +590,8 @@ template
               </div>
               <p class="text-slate-300 text-sm font-mono truncate">{{ site.domain }} <span class="text-slate-600">&mdash;</span> logs</p>
               {{#if live}}
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 text-brand-400 text-xs font-medium px-2.5 py-0.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span> Live
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
               </span>
               {{/if}}
             </div>
@@ -637,7 +636,7 @@ template
 {{/if}}
                 <button onclick="{{ expandAll() }}" class="text-xs text-slate-400 border border-slate-700 rounded-full px-3 py-1.5 hover:text-slate-200 hover:border-slate-600 transition-colors">Expand</button>
                 <button onclick="{{ collapseAll() }}" class="text-xs text-slate-400 border border-slate-700 rounded-full px-3 py-1.5 hover:text-slate-200 hover:border-slate-600 transition-colors">Collapse</button>
-                <button onclick="{{ copyAll() }}" class="text-xs bg-brand-500 text-slate-950 font-semibold rounded-full px-4 py-1.5 hover:bg-brand-400 transition-all">
+                <button onclick="{{ copyAll() }}" class="text-xs bg-brand-500 text-white font-semibold rounded-full px-4 py-1.5 hover:bg-brand-400 transition-all">
                   {{#if copied is "all"}}Copied{{/if}}{{#if copied is not "all"}}Copy all{{/if}}
                 </button>
               </div>

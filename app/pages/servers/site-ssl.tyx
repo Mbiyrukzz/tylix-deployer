@@ -185,8 +185,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
@@ -214,7 +213,7 @@ template
 
       <div class="mb-8">
         <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
 {{#if status is "working"}}
           <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
             <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
@@ -226,8 +225,8 @@ template
           </span>
 {{/if}}
 {{#if status is "active"}}
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Secured
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Secured
           </span>
 {{/if}}
         </div>
@@ -286,7 +285,7 @@ template
 
             <div class="flex flex-wrap items-center gap-3">
 {{#if busy}}
-              <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Working…</button>
+              <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 opacity-50">Working…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -299,7 +298,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ openModal('le') }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Let's Encrypt</button>
+              <button onclick="{{ openModal('le') }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Let's Encrypt</button>
 {{/if}}
 {{#if Billing.locked}}
               <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
@@ -365,7 +364,7 @@ template
           <div class="flex items-center justify-end gap-3">
             <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{#if busy}}
-            <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Working…</button>
+            <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 opacity-50">Working…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -378,7 +377,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ enableLetsEncrypt() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Get certificate</button>
+            <button onclick="{{ enableLetsEncrypt() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Get certificate</button>
 {{/if}}
 {{/if}}
           </div>
@@ -395,7 +394,7 @@ template
               <IconX class="w-4 h-4" />
             </button>
           </div>
-          <p class="text-slate-500 text-xs mb-4">Paste the certificate (your certificate first, then any intermediates) and its private key, both in PEM format. The server checks that they match before anything is switched on. The key is sent to the server and is not stored by tylix-deploy.</p>
+          <p class="text-slate-500 text-xs mb-4">Paste the certificate (your certificate first, then any intermediates) and its private key, both in PEM format. The server checks that they match before anything is switched on. The key is sent to the server and is not stored by Tylix Flux.</p>
 
           <label for="custom-cert" class="block text-slate-500 text-xs mb-1.5">Certificate</label>
           <textarea
@@ -428,7 +427,7 @@ template
           <div class="flex items-center justify-end gap-3">
             <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">Cancel</button>
 {{#if busy}}
-            <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 opacity-50">Working…</button>
+            <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 opacity-50">Working…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -441,7 +440,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ installCustom() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Install certificate</button>
+            <button onclick="{{ installCustom() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Install certificate</button>
 {{/if}}
 {{/if}}
           </div>
@@ -461,7 +460,7 @@ template
               </span>
 {{/if}}
 {{#if status is "active"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">Secured</span>
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">Secured</span>
 {{/if}}
 {{#if status is "failed"}}
               <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">Failed</span>

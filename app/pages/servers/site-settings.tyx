@@ -102,7 +102,7 @@ action
     const pill = "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold "
     let tone = "bg-amber-500/10 text-amber-700 dark:text-amber-400"
     if site.status is "ready" {
-      tone = "bg-brand-500/10 text-brand-700 dark:text-brand-400"
+      tone = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
     } else if site.status is "failed" {
       tone = "bg-rose-500/10 text-rose-600 dark:text-rose-400"
     }
@@ -709,8 +709,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
@@ -830,7 +829,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ openInstaller() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 sm:py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
+              <button onclick="{{ openInstaller() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 sm:py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                   <path d="M10 4v12M4 10h12" stroke-linecap="round" />
                 </svg>
@@ -866,8 +865,8 @@ template
                       <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ p.name }}</h3>
                       <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{{ p.group }}</span>
 {{#if p.isInstalled}}
-                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Installed
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
                       </span>
 {{/if}}
 {{#if p.busy}}
@@ -902,7 +901,7 @@ template
 {{/if}}
 {{#if not Billing.locked}}
 {{#if p.isFailed}}
-                  <button onclick="{{ retry(p.id, p.status) }}" class="min-h-[40px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 sm:py-1.5 shadow-sm hover:bg-brand-400 transition-all">Retry</button>
+                  <button onclick="{{ retry(p.id, p.status) }}" class="min-h-[40px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 sm:py-1.5 shadow-sm hover:bg-brand-400 transition-all">Retry</button>
 {{/if}}
                   <button onclick="{{ remove(p.id) }}" class="min-h-[40px] sm:min-h-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-2 sm:py-1.5 hover:bg-rose-500/5 transition-colors">Remove</button>
 {{/if}}
@@ -1019,7 +1018,7 @@ template
 {{/if}}
 {{#if not Billing.locked}}
 {{#if installBusy}}
-            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 opacity-50">Installing…</button>
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 opacity-50">Installing…</button>
 {{/if}}
 {{#if not installBusy}}
 {{#if picked}}
@@ -1027,7 +1026,7 @@ template
               <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">Unavailable</button>
 {{/if}}
 {{#if not picked?.blocked}}
-              <button onclick="{{ installPicked() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Install {{ picked?.name }}</button>
+              <button onclick="{{ installPicked() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Install {{ picked?.name }}</button>
 {{/if}}
 {{/if}}
 {{#if not picked}}
@@ -1147,7 +1146,7 @@ template
 {{#if nginxText is not nginxOriginal}}
               <button onclick="{{ discardNginx() }}" class="flex-1 sm:flex-none text-sm text-slate-300 border border-slate-700 rounded-full px-4 py-2.5 sm:py-2 hover:bg-slate-800 transition-colors">Discard</button>
 {{/if}}
-              <button onclick="{{ saveNginx() }}" class="flex-1 sm:flex-none text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-6 py-2.5 sm:py-2 shadow-sm hover:bg-brand-400 transition-all">
+              <button onclick="{{ saveNginx() }}" class="flex-1 sm:flex-none text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 sm:py-2 shadow-sm hover:bg-brand-400 transition-all">
                 {{#if nginxSaving}}Testing and saving…{{/if}}{{#if not nginxSaving}}Test and save{{/if}}
               </button>
             </div>
@@ -1187,10 +1186,10 @@ template
           <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
             <button onclick="{{ closeCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
 {{#if codeBusy}}
-            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
 {{/if}}
 {{#if not codeBusy}}
-            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Confirm</button>
+            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Confirm</button>
 {{/if}}
           </div>
         </div>

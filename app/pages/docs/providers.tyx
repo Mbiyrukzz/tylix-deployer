@@ -10,9 +10,9 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Providers page</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Providers page</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">Connect your cloud accounts and see which ones your servers use.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What is on the page</h2>
@@ -44,10 +44,10 @@ template
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Remove</p>
-          <p class="text-zinc-500 text-xs mt-0.5">Deletes the connection from Tylix Deploy. It does not touch anything at the provider.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Deletes the connection from Tylix Flux. It does not touch anything at the provider.</p>
         </div>
       </div>
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If your Tylix Deploy subscription needs payment, the page turns view only. Buttons that change something are greyed out and read &ldquo;Pay to continue&rdquo;. You can still look at everything.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If your Tylix Flux subscription needs payment, the page turns view only. Buttons that change something are greyed out and read &ldquo;Pay to continue&rdquo;. You can still look at everything.</p>
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
         <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">A connection that still has servers cannot be removed. The card says &ldquo;Delete its servers to remove this connection.&rdquo; instead of showing Remove. Once the servers are gone, select Remove, then Yes, remove.</p>
       </div>

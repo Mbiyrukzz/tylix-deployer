@@ -239,7 +239,7 @@ action
 
   heroFor(status) {
     if status is "success" {
-      return "bg-brand-500"
+      return "bg-emerald-500"
     }
     if status is "failed" {
       return "bg-rose-500"
@@ -604,13 +604,13 @@ action
 
     if d.status is "success" and d.id is activeId {
       label = "Active"
-      tone = "bg-brand-500/10 border-brand-500/20 text-brand-700 dark:text-brand-500"
-      dot = "bg-brand-500"
+      tone = "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-500"
+      dot = "bg-emerald-500"
     }
     if d.status is "success" and d.id is not activeId {
       label = "Success"
-      tone = "bg-brand-500/10 border-brand-500/20 text-brand-700 dark:text-brand-500"
-      dot = "bg-brand-500/60"
+      tone = "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-500"
+      dot = "bg-emerald-500/60"
     }
     if d.status is "failed" {
       label = "Failed"
@@ -1047,8 +1047,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_minmax(0,1fr)] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="sites" serverId="{{ serverId }}" />
 {{/if}}
@@ -1094,7 +1093,7 @@ template
               <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-400"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Deploying</span>
 {{/if}}
 {{#if logStatus is "success"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-400"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Deployed</span>
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed</span>
 {{/if}}
 {{#if logStatus is "failed"}}
               <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-400"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed</span>
@@ -1174,7 +1173,7 @@ template
       </div>
 
 {{#if not atBottom}}
-      <button onclick="{{ jumpBottom() }}" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-1.5 text-xs font-semibold bg-brand-500 text-slate-950 rounded-full px-3.5 py-2 shadow-lg hover:bg-brand-400 transition-colors">
+      <button onclick="{{ jumpBottom() }}" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-1.5 text-xs font-semibold bg-brand-500 text-white rounded-full px-3.5 py-2 shadow-lg hover:bg-brand-400 transition-colors">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M10 4v12M5 11l5 5 5-5" /></svg>
         Jump to bottom
       </button>
@@ -1191,7 +1190,7 @@ template
 
       <div class="mb-8">
         <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-center gap-2.5 max-w-full">
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-500 transition-colors">{{ site.domain }}</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-500 transition-colors">{{ site.domain }}</h1>
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-500 transition-colors">
             <path d="M11 3h6v6M17 3l-8 8M15 11v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" />
           </svg>
@@ -1261,7 +1260,7 @@ template
                   </button>
 {{/if}}
 {{#if not Billing.locked}}
-                  <button onclick="{{ deploy() }}" class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
+                  <button onclick="{{ deploy() }}" class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                     Deploy now
                   </button>
@@ -1519,7 +1518,7 @@ template
             <div class="flex items-center gap-3">
               <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-              <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+              <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not saving}}
 {{#if Billing.locked}}
@@ -1532,7 +1531,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
+              <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
 {{/if}}
 {{/if}}
             </div>
@@ -1567,7 +1566,7 @@ template
           <div class="flex items-center justify-end gap-3">
             <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if saving}}
-            <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+            <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not saving}}
 {{#if Billing.locked}}
@@ -1580,7 +1579,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
+            <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
 {{/if}}
 {{/if}}
           </div>

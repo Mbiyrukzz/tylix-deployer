@@ -39,7 +39,7 @@ export interface LoginChallenge {
     smsError?: string;
 }
 
-const ISSUER = "tylix-deploy";
+const ISSUER = "Tylix Flux";
 const PERIOD_SECONDS = 30;
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 

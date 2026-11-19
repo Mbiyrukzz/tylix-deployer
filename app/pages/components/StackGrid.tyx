@@ -2,7 +2,6 @@ component StackGrid
 
 template
   <section class="relative overflow-hidden px-6 py-24 bg-slate-200 dark:bg-slate-950 transition-colors">
-    <div class="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[320px] rounded-full bg-brand-500/10 blur-3xl" aria-hidden="true"></div>
 
     <div class="relative max-w-5xl mx-auto">
 
@@ -274,8 +273,8 @@ template
             <div class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-panel shadow-sm dark:shadow-none overflow-hidden">
               <div class="flex items-center justify-between px-4 py-3 border-b border-line">
                 <p class="text-slate-800 dark:text-slate-200 text-sm font-medium font-mono">example.com</p>
-                <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-                  <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Active
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
                 </span>
               </div>
               <div class="px-4 py-2 grid grid-cols-[48px_1fr_auto] gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">

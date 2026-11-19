@@ -78,7 +78,7 @@ action
   }
 
   tone(enabled) {
-    const on = "text-sm font-semibold rounded-full py-2.5 transition-all bg-brand-500 text-white dark:text-slate-950 shadow-sm hover:bg-brand-400"
+    const on = "text-sm font-semibold rounded-full py-2.5 transition-all bg-brand-500 text-white shadow-sm hover:bg-brand-400"
     const off = "text-sm font-semibold rounded-full py-2.5 transition-all bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 cursor-not-allowed"
     return enabled ? on : off
   }
@@ -218,8 +218,8 @@ action
 
       if t.status is "done" {
         this.taskLabel = "Done"
-        this.taskCls = base + "text-brand-700 dark:text-brand-500"
-        this.taskDot = dot + "bg-brand-500"
+        this.taskCls = base + "text-emerald-700 dark:text-emerald-500"
+        this.taskDot = dot + "bg-emerald-500"
       } else if t.status is "failed" {
         this.taskLabel = "Failed"
         this.taskCls = base + "text-rose-600 dark:text-rose-500"
@@ -561,8 +561,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <ServerSidebar active="packages" serverId="{{ serverId }}" />
     <div class="min-w-0">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
@@ -589,19 +588,19 @@ template
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Installed</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ installedCount }} <span class="text-base font-medium text-slate-500">of {{ totalCount }}</span></p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ installedCount }} <span class="text-base font-medium text-slate-500">of {{ totalCount }}</span></p>
           <div class="mt-3 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
             <div class="h-1.5 rounded-full bg-brand-500 transition-all" style="width: {{ percent }}%"></div>
           </div>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none min-w-0">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Selected</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ selected.length }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ selected.length }}</p>
           <p class="text-slate-500 text-xs mt-3 truncate">{{ pickedText }}</p>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none min-w-0">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Last install</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ taskLabel }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ taskLabel }}</p>
           <p class="text-slate-500 text-xs mt-3 truncate">{{ taskText }}</p>
         </div>
       </div>
@@ -794,7 +793,7 @@ template
 
       <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
         <button onclick="{{ cancelUpgrade() }}" class="w-full sm:w-auto text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
-        <button onclick="{{ upgrade() }}" class="w-full sm:w-auto text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Yes, update now</button>
+        <button onclick="{{ upgrade() }}" class="w-full sm:w-auto text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Yes, update now</button>
       </div>
     </div>
   </div>
@@ -828,7 +827,7 @@ template
 
       <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
         <button onclick="{{ closeCode() }}" class="w-full sm:w-auto text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
-        <button onclick="{{ submitCode() }}" class="w-full sm:w-auto text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">{{ codeBusy ? "Checking…" : "Confirm" }}</button>
+        <button onclick="{{ submitCode() }}" class="w-full sm:w-auto text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">{{ codeBusy ? "Checking…" : "Confirm" }}</button>
       </div>
     </div>
   </div>

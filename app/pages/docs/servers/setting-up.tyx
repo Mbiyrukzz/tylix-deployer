@@ -10,10 +10,10 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Servers</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Setting up a server</h1>
-      <p class="text-zinc-500 text-sm mt-2 mb-8">When you create a server, Tylix Deploy builds the machine at your cloud provider and, depending on the template you chose, installs software on it. This takes a few minutes. You can watch it in two places: the progress page for that server, and the Setting up panel on the Servers page.</p>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Setting up a server</h1>
+      <p class="text-zinc-500 text-sm mt-2 mb-8">When you create a server, Tylix Flux builds the machine at your cloud provider and, depending on the template you chose, installs software on it. This takes a few minutes. You can watch it in two places: the progress page for that server, and the Setting up panel on the Servers page.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The progress page</h2>
 
@@ -69,7 +69,7 @@ template
           <li>Queued</li>
           <li>Creating machine: the server is requested from your provider.</li>
           <li>Booting</li>
-          <li>Waiting for SSH: Tylix Deploy waits until it can log in.</li>
+          <li>Waiting for SSH: Tylix Flux waits until it can log in.</li>
         </ol>
       </div>
 

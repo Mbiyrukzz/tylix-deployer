@@ -10,9 +10,9 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Server overview</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Server overview</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">Open any server from the Servers page and you land here. It shows whether the machine is healthy right now, how to log in to it, which sites run on it, and lets you reboot or delete it. The other pages for this server are in the menu on the left.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The top of the page</h2>
@@ -47,7 +47,7 @@ template
 
         <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
           <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">A red message</h3>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Tylix Deploy could not read the server's numbers, and the badge turns to Offline. Check that the machine is on and that the SSH details are still right.</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Tylix Flux could not read the server's numbers, and the badge turns to Offline. Check that the machine is on and that the SSH details are still right.</p>
         </div>
 
       </div>
@@ -90,7 +90,7 @@ template
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Connect</h2>
 
       <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">This card has the command to open a shell on the server from your own machine. Choose Copy and paste it into a terminal. The port is added to the command only when it is not 22.</p>
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Below the command are the host, SSH port, SSH user, and the dates the server was added and last updated. The SSH key shows "Stored encrypted": Tylix Deploy never shows it again after you save it.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Below the command are the host, SSH port, SSH user, and the dates the server was added and last updated. The SSH key shows "Stored encrypted": Tylix Flux never shows it again after you save it.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Sites</h2>
 
@@ -110,7 +110,7 @@ template
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Delete server</h2>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Removes the server from Tylix Deploy, together with its stored SSH key. Your machine itself is not touched.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Removes the server from Tylix Flux, together with its stored SSH key. Your machine itself is not touched.</p>
 
       <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 mb-3">
         <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 mt-2 shrink-0 rounded-full bg-brand-500"></span><span>Select Delete server, then Yes, delete it. Cancel backs out.</span></li>
@@ -119,7 +119,7 @@ template
       </ul>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
-        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Deleting cannot be undone. Make sure nothing on the server still needs Tylix Deploy before you confirm.</p>
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Deleting cannot be undone. Make sure nothing on the server still needs Tylix Flux before you confirm.</p>
       </div>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">If something goes wrong</h2>

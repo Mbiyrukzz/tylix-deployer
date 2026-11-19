@@ -1,54 +1,170 @@
 component Sidebar
 
-import { IconBolt, IconViewGrid, IconServer, IconCloud, IconCode, IconAdjustments, IconGlobe, IconDotsHorizontal, IconUsers, IconDocumentText, IconX } from "tylix-icons"
+import { IconLayoutDashboard, IconServer, IconCloud, IconCode, IconCog, IconGlobe, IconDotsHorizontal, IconUsers, IconBookOpen, IconX, IconSearch } from "tylix-icons"
 
-props
-  active: String
+// The main navigation. It lives in app/pages/_layout.tyx and stays mounted
+// while you move between app pages (public/app-shell.js swaps only the page),
+// so the current item follows the URL instead of a prop.
+//
+// Large screens: a fixed column that collapses to icons ([ or the button at
+// the bottom). Its width is a CSS variable set before first paint, so the
+// page never jumps. Phones and tablets: a bottom tab bar plus a "More" sheet.
+
+uses
+  Auth
 
 state
-  collapsed: false
-  asideCls: "hidden lg:flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:p-4 lg:w-64"
-  brandCls: "hidden lg:flex items-center gap-3 mb-6 px-1"
-  brandTextCls: "flex flex-col leading-tight"
-  topCls: "hidden lg:flex items-center justify-between px-3 mb-1"
-  titleCls: "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
-  secCls: "hidden lg:block text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1"
-  divCls: "hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"
-  onCls: "relative shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-slate-900 dark:text-slate-100 text-sm font-medium"
-  offCls: "group shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-  chipOnCls: "flex items-center justify-center w-7 h-7 shrink-0 rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-brand-500/30"
-  chipOffCls: "flex items-center justify-center w-7 h-7 shrink-0 rounded-lg bg-stone-200/50 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 group-hover:bg-brand-500/10 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"
-  labelCls: ""
-  chevCls: "w-4 h-4 transition-transform"
+  path: "/"
   moreOpen: false
+  serverCount: ""
+  providerCount: ""
+  domainCount: ""
+  status: "unknown"
+  countsAt: 0
 
 action
-  // Phones get a bottom tab bar instead of the sidebar (see template).
-  tabCls(on) {
-    const base = "flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 h-14 rounded-2xl text-[11px] font-medium transition-colors "
-    if on {
-      return base + "text-brand-600 dark:text-brand-400"
-    }
-    return base + "text-zinc-500 dark:text-zinc-400 active:bg-stone-200/60 dark:active:bg-white/[0.06]"
+  // The app shell (public/app-shell.js). Read through Reflect so the .tyx
+  // typechecker, which doesn't know about it, types it as any.
+  shell() {
+    return Reflect.get(window, "__flux")
   }
 
-  tabIconCls(on) {
-    if on {
-      return "flex items-center justify-center w-11 h-7 rounded-full bg-brand-500/15"
+  sectionOf(path) {
+    if path.startsWith("/dashboard") {
+      return "overview"
     }
-    return "flex items-center justify-center w-11 h-7 rounded-full"
+    if path.startsWith("/servers") {
+      return "servers"
+    }
+    if path.startsWith("/providers") {
+      return "providers"
+    }
+    if path.startsWith("/registrars") {
+      return "registrars"
+    }
+    if path.startsWith("/source-control") {
+      return "source-control"
+    }
+    if path.startsWith("/team") {
+      return "team"
+    }
+    if path.startsWith("/settings") {
+      return "settings"
+    }
+    return ""
+  }
+
+  isOn(key) {
+    return this.sectionOf(this.path) is key
+  }
+
+  cur(key) {
+    return this.isOn(key) ? "page" : "false"
+  }
+
+  itemCls(key) {
+    const base = "flux-sb-item group relative flex items-center gap-3 h-9 px-3 rounded-xl text-[13.5px] font-medium transition-colors "
+    if this.isOn(key) {
+      return base + "bg-white text-zinc-900 shadow-sm ring-1 ring-black/[0.06] dark:ring-0"
+    }
+    return base + "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-white/[0.04]"
+  }
+
+  iconCls(key) {
+    if this.isOn(key) {
+      return "w-[18px] h-[18px] shrink-0 text-zinc-900"
+    }
+    return "w-[18px] h-[18px] shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors"
+  }
+
+  badgeCls(key) {
+    const base = "flux-sb-badge ml-auto min-w-[22px] text-center text-[11px] font-medium tabular-nums rounded-md px-1.5 py-px "
+    if this.isOn(key) {
+      return base + "bg-zinc-100 text-zinc-600"
+    }
+    return base + "bg-zinc-200/60 text-zinc-500 dark:bg-white/[0.06] dark:text-zinc-400"
+  }
+
+  tabCls(key) {
+    const base = "flex-1 min-w-0 flex flex-col items-center justify-center gap-1 h-14 rounded-2xl text-[11px] font-medium transition-colors "
+    if this.isOn(key) {
+      return base + "text-zinc-900 dark:text-white"
+    }
+    return base + "text-zinc-500 active:bg-zinc-200/60 dark:active:bg-white/[0.06]"
+  }
+
+  tabIconCls(key) {
+    if this.isOn(key) {
+      return "flex items-center justify-center w-12 h-7 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+    }
+    return "flex items-center justify-center w-12 h-7 rounded-full"
   }
 
   inMore() {
-    return this.active is "team" or this.active is "source-control" or this.active is "settings"
+    const s = this.sectionOf(this.path)
+    return s is "team" or s is "source-control" or s is "settings"
   }
 
-  sheetLink(on) {
-    const base = "flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition-colors "
-    if on {
-      return base + "bg-brand-500/10 text-brand-700 dark:text-brand-400"
+  moreTabCls() {
+    const base = "flex-1 min-w-0 flex flex-col items-center justify-center gap-1 h-14 rounded-2xl text-[11px] font-medium transition-colors "
+    if this.inMore() or this.moreOpen {
+      return base + "text-zinc-900 dark:text-white"
     }
-    return base + "text-zinc-700 dark:text-zinc-200 active:bg-stone-200/60 dark:active:bg-white/[0.06]"
+    return base + "text-zinc-500 active:bg-zinc-200/60 dark:active:bg-white/[0.06]"
+  }
+
+  moreIconCls() {
+    if this.inMore() or this.moreOpen {
+      return "flex items-center justify-center w-12 h-7 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+    }
+    return "flex items-center justify-center w-12 h-7 rounded-full"
+  }
+
+  sheetLink(key) {
+    const base = "flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium transition-colors "
+    if this.isOn(key) {
+      return base + "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+    }
+    return base + "text-zinc-700 dark:text-zinc-200 active:bg-zinc-200/60 dark:active:bg-white/[0.06]"
+  }
+
+  statusDot() {
+    if this.status is "operational" {
+      return "w-2 h-2 shrink-0 rounded-full bg-emerald-500"
+    }
+    if this.status is "outage" {
+      return "w-2 h-2 shrink-0 rounded-full bg-brand-500 animate-flux-pulse"
+    }
+    return "w-2 h-2 shrink-0 rounded-full bg-zinc-400 dark:bg-zinc-600"
+  }
+
+  statusText() {
+    if this.status is "operational" {
+      return "All systems normal"
+    }
+    if this.status is "outage" {
+      return "Service disruption"
+    }
+    return "System status"
+  }
+
+  initial() {
+    const u = Auth.user
+    if not u {
+      return "?"
+    }
+    const source = u.name or u.email or "?"
+    return String(source).charAt(0).toUpperCase()
+  }
+
+  userName() {
+    const u = Auth.user
+    return u ? (u.name or "Your account") : "Your account"
+  }
+
+  userEmail() {
+    const u = Auth.user
+    return u ? (u.email or "") : ""
   }
 
   toggleMore() {
@@ -59,206 +175,194 @@ action
     this.moreOpen = false
   }
 
-  applyLayout() {
-    const asideBase = "hidden lg:flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-page p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
-    const on = "relative shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-slate-900 dark:text-slate-100 text-sm font-medium"
-    const off = "group shrink-0 flex items-center gap-3 px-2 py-1.5 rounded-xl border border-transparent text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/60 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-    const title = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider"
-    const sec = "text-slate-500 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1"
-
-    if this.collapsed {
-      this.asideCls = asideBase + " lg:px-3 lg:py-4 lg:w-[76px]"
-      this.brandCls = "hidden lg:flex items-center justify-center mb-5"
-      this.brandTextCls = "hidden"
-      this.topCls = "hidden lg:flex items-center justify-center mb-1"
-      this.titleCls = "hidden"
-      this.secCls = "hidden"
-      this.divCls = "hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-2"
-      this.onCls = on + " lg:justify-center lg:px-0"
-      this.offCls = off + " lg:justify-center lg:px-0"
-      this.labelCls = "lg:hidden"
-      this.chevCls = "w-4 h-4 transition-transform rotate-180"
-    } else {
-      this.asideCls = asideBase + " lg:p-4 lg:w-64"
-      this.brandCls = "hidden lg:flex items-center gap-3 mb-6 px-1"
-      this.brandTextCls = "flex flex-col leading-tight"
-      this.topCls = "hidden lg:flex items-center justify-between px-3 mb-1"
-      this.titleCls = title
-      this.secCls = "hidden lg:block " + sec
-      this.divCls = "hidden lg:block h-px bg-stone-200 dark:bg-white/10 my-3 mx-3"
-      this.onCls = on
-      this.offCls = off
-      this.labelCls = ""
-      this.chevCls = "w-4 h-4 transition-transform"
+  collapse() {
+    if this.shell() {
+      this.shell().sidebar()
     }
   }
 
-  toggle() {
-    this.collapsed = not this.collapsed
-    this.applyLayout()
-    window.localStorage.setItem("tylix-sidebar", this.collapsed ? "1" : "0")
+  openPalette() {
+    this.moreOpen = false
+    if this.shell() {
+      this.shell().emit("flux:palette", {})
+    }
+  }
+
+  countOf(res) {
+    if res.ok and Array.isArray(res.data) {
+      return String(res.data.length)
+    }
+    if res.ok and res.data and Array.isArray(res.data.data) {
+      return String(res.data.data.length)
+    }
+    return ""
+  }
+
+  // Counts load once, then refresh at most once a minute as you move around.
+  async loadCounts(force) {
+    if not force and Date.now() - this.countsAt < 60000 {
+      return null
+    }
+    this.countsAt = Date.now()
+    const all = await Promise.all([
+      useApi("/api/servers"),
+      useApi("/api/providers"),
+      useApi("/api/registrars")
+    ])
+    this.serverCount = this.countOf(all[0])
+    this.providerCount = this.countOf(all[1])
+    this.domainCount = this.countOf(all[2])
+  }
+
+  async loadStatus() {
+    const res = await useApi("/api/status")
+    if res.ok and res.data and res.data.state {
+      this.status = res.data.state
+    }
+  }
+
+  onNavigated() {
+    this.path = window.location.pathname
+    this.moreOpen = false
+    this.loadCounts(false)
   }
 
 onMount
   async {
-    const saved = window.localStorage.getItem("tylix-sidebar")
-    if saved is "1" {
-      this.collapsed = true
-      this.applyLayout()
+    this.path = window.location.pathname
+    const flux = this.shell()
+    if flux {
+      flux.on(window, "flux:navigated", () => this.onNavigated())
+      flux.on(window, "popstate", () => this.onNavigated())
+      flux.on(window, "flux:counts", () => this.loadCounts(true))
+      flux.every(5 * 60 * 1000, () => this.loadStatus())
     }
+    this.loadCounts(true)
+    this.loadStatus()
   }
 
 template
 <div class="contents">
-<aside class="{{ asideCls }}">
+<aside aria-label="Main" class="flux-sidebar hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 border-r border-line">
 
-  <div class="{{ brandCls }}">
-    <div class="w-9 h-9 shrink-0 rounded-xl bg-brand-500 flex items-center justify-center shadow-sm dark:shadow-brand-500/30 ring-1 ring-inset ring-white/20">
-      <IconBolt class="w-[18px] h-[18px] text-white" />
-    </div>
-    <div class="{{ brandTextCls }}">
-      <span class="text-slate-800 dark:text-slate-100 font-semibold text-sm">tylix-deploy</span>
-      <span class="text-slate-500 text-[11px]">Server &amp; deploy manager</span>
-    </div>
+  <div class="h-16 shrink-0 flex items-center gap-3 px-4">
+    <a href="/dashboard" class="flex items-center gap-3 min-w-0 rounded-xl" title="Tylix Flux">
+      <img src="/flux-mark.svg" alt="" class="w-9 h-9 shrink-0 rounded-[10px]" />
+      <span class="flux-sb-label min-w-0 flex flex-col leading-tight">
+        <span class="text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Tylix Flux</span>
+        <span class="text-[11px] text-zinc-500 truncate">Servers · sites · domains</span>
+      </span>
+    </a>
   </div>
 
-  <div class="{{ topCls }}">
-    <p class="{{ titleCls }}">Workspace</p>
-    <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="flex items-center justify-center w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-stone-200/60 dark:hover:bg-white/[0.05] transition-colors">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="{{ chevCls }}">
-        <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+  <div class="px-3 pt-1">
+    <button onclick="{{ openPalette() }}" title="Search (Ctrl K)" class="flux-sb-item w-full flex items-center gap-2.5 h-9 px-3 rounded-xl border border-line bg-panel text-[13px] text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:border-line-strong transition-colors">
+      <IconSearch class="w-4 h-4 shrink-0" />
+      <span class="flux-sb-label flex-1 text-left">Search</span>
+      <span class="flux-sb-wide flux-kbd">⌘K</span>
     </button>
   </div>
 
-{{#if active is "overview"}}
-  <a href="/dashboard" title="Overview" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <span class="{{ chipOnCls }}"><IconViewGrid class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Overview</span>
-  </a>
+  <nav class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pb-3 no-scrollbar">
+    <p class="flux-sb-section px-3 pt-5 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Workspace</p>
+    <div class="flex flex-col gap-0.5">
+      <a href="/dashboard" title="Overview" aria-current="{{ cur('overview') }}" class="{{ itemCls('overview') }}">
+        <IconLayoutDashboard class="{{ iconCls('overview') }}" />
+        <span class="flux-sb-label truncate">Overview</span>
+      </a>
+      <a href="/servers" title="Servers" aria-current="{{ cur('servers') }}" class="{{ itemCls('servers') }}">
+        <IconServer class="{{ iconCls('servers') }}" />
+        <span class="flux-sb-label truncate">Servers</span>
+{{#if serverCount}}
+        <span class="{{ badgeCls('servers') }}">{{ serverCount }}</span>
 {{/if}}
-{{#if active is not "overview"}}
-  <a href="/dashboard" title="Overview" class="{{ offCls }}">
-    <span class="{{ chipOffCls }}"><IconViewGrid class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Overview</span>
-  </a>
-{{/if}}
+      </a>
+    </div>
 
-{{#if active is "servers"}}
-  <a href="/servers" title="Servers" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <span class="{{ chipOnCls }}"><IconServer class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Servers</span>
-  </a>
+    <p class="flux-sb-section px-3 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Connections</p>
+    <div class="flex flex-col gap-0.5">
+      <a href="/providers" title="Cloud providers" aria-current="{{ cur('providers') }}" class="{{ itemCls('providers') }}">
+        <IconCloud class="{{ iconCls('providers') }}" />
+        <span class="flux-sb-label truncate">Cloud providers</span>
+{{#if providerCount}}
+        <span class="{{ badgeCls('providers') }}">{{ providerCount }}</span>
 {{/if}}
-{{#if active is not "servers"}}
-  <a href="/servers" title="Servers" class="{{ offCls }}">
-    <span class="{{ chipOffCls }}"><IconServer class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Servers</span>
-  </a>
+      </a>
+      <a href="/registrars" title="Domains" aria-current="{{ cur('registrars') }}" class="{{ itemCls('registrars') }}">
+        <IconGlobe class="{{ iconCls('registrars') }}" />
+        <span class="flux-sb-label truncate">Domains</span>
+{{#if domainCount}}
+        <span class="{{ badgeCls('registrars') }}">{{ domainCount }}</span>
 {{/if}}
+      </a>
+      <a href="/source-control" title="Source control" aria-current="{{ cur('source-control') }}" class="{{ itemCls('source-control') }}">
+        <IconCode class="{{ iconCls('source-control') }}" />
+        <span class="flux-sb-label truncate">Source control</span>
+      </a>
+    </div>
 
-{{#if active is "team"}}
-  <a href="/team" title="Team" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <span class="{{ chipOnCls }}">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4"><circle cx="8" cy="6.5" r="2.5" /><path d="M13 16v-1a3 3 0 00-3-3H6a3 3 0 00-3 3v1" stroke-linecap="round" stroke-linejoin="round" /><path d="M13.5 4.2a2.5 2.5 0 010 4.6M17 16v-1a3 3 0 00-2.2-2.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
-    </span>
-    <span class="{{ labelCls }}">Team</span>
-  </a>
-{{/if}}
-{{#if active is not "team"}}
-  <a href="/team" title="Team" class="{{ offCls }}">
-    <span class="{{ chipOffCls }}">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4"><circle cx="8" cy="6.5" r="2.5" /><path d="M13 16v-1a3 3 0 00-3-3H6a3 3 0 00-3 3v1" stroke-linecap="round" stroke-linejoin="round" /><path d="M13.5 4.2a2.5 2.5 0 010 4.6M17 16v-1a3 3 0 00-2.2-2.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
-    </span>
-    <span class="{{ labelCls }}">Team</span>
-  </a>
-{{/if}}
+    <p class="flux-sb-section px-3 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Organization</p>
+    <div class="flex flex-col gap-0.5">
+      <a href="/team" title="Team &amp; roles" aria-current="{{ cur('team') }}" class="{{ itemCls('team') }}">
+        <IconUsers class="{{ iconCls('team') }}" />
+        <span class="flux-sb-label truncate">Team &amp; roles</span>
+      </a>
+      <a href="/settings" title="Settings" aria-current="{{ cur('settings') }}" class="{{ itemCls('settings') }}">
+        <IconCog class="{{ iconCls('settings') }}" />
+        <span class="flux-sb-label truncate">Settings</span>
+      </a>
+    </div>
+  </nav>
 
-  <div class="{{ divCls }}"></div>
-  <p class="{{ secCls }}">Connections</p>
-
-{{#if active is "providers"}}
-  <a href="/providers" title="Providers" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <span class="{{ chipOnCls }}"><IconCloud class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Providers</span>
-  </a>
-{{/if}}
-{{#if active is not "providers"}}
-  <a href="/providers" title="Providers" class="{{ offCls }}">
-    <span class="{{ chipOffCls }}"><IconCloud class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Providers</span>
-  </a>
-{{/if}}
-
-{{#if active is "registrars"}}
-  <a href="/registrars" title="Registrars" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <span class="{{ chipOnCls }}"><IconGlobe class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Registrars</span>
-  </a>
-{{/if}}
-{{#if active is not "registrars"}}
-  <a href="/registrars" title="Registrars" class="{{ offCls }}">
-    <span class="{{ chipOffCls }}"><IconGlobe class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Registrars</span>
-  </a>
-{{/if}}
-
-{{#if active is "source-control"}}
-  <a href="/source-control" title="Source control" aria-current="page" class="{{ onCls }}">
-    <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-    <span class="{{ chipOnCls }}"><IconCode class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Source control</span>
-  </a>
-{{/if}}
-{{#if active is not "source-control"}}
-  <a href="/source-control" title="Source control" class="{{ offCls }}">
-    <span class="{{ chipOffCls }}"><IconCode class="w-4 h-4" /></span>
-    <span class="{{ labelCls }}">Source control</span>
-  </a>
-{{/if}}
-
-  <div class="shrink-0 flex flex-col ml-auto lg:ml-0 lg:mt-auto lg:pt-3 lg:border-t border-line">
-{{#if active is "settings"}}
-    <a href="/settings" title="Settings" aria-current="page" class="{{ onCls }}">
-      <span class="hidden lg:block absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-500"></span>
-      <span class="{{ chipOnCls }}"><IconAdjustments class="w-4 h-4" /></span>
-      <span class="{{ labelCls }}">Settings</span>
+  <div class="shrink-0 px-3 pb-3 pt-2 border-t border-line flex flex-col gap-0.5">
+    <a href="/docs" title="Documentation" class="flux-sb-item group flex items-center gap-3 h-9 px-3 rounded-xl text-[13px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] transition-colors">
+      <IconBookOpen class="w-[18px] h-[18px] shrink-0" />
+      <span class="flux-sb-label truncate">Documentation</span>
     </a>
-{{/if}}
-{{#if active is not "settings"}}
-    <a href="/settings" title="Settings" class="{{ offCls }}">
-      <span class="{{ chipOffCls }}"><IconAdjustments class="w-4 h-4" /></span>
-      <span class="{{ labelCls }}">Settings</span>
+    <a href="/status" title="{{ statusText() }}" class="flux-sb-item group flex items-center gap-3 h-9 px-3 rounded-xl text-[13px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] transition-colors">
+      <span class="w-[18px] h-[18px] shrink-0 flex items-center justify-center"><span class="{{ statusDot() }}"></span></span>
+      <span class="flux-sb-label truncate">{{ statusText() }}</span>
     </a>
-{{/if}}
+
+    <div class="mt-2 flex items-center gap-2">
+      <a href="/settings" title="{{ userName() }}" class="flux-sb-wide min-w-0 flex-1 flex items-center gap-2.5 rounded-xl p-1.5 hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] transition-colors">
+        <span class="w-8 h-8 shrink-0 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-xs font-semibold flex items-center justify-center">{{ initial() }}</span>
+        <span class="min-w-0 flex flex-col leading-tight">
+          <span class="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ userName() }}</span>
+          <span class="text-[11px] text-zinc-500 truncate">{{ userEmail() }}</span>
+        </span>
+      </a>
+      <button onclick="{{ collapse() }}" title="Collapse sidebar ( [ )" aria-label="Collapse or expand the sidebar" class="flux-sb-collapse w-8 h-8 shrink-0 mx-auto flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-white/[0.05] transition-colors">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" class="w-4 h-4 transition-transform">
+          <rect x="3" y="3.5" width="14" height="13" rx="3" />
+          <path d="M8 3.5v13" />
+          <path d="M13 8l-2 2 2 2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
   </div>
 </aside>
 
-<nav aria-label="Main" class="app-tabbar lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/90 dark:bg-[#131315]/90 backdrop-blur-xl" style="padding-bottom: env(safe-area-inset-bottom)">
+<nav aria-label="Main" class="app-tabbar lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/90 dark:bg-[#0c0c0d]/90 backdrop-blur-xl" style="padding-bottom: env(safe-area-inset-bottom)">
   <div class="flex items-stretch gap-1 px-2 py-1">
-    <a href="/dashboard" class="{{ tabCls(active is 'overview') }}" aria-current="{{ active is 'overview' ? 'page' : 'false' }}">
-      <span class="{{ tabIconCls(active is 'overview') }}"><IconViewGrid class="w-5 h-5" /></span>
+    <a href="/dashboard" class="{{ tabCls('overview') }}" aria-current="{{ cur('overview') }}">
+      <span class="{{ tabIconCls('overview') }}"><IconLayoutDashboard class="w-[18px] h-[18px]" /></span>
       Overview
     </a>
-    <a href="/servers" class="{{ tabCls(active is 'servers') }}" aria-current="{{ active is 'servers' ? 'page' : 'false' }}">
-      <span class="{{ tabIconCls(active is 'servers') }}"><IconServer class="w-5 h-5" /></span>
+    <a href="/servers" class="{{ tabCls('servers') }}" aria-current="{{ cur('servers') }}">
+      <span class="{{ tabIconCls('servers') }}"><IconServer class="w-[18px] h-[18px]" /></span>
       Servers
     </a>
-    <a href="/providers" class="{{ tabCls(active is 'providers') }}" aria-current="{{ active is 'providers' ? 'page' : 'false' }}">
-      <span class="{{ tabIconCls(active is 'providers') }}"><IconCloud class="w-5 h-5" /></span>
-      Providers
+    <a href="/providers" class="{{ tabCls('providers') }}" aria-current="{{ cur('providers') }}">
+      <span class="{{ tabIconCls('providers') }}"><IconCloud class="w-[18px] h-[18px]" /></span>
+      Clouds
     </a>
-    <a href="/registrars" class="{{ tabCls(active is 'registrars') }}" aria-current="{{ active is 'registrars' ? 'page' : 'false' }}">
-      <span class="{{ tabIconCls(active is 'registrars') }}"><IconGlobe class="w-5 h-5" /></span>
+    <a href="/registrars" class="{{ tabCls('registrars') }}" aria-current="{{ cur('registrars') }}">
+      <span class="{{ tabIconCls('registrars') }}"><IconGlobe class="w-[18px] h-[18px]" /></span>
       Domains
     </a>
-    <button onclick="{{ toggleMore() }}" aria-expanded="{{ moreOpen }}" aria-controls="tabbar-more" class="{{ tabCls(inMore() or moreOpen) }}">
-      <span class="{{ tabIconCls(inMore() or moreOpen) }}"><IconDotsHorizontal class="w-5 h-5" /></span>
+    <button onclick="{{ toggleMore() }}" aria-expanded="{{ moreOpen }}" aria-controls="tabbar-more" class="{{ moreTabCls() }}">
+      <span class="{{ moreIconCls() }}"><IconDotsHorizontal class="w-[18px] h-[18px]" /></span>
       More
     </button>
   </div>
@@ -266,18 +370,19 @@ template
 
 {{#if moreOpen}}
 <div class="lg:hidden fixed inset-0 z-[45]" role="dialog" aria-modal="true" aria-label="More">
-  <button onclick="{{ closeMore() }}" aria-label="Close" class="absolute inset-0 w-full h-full bg-black/40 backdrop-blur-[2px] cursor-default"></button>
-  <div id="tabbar-more" class="absolute inset-x-2 bottom-2 rounded-3xl border border-line bg-panel p-2 shadow-2xl shadow-black/30" style="margin-bottom: env(safe-area-inset-bottom)">
+  <button onclick="{{ closeMore() }}" aria-label="Close" class="absolute inset-0 w-full h-full bg-black/50 backdrop-blur-[2px] cursor-default"></button>
+  <div id="tabbar-more" class="absolute inset-x-2 bottom-2 rounded-2xl border border-line bg-panel p-2 shadow-pop animate-flux-sheet" style="margin-bottom: env(safe-area-inset-bottom)">
     <div class="flex items-center justify-between px-4 pt-2 pb-1">
-      <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.18em]">Workspace</p>
-      <button onclick="{{ closeMore() }}" aria-label="Close" class="w-9 h-9 -mr-2 flex items-center justify-center rounded-full text-zinc-500 active:bg-stone-200/60 dark:active:bg-white/[0.06]"><IconX class="w-5 h-5" /></button>
+      <p class="flux-eyebrow">Workspace</p>
+      <button onclick="{{ closeMore() }}" aria-label="Close" class="w-9 h-9 -mr-2 flex items-center justify-center rounded-full text-zinc-500 active:bg-zinc-200/60 dark:active:bg-white/[0.06]"><IconX class="w-5 h-5" /></button>
     </div>
-    <a href="/team" class="{{ sheetLink(active is 'team') }}"><IconUsers class="w-5 h-5 text-zinc-400" /> Team</a>
-    <a href="/source-control" class="{{ sheetLink(active is 'source-control') }}"><IconCode class="w-5 h-5 text-zinc-400" /> Source control</a>
-    <a href="/settings" class="{{ sheetLink(active is 'settings') }}"><IconAdjustments class="w-5 h-5 text-zinc-400" /> Settings</a>
+    <button onclick="{{ openPalette() }}" class="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium text-zinc-700 dark:text-zinc-200 active:bg-zinc-200/60 dark:active:bg-white/[0.06]"><IconSearch class="w-5 h-5 text-zinc-400" /> Search</button>
+    <a href="/source-control" class="{{ sheetLink('source-control') }}"><IconCode class="w-5 h-5 opacity-70" /> Source control</a>
+    <a href="/team" class="{{ sheetLink('team') }}"><IconUsers class="w-5 h-5 opacity-70" /> Team &amp; roles</a>
+    <a href="/settings" class="{{ sheetLink('settings') }}"><IconCog class="w-5 h-5 opacity-70" /> Settings</a>
     <div class="h-px bg-line my-1.5 mx-3"></div>
-    <a href="/docs" class="{{ sheetLink(false) }}"><IconDocumentText class="w-5 h-5 text-zinc-400" /> Docs</a>
-    <a href="/status" class="{{ sheetLink(false) }}"><span class="w-5 h-5 flex items-center justify-center"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span></span> System status</a>
+    <a href="/docs" class="{{ sheetLink('docs') }}"><IconBookOpen class="w-5 h-5 opacity-70" /> Documentation</a>
+    <a href="/status" class="{{ sheetLink('status') }}"><span class="w-5 h-5 flex items-center justify-center"><span class="{{ statusDot() }}"></span></span> {{ statusText() }}</a>
   </div>
 </div>
 {{/if}}

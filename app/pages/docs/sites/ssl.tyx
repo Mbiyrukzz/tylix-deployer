@@ -10,9 +10,9 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">SSL</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">SSL</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">The SSL page turns on HTTPS for one site. Open it with SSL in the menu on the left of any site. You can get a free certificate from Let's Encrypt, or install one you already have.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What the page shows</h2>
@@ -98,7 +98,7 @@ template
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Installing a custom certificate</h2>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select Custom certificate and paste two things, both in PEM format: the certificate, with your own certificate first and then any intermediates, and its private key. Select Install certificate. The server checks that the two match before anything is switched on. The key is sent to the server and Tylix Deploy does not keep it. A custom certificate does not renew by itself, so replace it before the date shown under Expires.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Select Custom certificate and paste two things, both in PEM format: the certificate, with your own certificate first and then any intermediates, and its private key. Select Install certificate. The server checks that the two match before anything is switched on. The key is sent to the server and Tylix Flux does not keep it. A custom certificate does not renew by itself, so replace it before the date shown under Expires.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The SSL log</h2>
 

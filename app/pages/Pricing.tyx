@@ -38,7 +38,7 @@ action
       { id: "costs", q: "Does the price include my cloud servers?", a: "No. Servers, snapshots, bandwidth and domains are billed to you directly by your cloud provider or registrar." },
       { id: "switch", q: "Can I change plans later?", a: "Yes. You can switch plans at any time from Settings, then Billing." },
       { id: "currency", q: "Why USD prices but KES charges?", a: "Plans are priced in US dollars. At checkout Paystack charges the equivalent in Kenyan shillings, so the KES amount can move with the exchange rate." },
-      { id: "backups", q: "Do you back up my servers?", a: "No. Tylix Deploy is not a backup service, so keep your own backups of anything you can't afford to lose." }
+      { id: "backups", q: "Do you back up my servers?", a: "No. Tylix Flux is not a backup service, so keep your own backups of anything you can't afford to lose." }
     ]
   }
 
@@ -60,8 +60,8 @@ action
       tagline: this.tagline(p.id),
       featured: f,
       cardClass: f
-        ? "relative flex flex-col rounded-3xl bg-slate-900 ring-1 ring-brand-500/40 p-7 sm:p-8 shadow-2xl shadow-brand-500/20 md:-my-3"
-        : "relative flex flex-col rounded-3xl border border-line bg-panel p-7 sm:p-8 shadow-sm dark:shadow-none",
+        ? "relative flex flex-col rounded-2xl bg-slate-900 ring-1 ring-brand-500/40 p-7 sm:p-8 shadow-2xl md:-my-3"
+        : "relative flex flex-col rounded-2xl border border-line bg-panel p-7 sm:p-8 shadow-sm dark:shadow-none",
       nameClass: f ? "text-white text-lg font-semibold" : "text-slate-900 dark:text-slate-100 text-lg font-semibold",
       mutedClass: f ? "text-white/60" : "text-slate-500",
       priceClass: f ? "text-5xl font-bold tracking-tight text-white" : "text-5xl font-bold tracking-tight text-slate-900 dark:text-slate-100",
@@ -71,12 +71,12 @@ action
       mutedStyle: f ? "color: rgba(255,255,255,0.6)" : "",
       labelStyle: f ? "color: rgba(255,255,255,0.85)" : "",
       dividerStyle: f ? "border-color: rgba(255,255,255,0.12)" : "",
-      checkStyle: f ? "background: rgba(249,115,22,0.22); color: #fb923c" : "",
+      checkStyle: f ? "background: rgba(249,115,22,0.22); color: #f0676b" : "",
       checkClass: f
         ? "w-5 h-5 shrink-0 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center"
         : "w-5 h-5 shrink-0 rounded-full bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center",
       btnClass: f
-        ? "block w-full text-center text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-5 py-3 hover:bg-brand-400 transition-all"
+        ? "block w-full text-center text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-3 hover:bg-brand-400 transition-all"
         : "block w-full text-center text-sm font-semibold text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors",
       thClass: f
         ? "text-center font-semibold text-brand-700 dark:text-brand-400 px-5 py-4 bg-brand-500/5"
@@ -152,7 +152,7 @@ template
           One dashboard for your servers, sites and domains. Pick a plan, cancel any time.
         </p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a href="/register" class="w-full sm:w-auto text-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-7 py-3 shadow-sm hover:bg-brand-400 transition-all">Start free</a>
+          <a href="/register" class="w-full sm:w-auto text-center text-sm bg-brand-500 text-white font-semibold rounded-full px-7 py-3 shadow-sm hover:bg-brand-400 transition-all">Start free</a>
           <a href="#compare" class="w-full sm:w-auto text-center text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-7 py-3 hover:bg-white dark:hover:bg-slate-900 transition-colors">Compare plans</a>
         </div>
       </div>
@@ -163,15 +163,15 @@ template
 
 {{#if loading}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div class="h-[26rem] rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
-          <div class="h-[26rem] rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
-          <div class="h-[26rem] rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-[26rem] rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-[26rem] rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+          <div class="h-[26rem] rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
         </div>
 {{/if}}
 
 {{#if not loading}}
 {{#if failed}}
-        <div class="max-w-xl mx-auto rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
+        <div class="max-w-xl mx-auto rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-10 text-center">
           <p class="text-slate-900 dark:text-slate-100 font-medium mb-1.5">Couldn't load pricing</p>
           <p class="text-slate-500 text-sm">Please refresh the page or try again in a moment.</p>
         </div>
@@ -220,7 +220,7 @@ template
     <section class="px-4 sm:px-6 pb-16 sm:pb-24">
       <div class="max-w-6xl mx-auto">
         <div class="text-center max-w-xl mx-auto mb-10">
-          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Included in every plan</h2>
+          <h2 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Included in every plan</h2>
           <p class="text-slate-500 text-sm sm:text-base">Plans differ only by limits. Every feature is on from day one.</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -250,7 +250,7 @@ template
 {{#if not failed}}
     <section id="compare" class="px-4 sm:px-6 pb-16 sm:pb-24 scroll-mt-24">
       <div class="max-w-4xl mx-auto">
-        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Compare plans</h2>
+        <h2 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Compare plans</h2>
         <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-x-auto">
           <table class="w-full min-w-[480px] text-sm">
             <thead>
@@ -280,7 +280,7 @@ template
 
     <section class="px-4 sm:px-6 pb-16 sm:pb-24">
       <div class="max-w-3xl mx-auto">
-        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Frequently asked questions</h2>
+        <h2 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 text-center mb-8">Frequently asked questions</h2>
         <div class="space-y-3">
 {{#each f in faqs}}
           <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
@@ -304,12 +304,12 @@ template
     </section>
 
     <section class="px-4 sm:px-6 pb-16 sm:pb-24">
-      <div class="relative overflow-hidden max-w-5xl mx-auto rounded-3xl bg-slate-900 px-6 sm:px-12 py-12 sm:py-16 text-center">
+      <div class="relative overflow-hidden max-w-5xl mx-auto rounded-2xl bg-slate-900 px-6 sm:px-12 py-12 sm:py-16 text-center">
         <div class="relative">
           <h2 class="text-2xl sm:text-4xl font-bold tracking-tight text-white mb-3">Ready to ship your next site?</h2>
           <p class="text-white/60 text-sm sm:text-base max-w-md mx-auto mb-8" style="color: rgba(255,255,255,0.6)">Connect a server, create a site and go live in minutes.</p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a href="/register" class="w-full sm:w-auto text-center text-sm bg-brand-500 text-slate-950 font-semibold rounded-full px-7 py-3 hover:bg-brand-400 transition-all">Create your account</a>
+            <a href="/register" class="w-full sm:w-auto text-center text-sm bg-brand-500 text-white font-semibold rounded-full px-7 py-3 hover:bg-brand-400 transition-all">Create your account</a>
             <a href="/login" class="w-full sm:w-auto text-center text-sm text-white/90 border border-white/20 rounded-full px-7 py-3 hover:bg-white/10 transition-colors" style="color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2)">Sign in</a>
           </div>
         </div>

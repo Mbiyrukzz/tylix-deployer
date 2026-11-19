@@ -444,6 +444,13 @@ export interface ApiRoutes {
     response: unknown
     auth: false
   }
+  "GET /api/insights/deployments": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: true
+  }
   "GET /api/legal": {
     params: Record<string, never>
     query: Record<string, string | number | boolean | undefined>
@@ -1848,6 +1855,9 @@ export interface RouteClient {
     }
   }
   docs(options?: RouteOptions<ApiRoutes["GET /api/docs"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/docs"]['response']>>
+  insights: {
+    deployments(options?: RouteOptions<ApiRoutes["GET /api/insights/deployments"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/insights/deployments"]['response']>>
+  }
   legal(options?: RouteOptions<ApiRoutes["GET /api/legal"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/legal"]['response']>>
   login(body: ApiRoutes["POST /api/login"]['body'], options?: RouteOptions<ApiRoutes["POST /api/login"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/login"]['response']>>
   me(options?: RouteOptions<ApiRoutes["GET /api/me"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/me"]['response']>>

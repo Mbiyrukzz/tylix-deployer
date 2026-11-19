@@ -109,7 +109,7 @@ template
     <div class="flex items-center gap-4 min-w-0">
       <a href="/" onclick="{{ go('/') }}" class="flex items-center gap-2.5 group shrink-0">
         <img src="/logo-mark.png" alt="Tylix" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg group-hover:scale-105 transition-transform" />
-        <span class="text-zinc-900 dark:text-zinc-100 text-sm sm:text-base font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] whitespace-nowrap">Tylix <span class="text-brand-500">Deploy</span></span>
+        <span class="text-zinc-900 dark:text-zinc-100 text-sm sm:text-base font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] whitespace-nowrap">Tylix <span class="text-brand-500">Flux</span></span>
       </a>
 
       <div class="hidden md:block w-px h-5 bg-line"></div>
@@ -202,7 +202,7 @@ template
   </nav>
 
 {{#if mobileMenuOpen}}
-  <div id="mobile-menu" class="md:hidden absolute inset-x-4 sm:inset-x-6 top-[calc(100%-0.25rem)] rounded-3xl border border-line bg-panel p-3 shadow-xl shadow-black/10 max-h-[calc(100vh-5rem)] overflow-y-auto">
+  <div id="mobile-menu" class="md:hidden absolute inset-x-4 sm:inset-x-6 top-[calc(100%-0.25rem)] rounded-2xl border border-line bg-panel p-3 shadow-xl shadow-black/10 max-h-[calc(100vh-5rem)] overflow-y-auto">
 
 {{#if Auth.user}}
     <div class="flex items-center gap-3 rounded-2xl bg-stone-50 dark:bg-white/[0.03] px-4 py-3 mb-2">

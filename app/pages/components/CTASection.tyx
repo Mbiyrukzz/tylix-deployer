@@ -15,14 +15,14 @@ template
       <p class="text-slate-500 max-w-xl mx-auto mb-8">Connect a server and ship your next release in minutes.</p>
       <div class="min-h-[52px]">
 {{#if Auth.user}}
-        <a href="/servers" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-brand-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all">
+        <a href="/servers" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-brand-500 text-white font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all">
           Open my servers
           <IconArrowRight class="w-4 h-4" />
         </a>
 {{/if}}
 {{#if not Auth.loading}}
 {{#if not Auth.user}}
-        <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-brand-500 text-white dark:text-slate-950 font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all">
+        <a href="/register" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-brand-500 text-white font-semibold shadow-sm hover:bg-brand-400 hover:shadow transition-all">
           Create your account
           <IconArrowRight class="w-4 h-4" />
         </a>

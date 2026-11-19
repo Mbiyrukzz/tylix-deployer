@@ -135,7 +135,7 @@ action
   pill(status) {
     const base = "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 "
     if status is "online" {
-      return base + "bg-brand-500/10 text-brand-700 dark:text-brand-400 ring-brand-500/25"
+      return base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25"
     }
     if status is "offline" {
       return base + "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25"
@@ -145,7 +145,7 @@ action
 
   ping(status) {
     if status is "online" {
-      return "absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-60 animate-ping"
+      return "absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping"
     }
     return "hidden"
   }
@@ -266,9 +266,9 @@ action
     return this.rawServices.map((s) => Object.assign({}, s, {
       running: s.state is "active",
       busy: this.working is ("restart:" + s.id),
-      dot: s.state is "active" ? "bg-brand-500" : "bg-rose-500",
+      dot: s.state is "active" ? "bg-emerald-500" : "bg-rose-500",
       badge: s.state is "active"
-        ? "bg-brand-500/10 text-brand-700 dark:text-brand-400 ring-brand-500/25"
+        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/25"
         : "bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-500/25"
     }))
   }
@@ -419,7 +419,7 @@ action
       this.confirmBtnCls = "bg-amber-500 text-white dark:text-slate-950 hover:bg-amber-400"
     } else {
       this.confirmIconCls = "bg-brand-500/10 text-brand-600 dark:text-brand-400 ring-brand-500/20"
-      this.confirmBtnCls = "bg-brand-500 text-white dark:text-slate-950 hover:bg-brand-400"
+      this.confirmBtnCls = "bg-brand-500 text-white hover:bg-brand-400"
     }
 
     this.confirmOpen = true
@@ -841,8 +841,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="settings" serverId="{{ serverId }}" />
 {{/if}}
@@ -877,7 +876,7 @@ template
 {{#if server}}
 
 {{#if flash}}
-      <div role="status" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-brand-500/30 bg-panel px-4 py-3 shadow-xl shadow-brand-500/10">
+      <div role="status" class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[60] flex items-start gap-3 rounded-xl border border-brand-500/30 bg-panel px-4 py-3 shadow-xl">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 shrink-0 mt-0.5 text-brand-500">
           <path d="M5 10.5l3.5 3.5L15 6.5" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
@@ -909,7 +908,6 @@ template
       </a>
 
       <div class="relative overflow-hidden rounded-2xl border border-line bg-panel px-5 sm:px-8 py-7 sm:py-9 mb-4 sm:mb-6 shadow-sm dark:shadow-none">
-        <div class="pointer-events-none absolute -right-16 -top-16 w-64 h-64 rounded-full bg-sky-500/10 blur-3xl"></div>
 
         <div class="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div class="min-w-0 flex items-start gap-4 sm:gap-5">
@@ -1045,7 +1043,7 @@ template
           </div>
 
           <div class="flex flex-col sm:flex-row gap-2 mt-5">
-            <button onclick="{{ saveGeneral() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
+            <button onclick="{{ saveGeneral() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
               {{#if working is "general"}}Saving…{{/if}}{{#if working is not "general"}}Save changes{{/if}}
             </button>
             <button onclick="{{ testConnection() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -1139,7 +1137,7 @@ template
           </dl>
 
           <div class="flex flex-col sm:flex-row gap-2 mt-5">
-            <button onclick="{{ rotate() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
+            <button onclick="{{ rotate() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
               {{#if working is "rotate"}}Replacing…{{/if}}{{#if working is not "rotate"}}Rotate key{{/if}}
             </button>
             <button onclick="{{ toggleKeyForm() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Paste my own key</button>
@@ -1246,7 +1244,7 @@ template
           <p class="text-slate-500 text-sm leading-relaxed">No host key is pinned yet, so the deployer trusts whatever key the server shows on first contact. Pin it to make every later connection fail if the key ever differs.</p>
 
           <div class="flex flex-col sm:flex-row gap-2 mt-5">
-            <button onclick="{{ pinHostKey() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
+            <button onclick="{{ pinHostKey() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
               {{#if working is "pinkey"}}Reading key…{{/if}}{{#if working is not "pinkey"}}Pin host key{{/if}}
             </button>
           </div>
@@ -1337,7 +1335,7 @@ template
               <div class="flex flex-col sm:flex-row gap-2">
                 <input id="f-zone" type="text" autocapitalize="none" spellcheck="false" value="{{ fZone }}" oninput="{{ fZone = $event.target.value }}" placeholder="Africa/Nairobi" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
                 <button onclick="{{ useBrowserZone() }}" class="shrink-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Use mine</button>
-                <button onclick="{{ saveZone() }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
+                <button onclick="{{ saveZone() }}" class="shrink-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
                   {{#if working is "zone"}}Saving…{{/if}}{{#if working is not "zone"}}Save{{/if}}
                 </button>
               </div>
@@ -1347,7 +1345,7 @@ template
               <label for="f-hostname" class="block text-slate-500 text-xs font-medium mb-1.5">Hostname</label>
               <div class="flex flex-col sm:flex-row gap-2">
                 <input id="f-hostname" type="text" autocapitalize="none" spellcheck="false" value="{{ fHostname }}" oninput="{{ fHostname = $event.target.value }}" class="flex-1 min-w-0 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-base sm:text-sm font-mono px-3.5 py-2.5 transition-shadow focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10" />
-                <button onclick="{{ saveHostname() }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
+                <button onclick="{{ saveHostname() }}" class="shrink-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">
                   {{#if working is "hostname"}}Saving…{{/if}}{{#if working is not "hostname"}}Save{{/if}}
                 </button>
               </div>
@@ -1373,7 +1371,7 @@ template
                 <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Automatic security updates</p>
                 <p class="text-slate-500 text-xs">Off. Turning on installs the unattended-upgrades package if it's missing.</p>
               </div>
-              <button onclick="{{ toggleUpdates() }}" class="shrink-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-brand-400 transition-all">
+              <button onclick="{{ toggleUpdates() }}" class="shrink-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-1.5 shadow-sm hover:bg-brand-400 transition-all">
                 {{#if working is "updates"}}Working…{{/if}}{{#if working is not "updates"}}Turn on{{/if}}
               </button>
             </div>
@@ -1517,10 +1515,10 @@ template
           <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
             <button onclick="{{ closeCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
 {{#if codeBusy}}
-            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
+            <button disabled class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 opacity-50">Checking…</button>
 {{/if}}
 {{#if not codeBusy}}
-            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Confirm</button>
+            <button onclick="{{ submitCode() }}" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Confirm</button>
 {{/if}}
           </div>
         </div>

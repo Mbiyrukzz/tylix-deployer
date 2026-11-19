@@ -96,8 +96,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-  <Sidebar active="registrars" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
   <RegistrarSidebar active="renewals" registrarId="{{ registrarId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -106,7 +105,7 @@ template
         <IconArrowLeft class="w-4 h-4" /> Domain providers
       </a>
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Renewals</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Renewals</h1>
       <p class="text-slate-500 text-sm mb-2">{{ kindName }}</p>
       <p class="text-slate-500 text-xs mb-6">Registrars don't expose invoices through their APIs, so this shows what expires when. Renew and pay in the registrar's own dashboard.</p>
 

@@ -155,7 +155,7 @@ action
 
   applyFilter() {
     const types = ["ALL", "A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV", "CAA"]
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white dark:text-slate-950 text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
+    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
     const idleCls = "inline-flex items-center gap-2 rounded-full border border-line bg-panel text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-brand-500/50 transition-all"
 
     this.shown = this.filter is "ALL" ? this.records : this.records.filter((r) => r.type is this.filter)
@@ -407,8 +407,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-  <Sidebar active="providers" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
   <ProviderSidebar active="domains" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -421,7 +420,7 @@ template
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div class="min-w-0">
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1 truncate">{{ domainName }}</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1 truncate">{{ domainName }}</h1>
           <p class="text-slate-500 text-sm">DNS records</p>
         </div>
 {{#if not locked}}
@@ -435,7 +434,7 @@ template
         </button>
 {{/if}}
 {{#if not Billing.locked}}
-        <button onclick="{{ openAdd() }}" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Add record</button>
+        <button onclick="{{ openAdd() }}" class="inline-flex items-center text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Add record</button>
 {{/if}}
 {{/if}}
       </div>
@@ -510,7 +509,7 @@ template
         <div class="flex items-center justify-end gap-3 mt-6">
           <button onclick="{{ closeSettings() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
 {{#if sSaving}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
 {{/if}}
 {{#if not sSaving}}
 {{#if Billing.locked}}
@@ -523,7 +522,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ saveSettings() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save settings</button>
+          <button onclick="{{ saveSettings() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save settings</button>
 {{/if}}
 {{/if}}
         </div>

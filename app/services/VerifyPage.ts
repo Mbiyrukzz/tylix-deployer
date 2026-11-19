@@ -6,7 +6,7 @@
 
 export type VerifyState = "success" | "already" | "invalid";
 
-const APP_NAME = "Tylix Deployer"; // change to your product name
+const APP_NAME = "Tylix Flux"; // change to your product name
 const LOGIN_URL = (process.env.APP_URL ?? "") + "/login";
 
 const escapeHtml = (value: string) =>
@@ -62,17 +62,17 @@ export function renderVerifyPage(state: VerifyState, email?: string): string {
   :root {
     --bg: #f5f5f4; --card: #ffffff; --border: #e7e5e4;
     --text: #0f172a; --muted: #64748b; --faint: #94a3b8;
-    --ok: #ea580c; --ok-bg: rgba(249,115,22,.12);
+    --ok: #c92d33; --ok-bg: rgba(249,115,22,.12);
     --info: #0284c7; --info-bg: rgba(14,165,233,.12);
     --warn: #d97706; --warn-bg: rgba(245,158,11,.14);
-    --btn: #f97316; --btn-hover: #fb923c; --btn-text: #ffffff;
+    --btn: #e0393f; --btn-hover: #f0676b; --btn-text: #ffffff;
     --glow: rgba(249,115,22,.18); --shadow: 0 10px 40px rgba(15,23,42,.08);
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0a0a0b; --card: #131315; --border: rgba(255,255,255,.06);
       --text: #f1f5f9; --muted: #94a3b8; --faint: #64748b;
-      --ok: #fb923c; --info: #38bdf8; --warn: #fbbf24;
+      --ok: #f0676b; --info: #38bdf8; --warn: #fbbf24;
       --btn-text: #020617; --glow: rgba(249,115,22,.14); --shadow: none;
     }
   }

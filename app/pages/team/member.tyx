@@ -266,15 +266,14 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_1fr] bg-page transition-colors">
-    <Sidebar active="team" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <TeamSidebar active="members" />
     <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
       <div class="space-y-4">
-        <div class="h-40 rounded-3xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
+        <div class="h-40 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
           <div class="h-24 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 animate-pulse"></div>
@@ -284,14 +283,14 @@ template
 {{/if}}
 
 {{#if notFound}}
-      <div class="rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
         <p class="text-slate-900 dark:text-slate-100 font-medium mb-1">Member not found</p>
         <p class="text-slate-500 text-sm">They may have left the team.</p>
       </div>
 {{/if}}
 
 {{#if forbidden}}
-      <div class="rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
+      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-panel p-12 text-center">
         <p class="text-slate-900 dark:text-slate-100 font-medium mb-1">Not available</p>
         <p class="text-slate-500 text-sm">Only team owners and admins can see other members' activity.</p>
       </div>
@@ -301,14 +300,13 @@ template
 {{#if not notFound}}
 {{#if not forbidden}}
 
-      <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">
-        <div class="h-20 bg-gradient-to-r from-brand-500/25 via-brand-500/10 to-transparent"></div>
-        <div class="px-6 sm:px-8 pb-6 -mt-10">
-          <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-            <span class="w-20 h-20 shrink-0 rounded-2xl bg-brand-500 text-white text-3xl font-bold flex items-center justify-center ring-4 ring-white dark:ring-slate-900 shadow-lg">{{ initial }}</span>
+      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">
+        <div class="px-6 sm:px-8 py-6">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <span class="w-14 h-14 shrink-0 rounded-2xl bg-brand-500 text-white text-xl font-semibold flex items-center justify-center">{{ initial }}</span>
             <div class="min-w-0 flex-1 sm:pb-1">
               <div class="flex flex-wrap items-center gap-2">
-                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ name }}</h1>
+                <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ name }}</h1>
                 <span class="inline-flex items-center rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">{{ role }}</span>
 {{#if isMe}}
                 <span class="inline-flex items-center rounded-full bg-slate-200/70 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">You</span>
@@ -323,21 +321,21 @@ template
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Total actions</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ total }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ total }}</p>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Last active</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ lastActive }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ lastActive }}</p>
         </div>
         <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Member since</p>
-          <p class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ joined }}</p>
+          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ joined }}</p>
         </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
 
-        <div class="rounded-3xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between px-3 pt-2 pb-3">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold text-sm">What they've added</h2>
 {{#if kind}}
@@ -362,7 +360,7 @@ template
           </div>
         </div>
 
-        <div class="rounded-3xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+        <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
           <div class="flex items-center justify-between gap-3 px-6 py-4 border-b border-line">
             <div class="min-w-0">
               <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Activity</h2>

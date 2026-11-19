@@ -10,13 +10,13 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a site</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Logs</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Logs</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">The Logs page helps you find out why a site is failing. Open it with Logs under Tools in the menu on the left of any site. It reads the site's logs from the server, picks out the errors, and lets you open and copy each one.</p>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
-        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">These are the site's own logs, read from the server. They are not the same as the server's <a href="/docs/servers/logs" class="text-brand-600 dark:text-brand-500 hover:underline">Logs</a> page, which records what Tylix Deploy did to the server. Only team admins can open site logs, and the page is available once the site is Ready.</p>
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">These are the site's own logs, read from the server. They are not the same as the server's <a href="/docs/servers/logs" class="text-brand-600 dark:text-brand-500 hover:underline">Logs</a> page, which records what Tylix Flux did to the server. Only team admins can open site logs, and the page is available once the site is Ready.</p>
       </div>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The page</h2>

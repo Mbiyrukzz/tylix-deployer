@@ -10,13 +10,13 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">SSH Keys</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">SSH Keys</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">The SSH Keys page gives people or machines SSH access to this server, as any user on it. Open it with SSH Keys in the menu on the left. A key is a pair: the public half goes on the server, and the private half stays with whoever logs in.</p>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-8">
-        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">This page is for your team's keys. It is not the key Tylix Deploy itself uses to log in. That one is the deploy key, covered in <a href="/docs/servers/settings" class="text-brand-600 dark:text-brand-500 hover:underline">Server settings</a>.</p>
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">This page is for your team's keys. It is not the key Tylix Flux itself uses to log in. That one is the deploy key, covered in <a href="/docs/servers/settings" class="text-brand-600 dark:text-brand-500 hover:underline">Server settings</a>.</p>
       </div>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-5">Deploying a key</h2>

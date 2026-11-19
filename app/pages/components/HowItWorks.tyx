@@ -2,7 +2,6 @@ component HowItWorks
 
 template
   <section class="relative overflow-hidden px-6 py-24 bg-slate-200 dark:bg-slate-950 transition-colors">
-    <div class="pointer-events-none absolute -bottom-32 right-0 w-[520px] h-[280px] rounded-full bg-brand-500/10 blur-3xl" aria-hidden="true"></div>
 
     <div class="relative max-w-5xl mx-auto">
       <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-2">How it works</p>
@@ -24,7 +23,7 @@ template
               <div class="flex items-center justify-between"><span class="text-slate-500">port</span><span class="text-slate-700 dark:text-slate-300">22</span></div>
               <div class="flex items-center justify-between"><span class="text-slate-500">user</span><span class="text-slate-700 dark:text-slate-300">deploy</span></div>
               <div class="flex items-center justify-between"><span class="text-slate-500">key</span><span class="text-slate-700 dark:text-slate-300">encrypted</span></div>
-              <div class="flex items-center gap-1.5 pt-2 border-t border-line text-brand-700 dark:text-brand-400"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> connected</div>
+              <div class="flex items-center gap-1.5 pt-2 border-t border-line text-emerald-700 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> connected</div>
             </div>
           </div>
 
@@ -52,11 +51,11 @@ template
             <p class="text-slate-500 text-sm leading-relaxed mb-5">Follow the release step by step, then keep an eye on CPU, memory, disk and uptime from the server page.</p>
 
             <div class="mt-auto rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-950 p-3 font-mono text-[11px] leading-relaxed" aria-hidden="true">
-              <p><span class="text-brand-400">✓</span> <span class="text-slate-400">pulled main</span></p>
-              <p><span class="text-brand-400">✓</span> <span class="text-slate-400">installed dependencies</span></p>
+              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">pulled main</span></p>
+              <p><span class="text-emerald-400">✓</span> <span class="text-slate-400">installed dependencies</span></p>
               <p><span class="text-brand-400">✓</span> <span class="text-slate-400">built and restarted</span></p>
-              <div class="h-1 w-full rounded-full bg-slate-800 overflow-hidden my-2"><div class="h-full w-full rounded-full bg-brand-500"></div></div>
-              <p class="text-brand-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> live in 38s</p>
+              <div class="h-1 w-full rounded-full bg-slate-800 overflow-hidden my-2"><div class="h-full w-full rounded-full bg-emerald-500"></div></div>
+              <p class="text-emerald-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> live in 38s</p>
             </div>
           </div>
 

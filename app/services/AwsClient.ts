@@ -424,7 +424,7 @@ export class AwsClient {
                     c.send(
                         new CreateSecurityGroupCommand({
                             GroupName: SECURITY_GROUP_NAME,
-                            Description: "Tylix deployer: inbound open, firewall managed by ufw on the server",
+                            Description: "Tylix Flux: inbound open, firewall managed by ufw on the server",
                             VpcId: vpcId,
                         }),
                     ),

@@ -12,7 +12,7 @@ template
 
     <div class="mb-10">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Teams</p>
-      <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
+      <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
         Team <span class="text-brand-500">page</span>
       </h1>
       <p class="text-zinc-500 text-sm mt-4 max-w-xl">Everyone on your team in one list, with a short feed of what they have been doing. Open it from Team in the main sidebar.</p>
@@ -21,7 +21,7 @@ template
     <div class="space-y-10">
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The header</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">The header</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
           Under the page title you see your team's name and your own role in it. Your role decides how much of the team's activity you can see. This is explained further down.
         </p>
@@ -31,10 +31,10 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Members</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">Members</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">Each row is one person on the team.</p>
 
-        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+        <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
           <div class="px-5 py-4">
             <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Name and email</p>
             <p class="text-zinc-500 text-sm">Who the person is. The circle on the left shows the first letter of their name.</p>
@@ -61,7 +61,7 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Recent activity</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">Recent activity</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
           Below the members is a feed of the latest things done on the team. Each line reads like a sentence: who did it, what they did, and what it was done to. For example, a person's name, then "added", then the name of a server.
         </p>
@@ -74,8 +74,8 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Who can see what</h2>
-        <div class="rounded-3xl border border-line bg-panel p-4 sm:p-6">
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">Who can see what</h2>
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6">
           <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
             <span class="font-semibold text-zinc-900 dark:text-zinc-100">Owners and admins</span> see the whole team. The feed is titled "Recent team activity", and every member has a View button.
           </p>
@@ -86,7 +86,7 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Team size</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">Team size</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
           How many people can join depends on your plan: 1 on Personal, 5 on Pro and 15 on Business. If your subscription ends, the team becomes view only. You can still read everything here, but nothing can be created, changed or deleted until you pay.
         </p>

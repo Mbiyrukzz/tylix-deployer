@@ -23,7 +23,7 @@ const DOCS: Section[] = [
         blocks: [
             {
                 kind: "p",
-                text: "Tylix Deploy connects to your servers, creates sites on them, deploys your code and sets up SSL. There are three steps to your first live site.",
+                text: "Tylix Flux connects to your servers, creates sites on them, deploys your code and sets up SSL. There are three steps to your first live site.",
             },
             { kind: "li", text: "Connect a server. Provision one at a cloud provider, or connect your own over SSH." },
             { kind: "li", text: "Create a site. Pick a framework, a repository and a domain." },
@@ -41,7 +41,7 @@ const DOCS: Section[] = [
         blocks: [
             {
                 kind: "p",
-                text: "Connect a provider account with an API token and Tylix Deploy can create servers there for you.",
+                text: "Connect a provider account with an API token and Tylix Flux can create servers there for you.",
             },
             { kind: "h", text: "Supported providers" },
             { kind: "li", text: "Linode (Akamai)" },

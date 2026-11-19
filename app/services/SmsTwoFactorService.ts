@@ -186,7 +186,7 @@ export class SmsTwoFactorService {
 
         const sent = await SmsService.send(
             row.phone,
-            `Your Tylix Deploy login code is ${code}. It expires in 5 minutes. Never share it.`,
+            `Your Tylix Flux login code is ${code}. It expires in 5 minutes. Never share it.`,
         );
 
         if (!sent.ok) {

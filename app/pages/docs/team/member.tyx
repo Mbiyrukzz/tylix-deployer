@@ -12,7 +12,7 @@ template
 
     <div class="mb-10">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Teams</p>
-      <h1 class="text-3xl sm:text-5xl font-semibold uppercase tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
+      <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
         A member's <span class="text-brand-500">activity</span>
       </h1>
       <p class="text-zinc-500 text-sm mt-4 max-w-xl">One person's page: who they are, how much they have done, and exactly what they added. It is the quickest way to see what a single teammate has been up to.</p>
@@ -21,22 +21,22 @@ template
     <div class="space-y-10">
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">How to open it</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">How to open it</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
           Press <span class="font-semibold text-zinc-900 dark:text-zinc-100">View</span> next to a person on the <a href="/docs/team" class="text-brand-600 dark:text-brand-500 hover:underline">Team page</a>, or click anyone's name in the activity feed or the <a href="/docs/team/activity" class="text-brand-600 dark:text-brand-500 hover:underline">Team activity</a> timeline.
         </p>
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The header</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">The header</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
           At the top you see the person's name, their email and a badge with their role. If the page is your own, a small <span class="font-semibold text-zinc-900 dark:text-zinc-100">You</span> badge sits next to the role.
         </p>
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The three numbers</h2>
-        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">The three numbers</h2>
+        <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
           <div class="px-5 py-4">
             <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Total actions</p>
             <p class="text-zinc-500 text-sm">Everything this person has added to the team.</p>
@@ -53,7 +53,7 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">What they've added</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">What they've added</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
           The panel on the left breaks the person's total down by kind, for example servers, sites and databases. Each row has a count and a bar. The longest bar belongs to the kind they have added most of, and the others are sized against it.
         </p>
@@ -63,7 +63,7 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">The timeline</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">The timeline</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
           It works like the team timeline, but for one person only, so their name is left out of each line. Entries are grouped by day (Today, Yesterday, then the date). Each one shows what they did, what it was done to, a grey tag with the kind, and the time.
         </p>
@@ -73,7 +73,7 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">Deleting activity</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">Deleting activity</h2>
         <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-3">
           People who are allowed to delete can remove a single entry with the &times; beside it, or clear everything for this person with <span class="font-semibold text-zinc-900 dark:text-zinc-100">Delete all</span>. You are asked to confirm before anything is cleared.
         </p>
@@ -85,8 +85,8 @@ template
       </section>
 
       <section>
-        <h2 class="text-xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-3">When the page won't open</h2>
-        <div class="rounded-3xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">When the page won't open</h2>
+        <div class="rounded-2xl border border-line bg-panel divide-y divide-slate-200 dark:divide-slate-800">
           <div class="px-5 py-4">
             <p class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold mb-1">Not available</p>
             <p class="text-zinc-500 text-sm">Only team owners and admins can see other members' activity. You can always open your own page.</p>

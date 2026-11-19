@@ -10,12 +10,12 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Cloud providers</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Machines</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Machines</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">Every server in the provider account, including ones the deployer did not create, with power controls.</p>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If your Tylix Deploy subscription needs payment, the page turns view only. Buttons that change something are greyed out and read &ldquo;Pay to continue&rdquo;. You can still look at everything.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">If your Tylix Flux subscription needs payment, the page turns view only. Buttons that change something are greyed out and read &ldquo;Pay to continue&rdquo;. You can still look at everything.</p>
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">The list</h2>
       <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">The top shows how many machines there are, how many are running and how many are offline. Type in the search box to filter by name or IP. Select <strong>Refresh</strong> to read the account again.</p>
       <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Each row shows the name, the IP, a status, the region, the plan and the creation date. A machine whose IP matches one of your servers links to that server's page. One that does not shows <strong>Not added to deployer</strong>.</p>

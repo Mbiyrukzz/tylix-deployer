@@ -49,9 +49,9 @@ state
   memArea: ""
   cpuNow: 0
   memNow: 0
-  cpuColor: "#f97316"
+  cpuColor: "#10b981"
   memColor: "#38bdf8"
-  diskColor: "#f97316"
+  diskColor: "#10b981"
   cpuBar: "width: 0%"
   memBar: "width: 0%"
   memText: ""
@@ -230,9 +230,9 @@ action
     this.memArea = this.chartArea(mem)
     this.cpuNow = s.cpu_pct
     this.memNow = s.mem_pct
-    this.cpuColor = this.toneColor(s.cpu_pct, "#f97316")
+    this.cpuColor = this.toneColor(s.cpu_pct, "#10b981")
     this.memColor = this.toneColor(s.mem_pct, "#38bdf8")
-    this.diskColor = this.toneColor(s.disk_pct, "#f97316")
+    this.diskColor = this.toneColor(s.disk_pct, "#10b981")
     this.cpuBar = "width: " + Math.min(100, s.cpu_pct) + "%"
     this.memBar = "width: " + Math.min(100, s.mem_pct) + "%"
     this.memText = this.formatBytes(s.mem_used) + " of " + this.formatBytes(s.mem_total)
@@ -489,8 +489,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     {{#if serverId}}
     <ServerSidebar active="server" serverId="{{ serverId }}" />
 {{/if}}
@@ -519,15 +518,15 @@ template
 
       <div class="mb-6">
         <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ Provisioning.name }}</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ Provisioning.name }}</h1>
 {{#if Provisioning.failed}}
           <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
             <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
           </span>
 {{/if}}
 {{#if Provisioning.finished}}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Ready
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
           </span>
 {{/if}}
 {{#if not Provisioning.failed}}
@@ -586,7 +585,7 @@ template
         <div class="flex items-center justify-between gap-4 rounded-xl border border-line px-4 py-3 mb-2">
           <div class="flex items-center gap-3 min-w-0">
 {{#if s.state is "done"}}
-            <span class="w-2 h-2 shrink-0 rounded-full bg-brand-500"></span>
+            <span class="w-2 h-2 shrink-0 rounded-full bg-emerald-500"></span>
 {{/if}}
 {{#if s.state is "running"}}
             <span class="w-2 h-2 shrink-0 rounded-full bg-sky-500 animate-pulse"></span>
@@ -636,10 +635,10 @@ template
       <div class="flex items-start justify-between gap-4 mb-6">
         <div class="min-w-0">
           <div class="flex items-center gap-3 mb-2">
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ server.name }}</h1>
+            <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ server.name }}</h1>
 {{#if status is "online"}}
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Online
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
             </span>
 {{/if}}
 {{#if status is "pending"}}
@@ -890,7 +889,7 @@ template
             </button>
 {{/if}}
 {{#if not Billing.locked}}
-            <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
+            <a href="{{ '/servers/site-create?id=' + serverId }}" class="inline-flex text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">
               Create a site
             </a>
 {{/if}}

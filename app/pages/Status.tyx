@@ -23,10 +23,10 @@ computed
 
   detail() {
     if this.level is "operational" {
-      return "Tylix Deploy is running normally."
+      return "Tylix Flux is running normally."
     }
     if this.level is "outage" {
-      return "We aren't receiving health reports from Tylix Deploy. We're looking into it."
+      return "We aren't receiving health reports from Tylix Flux. We're looking into it."
     }
     return "We couldn't determine the current status. Check back in a minute."
   }
@@ -212,8 +212,8 @@ onMount
 
 template
   <main class="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-    <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Tylix Deploy</p>
-    <h1 class="text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100 mb-8">System status</h1>
+    <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Tylix Flux</p>
+    <h1 class="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-8">System status</h1>
 
 {{#if loading}}
     <p class="text-sm text-zinc-500">Checking…</p>
@@ -244,7 +244,7 @@ template
         <span>90 days ago</span>
         <span>Today</span>
       </div>
-      <p class="text-xs text-zinc-500 mt-4">Measured from the health reports Tylix Deploy sends every minute. Grey days were not monitored yet.</p>
+      <p class="text-xs text-zinc-500 mt-4">Measured from the health reports Tylix Flux sends every minute. Grey days were not monitored yet.</p>
     </section>
 {{/if}}
 

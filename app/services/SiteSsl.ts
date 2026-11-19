@@ -11,7 +11,7 @@
  * so certbot's own renewals keep working. A deploy hook reloads nginx after
  * every renewal. A rejected nginx config is rolled back to the previous one.
  *
- * The custom private key is never stored by tylix-deploy; it only travels to
+ * The custom private key is never stored by Tylix Flux; it only travels to
  * the server inside the install script.
  *
  * The server must belong to the same team as the site, like in SiteDeployer.

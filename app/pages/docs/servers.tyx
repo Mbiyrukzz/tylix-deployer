@@ -10,9 +10,9 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Servers</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">The Servers page</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">The Servers page</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">Servers are the machines your sites deploy to. The Servers page lists all of them in one place. Open it from the sidebar, or choose Manage all on the dashboard.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Adding a server</h2>
@@ -21,7 +21,7 @@ template
 
         <div class="px-5 py-4">
           <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Create server</h3>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Creates a brand new machine at one of your connected cloud providers. Tylix Deploy builds it, installs the software and then connects to it. You can follow this live: see <a href="/docs/servers/setting-up" class="text-brand-600 dark:text-brand-500 hover:underline">Setting up a server</a>.</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Creates a brand new machine at one of your connected cloud providers. Tylix Flux builds it, installs the software and then connects to it. You can follow this live: see <a href="/docs/servers/setting-up" class="text-brand-600 dark:text-brand-500 hover:underline">Setting up a server</a>.</p>
         </div>
 
         <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
@@ -87,7 +87,7 @@ template
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Location</p>
-          <p class="text-zinc-500 text-xs mt-0.5">The region and plan of a server you created through Tylix Deploy. A server you connected yourself shows "Custom".</p>
+          <p class="text-zinc-500 text-xs mt-0.5">The region and plan of a server you created through Tylix Flux. A server you connected yourself shows "Custom".</p>
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Sites</p>
@@ -107,12 +107,12 @@ template
 
         <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
           <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Root password (key icon)</h4>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shown only for servers created through Tylix Deploy at Linode or Hetzner. It reveals the root password after a security check.</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shown only for servers created through Tylix Flux at Linode or Hetzner. It reveals the root password after a security check.</p>
         </div>
 
         <div class="px-5 py-4 border-t border-stone-100 dark:border-white/5">
           <h4 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">Delete (bin icon)</h4>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shown only for servers created through Tylix Deploy. It asks you to confirm first. A server you connected yourself has no delete button here, because Tylix Deploy did not create the machine.</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mt-1">Shown only for servers created through Tylix Flux. It asks you to confirm first. A server you connected yourself has no delete button here, because Tylix Flux did not create the machine.</p>
         </div>
 
       </div>

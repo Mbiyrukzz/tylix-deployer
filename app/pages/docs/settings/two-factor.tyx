@@ -10,13 +10,13 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Settings</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Two-factor</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Two-factor</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">Ask for a code each time you log in: from an authenticator app, by text message, or either.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Why turn it on</h2>
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A Tylix Deploy account can hold SSH keys and cloud tokens, so a second step at login is worth having. Open <strong>Settings</strong>, then <strong>Two-factor</strong>. The page has two independent methods, each with an <strong>On</strong> or <strong>Off</strong> badge. With both on, either one gets you in.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">A Tylix Flux account can hold SSH keys and cloud tokens, so a second step at login is worth having. Open <strong>Settings</strong>, then <strong>Two-factor</strong>. The page has two independent methods, each with an <strong>On</strong> or <strong>Off</strong> badge. With both on, either one gets you in.</p>
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Authenticator app</h2>
       <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">You need an authenticator app such as Google Authenticator, Authy or 1Password. Select <strong>Set up authenticator app</strong> and follow the two steps.</p>
       <div class="rounded-2xl border border-line overflow-hidden mb-8">

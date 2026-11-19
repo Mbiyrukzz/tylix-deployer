@@ -1,14 +1,17 @@
-<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="icon" type="image/svg+xml" href="/flux-mark.svg">
+<link rel="alternate icon" type="image/png" href="/favicon.png">
 <meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#09090a">
+<link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/app-shell.js"></script>
 <script src="/auth-ui.js"></script>
 <!--
-  Hovering a link (or pressing on it on touch screens) renders the next page
-  in the background, so the click opens it at once (Chromium browsers; others
-  ignore this). Pages that start something just by opening are only
-  prefetched: terminals open an SSH session, server-detail starts a live
-  stats stream, accept-invite can accept an invitation. Mark any other link
-  with data-no-prerender to keep it out.
+  In-app links (dashboard, servers, providers, ...) never reload the page:
+  public/app-shell.js swaps the page in place and keeps the sidebar, top
+  bar and command palette mounted, prefetching on hover. The rules below
+  only cover the public pages (home, docs, pricing, ...), which are full
+  documents: hovering a link renders it in the background (Chromium).
+  Mark any link with data-no-prerender to keep it out.
 -->
 <script type="speculationrules">
 {
@@ -16,19 +19,16 @@
     "where": { "and": [
       { "href_matches": "/*" },
       { "not": { "href_matches": "/api/*" } },
-      { "not": { "href_matches": "/servers/server-terminal*" } },
-      { "not": { "href_matches": "/servers/site-terminal*" } },
-      { "not": { "href_matches": "/servers/server-detail*" } },
+      { "not": { "href_matches": "/dashboard*" } },
+      { "not": { "href_matches": "/servers*" } },
+      { "not": { "href_matches": "/settings*" } },
+      { "not": { "href_matches": "/team*" } },
+      { "not": { "href_matches": "/providers*" } },
+      { "not": { "href_matches": "/registrars*" } },
+      { "not": { "href_matches": "/source-control*" } },
       { "not": { "href_matches": "/accept-invite*" } },
+      { "not": { "href_matches": "/login*" } },
       { "not": { "selector_matches": "[data-no-prerender], [download], [target=_blank]" } }
-    ]},
-    "eagerness": "moderate"
-  }],
-  "prefetch": [{
-    "where": { "and": [
-      { "href_matches": "/*" },
-      { "not": { "href_matches": "/api/*" } },
-      { "not": { "selector_matches": "[download], [target=_blank]" } }
     ]},
     "eagerness": "moderate"
   }]

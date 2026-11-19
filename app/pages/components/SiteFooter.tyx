@@ -4,7 +4,7 @@ template
 <footer class="site-footer relative overflow-hidden border-t border-line bg-page transition-colors">
   <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 pb-8">
 
-    <div class="relative overflow-hidden rounded-3xl border border-line bg-panel p-4 sm:p-6 sm:p-10 mb-14">
+    <div class="relative overflow-hidden rounded-2xl border border-line bg-panel p-4 sm:p-6 sm:p-10 mb-14">
       <svg class="pointer-events-none absolute inset-0 w-full h-full text-zinc-400/25 dark:text-white/[0.07]" aria-hidden="true">
         <defs>
           <pattern id="footerdots" width="22" height="22" patternUnits="userSpaceOnUse">
@@ -15,8 +15,8 @@ template
       </svg>
       <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div class="min-w-0">
-          <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Tylix Deploy</p>
-          <h2 class="text-3xl sm:text-4xl font-light uppercase tracking-wide leading-[1.05] text-zinc-900 dark:text-zinc-100">
+          <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Tylix Flux</p>
+          <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-100">
             Ship your next site<br class="hidden sm:block" /> <span class="text-brand-500">in minutes.</span>
           </h2>
         </div>
@@ -32,7 +32,7 @@ template
       <div class="col-span-2 lg:col-span-4">
         <a href="/" class="inline-flex items-center gap-2.5 mb-4">
           <img src="/logo-mark.png" alt="Tylix" class="w-8 h-8 rounded-lg" />
-          <span class="text-zinc-900 dark:text-zinc-100 font-semibold tracking-tight text-lg">Tylix Deploy</span>
+          <span class="text-zinc-900 dark:text-zinc-100 font-semibold tracking-tight text-lg">Tylix Flux</span>
         </a>
         <p class="text-zinc-500 text-sm leading-relaxed max-w-xs">
           Provision servers, deploy sites and manage domains from one dashboard. Built for developers and small teams.

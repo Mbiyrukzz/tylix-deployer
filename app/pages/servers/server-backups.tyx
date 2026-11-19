@@ -338,8 +338,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="backups" serverId="{{ serverId }}" />
 {{/if}}
@@ -364,7 +363,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Backups</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Backups</h1>
       <p class="text-slate-500 text-sm mb-6">Scheduled MySQL backups. The schedule runs on the server itself, so it keeps working even when this app is offline.</p>
 
 {{#if error}}
@@ -464,7 +463,7 @@ template
           <p role="alert" class="text-rose-500 text-sm mb-3 break-words">{{ dropboxError }}</p>
 {{/if}}
 {{#if dropboxBusy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Checking with Dropbox…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Checking with Dropbox…</button>
 {{/if}}
 {{#if not dropboxBusy}}
 {{#if Billing.locked}}
@@ -477,7 +476,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ connectDropbox() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Connect</button>
+          <button onclick="{{ connectDropbox() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Connect</button>
 {{/if}}
 {{/if}}
         </div>
@@ -502,7 +501,7 @@ template
 
         <div class="mt-5">
 {{#if busy}}
-          <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
+          <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 opacity-50">Creating…</button>
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
@@ -515,7 +514,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Schedule backup</button>
+          <button onclick="{{ create() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Schedule backup</button>
 {{/if}}
 {{/if}}
         </div>

@@ -393,8 +393,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-  <Sidebar active="providers" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
   <ProviderSidebar active="billing" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -405,7 +404,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Billing</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Billing</h1>
       <p class="text-slate-500 text-sm mb-6">{{ kindName }} account</p>
 
 {{#if locked}}
@@ -432,7 +431,7 @@ template
       <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none mb-8">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Pay your {{ providerLabel }} bill</h2>
         <p class="text-slate-500 text-sm mb-4">Payments for {{ providerLabel }} are made on its own billing page.</p>
-        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Open {{ providerLabel }} billing</a>
+        <a href="{{ consoleUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Open {{ providerLabel }} billing</a>
       </div>
 {{/if}}
 
@@ -529,7 +528,7 @@ template
 {{/if}}
 
 {{#if paying}}
-        <button disabled class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 opacity-50">Paying…</button>
+        <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 opacity-50">Paying…</button>
 {{/if}}
 
 {{#if not paying}}
@@ -552,7 +551,7 @@ template
         </div>
 {{/if}}
 {{#if not confirming}}
-        <button onclick="{{ askPay() }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Review payment</button>
+        <button onclick="{{ askPay() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Review payment</button>
 {{/if}}
 {{/if}}
 {{/if}}
@@ -570,8 +569,8 @@ template
               <p class="text-slate-500 text-xs">{{ l.date }}</p>
             </div>
 {{#if l.status is "paid"}}
-            <span class="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> {{ l.statusText }}
+            <span class="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ l.statusText }}
             </span>
 {{/if}}
 {{#if l.status is "failed"}}

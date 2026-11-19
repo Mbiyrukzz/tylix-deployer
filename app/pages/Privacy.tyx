@@ -11,11 +11,11 @@ template
 
       <a href="/" class="inline-flex items-center gap-2.5 mb-8">
         <img src="/logo-mark.png" alt="Tylix" class="w-7 h-7 rounded-md" />
-        <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Deploy</span>
+        <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Flux</span>
       </a>
 
       <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Privacy Policy</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-2">Privacy Policy</h1>
       <p class="text-slate-500 text-sm mb-10">Effective {{ effective }}</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
@@ -45,7 +45,7 @@ template
 
           <section id="who" class="mb-8 sm:mb-10 scroll-mt-24">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">1. Who we are</h2>
-            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Ashmif Office Solutions Ltd, based in Mombasa, Kenya, runs Tylix Deploy and is the data controller for personal data processed through it. This policy explains what we collect, why, who we share it with, and the choices you have. We process personal data in line with the Kenya Data Protection Act, 2019. It sits alongside our <a href="/terms" class="text-brand-700 dark:text-brand-400 hover:underline">Terms of Service</a>.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Ashmif Office Solutions Ltd, based in Mombasa, Kenya, runs Tylix Flux and is the data controller for personal data processed through it. This policy explains what we collect, why, who we share it with, and the choices you have. We process personal data in line with the Kenya Data Protection Act, 2019. It sits alongside our <a href="/terms" class="text-brand-700 dark:text-brand-400 hover:underline">Terms of Service</a>.</p>
             <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">Content you deploy or store on your own servers (for example, your customers' data in your databases) is yours. For that content you are the controller and we only act on your instructions to provide the Service.</p>
           </section>
 

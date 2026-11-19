@@ -10,9 +10,9 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation / Inside a server</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Database</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Database</h1>
       <p class="text-zinc-500 text-sm mt-2 mb-8">The Database page manages MySQL on one server. Open it with Database in the menu on the left. It has two lists: the database users, and the databases they own. Create a user first, then a database owned by that user.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">Database users</h2>
@@ -106,7 +106,7 @@ DB_PASSWORD=...</pre>
 
         <div class="px-5 py-3.5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't load the databases.</p>
-          <p class="text-zinc-500 text-xs mt-0.5">A red box at the top. Tylix Deploy could not read MySQL on the server. Check that the server is online and that MySQL is installed, then reload the page.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">A red box at the top. Tylix Flux could not read MySQL on the server. Check that the server is online and that MySQL is installed, then reload the page.</p>
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">A message in the Create box</p>

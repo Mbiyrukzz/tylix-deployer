@@ -46,8 +46,8 @@ action
 
     if m.status is "running" {
       statusText = "Running"
-      statusCls = base + "bg-brand-500/10 text-brand-700 dark:text-brand-500"
-      dotCls = "w-1.5 h-1.5 rounded-full bg-brand-500"
+      statusCls = base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
+      dotCls = "w-1.5 h-1.5 rounded-full bg-emerald-500"
       canStop = true
       transitional = false
     }
@@ -258,8 +258,7 @@ onMount
 
 template
 {{#if checkedAuth}}
-<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-  <Sidebar active="providers" />
+<div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
   <ProviderSidebar active="machines" providerId="{{ providerId }}" />
   <div class="min-w-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -272,7 +271,7 @@ template
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Machines</h1>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Machines</h1>
           <p class="text-slate-500 text-sm">Every server in this {{ kindName }} account, including ones the deployer didn't create.</p>
         </div>
         <div class="flex items-center gap-3 shrink-0">
@@ -294,7 +293,7 @@ template
           </button>
 {{/if}}
 {{#if not Billing.locked}}
-          <a href="{{ createHref }}" class="inline-flex items-center text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</a>
+          <a href="{{ createHref }}" class="inline-flex items-center text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Create server</a>
 {{/if}}
         </div>
       </div>
@@ -484,7 +483,7 @@ template
 
 {{#if confirmId is not m.id}}
 {{#if m.canBoot}}
-            <button onclick="{{ act(m.id, 'boot') }}" class="text-sm bg-brand-500 text-white dark:text-slate-950 font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Boot</button>
+            <button onclick="{{ act(m.id, 'boot') }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all">Boot</button>
 {{/if}}
 {{#if m.canStop}}
             <button onclick="{{ askAction(m.id, 'reboot') }}" class="text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reboot</button>

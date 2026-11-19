@@ -110,9 +110,9 @@ state
       ]
     }
   ]
-  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold"
+  onCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-900 dark:text-white text-sm font-medium"
   offCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
-  subOnCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold lg:ml-3"
+  subOnCls: "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-900 dark:text-white text-sm font-medium lg:ml-3"
   subOffCls: "group shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 text-sm hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors lg:ml-3"
   groupCls: "hidden lg:flex w-full items-center justify-between px-3 py-2 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-stone-200/70 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 
@@ -142,15 +142,15 @@ action
   }
 
 template
-<aside class="app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-stone-200/40 dark:bg-white/[0.03] p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:w-[240px] lg:p-5">
+<aside class="app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:w-[240px] lg:p-5">
 
   <div class="hidden lg:flex items-center gap-3 mb-5">
-    <span class="w-9 h-9 shrink-0 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm">
+    <span class="w-9 h-9 shrink-0 rounded-xl border border-line bg-panel text-brand-500 flex items-center justify-center">
       <IconDocumentText class="w-5 h-5" />
     </span>
     <div class="min-w-0">
       <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight truncate">Documentation</p>
-      <p class="text-slate-500 text-xs leading-tight truncate">Tylix Deploy guides</p>
+      <p class="text-slate-500 text-xs leading-tight truncate">Tylix Flux guides</p>
     </div>
   </div>
 

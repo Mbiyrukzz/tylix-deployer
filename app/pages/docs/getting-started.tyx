@@ -10,13 +10,13 @@ template
   <div class="min-w-0 px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
   <div class="max-w-5xl mx-auto">
 
-    <article class="rounded-3xl border border-line bg-panel p-5 sm:p-8">
+    <article class="rounded-2xl border border-line bg-panel p-5 sm:p-8">
       <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Documentation</p>
-      <h1 class="text-2xl sm:text-3xl font-light uppercase tracking-wide text-zinc-900 dark:text-zinc-100">Getting started</h1>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Getting started</h1>
 
-      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mt-8 mb-3">What is Tylix Deploy?</h2>
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Tylix Deploy is one place to run your servers and the sites on them. You create or connect a server, deploy your code to it, secure it with SSL, and keep an eye on it afterwards, without logging in to each machine and typing the commands yourself.</p>
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Everything works through your own accounts. Your servers stay at your cloud provider and your domains stay at your registrar. Tylix Deploy connects to them and does the work for you.</p>
+      <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mt-8 mb-3">What is Tylix Flux?</h2>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Tylix Flux is one place to run your servers and the sites on them. You create or connect a server, deploy your code to it, secure it with SSL, and keep an eye on it afterwards, without logging in to each machine and typing the commands yourself.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Everything works through your own accounts. Your servers stay at your cloud provider and your domains stay at your registrar. Tylix Flux connects to them and does the work for you.</p>
 
       <h2 class="text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-4">What it does</h2>
 

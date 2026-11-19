@@ -46,7 +46,7 @@ action
 
   dotClass(level) {
     if level is "success" {
-      return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-brand-500"
+      return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-emerald-500"
     }
     if level is "warning" {
       return "mt-1.5 w-2 h-2 rounded-full shrink-0 bg-amber-500"
@@ -59,7 +59,7 @@ action
 
   badgeClass(level) {
     if level is "success" {
-      return "text-[10px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400"
+      return "text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
     }
     if level is "warning" {
       return "text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500"
@@ -170,8 +170,7 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[260px_auto_1fr] bg-page transition-colors">
-    <Sidebar active="servers" />
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
 {{#if serverId}}
     <ServerSidebar active="logs" serverId="{{ serverId }}" />
 {{/if}}
@@ -196,7 +195,7 @@ template
 
       <LockedBanner />
 
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Logs</h1>
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Logs</h1>
       <p class="text-slate-500 text-sm mb-6">Everything that happened to this server, newest first: creation, edits, reboots and blocked actions. Keys and passwords are never recorded.</p>
 
 {{#if error}}

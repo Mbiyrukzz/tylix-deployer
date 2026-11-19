@@ -24,12 +24,12 @@ export default defineConfig({
   // offline visitors get public/offline.html. The shortcuts open straight
   // from the home-screen icon.
   pwa: {
-    name: 'Tylix Deploy',
-    shortName: 'Deploy',
+    name: 'Tylix Flux',
+    shortName: 'Flux',
     description: 'Provision servers, deploy sites and manage domains from anywhere.',
     startUrl: '/dashboard',
-    themeColor: '#0a0a0b',
-    backgroundColor: '#0a0a0b',
+    themeColor: '#09090a',
+    backgroundColor: '#09090a',
     shortcuts: [
       { name: 'Servers', url: '/servers' },
       { name: 'New server', url: '/servers/create' },
