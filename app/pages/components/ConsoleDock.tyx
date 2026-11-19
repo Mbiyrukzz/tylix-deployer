@@ -223,7 +223,7 @@ computed
   }
 
   windowCls() {
-    const base = "cx-shell cx-grain cx-pop relative flex w-full overflow-hidden text-zinc-300 "
+    const base = "cx-shell cx-grain cx-pop relative flex w-full overflow-hidden text-zinc-200 "
     if this.full {
       return base + "h-full"
     }
@@ -245,14 +245,14 @@ computed
     if this.tab is "terminal" {
       return this.railBtn + "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]"
     }
-    return this.railBtn + "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]"
+    return this.railBtn + "text-zinc-300 hover:text-zinc-200 hover:bg-white/[0.04]"
   }
 
   logTabCls() {
     if this.tab is "logs" {
       return this.railBtn + "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]"
     }
-    return this.railBtn + "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]"
+    return this.railBtn + "text-zinc-300 hover:text-zinc-200 hover:bg-white/[0.04]"
   }
 
   // ---- logs -------------------------------------------------------------
@@ -295,7 +295,7 @@ computed
       const warn = e.level is "warn" or e.level is "warning"
       const good = e.level is "success"
       let stripe = "bg-zinc-700"
-      let levelCls = "shrink-0 w-[4.5rem] text-[10.5px] uppercase tracking-[0.12em] text-sky-300/80"
+      let levelCls = "shrink-0 w-[4.5rem] text-[10.5px] uppercase tracking-[0.12em] text-sky-300"
       let edge = "border-zinc-700"
       if e.error {
         stripe = "bg-brand-400 shadow-[0_0_8px_rgb(240_103_107/0.6)]"
@@ -1337,16 +1337,21 @@ action
       cursorWidth: 2,
       fontSize: this.full ? this.fontSize + 1 : this.fontSize,
       lineHeight: 1.3,
+      // Geist Mono at 400 looks thin on the dark well; 500 reads crisply.
+      fontWeight: "500",
+      fontWeightBold: "600",
+      // Whatever colours the server prints stay readable on the dark well.
+      minimumContrastRatio: 4.5,
       scrollback: 10000,
       smoothScrollDuration: 80,
       fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       theme: {
         background: "#00000000",
-        foreground: "#e3e3e6",
+        foreground: "#efeff1",
         cursor: "#f0676b",
         cursorAccent: "#0a0a0b",
         selectionBackground: "#f0676b47",
-        black: "#232327",
+        black: "#3a3a40",
         red: "#f0676b",
         green: "#34d399",
         yellow: "#fbbf24",
@@ -1354,7 +1359,7 @@ action
         magenta: "#c4b5fd",
         cyan: "#67e8f9",
         white: "#cacacf",
-        brightBlack: "#75757e",
+        brightBlack: "#a3a3ab",
         brightRed: "#f6a8a6",
         brightGreen: "#6ee7b7",
         brightYellow: "#fcd34d",
@@ -1943,9 +1948,9 @@ template
             <span class="{{ orbCls }}"></span>
             <span class="min-w-0 text-left">
               <span class="block font-mono text-[13px] sm:text-[13.5px] text-zinc-100 truncate leading-tight">{{ headTitle }}</span>
-              <span class="block text-[11px] text-zinc-500 truncate leading-tight mt-0.5">{{ headSub }}</span>
+              <span class="block text-[11px] text-zinc-300 truncate leading-tight mt-0.5">{{ headSub }}</span>
             </span>
-            <IconChevronDown class="w-4 h-4 shrink-0 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+            <IconChevronDown class="w-4 h-4 shrink-0 text-zinc-300 group-hover:text-zinc-300 transition-colors" />
           </button>
 
           <!-- phone tabs -->
@@ -2002,19 +2007,19 @@ template
           <div class="fixed inset-0 z-10" onclick="{{ menuOpen = false }}" aria-hidden="true"></div>
           <div role="menu" class="cx-tile cx-pop absolute z-20 left-2 sm:left-4 top-[3.25rem] w-[min(360px,calc(100vw-1.5rem))] rounded-2xl overflow-hidden">
             <div class="flex items-center gap-2 px-3 h-11 border-b border-white/[0.06]">
-              <IconSearch class="w-4 h-4 shrink-0 text-zinc-500" />
-              <input id="cx-menu-input" type="text" bind:value="{{ menuQuery }}" placeholder="Switch to a server or site…" autocomplete="off" spellcheck="false" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 text-[13px] text-zinc-100 placeholder:text-zinc-600" />
+              <IconSearch class="w-4 h-4 shrink-0 text-zinc-300" />
+              <input id="cx-menu-input" type="text" bind:value="{{ menuQuery }}" placeholder="Switch to a server or site…" autocomplete="off" spellcheck="false" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 text-[13px] text-zinc-100 placeholder:text-zinc-500" />
             </div>
             <div class="max-h-[min(55vh,420px)] overflow-y-auto cx-scroll p-1.5">
 {{#if menuLoading}}
-              <p class="px-3 py-6 text-center text-[12px] text-zinc-500">Loading…</p>
+              <p class="px-3 py-6 text-center text-[12px] text-zinc-300">Loading…</p>
 {{/if}}
 {{#each g in menuGroups()}}
               <button role="menuitem" onclick="{{ choose('server', g.id) }}" class="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-white/[0.05] transition-colors">
-                <IconServer class="w-4 h-4 shrink-0 text-zinc-500" />
+                <IconServer class="w-4 h-4 shrink-0 text-zinc-300" />
                 <span class="min-w-0 flex-1">
                   <span class="block text-[13px] text-zinc-100 truncate">{{ g.name }}</span>
-                  <span class="block text-[11px] font-mono text-zinc-500 truncate">{{ g.host }}</span>
+                  <span class="block text-[11px] font-mono text-zinc-300 truncate">{{ g.host }}</span>
                 </span>
                 <span class="{{ g.dot }}"></span>
 {{#if g.on}}
@@ -2023,14 +2028,14 @@ template
               </button>
 {{#each s in g.sites}}
               <button role="menuitem" onclick="{{ choose('site', s.id) }}" class="w-full flex items-center gap-2.5 rounded-lg pl-8 pr-2.5 py-1.5 text-left hover:bg-white/[0.05] transition-colors">
-                <IconGlobe class="w-3.5 h-3.5 shrink-0 text-zinc-600" />
-                <span class="min-w-0 flex-1 text-[12.5px] text-zinc-300 truncate">{{ s.name }}</span>
+                <IconGlobe class="w-3.5 h-3.5 shrink-0 text-zinc-300" />
+                <span class="min-w-0 flex-1 text-[12.5px] text-zinc-200 truncate">{{ s.name }}</span>
                 <span class="{{ statusDot(s.status) }}"></span>
               </button>
 {{/each}}
 {{#else}}
 {{#if not menuLoading}}
-              <p class="px-3 py-6 text-center text-[12px] text-zinc-500">Nothing matches.</p>
+              <p class="px-3 py-6 text-center text-[12px] text-zinc-300">Nothing matches.</p>
 {{/if}}
 {{/each}}
             </div>
@@ -2044,7 +2049,7 @@ template
           <span class="w-2 h-2 rounded-full bg-brand-400 shadow-[0_0_8px_rgb(240_103_107/0.8)]"></span>
           <p class="flex-1 min-w-0 text-[13px] text-zinc-200">End the session on <span class="font-mono text-white">{{ tUser }}@{{ tHost }}</span>? Anything still running in it stops.</p>
           <div class="flex items-center gap-2">
-            <button onclick="{{ minimize() }}" class="h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Keep it running</button>
+            <button onclick="{{ minimize() }}" class="h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-200 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Keep it running</button>
             <button onclick="{{ endAndClose() }}" class="h-8 rounded-lg px-3 text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors">End session</button>
           </div>
         </div>
@@ -2054,7 +2059,7 @@ template
           <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgb(251_191_36/0.8)]"></span>
           <p class="flex-1 min-w-0 text-[13px] text-zinc-200">You're connected to <span class="font-mono text-white">{{ tHost }}</span>. Switch to <span class="font-semibold text-white">{{ pendingTitle }}</span>? This ends the current session.</p>
           <div class="flex items-center gap-2">
-            <button onclick="{{ pending = null }}" class="h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Stay here</button>
+            <button onclick="{{ pending = null }}" class="h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-200 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Stay here</button>
             <button onclick="{{ confirmSwitch() }}" class="h-8 rounded-lg px-3 text-[12px] font-semibold text-zinc-950 bg-amber-300 hover:bg-amber-200 transition-colors">Switch</button>
           </div>
         </div>
@@ -2090,14 +2095,14 @@ template
 {{#else}}
 {{#if tReady}}
                     <p class="text-[15px] font-medium text-zinc-100 mb-1.5">Ready when you are</p>
-                    <p class="text-[13px] text-zinc-500 mb-6 leading-relaxed">A shell as <span class="font-mono text-zinc-300">{{ tUser }}</span> in <span class="font-mono text-zinc-300">{{ tCwd }}</span>. It closes after 15 minutes without typing, and keeps running while you browse if you minimise it.</p>
+                    <p class="text-[13px] text-zinc-300 mb-6 leading-relaxed">A shell as <span class="font-mono text-zinc-200">{{ tUser }}</span> in <span class="font-mono text-zinc-200">{{ tCwd }}</span>. It closes after 15 minutes without typing, and keeps running while you browse if you minimise it.</p>
 {{#if Billing.locked}}
-                    <span class="inline-flex items-center gap-2 h-10 rounded-xl px-5 text-[13px] text-zinc-500 bg-white/[0.04] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] cursor-not-allowed select-none"><IconLockClosed class="w-4 h-4" /> Pay to continue</span>
+                    <span class="inline-flex items-center gap-2 h-10 rounded-xl px-5 text-[13px] text-zinc-300 bg-white/[0.04] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] cursor-not-allowed select-none"><IconLockClosed class="w-4 h-4" /> Pay to continue</span>
 {{#else}}
                     <button onclick="{{ connect() }}" class="inline-flex items-center gap-2 h-10 rounded-xl px-6 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-[0_0_30px_-6px_rgb(240_103_107/0.8)] transition-colors"><IconPlay class="w-4 h-4" /> Connect</button>
 {{/if}}
 {{#else}}
-                    <p class="flex items-center justify-center gap-2 text-[13px] text-zinc-500"><span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-pulse"></span> Looking it up…</p>
+                    <p class="flex items-center justify-center gap-2 text-[13px] text-zinc-300"><span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-pulse"></span> Looking it up…</p>
 {{/if}}
 {{/if}}
                   </div>
@@ -2114,7 +2119,7 @@ template
                       <span class="w-2 h-2 rounded-[2px] bg-amber-300/70 animate-pulse [animation-delay:300ms]"></span>
                       <span class="w-2 h-2 rounded-[2px] bg-amber-300/40 animate-pulse [animation-delay:450ms]"></span>
                     </div>
-                    <p class="text-[13px] text-zinc-300">Opening a shell on <span class="font-mono text-white">{{ tHost }}</span>…</p>
+                    <p class="text-[13px] text-zinc-200">Opening a shell on <span class="font-mono text-white">{{ tHost }}</span>…</p>
                   </div>
                 </div>
 {{/if}}
@@ -2126,8 +2131,8 @@ template
                       <IconLockClosed class="w-5 h-5" />
                     </div>
                     <p class="text-[15px] font-medium text-zinc-100 mb-1.5">Confirm it's you</p>
-                    <p class="text-[13px] text-zinc-500 mb-5">Opening a shell on {{ tTitle }} needs a code from your authenticator app, a recovery code, or a text message.</p>
-                    <input id="cx-code" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="32" placeholder="000000" onkeydown.enter="{{ submitCode() }}" class="cx-well w-full h-12 rounded-xl border-0 bg-transparent text-zinc-100 text-center text-lg font-mono tracking-[0.4em] placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
+                    <p class="text-[13px] text-zinc-300 mb-5">Opening a shell on {{ tTitle }} needs a code from your authenticator app, a recovery code, or a text message.</p>
+                    <input id="cx-code" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="32" placeholder="000000" onkeydown.enter="{{ submitCode() }}" class="cx-well w-full h-12 rounded-xl border-0 bg-transparent text-zinc-100 text-center text-lg font-mono tracking-[0.4em] placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
 {{#if codeError}}
                     <p role="alert" class="text-brand-300 text-[12px] mt-2 break-words">{{ codeError }}</p>
 {{/if}}
@@ -2135,7 +2140,7 @@ template
                     <p class="text-emerald-300 text-[12px] mt-2">{{ smsNote }}</p>
 {{/if}}
                     <div class="flex items-center justify-center gap-2 mt-5">
-                      <button onclick="{{ cancelCode() }}" class="h-9 rounded-xl px-4 text-[13px] text-zinc-400 hover:text-white bg-white/[0.04] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Cancel</button>
+                      <button onclick="{{ cancelCode() }}" class="h-9 rounded-xl px-4 text-[13px] text-zinc-300 hover:text-white bg-white/[0.04] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Cancel</button>
                       <button onclick="{{ submitCode() }}" class="h-9 rounded-xl px-5 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors">Verify and connect</button>
                     </div>
 {{#if hasSms}}
@@ -2148,7 +2153,7 @@ template
 {{#if phase is "closed"}}
                 <div class="cx-pop absolute left-1/2 -translate-x-1/2 bottom-4 z-10 flex items-center gap-3 rounded-xl pl-3.5 pr-1.5 py-1.5 cx-tile">
                   <span class="w-2 h-2 rounded-full bg-brand-500"></span>
-                  <p class="text-[12.5px] text-zinc-300 whitespace-nowrap">Session ended</p>
+                  <p class="text-[12.5px] text-zinc-200 whitespace-nowrap">Session ended</p>
 {{#if not Billing.locked}}
                   <button onclick="{{ reconnect() }}" class="h-7 rounded-lg px-3 text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors">Reconnect</button>
 {{/if}}
@@ -2176,11 +2181,11 @@ template
             <aside class="{{ sideCls }}" aria-label="Session">
               <div class="cx-tile rounded-2xl p-4">
                 <div class="flex items-center justify-between mb-3">
-                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Session</p>
-                  <span class="text-[11px] text-zinc-500">{{ phaseText }}</span>
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300">Session</p>
+                  <span class="text-[11px] text-zinc-300">{{ phaseText }}</span>
                 </div>
                 <p class="font-mono text-[28px] leading-none tracking-tight text-white tabular-nums">{{ live ? sessionText : "0:00" }}</p>
-                <p class="text-[11px] text-zinc-500 mt-1.5">connected</p>
+                <p class="text-[11px] text-zinc-300 mt-1.5">connected</p>
                 <div class="mt-4 flex items-center gap-1" aria-hidden="true">
 {{#each l in idleLeds}}
                   <span class="cx-led" data-on="{{ live and l.on }}" data-tone="{{ l.tone }}"></span>
@@ -2191,51 +2196,51 @@ template
                   <span class="text-amber-300 font-medium">Closing soon without typing</span>
                   <span class="font-mono text-amber-300 tabular-nums">{{ idleText }}</span>
 {{#else}}
-                  <span class="text-zinc-500">Idle limit</span>
-                  <span class="font-mono text-zinc-300 tabular-nums">{{ live ? idleText : "15:00" }}</span>
+                  <span class="text-zinc-300">Idle limit</span>
+                  <span class="font-mono text-zinc-200 tabular-nums">{{ live ? idleText : "15:00" }}</span>
 {{/if}}
                 </div>
               </div>
 
               <div class="cx-tile rounded-2xl p-4">
                 <div class="flex items-center justify-between mb-3">
-                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Output</p>
-                  <span class="font-mono text-[11px] text-zinc-400 tabular-nums">{{ totalText }}</span>
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300">Output</p>
+                  <span class="font-mono text-[11px] text-zinc-300 tabular-nums">{{ totalText }}</span>
                 </div>
                 <div class="cx-well rounded-lg h-14 px-1.5 py-1.5 flex items-end gap-[3px]" aria-hidden="true">
 {{#each b in meter}}
                   <span class="{{ b.cls }}" style="height: {{ b.h }}%"></span>
 {{/each}}
                 </div>
-                <p class="text-[11px] text-zinc-600 mt-2">last 24 seconds</p>
+                <p class="text-[11px] text-zinc-300 mt-2">last 24 seconds</p>
               </div>
 
               <div class="cx-tile rounded-2xl p-2">
-                <p class="px-2 pt-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Quick commands</p>
+                <p class="px-2 pt-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300">Quick commands</p>
 {{#each c in commands}}
                 <button onclick="{{ runCommand(c.cmd) }}" disabled="{{ not live or Billing.locked }}" title="{{ live ? 'Run in the open session' : 'Connect first' }}" class="group w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left enabled:hover:bg-white/[0.05] disabled:opacity-40 transition-colors">
                   <span class="min-w-0 flex-1">
                     <span class="block text-[12.5px] text-zinc-200 truncate">{{ c.label }}</span>
-                    <span class="block text-[11px] font-mono text-zinc-600 truncate">{{ c.cmd }}</span>
+                    <span class="block text-[11px] font-mono text-zinc-300 truncate">{{ c.cmd }}</span>
                   </span>
-                  <IconChevronRight class="w-3.5 h-3.5 shrink-0 text-zinc-600 group-enabled:group-hover:text-brand-300 group-enabled:group-hover:translate-x-0.5 transition-all" />
+                  <IconChevronRight class="w-3.5 h-3.5 shrink-0 text-zinc-300 group-enabled:group-hover:text-brand-300 group-enabled:group-hover:translate-x-0.5 transition-all" />
                 </button>
 {{/each}}
               </div>
 
               <div class="cx-tile rounded-2xl p-4">
                 <div class="flex items-center justify-between">
-                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Text size</p>
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300">Text size</p>
                   <div class="flex items-center gap-1">
                     <button onclick="{{ setFont(-1) }}" aria-label="Smaller text" class="cx-kbd !h-7 !min-w-[1.75rem] hover:!text-white">A-</button>
-                    <span class="w-9 text-center font-mono text-[12px] text-zinc-300 tabular-nums">{{ fontSize }}</span>
+                    <span class="w-9 text-center font-mono text-[12px] text-zinc-200 tabular-nums">{{ fontSize }}</span>
                     <button onclick="{{ setFont(1) }}" aria-label="Larger text" class="cx-kbd !h-7 !min-w-[1.75rem] hover:!text-white">A+</button>
                   </div>
                 </div>
-                <div class="mt-4 space-y-2 text-[11.5px] text-zinc-500">
+                <div class="mt-4 space-y-2 text-[11.5px] text-zinc-300">
                   <p class="flex items-center justify-between gap-2">Show or hide <span class="flex gap-1"><span class="cx-kbd">Ctrl</span><span class="cx-kbd">`</span></span></p>
                   <p class="flex items-center justify-between gap-2">Minimise, outside the shell <span class="cx-kbd">Esc</span></p>
-                  <p class="flex items-center justify-between gap-2">Copy <span class="text-zinc-400">select, then the copy button</span></p>
+                  <p class="flex items-center justify-between gap-2">Copy <span class="text-zinc-300">select, then the copy button</span></p>
                 </div>
               </div>
             </aside>
@@ -2244,18 +2249,18 @@ template
           <!-- ============ logs ============ -->
           <section aria-label="Logs" class="absolute inset-0 flex" class:hidden="{{ tab is not 'logs' }}">
             <aside class="hidden lg:flex w-[264px] shrink-0 flex-col gap-1 p-3 pr-0 overflow-y-auto cx-scroll">
-              <p class="px-2.5 pt-1 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{{ lKind is "site" ? "Sources" : "Level" }}</p>
+              <p class="px-2.5 pt-1 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300">{{ lKind is "site" ? "Sources" : "Level" }}</p>
 {{#each s in logNav}}
               <button onclick="{{ pickSource(s.id) }}" aria-pressed="{{ s.on }}" class="{{ navCls(s.on) }}">
                 <span class="{{ s.tile }}">{{ s.letter }}</span>
                 <span class="min-w-0">
                   <span class="block text-[13px] font-medium text-zinc-100">{{ s.label }}</span>
-                  <span class="block text-[11.5px] leading-snug text-zinc-500">{{ s.desc }}</span>
+                  <span class="block text-[11.5px] leading-snug text-zinc-300">{{ s.desc }}</span>
                 </span>
               </button>
 {{/each}}
 {{#if lKind is "server"}}
-              <p class="px-2.5 pt-5 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Area</p>
+              <p class="px-2.5 pt-5 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300">Area</p>
               <div class="flex flex-wrap gap-1.5 px-2.5">
 {{#each a in areaNav}}
                 <button onclick="{{ pickArea(a.id) }}" aria-pressed="{{ a.on }}" class="cx-chip">{{ a.label }}</button>
@@ -2264,15 +2269,15 @@ template
 {{/if}}
               <div class="mt-auto pt-4 px-2.5">
                 <div class="cx-well rounded-xl p-3">
-                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500 mb-2">This read</p>
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300 mb-2">This read</p>
                   <div class="grid grid-cols-2 gap-2">
                     <div>
                       <p class="font-mono text-[20px] leading-none tabular-nums {{ errorCount > 0 ? 'text-brand-300' : 'text-emerald-300' }}">{{ errorCount }}</p>
-                      <p class="text-[11px] text-zinc-500 mt-1">errors</p>
+                      <p class="text-[11px] text-zinc-300 mt-1">errors</p>
                     </div>
                     <div>
                       <p class="font-mono text-[20px] leading-none tabular-nums text-zinc-100">{{ scanned }}</p>
-                      <p class="text-[11px] text-zinc-500 mt-1">{{ lKind is "site" ? "lines read" : "events" }}</p>
+                      <p class="text-[11px] text-zinc-300 mt-1">{{ lKind is "site" ? "lines read" : "events" }}</p>
                     </div>
                   </div>
                 </div>
@@ -2290,9 +2295,9 @@ template
               <!-- toolbar -->
               <div class="flex flex-wrap items-center gap-1.5">
                 <label class="cx-well flex items-center gap-2 h-8 flex-1 min-w-[10rem] sm:max-w-xs rounded-lg px-2.5">
-                  <IconSearch class="w-3.5 h-3.5 shrink-0 text-zinc-600" />
+                  <IconSearch class="w-3.5 h-3.5 shrink-0 text-zinc-300" />
                   <span class="sr-only">Filter</span>
-                  <input type="text" bind:value="{{ search }}" placeholder="grep…" autocomplete="off" spellcheck="false" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 p-0 font-mono text-base sm:text-[12px] text-zinc-200 placeholder:text-zinc-600" />
+                  <input type="text" bind:value="{{ search }}" placeholder="grep…" autocomplete="off" spellcheck="false" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 p-0 font-mono text-base sm:text-[12px] text-zinc-200 placeholder:text-zinc-500" />
                 </label>
 {{#if lKind is "site"}}
                 <button onclick="{{ toggleErrors() }}" aria-pressed="{{ errorsOnly }}" class="cx-chip">Errors only</button>
@@ -2323,13 +2328,13 @@ template
 
               <!-- stream -->
               <div class="cx-frame cx-well relative z-[1] flex-1 min-h-0 rounded-2xl overflow-hidden flex" data-live="{{ logLive }}">
-                <div id="flux-console-logs" class="flex-1 min-w-0 overflow-auto cx-scroll py-3 font-mono text-[12.5px] leading-6">
+                <div id="flux-console-logs" class="flex-1 min-w-0 overflow-auto cx-scroll py-3 font-mono font-medium text-[12.5px] leading-6">
 {{#if lPrompt}}
-                  <p class="px-3 sm:px-4 pb-2 text-zinc-500 break-all"><span class="text-brand-300">{{ lPrompt }}</span><span class="text-zinc-600">:~$</span> <span class="text-zinc-300">{{ promptCmd() }}</span><span class="inline-block w-[7px] h-[14px] -mb-[2px] ml-1 bg-brand-400/80 animate-pulse"></span></p>
+                  <p class="px-3 sm:px-4 pb-2 text-zinc-300 break-all"><span class="text-brand-300">{{ lPrompt }}</span><span class="text-zinc-300">:~$</span> <span class="text-zinc-200">{{ promptCmd() }}</span><span class="inline-block w-[7px] h-[14px] -mb-[2px] ml-1 bg-brand-400/80 animate-pulse"></span></p>
 {{/if}}
 
 {{#if not lReady}}
-                  <p class="px-3 sm:px-4 text-zinc-400">Logs are available once the site has finished creating.</p>
+                  <p class="px-3 sm:px-4 text-zinc-300">Logs are available once the site has finished creating.</p>
 {{/if}}
 
 {{#if logError}}
@@ -2343,7 +2348,7 @@ template
 {{#if not logLoaded}}
 {{#if not logError}}
                   <div class="px-3 sm:px-4 space-y-2 pt-1" aria-label="Loading">
-                    <p class="flex items-center gap-2 text-zinc-500"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Reading from the server…</p>
+                    <p class="flex items-center gap-2 text-zinc-300"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Reading from the server…</p>
                     <div class="h-3 w-2/3 rounded bg-white/[0.04] animate-pulse"></div>
                     <div class="h-3 w-1/2 rounded bg-white/[0.04] animate-pulse"></div>
                     <div class="h-3 w-3/4 rounded bg-white/[0.04] animate-pulse"></div>
@@ -2354,13 +2359,13 @@ template
 
 {{#if logLoaded}}
 {{#if logMissing}}
-                  <p class="px-3 sm:px-4 text-zinc-400">No such file. Nothing has been written to this log yet.</p>
+                  <p class="px-3 sm:px-4 text-zinc-300">No such file. Nothing has been written to this log yet.</p>
 {{/if}}
 {{#if not logMissing}}
 {{#if logView.length is 0}}
                   <div class="px-3 sm:px-4 py-6">
                     <p class="text-emerald-300">{{ search ? "Nothing matches “" + search + "”." : "All quiet. Nothing to show." }}</p>
-                    <p class="text-zinc-500">{{ lKind is "site" ? "Turn off Errors only, clear the filter, or read more lines." : "Try another level or clear the filter." }}</p>
+                    <p class="text-zinc-300">{{ lKind is "site" ? "Turn off Errors only, clear the filter, or read more lines." : "Try another level or clear the filter." }}</p>
                   </div>
 {{/if}}
 {{/if}}
@@ -2371,15 +2376,15 @@ template
                     <div class="{{ e.rowCls }}">
                       <span class="w-[3px] self-stretch my-1 shrink-0 rounded-full {{ e.stripe }}"></span>
                       <button onclick="{{ toggleEntry(e.id) }}" aria-expanded="{{ e.open }}" class="min-w-0 flex-1 flex items-start gap-2 text-left">
-                        <span class="w-3 shrink-0 text-zinc-600 select-none">{{ e.open ? "▾" : "▸" }}</span>
-                        <span class="hidden md:inline shrink-0 text-zinc-600 tabular-nums">{{ e.timeText }}</span>
+                        <span class="w-3 shrink-0 text-zinc-300 select-none">{{ e.open ? "▾" : "▸" }}</span>
+                        <span class="hidden md:inline shrink-0 text-zinc-300 tabular-nums">{{ e.timeText }}</span>
                         <span class="{{ e.levelCls }}">{{ e.levelText }}</span>
-                        <span class="min-w-0 text-zinc-200 break-words">{{ e.message }} <span class="text-zinc-600">{{ e.moreText }}</span></span>
+                        <span class="min-w-0 text-zinc-200 break-words">{{ e.message }} <span class="text-zinc-300">{{ e.moreText }}</span></span>
                       </button>
-                      <button onclick="{{ copyOne(e.id) }}" class="shrink-0 text-[11px] text-zinc-600 hover:text-brand-300 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">{{ e.copyText }}</button>
+                      <button onclick="{{ copyOne(e.id) }}" class="shrink-0 text-[11px] text-zinc-300 hover:text-brand-300 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">{{ e.copyText }}</button>
                     </div>
 {{#if e.open}}
-                    <div class="cx-fade ml-8 sm:ml-10 mr-3 sm:mr-4 mb-2 border-l-2 {{ e.edge }} pl-3 text-[12px] leading-5 text-zinc-400 whitespace-pre-wrap break-words max-h-80 overflow-auto cx-scroll select-text">{{ e.detail }}</div>
+                    <div class="cx-fade ml-8 sm:ml-10 mr-3 sm:mr-4 mb-2 border-l-2 {{ e.edge }} pl-3 text-[12px] leading-5 text-zinc-300 whitespace-pre-wrap break-words max-h-80 overflow-auto cx-scroll select-text">{{ e.detail }}</div>
 {{/if}}
                   </div>
 {{/each}}
@@ -2399,19 +2404,19 @@ template
         </div>
 
         <!-- status bar -->
-        <footer class="shrink-0 flex items-center gap-3 h-9 px-3 sm:px-4 border-t border-white/[0.05] bg-black/20 text-[11px] text-zinc-500">
+        <footer class="shrink-0 flex items-center gap-3 h-9 px-3 sm:px-4 border-t border-white/[0.05] bg-black/20 text-[11px] text-zinc-300">
 {{#if tab is "terminal"}}
           <span class="flex items-center gap-1.5 shrink-0"><span class="{{ orbCls }} !w-1.5 !h-1.5"></span>{{ phaseText }}</span>
 {{#if live}}
-          <span class="hidden sm:inline font-mono tabular-nums text-zinc-400">{{ sessionText }}</span>
+          <span class="hidden sm:inline font-mono tabular-nums text-zinc-300">{{ sessionText }}</span>
           <span class="{{ idleWarn ? 'text-amber-300 font-medium' : '' }}">idle limit <span class="font-mono tabular-nums">{{ idleText }}</span></span>
 {{/if}}
 {{#if tCwd}}
-          <span class="hidden md:inline truncate font-mono text-zinc-600">{{ tCwd }}</span>
+          <span class="hidden md:inline truncate font-mono text-zinc-300">{{ tCwd }}</span>
 {{/if}}
 {{#else}}
-          <span><span class="font-mono text-zinc-300">{{ logView.length }}</span> shown</span>
-          <span><span class="font-mono {{ errorCount > 0 ? 'text-brand-300' : 'text-zinc-300' }}">{{ errorCount }}</span> errors</span>
+          <span><span class="font-mono text-zinc-200">{{ logView.length }}</span> shown</span>
+          <span><span class="font-mono {{ errorCount > 0 ? 'text-brand-300' : 'text-zinc-200' }}">{{ errorCount }}</span> errors</span>
 {{#if fetchedAt}}
           <span class="hidden sm:inline">updated {{ fetchedAt }}</span>
 {{/if}}
@@ -2432,7 +2437,7 @@ template
         <span class="{{ orbCls }}"></span>
         <span class="min-w-0">
           <span class="block font-mono text-[12px] text-zinc-100 truncate max-w-[9rem] sm:max-w-[13rem] leading-tight">{{ tUser }}@{{ tHost }}</span>
-          <span class="block text-[10.5px] leading-tight mt-0.5 {{ idleWarn ? 'text-amber-300' : 'text-zinc-500' }}">{{ idleWarn ? "closes in " + idleText : (live ? sessionText : phaseText) }}</span>
+          <span class="block text-[10.5px] leading-tight mt-0.5 {{ idleWarn ? 'text-amber-300' : 'text-zinc-300' }}">{{ idleWarn ? "closes in " + idleText : (live ? sessionText : phaseText) }}</span>
         </span>
         <span class="hidden sm:flex items-end gap-[2px] h-5 w-12" aria-hidden="true">
 {{#each b in pillBars}}
