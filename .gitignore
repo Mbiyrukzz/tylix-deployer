@@ -26,3 +26,4 @@ npm-debug.log*
 .idea/
 public/tailwind.css
 storage/logs/*.log
+react-test/
