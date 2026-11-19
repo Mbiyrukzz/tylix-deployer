@@ -1,6 +1,6 @@
 page SourceControl
 
-import { IconFolder, IconArrowLeft } from "tylix-icons"
+import { IconFolder, IconArrowLeft, IconChevronRight } from "tylix-icons"
 
 title "Source control"
 
@@ -16,6 +16,18 @@ state
   removeError: ""
 
 action
+  // The saved picture, or GitHub's public one for connections saved before
+  // pictures were kept (github.com/<user>.png needs no token).
+  avatarFor(p) {
+    if p.avatar_url {
+      return String(p.avatar_url)
+    }
+    if p.kind is "github" and p.username {
+      return "https://github.com/" + encodeURIComponent(p.username) + ".png?size=96"
+    }
+    return ""
+  }
+
   addProvider(item) {
     SourceProviders.add(item)
   }
@@ -88,17 +100,25 @@ template
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 {{#each p in SourceProviders.data}}
           <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
-            <div class="flex items-center justify-between mb-4">
-{{#if p.kind is "github"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">GitHub</span>
+            <a href="{{ '/source-control/connection?id=' + p.id }}" class="group flex items-center gap-3.5 mb-5 -m-2 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.03] transition-colors">
+              <span class="relative shrink-0">
+                <BrandLogo kind="{{ p.kind }}" label="{{ p.username }}" src="{{ avatarFor(p) }}" size="lg" />
+{{#if avatarFor(p)}}
+                <span class="absolute -bottom-1 -right-1 rounded-md ring-2 ring-[var(--panel)]">
+                  <BrandLogo kind="{{ p.kind }}" size="xs" />
+                </span>
 {{/if}}
-{{#if p.kind is "gitlab"}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">GitLab</span>
-{{/if}}
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">{{ p.status }}</span>
-            </div>
-            <h3 class="text-slate-800 dark:text-slate-200 font-semibold">{{ p.label }}</h3>
-            <p class="text-slate-500 text-sm font-mono mb-4">@{{ p.username }}</p>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center gap-2">
+                  <span class="text-slate-800 dark:text-slate-200 font-semibold truncate">{{ p.label }}</span>
+                  <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">{{ p.status }}</span>
+                </span>
+                <span class="block text-slate-500 text-sm truncate">{{ p.display_name ? p.display_name + " · " : "" }}<span class="font-mono">@{{ p.username }}</span></span>
+                <span class="block text-slate-400 dark:text-slate-500 text-[11px] font-semibold uppercase tracking-wider mt-0.5">{{ p.kind is "gitlab" ? "GitLab" : "GitHub" }}</span>
+              </span>
+              <IconChevronRight class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
+            </a>
             <div class="flex items-center gap-3">
               <SourceProviderForm provider="{{ p }}" onSaved="{{ updateProvider }}" />
 {{#if removing is p.id}}

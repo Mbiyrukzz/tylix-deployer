@@ -35,6 +35,27 @@ After pulling: `npm install && npx tylix migrate` (adds `auth_sessions`,
   (owner only). Seller details from `INVOICE_*` in `.env`.
 - **Navigation**: see "App shell" below.
 
+## Profile pictures, logos and source control (Nov 2026)
+
+After pulling: `npx tylix migrate` (adds `user_avatars`, `users.avatar_hash`
+and `sourceproviders.avatar_url` / `display_name`).
+
+- **Profile pictures**: Settings → Account. The browser crops the image to a
+  256×256 WebP before upload (`PUT /api/account/avatar`); it is stored in
+  `user_avatars` and served at `/api/avatars/<user id>/<content hash>`
+  (public, cached for good, a new upload gets a new URL). The sidebar, top
+  bar and Team page show it; the page tells the shell through `flux:user`.
+- **Loader**: `LoaderMark` / `PageLoader` are the same loader as Ashmif Hub
+  (the Tylix mark lit stroke by stroke, `.tx-loader` in tailwind-input.css).
+  The `--tx-*` colour tokens also theme the Tylix loading screen.
+- **Logos**: `BrandLogo` shows a provider's logo from `public/logos` (or a
+  letter). Provider and registrar sidebars load their connection and show
+  its logo and name on every subpage.
+- **Source control detail**: `/source-control/connection?id=` shows the
+  GitHub / GitLab account behind a token (picture, profile, token scopes and
+  expiry, rate limit), the sites deploying from it and, for admins, its
+  repositories. Data: `GET /api/source-providers/:id/profile`.
+
 ## App shell (Tylix Flux redesign, Nov 2026)
 
 Every Tylix page is its own document, so a plain link used to rebuild the

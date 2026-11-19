@@ -55,6 +55,11 @@
   --sidebar: #fbfbfc;
   --ring: rgb(224 57 63 / 0.35);
   --sbw: 256px;
+  /* Read by the Tylix loading screen and the .tx-loader below (r g b). */
+  --tx-canvas: 246 246 247;
+  --tx-brand: 224 57 63;
+  --tx-line: 229 229 232;
+  --tx-muted: 107 107 115;
   color-scheme: light;
 }
 
@@ -69,6 +74,10 @@
   --muted: #8b8b94;
   --sidebar: #0c0c0d;
   --ring: rgb(240 103 107 / 0.4);
+  --tx-canvas: 9 9 10;
+  --tx-brand: 240 79 84;
+  --tx-line: 39 39 43;
+  --tx-muted: 139 139 148;
   color-scheme: dark;
 }
 
@@ -270,7 +279,7 @@ html[data-soft-nav]:not([data-app-ready]) body::before {
   position: fixed;
   top: 0;
   left: 0;
-  height: 2px;
+  height: 3px;
   width: 100%;
   z-index: 99999;
   pointer-events: none;
@@ -311,6 +320,108 @@ html[data-navigating] .flux-main {
   .flux-sidebar,
   .flux-column {
     transition: none;
+  }
+}
+
+/* ===========================================================================
+   Loader (same as Ashmif Hub's): the Tylix mark lit stroke by stroke over an
+   indeterminate bar, the animation of the Tylix loading screen. It fades in
+   after 150ms, so quick waits never flash it.
+   <LoaderMark label="Loading servers…" />            a whole page
+   <LoaderMark label="Loading…" size="sm" />          a section of a page
+=========================================================================== */
+.tx-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 8rem 1.5rem;
+  opacity: 0;
+  animation: tx-loader-in 0.25s ease 0.15s forwards;
+}
+.tx-loader-mark {
+  width: 48px;
+  height: auto;
+  overflow: visible;
+}
+.tx-loader-mark path {
+  fill: rgb(var(--tx-brand));
+  opacity: 0.18;
+  animation: tx-loader-stroke 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.tx-loader-mark .tx-loader-s2 {
+  animation-delay: 0.15s;
+}
+.tx-loader-mark .tx-loader-s3 {
+  animation-delay: 0.3s;
+}
+.tx-loader-track {
+  position: relative;
+  width: 120px;
+  height: 3px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgb(var(--tx-line));
+}
+.tx-loader-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 3px;
+  background: rgb(var(--tx-brand));
+  animation: tx-loader-slide 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.tx-loader-label {
+  font-size: 0.8125rem;
+  color: rgb(var(--tx-muted));
+}
+.tx-loader-sm {
+  padding: 2.5rem 1rem;
+  gap: 0.75rem;
+}
+.tx-loader-sm .tx-loader-mark {
+  width: 30px;
+}
+.tx-loader-sm .tx-loader-track {
+  width: 72px;
+  height: 2px;
+}
+@keyframes tx-loader-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes tx-loader-stroke {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translateX(-6px);
+  }
+  35%,
+  60% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tx-loader-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tx-loader-mark path {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .tx-loader-bar {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
   }
 }
 

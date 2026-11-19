@@ -260,7 +260,7 @@ template
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if notFound}}
@@ -398,7 +398,7 @@ template
 
 {{#if logId is w.id}}
 {{#if logBusy}}
-          <p class="text-slate-500 text-xs mt-3">Loading log…</p>
+          <LoaderMark label="Loading log…" size="sm" />
 {{/if}}
 {{#if not logBusy}}
           <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>

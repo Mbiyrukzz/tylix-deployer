@@ -1,0 +1,74 @@
+component BrandLogo
+
+import { IconGithub } from "tylix-icons"
+
+// The logo of a cloud provider, domain provider or source control account,
+// on a small tile. Shows, in order: `src` (an account picture, e.g. a
+// GitHub avatar), the brand's file from public/logos (Logos.url), the
+// GitHub mark, or the first letter of `label` / the kind.
+//   <BrandLogo kind="{{ p.kind }}" label="{{ p.label }}" />
+//   <BrandLogo kind="github" src="{{ p.avatar_url }}" size="lg" />
+// size: "xs" (20px, a corner badge), "sm" (28px), "md" (default, 36px) or "lg" (44px).
+
+uses
+  Logos
+
+props
+  kind: String
+  label: String
+  src: String
+  size: String
+
+computed
+  logo() {
+    return Logos.url(this.kind or "")
+  }
+
+  letter() {
+    const source = this.label or Logos.name(this.kind or "") or this.kind or "?"
+    return String(source).charAt(0).toUpperCase()
+  }
+
+  box() {
+    if this.size is "xs" {
+      return "w-5 h-5 rounded-md"
+    }
+    if this.size is "sm" {
+      return "w-7 h-7 rounded-lg"
+    }
+    if this.size is "lg" {
+      return "w-11 h-11 rounded-xl"
+    }
+    return "w-9 h-9 rounded-xl"
+  }
+
+  inner() {
+    if this.size is "xs" {
+      return "w-3 h-3"
+    }
+    if this.size is "sm" {
+      return "w-4 h-4"
+    }
+    if this.size is "lg" {
+      return "w-6 h-6"
+    }
+    return "w-5 h-5"
+  }
+
+template
+{{#if src}}
+<img src="{{ src }}" alt="" referrerpolicy="no-referrer" class="{{ box + ' shrink-0 object-cover border border-line bg-panel' }}" />
+{{/if}}
+{{#if not src and logo}}
+<span class="{{ box + ' shrink-0 flex items-center justify-center border border-line bg-white dark:bg-white/[0.94]' }}">
+  <img src="{{ logo }}" alt="" class="{{ inner + ' object-contain' }}" />
+</span>
+{{/if}}
+{{#if not src and not logo and kind is "github"}}
+<span class="{{ box + ' shrink-0 flex items-center justify-center border border-line bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' }}">
+  <IconGithub class="{{ inner }}" />
+</span>
+{{/if}}
+{{#if not src and not logo and kind is not "github"}}
+<span class="{{ box + ' shrink-0 flex items-center justify-center border border-line bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-bold' }}">{{ letter }}</span>
+{{/if}}

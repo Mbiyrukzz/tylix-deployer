@@ -121,7 +121,7 @@ template
 {{/if}}
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if not loading}}

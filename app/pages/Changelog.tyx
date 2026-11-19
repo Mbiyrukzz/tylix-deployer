@@ -35,7 +35,7 @@ template
     <p class="text-sm text-zinc-500 mb-10">New features, improvements and fixes.</p>
 
 {{#if loading}}
-    <p class="text-sm text-zinc-500">Loading…</p>
+    <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if error}}

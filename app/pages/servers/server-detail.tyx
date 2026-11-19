@@ -500,7 +500,7 @@ template
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading server…</p>
+      <LoaderMark label="Loading server…" />
 {{/if}}
 
 {{#if notFound}}

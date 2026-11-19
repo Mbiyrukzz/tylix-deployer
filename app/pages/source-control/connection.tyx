@@ -1,0 +1,448 @@
+page SourceControlConnection
+
+import { IconArrowLeft, IconExternalLink, IconMapPin, IconBuildingOffice, IconLink, IconMail, IconCalendar, IconKey, IconLockClosed, IconGitBranch, IconSearch, IconGlobe, IconRefresh, IconFolder } from "tylix-icons"
+
+// One source control connection (GitHub / GitLab): the account behind its
+// token (picture, profile, what the token may do), the team's sites that
+// deploy from it and, for admins, the repositories it can see.
+// /source-control/connection?id=<connection id>
+
+title "Source control"
+
+needs
+  Auth
+
+uses
+  Logos
+
+state
+  checkedAuth: false
+  id: ""
+  noConnection: false
+  loadError: ""
+  connection: null
+  account: null
+  accountError: ""
+  sites: []
+  refreshing: false
+  reposState: "idle"
+  reposError: ""
+  repos: []
+  repoQuery: ""
+
+computed
+  kindName() {
+    const c = this.connection
+    return c ? (Logos.name(c.kind) or c.kind) : ""
+  }
+
+  displayName() {
+    const a = this.account
+    const c = this.connection
+    if a and a.name {
+      return a.name
+    }
+    if c and c.display_name {
+      return c.display_name
+    }
+    return c ? c.username : ""
+  }
+
+  avatar() {
+    const a = this.account
+    const c = this.connection
+    if a and a.avatar_url {
+      return a.avatar_url
+    }
+    if c and c.avatar_url {
+      return c.avatar_url
+    }
+    if c and c.kind is "github" and c.username {
+      return "https://github.com/" + encodeURIComponent(c.username) + ".png?size=192"
+    }
+    return ""
+  }
+
+  profileUrl() {
+    const a = this.account
+    const c = this.connection
+    if a and a.profile_url {
+      return a.profile_url
+    }
+    if not c or not c.username {
+      return ""
+    }
+    return (c.kind is "gitlab" ? "https://gitlab.com/" : "https://github.com/") + c.username
+  }
+
+  stats() {
+    const a = this.account
+    if not a {
+      return []
+    }
+    const all = [
+      { label: "Public repositories", value: a.public_repos },
+      { label: "Private repositories", value: a.private_repos },
+      { label: "Followers", value: a.followers },
+      { label: "Following", value: a.following }
+    ]
+    return all.filter((s) => typeof s.value is "number")
+  }
+
+  shownRepos() {
+    const q = this.repoQuery.trim().toLowerCase()
+    const list = q ? this.repos.filter((r) => String(r.full_name).toLowerCase().includes(q)) : this.repos
+    return list.slice(0, 60)
+  }
+
+action
+  date(raw) {
+    if not raw {
+      return ""
+    }
+    const d = new Date(raw)
+    if Number.isNaN(d.getTime()) {
+      return ""
+    }
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }
+
+  relative(raw) {
+    if not raw {
+      return ""
+    }
+    const t = new Date(raw).getTime()
+    if Number.isNaN(t) {
+      return ""
+    }
+    const days = Math.floor((Date.now() - t) / 86400000)
+    if days <= 0 {
+      return "today"
+    }
+    if days is 1 {
+      return "yesterday"
+    }
+    if days < 30 {
+      return days + " days ago"
+    }
+    if days < 365 {
+      const months = Math.floor(days / 30)
+      return months is 1 ? "a month ago" : months + " months ago"
+    }
+    const years = Math.floor(days / 365)
+    return years is 1 ? "a year ago" : years + " years ago"
+  }
+
+  expiryText(raw) {
+    if not raw {
+      return "No expiry date"
+    }
+    const t = new Date(raw).getTime()
+    if Number.isNaN(t) {
+      return String(raw)
+    }
+    const days = Math.ceil((t - Date.now()) / 86400000)
+    if days < 0 {
+      return "Expired on " + this.date(raw)
+    }
+    if days is 0 {
+      return "Expires today"
+    }
+    return "Expires " + this.date(raw) + " (in " + days + " days)"
+  }
+
+  expiresSoon(raw) {
+    if not raw {
+      return false
+    }
+    const t = new Date(raw).getTime()
+    return not Number.isNaN(t) and t - Date.now() < 14 * 86400000
+  }
+
+  repoUrl(r) {
+    const c = this.connection
+    const base = c and c.kind is "gitlab" ? "https://gitlab.com/" : "https://github.com/"
+    return base + r.full_name
+  }
+
+  statusClass(status) {
+    const base = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider "
+    if status is "connected" {
+      return base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+    }
+    return base + "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+  }
+
+  deployClass(status) {
+    const base = "text-[11px] font-semibold uppercase tracking-wider "
+    if status is "success" or status is "deployed" {
+      return base + "text-emerald-600 dark:text-emerald-400"
+    }
+    if status is "failed" or status is "error" {
+      return base + "text-rose-600 dark:text-rose-400"
+    }
+    return base + "text-slate-500"
+  }
+
+  async loadProfile() {
+    const result = await useApi("/api/source-providers/" + this.id + "/profile")
+    if result.status is 404 {
+      this.noConnection = true
+      return null
+    }
+    if not result.ok {
+      this.loadError = result.data?.error or "Couldn't load this connection."
+      return null
+    }
+    this.loadError = ""
+    this.connection = result.data.connection
+    this.account = result.data.account
+    this.accountError = result.data.account_error or ""
+    this.sites = Array.isArray(result.data.sites) ? result.data.sites : []
+  }
+
+  async refresh() {
+    if this.refreshing {
+      return null
+    }
+    this.refreshing = true
+    await this.loadProfile()
+    this.refreshing = false
+  }
+
+  // Admins only (the token's repositories): members get 403 and the
+  // section stays hidden.
+  async loadRepos() {
+    this.reposState = "loading"
+    const result = await useApi("/api/source-providers/" + this.id + "/repositories")
+    if result.status is 403 {
+      this.reposState = "hidden"
+      return null
+    }
+    if not result.ok {
+      this.reposState = "error"
+      this.reposError = result.data?.error or "Couldn't load the repositories."
+      return null
+    }
+    this.repos = Array.isArray(result.data) ? result.data : []
+    this.reposState = "ready"
+  }
+
+  setQuery(value) {
+    this.repoQuery = String(value or "")
+  }
+
+onMount
+  async {
+    if not Auth.user {
+      window.location.href = "/login"
+      return null
+    }
+
+    this.id = new URLSearchParams(window.location.search).get("id") or ""
+    if not this.id {
+      this.noConnection = true
+      this.checkedAuth = true
+      return null
+    }
+
+    await this.loadProfile()
+    this.checkedAuth = true
+
+    if this.connection {
+      this.loadRepos()
+    }
+  }
+
+template
+{{#if not checkedAuth}}
+<PageLoader label="Loading the connection…" />
+{{/if}}
+{{#if checkedAuth}}
+  <div class="min-h-[calc(100vh-4rem)] bg-page transition-colors">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
+
+      <a href="/source-control" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Source control
+      </a>
+
+{{#if noConnection}}
+      <div class="rounded-2xl border border-dashed border-line bg-panel p-10 text-center">
+        <h1 class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Connection not found</h1>
+        <p class="text-slate-500 text-sm">It may have been removed, or it belongs to another team.</p>
+      </div>
+{{/if}}
+
+{{#if not noConnection and loadError}}
+      <p role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 text-sm px-4 py-3">{{ loadError }}</p>
+{{/if}}
+
+{{#if not noConnection and connection}}
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-7 shadow-sm dark:shadow-none mb-6">
+        <div class="flex flex-col sm:flex-row gap-5 sm:gap-6">
+          <div class="relative shrink-0 self-start">
+{{#if avatar}}
+            <img src="{{ avatar }}" alt="" referrerpolicy="no-referrer" class="w-24 h-24 rounded-2xl object-cover border border-line bg-sunken" />
+{{/if}}
+{{#if not avatar}}
+            <span class="w-24 h-24 rounded-2xl border border-line bg-sunken flex items-center justify-center text-3xl font-semibold text-slate-700 dark:text-slate-200">{{ String(connection.username or "?").charAt(0).toUpperCase() }}</span>
+{{/if}}
+            <span class="absolute -bottom-2 -right-2 rounded-xl ring-4 ring-[var(--panel)]">
+              <BrandLogo kind="{{ connection.kind }}" size="sm" />
+            </span>
+          </div>
+
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ displayName }}</h1>
+              <span class="{{ statusClass(connection.status) }}"><span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ connection.status }}</span>
+            </div>
+{{#if profileUrl}}
+            <a href="{{ profileUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-sm font-mono text-slate-500 hover:text-brand-600 dark:hover:text-brand-400">@{{ connection.username }} <IconExternalLink class="w-3.5 h-3.5" /></a>
+{{/if}}
+            <p class="text-slate-500 text-sm mt-1">{{ kindName }} connection “{{ connection.label }}”, added {{ date(connection.created_at) }}</p>
+{{#if account and account.bio}}
+            <p class="text-slate-700 dark:text-slate-300 text-sm mt-3 max-w-2xl">{{ account.bio }}</p>
+{{/if}}
+{{#if account}}
+            <ul class="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-sm text-slate-600 dark:text-slate-400">
+{{#if account.company}}
+              <li class="inline-flex items-center gap-1.5"><IconBuildingOffice class="w-4 h-4 text-slate-400" /> {{ account.company }}</li>
+{{/if}}
+{{#if account.location}}
+              <li class="inline-flex items-center gap-1.5"><IconMapPin class="w-4 h-4 text-slate-400" /> {{ account.location }}</li>
+{{/if}}
+{{#if account.website}}
+              <li class="inline-flex items-center gap-1.5 min-w-0"><IconLink class="w-4 h-4 text-slate-400" /> <a href="{{ account.website }}" target="_blank" rel="noopener noreferrer" class="hover:text-brand-600 dark:hover:text-brand-400 truncate max-w-[16rem]">{{ account.website.replace(/^https?:\/\//, "").replace(/\/$/, "") }}</a></li>
+{{/if}}
+{{#if account.email}}
+              <li class="inline-flex items-center gap-1.5"><IconMail class="w-4 h-4 text-slate-400" /> {{ account.email }}</li>
+{{/if}}
+{{#if account.created_at}}
+              <li class="inline-flex items-center gap-1.5"><IconCalendar class="w-4 h-4 text-slate-400" /> On {{ kindName }} since {{ date(account.created_at) }}</li>
+{{/if}}
+            </ul>
+{{/if}}
+          </div>
+
+          <div class="shrink-0 self-start">
+            <button onclick="{{ refresh() }}" disabled="{{ refreshing }}" title="{{ 'Ask ' + kindName + ' again' }}" class="inline-flex items-center gap-1.5 text-sm rounded-full border border-line px-3.5 py-2 text-slate-600 dark:text-slate-300 hover:border-line-strong disabled:opacity-50 transition">
+              <IconRefresh class="{{ 'w-4 h-4' + (refreshing ? ' animate-spin' : '') }}" /> Refresh
+            </button>
+          </div>
+        </div>
+
+{{#if accountError}}
+        <p role="alert" class="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400 text-sm px-4 py-3">{{ accountError }}</p>
+{{/if}}
+      </section>
+
+{{#if stats.length > 0}}
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+{{#each s in stats}}
+        <div class="rounded-2xl border border-line bg-panel px-4 py-4">
+          <p class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">{{ s.value.toLocaleString() }}</p>
+          <p class="text-slate-500 text-xs mt-0.5">{{ s.label }}</p>
+        </div>
+{{/each}}
+      </div>
+{{/if}}
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+{{#if account}}
+        <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+          <h2 class="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold mb-4"><IconKey class="w-4 h-4 text-slate-400" /> Access token</h2>
+          <dl class="space-y-3 text-sm">
+{{#if account.token_name}}
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Name</dt><dd class="text-slate-900 dark:text-slate-100 font-medium truncate">{{ account.token_name }}</dd></div>
+{{/if}}
+            <div class="flex justify-between gap-4">
+              <dt class="text-slate-500">Expiry</dt>
+              <dd class="{{ expiresSoon(account.token_expires_at) ? 'text-amber-600 dark:text-amber-400 font-medium text-right' : 'text-slate-900 dark:text-slate-100 text-right' }}">{{ expiryText(account.token_expires_at) }}</dd>
+            </div>
+{{#if account.account_type}}
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Account type</dt><dd class="text-slate-900 dark:text-slate-100">{{ account.account_type }}{{ account.plan ? " · " + account.plan + " plan" : "" }}</dd></div>
+{{/if}}
+{{#if account.rate_limit}}
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">API requests left</dt><dd class="text-slate-900 dark:text-slate-100 tabular-nums">{{ account.rate_limit.remaining.toLocaleString() }} of {{ account.rate_limit.limit.toLocaleString() }}</dd></div>
+{{/if}}
+            <div>
+              <dt class="text-slate-500 mb-2">Scopes</dt>
+              <dd class="flex flex-wrap gap-1.5">
+{{#each scope in account.scopes}}
+                <span class="rounded-md border border-line bg-sunken px-2 py-0.5 font-mono text-xs text-slate-700 dark:text-slate-300">{{ scope }}</span>
+{{#else}}
+                <span class="text-slate-500 text-xs">{{ connection.kind is "github" ? "Not listed: fine-grained tokens keep their permissions on GitHub." : "Not listed." }}</span>
+{{/each}}
+              </dd>
+            </div>
+          </dl>
+        </section>
+{{/if}}
+
+        <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+          <h2 class="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold mb-1"><IconGlobe class="w-4 h-4 text-slate-400" /> Sites deploying from it</h2>
+          <p class="text-slate-500 text-xs mb-4">Sites in your team that pull code with this connection.</p>
+{{#each site in sites}}
+          <a href="{{ '/servers/site-detail?id=' + site.id }}" class="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 -mx-1 hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors">
+            <span class="min-w-0">
+              <span class="block text-sm font-medium font-mono text-slate-900 dark:text-slate-100 truncate">{{ site.domain }}</span>
+              <span class="flex items-center gap-1 text-xs text-slate-500 truncate"><IconGitBranch class="w-3.5 h-3.5 shrink-0" /> {{ site.repository }}{{ site.branch ? " · " + site.branch : "" }}</span>
+            </span>
+            <span class="{{ deployClass(site.deploy_status) }}">{{ site.deploy_status or site.status }}</span>
+          </a>
+{{#else}}
+          <p class="text-slate-500 text-sm">No sites use this connection yet.</p>
+{{/each}}
+        </section>
+      </div>
+
+{{#if reposState is "loading"}}
+      <section class="rounded-2xl border border-line bg-panel">
+        <LoaderMark label="Loading repositories…" size="sm" />
+      </section>
+{{/if}}
+{{#if reposState is "error"}}
+      <p role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 text-sm px-4 py-3">{{ reposError }}</p>
+{{/if}}
+{{#if reposState is "ready"}}
+      <section class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold"><IconFolder class="w-4 h-4 text-slate-400" /> Repositories</h2>
+            <p class="text-slate-500 text-xs mt-0.5">{{ repos.length }} the token can see, most recently pushed first.</p>
+          </div>
+          <label class="relative block sm:w-64">
+            <span class="sr-only">Filter repositories</span>
+            <IconSearch class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input type="search" value="{{ repoQuery }}" oninput="{{ setQuery(event.target.value) }}" placeholder="Filter repositories" class="w-full rounded-xl border border-line bg-white dark:bg-slate-950 pl-9 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          </label>
+        </div>
+        <ul class="divide-y divide-[var(--line)]">
+{{#each r in shownRepos}}
+          <li class="flex items-center justify-between gap-3 py-2.5">
+            <a href="{{ repoUrl(r) }}" target="_blank" rel="noopener noreferrer" class="min-w-0 flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100 hover:text-brand-600 dark:hover:text-brand-400">
+{{#if r.private}}
+              <IconLockClosed class="w-3.5 h-3.5 shrink-0 text-amber-500" />
+{{/if}}
+              <span class="font-mono truncate">{{ r.full_name }}</span>
+            </a>
+            <span class="shrink-0 flex items-center gap-3 text-xs text-slate-500">
+              <span class="hidden sm:inline-flex items-center gap-1"><IconGitBranch class="w-3.5 h-3.5" /> {{ r.default_branch }}</span>
+              <span>{{ relative(r.updated_at) }}</span>
+            </span>
+          </li>
+{{#else}}
+          <li class="py-3 text-slate-500 text-sm">{{ repoQuery ? "No repositories match." : "The token can't see any repositories." }}</li>
+{{/each}}
+        </ul>
+{{#if repos.length > 60 and not repoQuery}}
+        <p class="text-slate-500 text-xs mt-3">Showing the 60 most recent. Filter to find the others.</p>
+{{/if}}
+      </section>
+{{/if}}
+{{/if}}
+
+    </div>
+  </div>
+{{/if}}

@@ -54,7 +54,7 @@ template
       <p class="text-slate-500 text-sm mb-8">Emails sent or captured by your app.</p>
 
 {{#if logsLoading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if not logsLoading}}

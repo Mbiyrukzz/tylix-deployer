@@ -58,6 +58,7 @@ action
       joined: m.joined,
       isMe: m.is_me,
       initial: String(m.name).slice(0, 1).toUpperCase(),
+      avatar: m.avatar_url or "",
       href: "/team/member?id=" + m.id,
       canView: seesAll or m.is_me,
       total: s ? String(s.total) : (seesAll or m.is_me ? "0" : "—"),
@@ -172,7 +173,7 @@ template
       </div>
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if not loading}}
@@ -183,7 +184,12 @@ template
         <div class="divide-y divide-slate-200 dark:divide-slate-800">
 {{#each m in members}}
           <div class="flex items-center gap-4 px-6 py-4">
+{{#if m.avatar}}
+            <img src="{{ m.avatar }}" alt="" class="w-10 h-10 shrink-0 rounded-full object-cover border border-line" />
+{{/if}}
+{{#if not m.avatar}}
             <span class="w-10 h-10 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold flex items-center justify-center">{{ m.initial }}</span>
+{{/if}}
             <div class="min-w-0 flex-1">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ m.name }}</p>
               <p class="text-slate-500 text-xs font-mono truncate">{{ m.email }}</p>

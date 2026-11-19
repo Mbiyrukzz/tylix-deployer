@@ -18,12 +18,13 @@ export interface UserAttributes {
     password: string;
     email_verified_at: string | null;
     current_team_id?: number | null;
+    avatar_hash?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;
 }
 
-export type SafeUser = Omit<UserAttributes, "password">;
+export type SafeUser = Omit<UserAttributes, "password"> & { avatar_url: string | null };
 
 export class User extends Model {
     static table = "users";
@@ -34,6 +35,7 @@ export class User extends Model {
         "password",
         "email_verified_at",
         "current_team_id",
+        "avatar_hash",
     ];
 
     static async all(): Promise<UserAttributes[]> {
@@ -72,9 +74,16 @@ export class User extends Model {
         return Boolean(user?.email_verified_at);
     }
 
+    // The profile picture's URL, or null without one. The hash makes each
+    // upload its own URL (cached for good) and keeps the URLs unguessable.
+    static avatarUrl(user: { id: number; avatar_hash?: unknown } | null | undefined): string | null {
+        const hash = typeof user?.avatar_hash === "string" ? user.avatar_hash : "";
+        return user && hash ? `/api/avatars/${user.id}/${hash}` : null;
+    }
+
     static toSafeObject(user: UserAttributes | null): SafeUser | null {
         if (!user) return null;
         const { password, ...safe } = user;
-        return safe;
+        return { ...safe, avatar_url: this.avatarUrl(user) };
     }
 }

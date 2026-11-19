@@ -28,6 +28,9 @@ import { CryptoService } from "../services/CryptoService.js";
 import { createGuard, createFailureGate, userKey, audit, requireStepUp } from "../services/RouteGuard.js";
 import { requireTeam, requireRole, teamIdOfRow } from "../services/TeamScope.js";
 import { requireActive } from "../services/EntitlementService.js";
+import { fetchSourceAccount, providerName } from "../services/SourceAccount.js";
+import type { SourceAccount } from "../services/SourceAccount.js";
+import { Site } from "../models/Site.js";
 
 const KINDS = ["github", "gitlab"];
 
@@ -40,6 +43,8 @@ interface Row {
     username: string;
     token: string;
     status: string;
+    avatar_url?: string | null;
+    display_name?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;
@@ -55,48 +60,15 @@ function toPublic(row: Row) {
     return rest;
 }
 
-type Verified = { ok: true; username: string } | { ok: false; error: string; rejected: boolean };
-
-const providerName = (kind: string) => (kind === "github" ? "GitHub" : "GitLab");
+type Verified =
+    | { ok: true; username: string; avatar_url: string; display_name: string }
+    | { ok: false; error: string; rejected: boolean };
 
 async function verify(kind: string, token: string): Promise<Verified> {
-    const name = providerName(kind);
-
-    try {
-        const response =
-            kind === "github"
-                ? await fetch("https://api.github.com/user", {
-                      headers: {
-                          Authorization: `Bearer ${token}`,
-                          Accept: "application/vnd.github+json",
-                          "User-Agent": "tylix-deploy",
-                      },
-                  })
-                : await fetch("https://gitlab.com/api/v4/user", {
-                      headers: { "PRIVATE-TOKEN": token },
-                  });
-
-        if (response.status === 401 || response.status === 403) {
-            return {
-                ok: false,
-                rejected: true,
-                error: `${name} rejected that token. Check that it is correct and hasn't expired.`,
-            };
-        }
-        if (!response.ok) {
-            return {
-                ok: false,
-                rejected: false,
-                error: `${name} answered with an error (${response.status}). Try again in a moment.`,
-            };
-        }
-
-        const body = (await response.json()) as { login?: string; username?: string };
-        const username = String(kind === "github" ? (body.login ?? "") : (body.username ?? ""));
-        return { ok: true, username };
-    } catch {
-        return { ok: false, rejected: false, error: `Couldn't reach ${name} to check the token. Try again in a moment.` };
-    }
+    const checked = await fetchSourceAccount(kind, token);
+    if (!checked.ok) return checked;
+    const { username, avatar_url, name } = checked.account;
+    return { ok: true, username, avatar_url, display_name: name };
 }
 
 /**
@@ -108,7 +80,7 @@ async function verifyOrRefuse(
     res: TylixResponse,
     kind: string,
     token: string,
-): Promise<{ ok: true; username: string } | null> {
+): Promise<Extract<Verified, { ok: true }> | null> {
     const key = userKey(req);
 
     if (!verifyGuard(req, res)) return null;
@@ -144,6 +116,25 @@ async function findOwned(req: TylixRequest, res: TylixResponse): Promise<Row | n
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
+// The detail page calls the provider with the team's token, so lookups are
+// limited per user and an answer is reused for a few minutes. A new token
+// (updated_at changes) is never served an old answer.
+const profileGuard = createGuard({ max: 30, windowMs: 60_000, scope: "user", what: "profile lookups" });
+const PROFILE_TTL_MS = 5 * 60_000;
+const profileCache = new Map<number, { key: string; at: number; account: SourceAccount }>();
+
+interface SiteRow {
+    id: number;
+    team_id: number | null;
+    server_id: number;
+    domain: string;
+    repository: string;
+    branch: string;
+    status: string;
+    deploy_status: string;
+    deployed_at: string | null;
+}
+
 export class SourceProviderController {
     async index(req: TylixRequest, res: TylixResponse) {
         const teamId = requireTeam(req, res);
@@ -159,6 +150,57 @@ export class SourceProviderController {
         const row = await findOwned(req, res);
         if (!row) return;
         return res.json(toPublic(row));
+    }
+
+    /**
+     * The account behind the connection (picture, profile, token scopes),
+     * fresh from GitHub / GitLab, plus the team's sites that deploy from it.
+     * Any member. Also keeps the saved picture and name up to date.
+     */
+    async profile(req: TylixRequest, res: TylixResponse) {
+        const row = await findOwned(req, res);
+        if (!row) return;
+
+        const teamId = await teamIdOfRow(row);
+        const siteRows = (await Site.query().where("source_control_id", row.id).get()) as unknown as SiteRow[];
+        const sites = siteRows
+            .filter((s) => s.team_id === null || s.team_id === teamId)
+            .map((s) => ({
+                id: s.id,
+                server_id: s.server_id,
+                domain: s.domain,
+                repository: s.repository,
+                branch: s.branch,
+                status: s.status,
+                deploy_status: s.deploy_status,
+                deployed_at: s.deployed_at,
+            }));
+
+        const cacheKey = `${row.updated_at}`;
+        const cached = profileCache.get(row.id);
+        if (cached && cached.key === cacheKey && Date.now() - cached.at < PROFILE_TTL_MS) {
+            return res.json({ connection: toPublic(row), account: cached.account, account_error: "", sites });
+        }
+
+        if (!profileGuard(req, res)) return;
+
+        const checked = await fetchSourceAccount(row.kind, CryptoService.decrypt(row.token), true);
+        if (!checked.ok) {
+            const error = checked.rejected
+                ? `${providerName(row.kind)} no longer accepts the saved token. An admin can edit the connection and paste a new one.`
+                : checked.error;
+            return res.json({ connection: toPublic(row), account: null, account_error: error, sites });
+        }
+
+        const account = checked.account;
+        let current = row;
+        if (account.avatar_url !== (row.avatar_url ?? "") || account.name !== (row.display_name ?? "")) {
+            await SourceProvider.update(row.id, { avatar_url: account.avatar_url, display_name: account.name });
+            current = ((await SourceProvider.find(row.id)) as Row | null) ?? row;
+        }
+        profileCache.set(row.id, { key: `${current.updated_at}`, at: Date.now(), account });
+
+        return res.json({ connection: toPublic(current), account, account_error: "", sites });
     }
 
     async store(req: TylixRequest, res: TylixResponse) {
@@ -191,6 +233,8 @@ export class SourceProviderController {
             kind,
             label,
             username: checked.username,
+            avatar_url: checked.avatar_url,
+            display_name: checked.display_name,
             token: CryptoService.encrypt(token),
             status: "connected",
         })) as Row | null;
@@ -252,6 +296,8 @@ export class SourceProviderController {
 
             patch.token = CryptoService.encrypt(token);
             patch.username = checked.username;
+            patch.avatar_url = checked.avatar_url;
+            patch.display_name = checked.display_name;
             patch.status = "connected";
         }
 
@@ -285,6 +331,7 @@ export class SourceProviderController {
         if (!(await requireActive(res, Number(req.user?.teamId)))) return;
 
         await SourceProvider.delete(row.id);
+        profileCache.delete(row.id);
 
         await audit({
             userId: Number(req.user?.userId),

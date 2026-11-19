@@ -321,7 +321,7 @@ template
       </div>
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading records…</p>
+      <LoaderMark label="Loading records…" />
 {{/if}}
 
 {{#if not loading}}

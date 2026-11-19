@@ -144,7 +144,7 @@ template
 
 {{#if supported}}
 {{#if loading}}
-        <p class="text-slate-500 text-sm">Loading billing…</p>
+        <LoaderMark label="Loading billing…" />
 {{/if}}
 
 {{#if error}}

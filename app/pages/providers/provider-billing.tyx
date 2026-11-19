@@ -651,7 +651,7 @@ template
 {{#if openInvoice is i.id}}
           <div class="px-5 pb-4 bg-slate-50 dark:bg-slate-950/40">
 {{#if itemsBusy}}
-            <p class="text-slate-500 text-xs pt-3">Loading items…</p>
+            <LoaderMark label="Loading items…" size="sm" />
 {{/if}}
 {{#if itemsError}}
             <p role="alert" class="text-rose-500 text-xs pt-3">{{ itemsError }}</p>

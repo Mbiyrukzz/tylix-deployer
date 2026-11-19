@@ -54,6 +54,7 @@ export interface TeamMemberView {
     email: string;
     role: TeamRole;
     joined_at: string;
+    avatar_url: string | null;
 }
 
 export interface TeamChoice {
@@ -304,6 +305,7 @@ export class TeamService {
                 email: user.email,
                 role: row.role as TeamRole,
                 joined_at: row.created_at,
+                avatar_url: User.avatarUrl(user),
             });
         }
 

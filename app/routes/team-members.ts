@@ -35,6 +35,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
                     id: m.id,
                     name: m.name,
                     email: m.email,
+                    avatar_url: m.avatar_url,
                     role: m.role,
                     joined: String(m.joined_at).slice(0, 10),
                     is_me: m.id === actorId,

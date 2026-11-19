@@ -164,6 +164,20 @@ export interface ApiRoutes {
     response: unknown
     auth: true
   }
+  "DELETE /api/account/avatar": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: true
+  }
+  "PUT /api/account/avatar": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
   "PUT /api/account/password": {
     params: Record<string, never>
     query: Record<string, string | number | boolean | undefined>
@@ -320,6 +334,13 @@ export interface ApiRoutes {
   }
   "GET /api/auth/verify-email": {
     params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: false
+  }
+  "GET /api/avatars/:userId/:hash": {
+    params: { userId: string | number; hash: string | number }
     query: Record<string, string | number | boolean | undefined>
     body: undefined
     response: unknown
@@ -1585,6 +1606,13 @@ export interface ApiRoutes {
     response: unknown
     auth: true
   }
+  "GET /api/source-providers/:id/profile": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: true
+  }
   "GET /api/source-providers/:id/repositories": {
     params: { id: string | number }
     query: Record<string, string | number | boolean | undefined>
@@ -1794,6 +1822,10 @@ export interface RouteClient {
   account: {
     index(options?: RouteOptions<ApiRoutes["GET /api/account"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/account"]['response']>>
     update(body?: ApiRoutes["PUT /api/account"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/account"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/account"]['response']>>
+    avatar: {
+      destroy(options?: RouteOptions<ApiRoutes["DELETE /api/account/avatar"]['query']>): Promise<ApiResult<ApiRoutes["DELETE /api/account/avatar"]['response']>>
+      update(body?: ApiRoutes["PUT /api/account/avatar"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/account/avatar"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/account/avatar"]['response']>>
+    }
     password(body?: ApiRoutes["PUT /api/account/password"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/account/password"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/account/password"]['response']>>
     signOutEverywhere(body?: ApiRoutes["POST /api/account/sign-out-everywhere"]['body'], options?: RouteOptions<ApiRoutes["POST /api/account/sign-out-everywhere"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/account/sign-out-everywhere"]['response']>>
     twoFactor: {
@@ -1828,6 +1860,7 @@ export interface RouteClient {
     }
     verifyEmail(options?: RouteOptions<ApiRoutes["GET /api/auth/verify-email"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/auth/verify-email"]['response']>>
   }
+  avatars(params: ApiRoutes["GET /api/avatars/:userId/:hash"]['params'], options?: RouteOptions<ApiRoutes["GET /api/avatars/:userId/:hash"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/avatars/:userId/:hash"]['response']>>
   backupStorages: {
     index(options?: RouteOptions<ApiRoutes["GET /api/backup-storages"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/backup-storages"]['response']>>
     store(body?: ApiRoutes["POST /api/backup-storages"]['body'], options?: RouteOptions<ApiRoutes["POST /api/backup-storages"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/backup-storages"]['response']>>
@@ -2095,6 +2128,7 @@ export interface RouteClient {
     show(params: ApiRoutes["GET /api/source-providers/:id"]['params'], options?: RouteOptions<ApiRoutes["GET /api/source-providers/:id"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/source-providers/:id"]['response']>>
     update(params: ApiRoutes["PUT /api/source-providers/:id"]['params'], body?: ApiRoutes["PUT /api/source-providers/:id"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/source-providers/:id"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/source-providers/:id"]['response']>>
     branches(params: ApiRoutes["GET /api/source-providers/:id/branches"]['params'], options?: RouteOptions<ApiRoutes["GET /api/source-providers/:id/branches"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/source-providers/:id/branches"]['response']>>
+    profile(params: ApiRoutes["GET /api/source-providers/:id/profile"]['params'], options?: RouteOptions<ApiRoutes["GET /api/source-providers/:id/profile"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/source-providers/:id/profile"]['response']>>
     repositories(params: ApiRoutes["GET /api/source-providers/:id/repositories"]['params'], options?: RouteOptions<ApiRoutes["GET /api/source-providers/:id/repositories"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/source-providers/:id/repositories"]['response']>>
   }
   sourceproviders: {

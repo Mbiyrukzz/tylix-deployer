@@ -16,7 +16,7 @@ props
     aria-hidden="true"
     class="flux-loadbar"
     style="{{
-      'position:fixed;top:0;left:0;height:2px;z-index:99999;pointer-events:none;' +
+      'position:fixed;top:0;left:0;height:3px;z-index:99999;pointer-events:none;' +
       'background:#e0393f;' +
       'transition:width 0.2s ease, opacity 0.3s ease;' +
       'width:' + loading.progress + '%;' +

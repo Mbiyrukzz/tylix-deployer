@@ -14,6 +14,9 @@ uses
   Auth
 
 state
+  // The signed-in user after a change on Settings -> Account (flux:user),
+  // which the shell's own Auth capability doesn't see.
+  me: null
   path: "/"
   moreOpen: false
   serverCount: ""
@@ -149,7 +152,7 @@ action
   }
 
   initial() {
-    const u = Auth.user
+    const u = this.me or Auth.user
     if not u {
       return "?"
     }
@@ -157,13 +160,18 @@ action
     return String(source).charAt(0).toUpperCase()
   }
 
+  avatar() {
+    const u = this.me or Auth.user
+    return u and u.avatar_url ? String(u.avatar_url) : ""
+  }
+
   userName() {
-    const u = Auth.user
+    const u = this.me or Auth.user
     return u ? (u.name or "Your account") : "Your account"
   }
 
   userEmail() {
-    const u = Auth.user
+    const u = this.me or Auth.user
     return u ? (u.email or "") : ""
   }
 
@@ -232,6 +240,9 @@ onMount
     this.path = window.location.pathname
     const flux = this.shell()
     if flux {
+      flux.on(window, "flux:user", (e) => {
+        this.me = e.detail
+      })
       flux.on(window, "flux:navigated", () => this.onNavigated())
       flux.on(window, "popstate", () => this.onNavigated())
       flux.on(window, "flux:counts", () => this.loadCounts(true))
@@ -326,7 +337,12 @@ template
 
     <div class="mt-2 flex items-center gap-2">
       <a href="/settings" title="{{ userName() }}" class="flux-sb-wide min-w-0 flex-1 flex items-center gap-2.5 rounded-xl p-1.5 hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] transition-colors">
+{{#if avatar()}}
+        <img src="{{ avatar() }}" alt="" class="w-8 h-8 shrink-0 rounded-full object-cover border border-line" />
+{{/if}}
+{{#if not avatar()}}
         <span class="w-8 h-8 shrink-0 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-xs font-semibold flex items-center justify-center">{{ initial() }}</span>
+{{/if}}
         <span class="min-w-0 flex flex-col leading-tight">
           <span class="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ userName() }}</span>
           <span class="text-[11px] text-zinc-500 truncate">{{ userEmail() }}</span>

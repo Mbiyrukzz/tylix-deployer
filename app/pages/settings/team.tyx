@@ -237,7 +237,7 @@ template
       <p class="text-slate-500 text-sm mb-8">Everyone on your team sees the same servers, providers and sites.</p>
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if not loading}}

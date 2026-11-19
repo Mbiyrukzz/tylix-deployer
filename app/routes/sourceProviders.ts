@@ -6,6 +6,7 @@
  * GET    /api/source-providers                       any member
  * POST   /api/source-providers                       admin
  * GET    /api/source-providers/:id                   any member
+ * GET    /api/source-providers/:id/profile           any member: the GitHub / GitLab account, token scopes, sites using it
  * PUT    /api/source-providers/:id                   admin
  * DELETE /api/source-providers/:id                   admin
  * GET    /api/source-providers/:id/repositories      admin: every repo the token can see
@@ -44,6 +45,7 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
     router.get("/api/source-providers", auth(run((req, res) => controller.index(req, res))));
     router.post("/api/source-providers", write(run((req, res) => controller.store(req, res))));
     router.get("/api/source-providers/:id", auth(run((req, res) => controller.show(req, res))));
+    router.get("/api/source-providers/:id/profile", auth(run((req, res) => controller.profile(req, res))));
     router.put("/api/source-providers/:id", write(run((req, res) => controller.update(req, res))));
     router.delete("/api/source-providers/:id", write(run((req, res) => controller.destroy(req, res))));
 

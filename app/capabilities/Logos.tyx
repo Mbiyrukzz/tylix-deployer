@@ -2,15 +2,29 @@ capability Logos
 
 action
   // Returns the SVG path for a brand id, or "" when there is no file.
-  // Files live in public/logos/<id>.svg (made by scripts/generate-logos.js).
+  // Files live in public/logos/<id>.svg (Simple Icons style, 24x24).
   // Add an id here when you add a file, e.g. "tylix".
   url(id) {
     const have = [
       "laravel", "php", "nodejs", "nextjs", "nuxt", "vue", "wordpress", "mern",
       "angular", "fastapi", "django", "java", "go", "ruby", "dotnet", "rust",
-      "docker", "static",
-      "hetzner", "digitalocean", "vultr", "upcloud",
+      "docker", "static", "tylix",
+      "hetzner", "digitalocean", "vultr", "upcloud", "linode", "contabo",
       "porkbun", "cloudflare", "godaddy", "namecheap"
     ]
     return have.includes(id) ? "/logos/" + id + ".svg" : ""
+  }
+
+  // The display name of a cloud provider, domain provider or source
+  // control kind ("" for an unknown id).
+  name(id) {
+    const names = [
+      ["linode", "Linode (Akamai)"], ["hetzner", "Hetzner Cloud"], ["digitalocean", "DigitalOcean"],
+      ["vultr", "Vultr"], ["aws", "Amazon Web Services"], ["upcloud", "UpCloud"], ["contabo", "Contabo"],
+      ["porkbun", "Porkbun"], ["cloudflare", "Cloudflare"], ["godaddy", "GoDaddy"], ["namecheap", "Namecheap"],
+      ["dynadot", "Dynadot"], ["namecom", "Name.com"], ["spaceship", "Spaceship"], ["route53", "Route 53"],
+      ["github", "GitHub"], ["gitlab", "GitLab"]
+    ]
+    const hit = names.find((n) => n[0] is id)
+    return hit ? hit[1] : ""
   }

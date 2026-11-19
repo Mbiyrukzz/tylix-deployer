@@ -243,7 +243,7 @@ template
           </a>
 
 {{#if not ready}}
-          <p class="text-slate-500 text-sm text-center">Loading…</p>
+          <LoaderMark label="Loading…" size="sm" />
 {{/if}}
 
 {{#if signedIn}}

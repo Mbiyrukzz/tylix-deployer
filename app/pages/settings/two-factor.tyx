@@ -363,7 +363,7 @@ template
       <p class="text-slate-500 text-sm mb-8">Ask for a code each time you log in: from an authenticator app, by text message, or either.</p>
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if not loading}}

@@ -1,16 +1,27 @@
 component LoaderMark
 
+// The loader, the same as Ashmif Hub's: the Tylix mark lit stroke by stroke
+// over a sliding bar (styles: .tx-loader in app/tailwind-input.css). It
+// fades in after 150ms, so a quick load never flashes it.
+//   <LoaderMark label="Loading servers…" />     a whole page column
+//   <LoaderMark label="Loading…" size="sm" />   a card or a section
+
 props
   label: String
+  size: String
 
 template
-<div class="flex flex-col items-center justify-center py-14">
-  <div class="relative w-14 h-14 flex items-center justify-center">
-    <span class="absolute inset-0 rounded-full bg-brand-500/30 animate-loader-ring motion-reduce:animate-none"></span>
-    <img src="/logo-mark.png" alt="" class="relative w-12 h-12" />
-  </div>
-  <p class="text-slate-600 dark:text-slate-300 text-sm font-medium mt-5">{{ label }}</p>
-  <div class="w-40 h-1.5 rounded-full bg-slate-300 dark:bg-slate-800 overflow-hidden mt-3">
-    <div class="w-1/3 h-full rounded-full bg-brand-500 animate-loader-slide motion-reduce:animate-none"></div>
-  </div>
+{{#if size is "sm"}}
+<div class="tx-loader tx-loader-sm" role="status" aria-live="polite">
+  <svg class="tx-loader-mark" viewBox="0 0 552 366" aria-hidden="true" focusable="false"><path class="tx-loader-s1" d="M0 96 74 22Q96 0 120 0H552L482 77Q462 96 436 96Z"/><path class="tx-loader-s2" d="M34 366 148 151Q160 127 190 127H290L163 366Z"/><path class="tx-loader-s3" d="M218 339 294 192Q304 171 334 171H442L378 264Q368 277 353 283Z"/></svg>
+  <div class="tx-loader-track" aria-hidden="true"><div class="tx-loader-bar"></div></div>
+  <span class="tx-loader-label">{{ label or "Loading…" }}</span>
 </div>
+{{/if}}
+{{#if size is not "sm"}}
+<div class="tx-loader" role="status" aria-live="polite">
+  <svg class="tx-loader-mark" viewBox="0 0 552 366" aria-hidden="true" focusable="false"><path class="tx-loader-s1" d="M0 96 74 22Q96 0 120 0H552L482 77Q462 96 436 96Z"/><path class="tx-loader-s2" d="M34 366 148 151Q160 127 190 127H290L163 366Z"/><path class="tx-loader-s3" d="M218 339 294 192Q304 171 334 171H442L378 264Q368 277 353 283Z"/></svg>
+  <div class="tx-loader-track" aria-hidden="true"><div class="tx-loader-bar"></div></div>
+  <span class="tx-loader-label">{{ label or "Loading…" }}</span>
+</div>
+{{/if}}

@@ -92,7 +92,7 @@ template
     <div class="w-full max-w-lg rounded-2xl border border-line bg-panel p-8 shadow-sm dark:shadow-none">
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading invitation…</p>
+      <LoaderMark label="Loading invitation…" />
 {{/if}}
 
 {{#if not loading}}

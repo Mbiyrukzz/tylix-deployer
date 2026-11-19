@@ -2,12 +2,18 @@ component ProviderSidebar
 
 import { IconGauge, IconServer, IconShieldCheck, IconCube, IconPhotograph, IconSignal, IconGlobe, IconDocumentText, IconCog, IconArrowLeft } from "tylix-icons"
 
+uses
+  Logos
+
 props
   active: String
   providerId: String
 
 state
   collapsed: false
+  // The connection this page belongs to (label and kind), for its logo.
+  infoLabel: ""
+  infoKind: ""
   asideCls: "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200 lg:w-[240px] lg:p-5"
   topCls: "hidden lg:flex items-center justify-between gap-2 mb-5"
   titleCls: "min-w-0"
@@ -21,6 +27,23 @@ state
   chevCls: "w-4 h-4 transition-transform"
 
 action
+  // The page passes its id once it has read the URL; fall back to ?id=.
+  async loadInfo() {
+    const id = this.providerId or new URLSearchParams(window.location.search).get("id") or ""
+    if not id {
+      return null
+    }
+    const result = await useApi("/api/providers/" + id)
+    if result.ok and result.data {
+      this.infoLabel = String(result.data.label or "")
+      this.infoKind = String(result.data.kind or "")
+    }
+  }
+
+  kindName() {
+    return Logos.name(this.infoKind) or "Provider"
+  }
+
   applyLayout() {
     const asideBase = "app-subnav flex lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-y-auto lg:overflow-x-visible border-b lg:border-b-0 lg:border-r border-line bg-transparent p-3 lg:sticky lg:top-16 lg:self-start lg:h-[calc(100vh-4rem)] lg:transition-[width] lg:duration-200"
     const on = "relative shrink-0 flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-900 dark:text-white text-sm font-medium"
@@ -64,6 +87,7 @@ action
 
 onMount
   async {
+    this.loadInfo()
     const saved = window.localStorage.getItem("tylix-provider-sidebar")
     if saved is "1" {
       this.collapsed = true
@@ -76,12 +100,17 @@ template
 
   <div class="{{ topCls }}">
     <div class="flex items-center gap-3 min-w-0">
+{{#if infoKind}}
+      <BrandLogo kind="{{ infoKind }}" label="{{ infoLabel }}" />
+{{/if}}
+{{#if not infoKind}}
       <span class="w-9 h-9 shrink-0 rounded-xl border border-line bg-panel text-brand-500 flex items-center justify-center">
         <IconServer class="w-5 h-5" />
       </span>
+{{/if}}
       <div class="{{ titleCls }}">
-        <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight truncate">Provider</p>
-        <p class="text-slate-500 text-xs leading-tight truncate">Manage this provider</p>
+        <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight truncate">{{ infoLabel or "Provider" }}</p>
+        <p class="text-slate-500 text-xs leading-tight truncate">{{ infoKind ? kindName() : "Manage this provider" }}</p>
       </div>
     </div>
     <button onclick="{{ toggle() }}" title="Collapse or expand sidebar" aria-label="Collapse or expand sidebar" class="{{ btnCls }}">
@@ -90,6 +119,13 @@ template
       </svg>
     </button>
   </div>
+
+{{#if infoKind}}
+  <span class="lg:hidden shrink-0 flex items-center gap-2 pr-3 mr-1 border-r border-line">
+    <BrandLogo kind="{{ infoKind }}" label="{{ infoLabel }}" size="sm" />
+    <span class="text-sm font-semibold text-slate-900 dark:text-slate-100 max-w-[9rem] truncate">{{ infoLabel }}</span>
+  </span>
+{{/if}}
 
 {{#if active is "overview"}}
   <a href="{{ '/providers/provider-detail?id=' + providerId }}" title="Overview" aria-current="page" class="{{ onCls }}">

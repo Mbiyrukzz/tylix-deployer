@@ -177,7 +177,7 @@ template
       <p class="text-slate-500 text-sm mb-8">Your team's plan and what it uses.</p>
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if not loading}}

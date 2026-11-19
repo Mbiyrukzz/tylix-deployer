@@ -15,6 +15,10 @@ state
   saved: false
   error: ""
   nameError: ""
+  avatarUrl: ""
+  avatarBusy: ""
+  avatarError: ""
+  dragging: false
 
 action
   readValue(id) {
@@ -38,6 +42,132 @@ action
     this.saved = false
   }
 
+  initial() {
+    const source = this.name or this.email or "?"
+    return String(source).charAt(0).toUpperCase()
+  }
+
+  // Tells the sidebar and top bar (the app shell, which keeps its own
+  // copy of the user) about the new picture.
+  announce(user) {
+    window.dispatchEvent(new CustomEvent("flux:user", { detail: user }))
+  }
+
+  chooseAvatar() {
+    const input = document.getElementById("account-avatar-file")
+    if input {
+      input.click()
+    }
+  }
+
+  onAvatarPicked(event) {
+    const input = event.target
+    const files = input.files
+    if files and files.length > 0 {
+      this.uploadAvatar(files[0])
+    }
+    // So choosing the same file again still fires a change.
+    input.value = ""
+  }
+
+  onAvatarDragOver(event) {
+    event.preventDefault()
+    this.dragging = true
+  }
+
+  onAvatarDragLeave() {
+    this.dragging = false
+  }
+
+  onAvatarDrop(event) {
+    event.preventDefault()
+    this.dragging = false
+    const files = event.dataTransfer ? event.dataTransfer.files : null
+    if files and files.length > 0 {
+      this.uploadAvatar(files[0])
+    }
+  }
+
+  // Crops the middle square of the image and scales it to 256x256 in the
+  // browser, so only a small WebP (PNG where WebP isn't available) is sent.
+  async squareImage(file) {
+    const bitmap = await createImageBitmap(file)
+    const side = Math.min(bitmap.width, bitmap.height)
+    const canvas = document.createElement("canvas")
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext("2d")
+    if not ctx {
+      bitmap.close()
+      return ""
+    }
+    ctx.imageSmoothingQuality = "high"
+    ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 256, 256)
+    bitmap.close()
+    return canvas.toDataURL("image/webp", 0.88)
+  }
+
+  async uploadAvatar(file) {
+    if this.avatarBusy {
+      return null
+    }
+    this.avatarError = ""
+
+    const type = String(file.type or "")
+    if not type.startsWith("image/") {
+      this.avatarError = "Choose an image file (PNG, JPEG or WebP)."
+      return null
+    }
+    if file.size > 15 * 1024 * 1024 {
+      this.avatarError = "That image is over 15 MB. Choose a smaller one."
+      return null
+    }
+
+    this.avatarBusy = "upload"
+    let image = ""
+    try {
+      image = await this.squareImage(file)
+    } catch (err) {
+      image = ""
+    }
+    if not image {
+      this.avatarBusy = ""
+      this.avatarError = "Couldn't read that image. Try a PNG or JPEG."
+      return null
+    }
+
+    const result = await useApi("/api/account/avatar", { method: "PUT", body: { image: image } })
+    this.avatarBusy = ""
+
+    if result.ok {
+      this.avatarUrl = result.data.user.avatar_url or ""
+      this.announce(result.data.user)
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 422 {
+      this.avatarError = this.firstError(result.data, "image") or "Couldn't use that image."
+    } else {
+      this.avatarError = result.data?.error or "Couldn't upload your picture."
+    }
+  }
+
+  async removeAvatar() {
+    if this.avatarBusy {
+      return null
+    }
+    this.avatarError = ""
+    this.avatarBusy = "remove"
+    const result = await useApi("/api/account/avatar", { method: "DELETE" })
+    this.avatarBusy = ""
+
+    if result.ok {
+      this.avatarUrl = ""
+      this.announce(result.data.user)
+    } else {
+      this.avatarError = result.data?.error or "Couldn't remove your picture."
+    }
+  }
+
   async save() {
     if this.saving {
       return null
@@ -56,6 +186,7 @@ action
 
     if result.ok {
       this.name = result.data.user.name
+      this.announce(result.data.user)
       this.saved = true
       window.setTimeout(() => this.clearSaved(), 2500)
     } else if result.status is 401 {
@@ -79,6 +210,7 @@ onMount
       this.email = user.email
       this.verified = Boolean(user.email_verified_at)
       this.joined = user.created_at.slice(0, 10)
+      this.avatarUrl = user.avatar_url or ""
     }
 
     this.loading = false
@@ -91,16 +223,52 @@ template
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
 
       <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Account</h1>
-      <p class="text-slate-500 text-sm mb-8">Your name and sign-in details.</p>
+      <p class="text-slate-500 text-sm mb-8">Your picture, name and sign-in details.</p>
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if not loading}}
       <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-6">
         <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-1">Profile</h2>
-        <p class="text-slate-500 text-sm mb-5">This is the name shown in the deployer.</p>
+        <p class="text-slate-500 text-sm mb-5">Your picture and name, as your team sees them.</p>
+
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 mb-6">
+          <button type="button" onclick="{{ chooseAvatar() }}" ondragover="{{ onAvatarDragOver(event) }}" ondragleave="{{ onAvatarDragLeave() }}" ondrop="{{ onAvatarDrop(event) }}" aria-label="Upload a profile picture" title="Click or drop an image" class="{{ 'group relative w-20 h-20 shrink-0 rounded-full overflow-hidden border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 ' + (dragging ? 'border-brand-500 ring-4 ring-brand-500/20' : 'border-line hover:border-line-strong') }}">
+{{#if avatarUrl}}
+            <img src="{{ avatarUrl }}" alt="Your profile picture" class="w-full h-full object-cover" />
+{{/if}}
+{{#if not avatarUrl}}
+            <span class="w-full h-full flex items-center justify-center bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-2xl font-semibold">{{ initial() }}</span>
+{{/if}}
+{{#if avatarBusy}}
+            <span class="absolute inset-0 flex items-center justify-center bg-black/50">
+              <span class="w-6 h-6 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true"></span>
+            </span>
+{{/if}}
+{{#if not avatarBusy}}
+            <span class="absolute inset-0 flex items-center justify-center bg-black/45 text-white text-[11px] font-semibold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">Change</span>
+{{/if}}
+          </button>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="{{ chooseAvatar() }}" disabled="{{ avatarBusy ? true : false }}" class="text-sm font-semibold rounded-xl border border-line bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-100 px-3.5 py-2 hover:border-line-strong disabled:opacity-50 transition">
+                {{ avatarBusy is "upload" ? "Uploading…" : (avatarUrl ? "Change picture" : "Upload picture") }}
+              </button>
+{{#if avatarUrl}}
+              <button type="button" onclick="{{ removeAvatar() }}" disabled="{{ avatarBusy ? true : false }}" class="text-sm font-medium rounded-xl px-3.5 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 disabled:opacity-50 transition">
+                {{ avatarBusy is "remove" ? "Removing…" : "Remove" }}
+              </button>
+{{/if}}
+            </div>
+            <p class="text-slate-500 text-xs mt-2">PNG, JPEG or WebP. Drop it on the circle or choose a file; it's cropped to a square.</p>
+{{#if avatarError}}
+            <p role="alert" class="text-rose-500 text-sm mt-2">{{ avatarError }}</p>
+{{/if}}
+          </div>
+          <input id="account-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="{{ onAvatarPicked(event) }}" />
+        </div>
 
         <label for="account-name" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Name</label>
         <input id="account-name" type="text" maxlength="100" value="{{ name }}" autocomplete="name" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />

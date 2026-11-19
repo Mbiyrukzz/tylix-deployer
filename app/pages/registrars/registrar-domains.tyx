@@ -179,7 +179,7 @@ template
 {{/if}}
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading domains…</p>
+      <LoaderMark label="Loading domains…" />
 {{/if}}
 
 {{#if not loading}}

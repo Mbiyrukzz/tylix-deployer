@@ -9,6 +9,9 @@ uses
   Auth
 
 state
+  // The signed-in user after a change on Settings -> Account (flux:user),
+  // which the shell's own Auth capability doesn't see.
+  me: null
   path: "/"
   title: ""
   dark: true
@@ -85,7 +88,7 @@ action
   }
 
   initial() {
-    const u = Auth.user
+    const u = this.me or Auth.user
     if not u {
       return "?"
     }
@@ -93,13 +96,18 @@ action
     return String(source).charAt(0).toUpperCase()
   }
 
+  avatar() {
+    const u = this.me or Auth.user
+    return u and u.avatar_url ? String(u.avatar_url) : ""
+  }
+
   userName() {
-    const u = Auth.user
+    const u = this.me or Auth.user
     return u ? (u.name or "Your account") : "Your account"
   }
 
   userEmail() {
-    const u = Auth.user
+    const u = this.me or Auth.user
     return u ? (u.email or "") : ""
   }
 
@@ -115,6 +123,9 @@ onMount
     this.dark = document.documentElement.classList.contains("dark")
     const flux = this.shell()
     if flux {
+      flux.on(window, "flux:user", (e) => {
+        this.me = e.detail
+      })
       flux.on(window, "flux:navigated", () => this.refresh())
       flux.on(window, "flux:theme", (e) => {
         this.dark = e.detail.mode is "dark"
@@ -183,14 +194,24 @@ template
     </button>
 
     <div id="flux-user-menu" class="relative">
-      <button onclick="{{ toggleMenu() }}" aria-haspopup="menu" aria-expanded="{{ menuOpen }}" aria-label="Account" class="w-9 h-9 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-sm font-semibold flex items-center justify-center ring-2 ring-transparent hover:ring-line-strong transition">
+      <button onclick="{{ toggleMenu() }}" aria-haspopup="menu" aria-expanded="{{ menuOpen }}" aria-label="Account" class="w-9 h-9 rounded-full overflow-hidden bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-sm font-semibold flex items-center justify-center ring-2 ring-transparent hover:ring-line-strong transition">
+{{#if avatar()}}
+        <img src="{{ avatar() }}" alt="" class="w-full h-full object-cover" />
+{{/if}}
+{{#if not avatar()}}
         {{ initial() }}
+{{/if}}
       </button>
 {{#if menuOpen}}
       <div role="menu" class="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-line bg-panel p-1.5 shadow-pop animate-flux-in origin-top-right z-50">
-        <div class="px-3 py-2.5">
-          <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ userName() }}</p>
-          <p class="text-xs text-zinc-500 truncate">{{ userEmail() }}</p>
+        <div class="px-3 py-2.5 flex items-center gap-3">
+{{#if avatar()}}
+          <img src="{{ avatar() }}" alt="" class="w-9 h-9 shrink-0 rounded-full object-cover border border-line" />
+{{/if}}
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ userName() }}</p>
+            <p class="text-xs text-zinc-500 truncate">{{ userEmail() }}</p>
+          </div>
         </div>
         <div class="h-px bg-line my-1"></div>
         <a role="menuitem" href="/settings" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconCog class="w-4 h-4 text-zinc-400" /> Settings</a>

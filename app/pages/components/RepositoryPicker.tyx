@@ -129,7 +129,7 @@ template
     </div>
 
 {{#if loadingRepos}}
-    <p class="text-slate-500 text-xs">Loading repositories…</p>
+    <LoaderMark label="Loading repositories…" size="sm" />
 {{/if}}
 
 {{#if repos.length is not 0}}
@@ -179,7 +179,7 @@ template
 {{/each}}
       </select>
 {{#if loadingBranches}}
-      <p class="text-slate-500 text-xs mt-1">Loading branches…</p>
+      <LoaderMark label="Loading branches…" size="sm" />
 {{/if}}
     </div>
 {{/if}}

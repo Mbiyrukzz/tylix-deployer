@@ -439,7 +439,7 @@ template
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
 
 {{#if loading}}
-      <p class="text-slate-500 text-sm">Loading…</p>
+      <LoaderMark label="Loading…" />
 {{/if}}
 
 {{#if notFound}}
@@ -647,7 +647,7 @@ template
 
 {{#if sourceControlId is not "0"}}
 {{#if loadingRepos}}
-            <p class="text-slate-500 text-sm mt-4">Loading repositories…</p>
+            <LoaderMark label="Loading repositories…" size="sm" />
 {{/if}}
 
 {{#if repoError}}
@@ -693,7 +693,7 @@ template
 {{/if}}
 {{#if not branchPicked}}
 {{#if loadingBranches}}
-            <p class="text-slate-500 text-xs">Loading branches…</p>
+            <LoaderMark label="Loading branches…" size="sm" />
 {{/if}}
 {{#if branches.length is not 0}}
             <div class="max-h-48 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">

@@ -3,6 +3,9 @@
  *
  * GET    /api/account                              profile + two-factor status (authenticator and SMS)
  * PUT    /api/account                              change name
+ * PUT    /api/account/avatar                       new profile picture ({ image: "data:image/webp;base64,..." })
+ * DELETE /api/account/avatar                       remove the profile picture
+ * GET    /api/avatars/:userId/:hash                a profile picture (public: the hash is the key)
  * PUT    /api/account/password                     change password (needs the current one)
  * POST   /api/account/sign-out-everywhere          end every session (all devices), clear cookies
  * POST   /api/account/two-factor/setup             start setup, returns secret + otpauth URI
@@ -33,6 +36,8 @@ import { User } from "../models/User.js";
 import type { UserAttributes } from "../models/User.js";
 import { authController } from "../controllers/AuthController.js";
 import { UserTwoFactor } from "../models/UserTwoFactor.js";
+import { UserAvatar } from "../models/UserAvatar.js";
+import { createHash } from "node:crypto";
 import { CryptoService } from "../services/CryptoService.js";
 import { TwoFactorService } from "../services/TwoFactorService.js";
 import { SmsTwoFactorService } from "../services/SmsTwoFactorService.js";
@@ -48,6 +53,34 @@ const BREACH_MESSAGE =
 
 // In-memory, per server process (same as the auth limiters).
 const limiter = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
+
+const avatarLimiter = createRateLimiter({ max: 30, windowMs: 15 * 60 * 1000 });
+
+// Profile pictures arrive resized to 256x256 by the browser (Settings ->
+// Account), so they are small. The cap leaves room for a PNG with detail.
+const AVATAR_MAX_BYTES = 400 * 1024;
+const AVATAR_TYPES: Record<string, { ext: string; matches: (b: Buffer) => boolean }> = {
+    "image/png": { ext: "png", matches: (b) => b.length > 8 && b.readUInt32BE(0) === 0x89504e47 },
+    "image/jpeg": { ext: "jpg", matches: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+    "image/webp": {
+        ext: "webp",
+        matches: (b) => b.length > 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP",
+    },
+};
+
+/** The decoded image from a data URL, or an error message for the person. */
+function readAvatar(value: unknown): { mime: string; bytes: Buffer } | { error: string } {
+    const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(text(value));
+    if (!match) return { error: "Choose a PNG, JPEG or WebP image." };
+
+    const mime = match[1];
+    const bytes = Buffer.from(match[2], "base64");
+    if (bytes.length === 0) return { error: "That image is empty." };
+    if (bytes.length > AVATAR_MAX_BYTES) return { error: "That image is too large. Try a smaller one." };
+    // The bytes must really be the type the browser claimed.
+    if (!AVATAR_TYPES[mime].matches(bytes)) return { error: "That file isn't a valid image." };
+    return { mime, bytes };
+}
 
 /** Answers 429 itself and returns true when the caller is over the limit. */
 function throttled(req: TylixRequest, res: TylixResponse): boolean {
@@ -132,6 +165,69 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
             return res.json({ user: User.toSafeObject(fresh) });
         }),
     );
+
+    router.put(
+        "/api/account/avatar",
+        auth(async (req, res) => {
+            const user = await currentUser(req, res);
+            if (!user) return;
+
+            const limit = avatarLimiter(String(user.id));
+            if (!limit.allowed) {
+                res.status(429);
+                return res.json({ error: `Too many uploads. Try again in ${limit.retryAfterSeconds} seconds.` });
+            }
+
+            const image = readAvatar(req.body?.image);
+            if ("error" in image) return fail(res, { image: [image.error] });
+
+            const hash = createHash("sha256").update(image.bytes).digest("hex").slice(0, 16);
+            const data = image.bytes.toString("base64");
+            const existing = await UserAvatar.forUser(user.id);
+            if (existing) {
+                await UserAvatar.update(existing.id, { mime: image.mime, hash, data });
+            } else {
+                await UserAvatar.create({ user_id: user.id, mime: image.mime, hash, data });
+            }
+            await User.update(user.id, { avatar_hash: hash });
+
+            return res.json({ user: User.toSafeObject(await User.find(user.id)) });
+        }),
+    );
+
+    router.delete(
+        "/api/account/avatar",
+        auth(async (req, res) => {
+            const user = await currentUser(req, res);
+            if (!user) return;
+
+            const existing = await UserAvatar.forUser(user.id);
+            if (existing) await UserAvatar.delete(existing.id);
+            await User.update(user.id, { avatar_hash: null });
+
+            return res.json({ user: User.toSafeObject(await User.find(user.id)) });
+        }),
+    );
+
+    // Public on purpose: <img> tags can't wait for a token refresh. The
+    // content hash in the URL is the key (64 bits, not guessable), and a
+    // replaced or removed picture stops answering at its old URL.
+    router.get("/api/avatars/:userId/:hash", async (req, res) => {
+        const userId = Number(req.params.userId);
+        const hash = String(req.params.hash ?? "");
+        const row = Number.isInteger(userId) && /^[0-9a-f]{16}$/.test(hash) ? await UserAvatar.forUser(userId) : null;
+
+        if (!row || row.hash !== hash || !AVATAR_TYPES[row.mime]) {
+            res.status(404);
+            return res.json({ error: "Not found." });
+        }
+
+        res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+        return res.download(Buffer.from(row.data, "base64"), `avatar.${AVATAR_TYPES[row.mime].ext}`, {
+            inline: true,
+            type: row.mime,
+        });
+    });
 
     router.put(
         "/api/account/password",
