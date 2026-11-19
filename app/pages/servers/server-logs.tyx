@@ -13,6 +13,9 @@ uses
 background
   Billing
 
+// The full log viewer is the ConsoleDock (app/pages/components), which pops
+// over any page; arriving here opens it. This page is the summary behind it.
+
 state
   server: null
   serverId: ""
@@ -21,11 +24,7 @@ state
   busy: false
   error: ""
   logs: []
-  filters: []
-  level: ""
-  category: ""
-  categories: []
-  openId: null
+  counts: { error: 0, warning: 0, success: 0, info: 0 }
 
 action
   fail(result, fallback) {
@@ -70,71 +69,30 @@ action
     return "text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400"
   }
 
-  buildFilters(active) {
-    const all = [
-      { id: "", label: "All" },
-      { id: "info", label: "Info" },
-      { id: "success", label: "Success" },
-      { id: "warning", label: "Warning" },
-      { id: "error", label: "Error" }
-    ]
-    return all.map((f) => Object.assign({}, f, { active: f.id is active }))
-  }
-
-  setLevel(value) {
-    this.level = value
-    this.filters = this.buildFilters(value)
-    this.openId = null
-    this.load()
-  }
-
-  buildCategories(active) {
-    const all = [
-      { id: "", label: "All events" },
-      { id: "firewall", label: "Firewall" }
-    ]
-    return all.map((c) => Object.assign({}, c, { active: c.id is active }))
-  }
-
-  setCategory(value) {
-    this.category = value
-    this.categories = this.buildCategories(value)
-    this.openId = null
-    this.load()
-  }
-
-  toggleMeta(id) {
-    if this.openId is id {
-      this.openId = null
-    } else {
-      this.openId = id
+  // Opens the console's log view, optionally on one event.
+  openConsole(entry) {
+    const flux = Reflect.get(window, "__flux")
+    if flux {
+      flux.emit("flux:console", { kind: "server", id: this.serverId, tab: "logs", entry: entry ? "" + entry : "" })
     }
   }
 
   async load() {
     this.busy = true
     this.error = ""
-
-    // Level and category come from fixed filter buttons, so they are safe to
-    // append as is. (No URLSearchParams.toString(): the compiler currently
-    // chokes on a property named toString.)
-    let url = "/api/servers/" + this.serverId + "/logs?limit=200"
-    if this.level {
-      url = url + "&level=" + this.level
-    }
-    if this.category {
-      url = url + "&category=" + this.category
-    }
-
-    const result = await useApi(url)
+    const result = await useApi("/api/servers/" + this.serverId + "/logs?limit=200")
 
     if result.ok and Array.isArray(result.data) {
-      this.logs = result.data.map((l) => Object.assign({}, l, {
+      const tally = { error: 0, warning: 0, success: 0, info: 0 }
+      result.data.forEach((l) => {
+        const k = l.level is "error" or l.level is "warning" or l.level is "success" ? l.level : "info"
+        Reflect.set(tally, k, Reflect.get(tally, k) + 1)
+      })
+      this.counts = tally
+      this.logs = result.data.slice(0, 8).map((l) => Object.assign({}, l, {
         dateText: this.fmtDate(l.created_at),
         dotCls: this.dotClass(l.level),
-        badgeCls: this.badgeClass(l.level),
-        hasMeta: Object.keys(l.meta or {}).length > 0,
-        metaText: JSON.stringify(l.meta or {}, null, 2)
+        badgeCls: this.badgeClass(l.level)
       }))
     } else {
       this.fail(result, "Couldn't load the logs.")
@@ -147,8 +105,6 @@ onMount
     const params = new URLSearchParams(window.location.search)
     const serverId = params.get("id")
     this.serverId = serverId or ""
-    this.filters = this.buildFilters("")
-    this.categories = this.buildCategories("")
 
     if not serverId {
       this.isMissing = true
@@ -180,7 +136,7 @@ template
     <div></div>
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
+    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
 {{#if loading}}
       <LoaderMark label="Loading…" />
@@ -195,8 +151,6 @@ template
         <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
       </a>
 
-      <LockedBanner />
-
       <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Logs</h1>
       <p class="text-slate-500 text-sm mb-6">Everything that happened to this server, newest first: creation, edits, reboots and blocked actions. Keys and passwords are never recorded.</p>
 
@@ -204,67 +158,57 @@ template
       <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
 {{/if}}
 
-      <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div class="flex flex-wrap gap-1.5">
-{{#each f in filters}}
-{{#if f.active}}
-              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-brand-500 bg-brand-500/10 text-slate-800 dark:text-slate-200">{{ f.label }}</button>
-{{/if}}
-{{#if not f.active}}
-              <button onclick="{{ setLevel(f.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-500/50">{{ f.label }}</button>
-{{/if}}
-{{/each}}
-            </div>
-            <div class="flex flex-wrap items-center gap-1.5">
-              <span class="text-slate-500 text-xs">Area</span>
-{{#each c in categories}}
-{{#if c.active}}
-              <button onclick="{{ setCategory(c.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-sky-500 bg-sky-500/10 text-slate-800 dark:text-slate-200">{{ c.label }}</button>
-{{/if}}
-{{#if not c.active}}
-              <button onclick="{{ setCategory(c.id) }}" class="text-xs rounded-lg border px-3 py-1.5 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-sky-500/50">{{ c.label }}</button>
-{{/if}}
-{{/each}}
-            </div>
-          </div>
-{{#if busy}}
-          <button disabled class="text-sm text-slate-400 px-2 py-1">Loading…</button>
-{{/if}}
-{{#if not busy}}
-          <button onclick="{{ load() }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-brand-600 px-2 py-1">Refresh</button>
-{{/if}}
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Errors</p>
+          <p class="text-2xl font-bold {{ counts.error > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100' }}">{{ counts.error }}</p>
         </div>
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Warnings</p>
+          <p class="text-2xl font-bold {{ counts.warning > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100' }}">{{ counts.warning }}</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Succeeded</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ counts.success }}</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-5 shadow-sm dark:shadow-none">
+          <p class="text-slate-500 text-xs mb-1">Info</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ counts.info }}</p>
+        </div>
+      </div>
 
-{{#if logs.length is 0}}
-        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
-          <p class="text-slate-500 text-sm">No events yet.</p>
+      <div class="mb-6">
+        <ConsoleLauncher href="{{ '/servers/server-logs?id=' + serverId }}" kind="logs" heading="Read the full log" body="Filter by level or area, grep the messages, expand any event's details, and follow new ones live." host="{{ server.name }}" cmd="" label="Open logs" locked="{{ false }}" />
+      </div>
+
+      <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
+            <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Latest events</h2>
+          </div>
+          <button onclick="{{ load() }}" class="shrink-0 text-sm text-slate-600 dark:text-slate-300 hover:text-brand-600 px-2 py-1">{{ busy ? "Loading…" : "Refresh" }}</button>
         </div>
-{{/if}}
 
 {{#each l in logs}}
-        <div class="rounded-xl border border-line px-4 py-3 mb-2">
-          <div class="flex items-start gap-3">
-            <span class="{{ l.dotCls }}"></span>
-            <div class="min-w-0 flex-1">
-              <p class="text-slate-900 dark:text-slate-100 text-sm break-words">{{ l.message }}</p>
-              <p class="text-slate-500 text-xs mt-0.5">
-                <span class="{{ l.badgeCls }}">{{ l.level }}</span>
-                <span class="font-mono ml-2">{{ l.event }}</span>
-                <span class="ml-2">{{ l.dateText }}</span>
-              </p>
-            </div>
-{{#if l.hasMeta}}
-            <button onclick="{{ toggleMeta(l.id) }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Details</button>
-{{/if}}
+        <div class="flex items-start gap-3 rounded-xl border border-line px-4 py-3 mb-2">
+          <span class="{{ l.dotCls }}"></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-slate-900 dark:text-slate-100 text-sm break-words">{{ l.message }}</p>
+            <p class="text-slate-500 text-xs mt-0.5">
+              <span class="{{ l.badgeCls }}">{{ l.level }}</span>
+              <span class="font-mono ml-2">{{ l.event }}</span>
+              <span class="ml-2">{{ l.dateText }}</span>
+            </p>
           </div>
-{{#if openId is l.id}}
-          <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ l.metaText }}</pre>
-{{/if}}
+          <button onclick="{{ openConsole(l.id) }}" class="shrink-0 text-xs text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View</button>
+        </div>
+{{#else}}
+        <div class="rounded-xl border border-dashed border-line-strong p-6 text-center">
+          <p class="text-slate-500 text-sm">{{ busy ? "Loading…" : "No events yet." }}</p>
         </div>
 {{/each}}
-      </div>
+      </section>
 {{/if}}
 
     </div>

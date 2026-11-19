@@ -39,6 +39,7 @@ action
     </main>
   </div>
   <CommandPalette />
+  <ConsoleDock />
   <PwaPrompt />
 </div>
 {{/if}}

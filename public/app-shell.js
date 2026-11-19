@@ -54,9 +54,12 @@
     // App sections: the pages that live inside the sidebar shell.
     var APP_PREFIXES = ["/dashboard", "/servers", "/settings", "/team", "/providers", "/registrars", "/source-control"];
 
-    // Pages that hold something open for their whole life (an SSH session,
-    // a one-shot invite). Moving to or from them is always a full load.
-    var HARD_PATHS = [/^\/servers\/server-terminal/, /^\/servers\/site-terminal/];
+    // Pages that hold something open for their whole life (a one-shot
+    // invite). Moving to or from them is always a full load. The terminals
+    // used to be here; they now live in the ConsoleDock (mounted with the
+    // shell, so its SSH session survives in-place navigation), and their
+    // pages swap in like any other.
+    var HARD_PATHS = [];
 
     function isAppPath(pathname) {
         for (var i = 0; i < APP_PREFIXES.length; i++) {

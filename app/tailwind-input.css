@@ -517,3 +517,249 @@ html {
     display: contents;
   }
 }
+
+/* ===========================================================================
+   Console (app/pages/components/ConsoleDock.tyx)
+   The terminal and log viewer that pops over any app page. It is always
+   dark, whatever the theme: ink surfaces in layers (recessed wells inside
+   raised panels), a crimson-to-amber glow frame around whatever is live,
+   LED meters, and a faint grain so the dark doesn't look flat.
+=========================================================================== */
+@layer components {
+  .cx-root {
+    --cx-well: #0a0a0b;
+    --cx-base: #111113;
+    --cx-raised: #17171a;
+    --cx-high: #1e1e22;
+    --cx-line: rgb(255 255 255 / 0.06);
+    --cx-line-strong: rgb(255 255 255 / 0.1);
+    --cx-glow-a: #f0676b;
+    --cx-glow-b: #f6a8a6;
+    --cx-glow-c: #fbbf24;
+    color-scheme: dark;
+  }
+
+  /* The window itself: a raised slab with a hairline bevel on top. */
+  .cx-shell {
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgb(240 103 107 / 0.06), transparent 55%),
+      radial-gradient(90% 70% at 100% 100%, rgb(251 191 36 / 0.035), transparent 60%),
+      var(--cx-base);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+      0 0 0 1px rgb(255 255 255 / 0.06),
+      0 40px 120px -20px rgb(0 0 0 / 0.75),
+      0 12px 32px -12px rgb(0 0 0 / 0.6);
+  }
+
+  /* A recessed well: content sits below the panel surface. */
+  .cx-well {
+    background-color: var(--cx-well);
+    box-shadow:
+      inset 0 2px 10px 0 rgb(0 0 0 / 0.55),
+      inset 0 0 0 1px rgb(0 0 0 / 0.5),
+      0 1px 0 0 rgb(255 255 255 / 0.04);
+  }
+
+  /* A raised tile inside the window (inspector cards, menu). */
+  .cx-tile {
+    background-color: var(--cx-raised);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+      0 0 0 1px var(--cx-line),
+      0 2px 6px -2px rgb(0 0 0 / 0.5);
+  }
+
+  /* Gradient frame. Idle it is a quiet ink line; live it glows. */
+  .cx-frame {
+    position: relative;
+    isolation: isolate;
+  }
+  .cx-frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03) 45%, rgb(255 255 255 / 0.08));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    transition: opacity 300ms ease;
+  }
+  .cx-frame[data-live="true"]::before {
+    background: linear-gradient(135deg, var(--cx-glow-a), var(--cx-glow-b) 45%, var(--cx-glow-c));
+  }
+  .cx-frame[data-live="true"] {
+    box-shadow:
+      0 0 0 1px rgb(240 103 107 / 0.06),
+      0 0 40px -10px rgb(240 103 107 / 0.35),
+      0 0 80px -30px rgb(251 191 36 / 0.25);
+  }
+  .cx-frame[data-tone="warn"]::before {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b 50%, #f0676b);
+  }
+
+  /* Film grain over the backdrop and window. */
+  .cx-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  /* The pixel mosaic on the connect screen (built from spans). */
+  .cx-mosaic {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 3px;
+  }
+  .cx-mosaic > span {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: rgb(255 255 255 / var(--a, 0.04));
+  }
+
+  /* LED segments (idle meter, throughput). */
+  .cx-led {
+    @apply h-1.5 flex-1 rounded-[2px] transition-colors duration-500;
+    background-color: rgb(255 255 255 / 0.06);
+  }
+  .cx-led[data-on="true"] {
+    background-color: var(--cx-glow-a);
+    box-shadow: 0 0 6px 0 rgb(240 103 107 / 0.55);
+  }
+  .cx-led[data-on="true"][data-tone="warn"] {
+    background-color: #fbbf24;
+    box-shadow: 0 0 6px 0 rgb(251 191 36 / 0.55);
+  }
+
+  .cx-chip {
+    @apply inline-flex items-center gap-1.5 shrink-0 h-7 rounded-lg px-2.5 text-[12px] font-medium text-zinc-400 transition-colors;
+    background-color: rgb(255 255 255 / 0.03);
+    box-shadow: inset 0 0 0 1px var(--cx-line);
+  }
+  .cx-chip:hover {
+    @apply text-zinc-100;
+    background-color: rgb(255 255 255 / 0.06);
+  }
+  .cx-chip[aria-pressed="true"] {
+    @apply text-white;
+    background-color: rgb(240 103 107 / 0.14);
+    box-shadow: inset 0 0 0 1px rgb(240 103 107 / 0.45);
+  }
+
+  .cx-icon-btn {
+    @apply inline-flex items-center justify-center w-8 h-8 shrink-0 rounded-lg text-zinc-400 transition-colors;
+  }
+  .cx-icon-btn:hover {
+    @apply text-white;
+    background-color: rgb(255 255 255 / 0.06);
+  }
+
+  .cx-kbd {
+    @apply inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-md text-[10.5px] font-medium text-zinc-400 font-mono;
+    background-color: rgb(255 255 255 / 0.04);
+    box-shadow: inset 0 0 0 1px var(--cx-line-strong), 0 1px 0 0 rgb(0 0 0 / 0.6);
+  }
+
+  .cx-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a40 transparent;
+  }
+  .cx-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .cx-scroll::-webkit-scrollbar-thumb {
+    background: #3a3a40;
+    border-radius: 9999px;
+  }
+  .cx-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* xterm inside the console. */
+.cx-root .xterm .xterm-viewport {
+  background-color: transparent !important;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a40 transparent;
+}
+.cx-root .xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+}
+.cx-root .xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #3a3a40;
+  border-radius: 9999px;
+}
+.cx-root .xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* The touch key row only shows where there's no hardware keyboard. */
+.cx-touch-only {
+  display: none;
+}
+@media (pointer: coarse) {
+  .cx-touch-only {
+    display: flex;
+  }
+}
+
+/* The minimised pill sits above the phone tab bar. */
+.cx-pill {
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+body:has(.app-tabbar) .cx-pill {
+  bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+@keyframes cx-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes cx-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+.cx-pop {
+  animation: cx-pop 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cx-fade {
+  animation: cx-fade 180ms ease both;
+}
+.cx-scanline {
+  animation: cx-scan 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cx-pop,
+  .cx-fade,
+  .cx-scanline {
+    animation: none;
+  }
+}

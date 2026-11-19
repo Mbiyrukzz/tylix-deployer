@@ -1,0 +1,69 @@
+component ConsoleLauncher
+
+import { IconTerminal, IconDocumentText, IconLockClosed } from "tylix-icons"
+
+// The card on the terminal and logs pages that opens the console
+// (ConsoleDock). It is an ordinary link to the page's own URL: the console
+// catches the click and pops up instead, so no page loads. Ctrl/Cmd-click
+// still opens a new tab. (The shell line is `host`, not `prompt`: a prop
+// named prompt resolves to window.prompt.)
+
+props
+  href: String
+  kind: String
+  heading: String
+  body: String
+  host: String
+  cmd: String
+  label: String
+  locked: Boolean
+
+template
+<a href="{{ href }}" class="cx-root group relative block overflow-hidden rounded-[22px] cx-shell cx-grain text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60">
+  <div class="relative z-[1] grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
+    <div class="min-w-0">
+      <span class="inline-flex items-center gap-2 mb-4 rounded-full px-2.5 h-6 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-brand-200 bg-brand-500/10 shadow-[inset_0_0_0_1px_rgb(240_103_107/0.25)]">
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-400 shadow-[0_0_8px_rgb(240_103_107/0.9)]"></span>
+        Console
+      </span>
+      <h2 class="text-white text-xl sm:text-2xl font-semibold tracking-tight mb-2">{{ heading }}</h2>
+      <p class="text-zinc-400 text-sm leading-relaxed mb-6 max-w-md">{{ body }}</p>
+      <div class="flex flex-wrap items-center gap-3">
+{{#if locked}}
+        <span class="inline-flex items-center gap-2 h-10 rounded-xl px-5 text-[13px] text-zinc-500 bg-white/[0.04] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]"><IconLockClosed class="w-4 h-4" /> Pay to continue</span>
+{{#else}}
+        <span class="inline-flex items-center gap-2 h-10 rounded-xl px-5 text-[13px] font-semibold text-white bg-brand-500 group-hover:bg-brand-400 shadow-[0_0_30px_-6px_rgb(240_103_107/0.8)] transition-colors">
+{{#if kind is "logs"}}
+          <IconDocumentText class="w-4 h-4" />
+{{#else}}
+          <IconTerminal class="w-4 h-4" />
+{{/if}}
+          {{ label }}
+        </span>
+{{/if}}
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-[11.5px] text-zinc-500"><span class="cx-kbd">Ctrl</span><span class="cx-kbd">`</span> from any page</span>
+      </div>
+    </div>
+
+    <div aria-hidden="true" class="cx-frame cx-well rounded-2xl overflow-hidden transition-shadow duration-300 group-hover:shadow-[0_0_40px_-10px_rgb(240_103_107/0.45)]">
+      <div class="flex items-center gap-1.5 px-3.5 h-8 border-b border-white/[0.04]">
+        <span class="w-2 h-2 rounded-full bg-brand-400/80"></span>
+        <span class="w-2 h-2 rounded-full bg-amber-300/70"></span>
+        <span class="w-2 h-2 rounded-full bg-emerald-400/70"></span>
+        <span class="ml-auto font-mono text-[10.5px] text-zinc-600 truncate">{{ host }}</span>
+      </div>
+      <div class="px-4 py-4 font-mono text-[12.5px] leading-6 min-h-[132px]">
+{{#if kind is "logs"}}
+        <p class="flex gap-3"><span class="w-[3px] self-stretch rounded-full bg-brand-400"></span><span class="text-brand-300 w-14 shrink-0 text-[10.5px] uppercase tracking-[0.12em] leading-6">error</span><span class="h-2.5 mt-2 w-3/5 rounded bg-white/[0.08]"></span></p>
+        <p class="flex gap-3"><span class="w-[3px] self-stretch rounded-full bg-amber-400"></span><span class="text-amber-300 w-14 shrink-0 text-[10.5px] uppercase tracking-[0.12em] leading-6">warn</span><span class="h-2.5 mt-2 w-2/5 rounded bg-white/[0.06]"></span></p>
+        <p class="flex gap-3"><span class="w-[3px] self-stretch rounded-full bg-zinc-700"></span><span class="text-sky-300/80 w-14 shrink-0 text-[10.5px] uppercase tracking-[0.12em] leading-6">info</span><span class="h-2.5 mt-2 w-1/2 rounded bg-white/[0.05]"></span></p>
+        <p class="flex gap-3"><span class="w-[3px] self-stretch rounded-full bg-emerald-400"></span><span class="text-emerald-300 w-14 shrink-0 text-[10.5px] uppercase tracking-[0.12em] leading-6">ok</span><span class="h-2.5 mt-2 w-1/3 rounded bg-white/[0.05]"></span></p>
+{{#else}}
+        <p class="text-zinc-500 break-all"><span class="text-brand-300">{{ host }}</span><span class="text-zinc-600">:~$</span> <span class="text-zinc-300">{{ cmd }}</span></p>
+        <p class="text-zinc-600">…</p>
+        <p class="text-zinc-500"><span class="text-brand-300">{{ host }}</span><span class="text-zinc-600">:~$</span> <span class="inline-block w-[7px] h-[15px] -mb-[3px] bg-brand-400 animate-pulse"></span></p>
+{{/if}}
+      </div>
+    </div>
+  </div>
+</a>

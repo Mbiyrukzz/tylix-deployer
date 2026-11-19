@@ -1,6 +1,6 @@
 page ServerTerminal
 
-import { IconArrowLeft } from "tylix-icons"
+import { IconArrowLeft, IconServer } from "tylix-icons"
 
 title "Server terminal"
 
@@ -14,595 +14,38 @@ uses
 background
   Billing
 
+// The terminal itself is the ConsoleDock (app/pages/components), which pops
+// over any page. Arriving here opens it; this page is what's behind it: the
+// server it opened on, and every other server to open one on.
+
 state
-  checkedAuth: false
+  loading: true
   serverId: ""
   server: null
-  chips: []
-  phase: "idle"
-  live: false
-  error: ""
-  pendingCode: ""
-  codeError: ""
-  smsNote: ""
-  smsBusy: false
-  hasSms: false
-  connectedAt: 0
-  lastInputAt: 0
-  ticker: null
-  idleText: "15:00"
-  idleWarn: false
-  idlePct: 100
-  idleBar: "bg-brand-500"
-  sessionText: "0:00"
-  copied: false
-  expanded: false
-  wrapCls: ""
-  backdropCls: "hidden"
-  cardCls: "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
-  bodyCls: "relative h-[60vh] min-h-[420px]"
-  hostCls: "absolute inset-0 p-3"
-  commands: [
-    { label: "Disk", cmd: "df -h" },
-    { label: "Memory", cmd: "free -h" },
-    { label: "Top processes", cmd: "top -bn1 | head -n 15" },
-    { label: "Nginx status", cmd: "systemctl status nginx --no-pager" },
-    { label: "Nginx errors", cmd: "sudo tail -n 50 /var/log/nginx/error.log" },
-    { label: "Listening ports", cmd: "sudo ss -tlnp" }
-  ]
+  tiles: []
 
 action
-  global(name) {
-    return Reflect.get(window, name)
-  }
-
-  setGlobal(name, value) {
-    Reflect.set(window, name, value)
-  }
-
-  loadScript(src, done) {
-    const el = document.createElement("script")
-    el.src = src
-    el.onload = () => done(true)
-    el.onerror = () => done(false)
-    document.head.appendChild(el)
-  }
-
-  loadAsync(src) {
-    return new Promise((resolve) => this.loadScript(src, resolve))
-  }
-
-  ensureStyle() {
-    if document.getElementById("tylix-term-style") {
-      return null
-    }
-
-    const rules = [
-      ".xterm .xterm-viewport { scrollbar-width: thin; scrollbar-color: #334155 transparent; background-color: transparent !important; }",
-      ".xterm .xterm-viewport::-webkit-scrollbar { width: 8px; }",
-      ".xterm .xterm-viewport::-webkit-scrollbar-track { background: transparent; }",
-      ".xterm .xterm-viewport::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }",
-      ".xterm .xterm-viewport::-webkit-scrollbar-thumb:hover { background: #475569; }"
-    ]
-
-    const el = document.createElement("style")
-    el.id = "tylix-term-style"
-    el.textContent = rules.join(" ")
-    document.head.appendChild(el)
-  }
-
-  async ensureXterm() {
-    this.ensureStyle()
-
-    if this.global("Terminal") and this.global("FitAddon") {
-      return true
-    }
-
-    const css = document.createElement("link")
-    css.rel = "stylesheet"
-    css.href = "https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css"
-    document.head.appendChild(css)
-
-    const core = await this.loadAsync("https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js")
-    const fit = await this.loadAsync("https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js")
-
-    if core and fit {
-      return true
-    }
-
-    this.error = "Couldn't load the terminal library. Check your internet connection and try again."
-    return false
-  }
-
   dotClass(status) {
     if status is "online" {
-      return "bg-emerald-500"
+      return "w-2 h-2 shrink-0 rounded-full bg-emerald-500"
     }
     if status is "offline" {
-      return "bg-rose-500"
+      return "w-2 h-2 shrink-0 rounded-full bg-rose-500"
     }
-    return "bg-amber-500"
+    return "w-2 h-2 shrink-0 rounded-full bg-amber-500"
   }
 
-  buildChips() {
-    const activeCls = "inline-flex items-center gap-2 rounded-full bg-brand-500 text-white text-sm font-semibold px-4 py-1.5 shadow-sm transition-all"
-    const idleCls = "inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-800 bg-panel text-slate-600 dark:text-slate-300 text-sm font-medium px-4 py-1.5 hover:border-brand-500/50 transition-all"
-
-    this.chips = Servers.data.map((s) => ({
+  buildTiles() {
+    const on = "group flex items-center gap-3 rounded-2xl border border-brand-500/50 bg-brand-500/[0.06] px-4 py-3 shadow-sm dark:shadow-none transition-colors"
+    const off = "group flex items-center gap-3 rounded-2xl border border-line bg-panel px-4 py-3 shadow-sm dark:shadow-none hover:border-brand-500/40 transition-colors"
+    this.tiles = Servers.data.map((s) => ({
       id: s.id,
       name: s.name,
+      host: (s.ssh_user or "root") + "@" + s.host,
       dot: this.dotClass(s.status),
-      cls: ("" + s.id) is this.serverId ? activeCls : idleCls
+      href: "/servers/server-terminal?id=" + s.id,
+      cls: ("" + s.id) is this.serverId ? on : off
     }))
-  }
-
-  clock(total) {
-    const h = Math.floor(total / 3600)
-    const m = Math.floor((total % 3600) / 60)
-    const s = total % 60
-    const ss = s < 10 ? "0" + s : "" + s
-
-    if h > 0 {
-      const mm = m < 10 ? "0" + m : "" + m
-      return h + ":" + mm + ":" + ss
-    }
-
-    return m + ":" + ss
-  }
-
-  tick() {
-    if this.live {
-      const now = Date.now()
-      const left = Math.max(0, 900 - Math.floor((now - this.lastInputAt) / 1000))
-
-      this.idleText = this.clock(left)
-      this.idleWarn = left <= 120
-      this.idlePct = Math.round(left / 9)
-      this.idleBar = left <= 120 ? "bg-amber-500" : "bg-brand-500"
-      this.sessionText = this.clock(Math.floor((now - this.connectedAt) / 1000))
-    } else {
-      this.stopTicker()
-    }
-  }
-
-  startTicker() {
-    this.stopTicker()
-    this.ticker = window.setInterval(() => this.tick(), 1000)
-  }
-
-  stopTicker() {
-    if this.ticker {
-      window.clearInterval(this.ticker)
-      this.ticker = null
-    }
-  }
-
-  dropSocket() {
-    const ws = this.global("tylixSocket")
-    if ws {
-      ws.onopen = null
-      ws.onmessage = null
-      ws.onclose = null
-      ws.close()
-      this.setGlobal("tylixSocket", null)
-    }
-  }
-
-  clearTerminal() {
-    const term = this.global("tylixTerm")
-    if term {
-      term.dispose()
-      this.setGlobal("tylixTerm", null)
-    }
-    this.setGlobal("tylixFit", null)
-    const el = document.getElementById("terminal-host")
-    if el {
-      el.innerHTML = ""
-    }
-  }
-
-  applyLayout() {
-    if this.expanded {
-      this.wrapCls = "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-8"
-      this.backdropCls = "absolute inset-0 bg-slate-950/60 backdrop-blur-md"
-      this.cardCls = "relative flex flex-col w-full max-w-[1100px] h-full max-h-[92vh] rounded-2xl border border-slate-700/60 bg-slate-950/85 backdrop-blur-xl overflow-hidden shadow-2xl"
-      this.bodyCls = "relative flex-1 min-h-0"
-      this.hostCls = "absolute inset-0 p-4"
-    } else {
-      this.wrapCls = ""
-      this.backdropCls = "hidden"
-      this.cardCls = "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
-      this.bodyCls = "relative h-[60vh] min-h-[420px]"
-      this.hostCls = "absolute inset-0 p-3"
-    }
-  }
-
-  refit() {
-    const fit = this.global("tylixFit")
-    const term = this.global("tylixTerm")
-    if not fit or not term {
-      return null
-    }
-
-    fit.fit()
-
-    const ws = this.global("tylixSocket")
-    if ws and ws.readyState is 1 {
-      ws.send(JSON.stringify({ t: "r", cols: term.cols, rows: term.rows }))
-    }
-  }
-
-  focusTerm() {
-    const term = this.global("tylixTerm")
-    if term {
-      term.focus()
-    }
-  }
-
-  focusCode() {
-    const el = document.getElementById("terminal-code")
-    if el {
-      el.focus()
-    }
-  }
-
-  setExpanded(value) {
-    this.expanded = value
-    this.applyLayout()
-    document.body.style.overflow = value ? "hidden" : ""
-
-    const term = this.global("tylixTerm")
-    if term {
-      term.options.fontSize = value ? 14 : 13
-    }
-
-    window.setTimeout(() => this.refit(), 120)
-    window.setTimeout(() => this.refit(), 400)
-    window.setTimeout(() => this.focusTerm(), 180)
-  }
-
-  toggleExpand() {
-    const next = not this.expanded
-    this.setExpanded(next)
-  }
-
-  collapse() {
-    if this.expanded {
-      this.setExpanded(false)
-    }
-  }
-
-  onKey(e) {
-    if e.key is "Escape" {
-      this.collapse()
-    }
-
-    if e.key is "Enter" and this.phase is "code" {
-      const target = e.target
-      if target and target.id is "terminal-code" {
-        this.submitCode()
-      }
-    }
-  }
-
-  pick(id) {
-    this.dropSocket()
-    this.clearTerminal()
-    this.stopTicker()
-
-    this.error = ""
-    this.codeError = ""
-    this.smsNote = ""
-    this.pendingCode = ""
-    this.live = false
-    this.phase = "idle"
-    this.serverId = "" + id
-    this.server = Servers.data.find((s) => s.id is id) or null
-    this.buildChips()
-
-    window.history.replaceState(null, "", "?id=" + id)
-  }
-
-  sendInput(d) {
-    if Billing.locked {
-      return null
-    }
-    const ws = this.global("tylixSocket")
-    if ws and ws.readyState is 1 {
-      this.lastInputAt = Date.now()
-      ws.send(JSON.stringify({ t: "i", d: d }))
-    }
-  }
-
-  runCommand(cmd) {
-    if Billing.locked {
-      return null
-    }
-    const enter = String.fromCharCode(13)
-    this.sendInput(cmd + enter)
-    this.focusTerm()
-  }
-
-  clearScreen() {
-    const term = this.global("tylixTerm")
-    if term {
-      term.clear()
-      term.focus()
-    }
-  }
-
-  async copySelection() {
-    const term = this.global("tylixTerm")
-    if not term {
-      return null
-    }
-
-    const text = term.getSelection()
-    if not text {
-      return null
-    }
-
-    await navigator.clipboard.writeText(text)
-    this.copied = true
-    window.setTimeout(() => this.resetCopied(), 1500)
-    term.focus()
-  }
-
-  resetCopied() {
-    this.copied = false
-  }
-
-  async pasteClipboard() {
-    const term = this.global("tylixTerm")
-    if not term {
-      return null
-    }
-
-    const text = await navigator.clipboard.readText().catch(() => "")
-    if not text.trim() {
-      return null
-    }
-
-    term.paste(text)
-    term.focus()
-  }
-
-  onMessage(raw) {
-    const msg = JSON.parse(raw)
-    const term = this.global("tylixTerm")
-    if not term {
-      return null
-    }
-
-    if msg.t is "out" {
-      term.write(Uint8Array.from(atob(msg.d), (c) => c.charCodeAt(0)))
-    } else if msg.t is "ready" {
-      const now = Date.now()
-      this.connectedAt = now
-      this.lastInputAt = now
-      this.idleText = "15:00"
-      this.idleWarn = false
-      this.idlePct = 100
-      this.idleBar = "bg-brand-500"
-      this.sessionText = "0:00"
-      this.live = true
-      this.phase = "connected"
-      this.startTicker()
-      this.refit()
-      term.focus()
-    } else if msg.t is "exit" {
-      const cr = String.fromCharCode(13)
-      const nl = String.fromCharCode(10)
-      const esc = String.fromCharCode(27)
-      term.write(cr + nl + esc + "[90m[" + msg.m + "]" + esc + "[0m" + cr + nl)
-    }
-  }
-
-  onClosed() {
-    this.stopTicker()
-    this.live = false
-    this.phase = "closed"
-  }
-
-  askForCode(methods, message) {
-    this.clearTerminal()
-
-    if methods {
-      this.hasSms = methods.some((m) => ("" + m).toLowerCase().includes("sms"))
-    }
-
-    this.smsNote = ""
-    this.codeError = message
-    this.phase = "code"
-    window.setTimeout(() => this.focusCode(), 80)
-  }
-
-   submitCode() {
-    const el = document.getElementById("terminal-code")
-    const value = el ? ("" + Reflect.get(el, "value")).trim() : ""
-
-    if not value {
-      this.codeError = "Enter your verification code."
-      return null
-    }
-
-    this.pendingCode = value
-    this.codeError = ""
-    this.phase = "idle"
-    this.connect()
-  }
-
-  cancelCode() {
-    this.pendingCode = ""
-    this.codeError = ""
-    this.smsNote = ""
-    this.phase = "idle"
-  }
-
-  async sendSms() {
-    if this.smsBusy {
-      return null
-    }
-
-    this.smsBusy = true
-    this.codeError = ""
-    this.smsNote = ""
-
-    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
-    this.smsBusy = false
-
-    if result.status is 401 {
-      window.location.href = "/login"
-      return null
-    }
-
-    if result.ok {
-      const hint = result.data?.phone_hint
-      this.smsNote = hint ? "Code sent to " + hint + "." : "Code sent."
-    } else {
-      this.codeError = result.data?.error or "Couldn't send the code."
-    }
-  }
-
-  async connect() {
-    if Billing.locked {
-      return null
-    }
-    if not this.server {
-      return null
-    }
-
-    if this.phase is "connecting" or this.phase is "connected" {
-      return null
-    }
-
-    this.error = ""
-    this.phase = "connecting"
-
-    const ready = await this.ensureXterm()
-    if not ready {
-      this.pendingCode = ""
-      this.phase = "idle"
-      return null
-    }
-
-    this.dropSocket()
-    this.clearTerminal()
-
-    const el = document.getElementById("terminal-host")
-    if not el {
-      this.error = "The terminal area isn't on the page yet. Reload and try again."
-      this.pendingCode = ""
-      this.phase = "idle"
-      return null
-    }
-
-    const TerminalClass = this.global("Terminal")
-    const fitModule = this.global("FitAddon")
-
-    const term = new TerminalClass({
-      allowTransparency: true,
-      cursorBlink: true,
-      cursorStyle: "bar",
-      fontSize: this.expanded ? 14 : 13,
-      lineHeight: 1.25,
-      scrollback: 5000,
-      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-      theme: {
-        background: "rgba(2, 6, 23, 0)",
-        foreground: "#e2e8f0",
-        cursor: "#e0393f",
-        cursorAccent: "#020617",
-        selectionBackground: "#e0393f40",
-        black: "#0f172a",
-        red: "#f43f5e",
-        green: "#10b981",
-        yellow: "#f59e0b",
-        blue: "#38bdf8",
-        magenta: "#a78bfa",
-        cyan: "#22d3ee",
-        white: "#cbd5e1",
-        brightBlack: "#64748b",
-        brightRed: "#fb7185",
-        brightGreen: "#34d399",
-        brightYellow: "#fbbf24",
-        brightBlue: "#7dd3fc",
-        brightMagenta: "#c4b5fd",
-        brightCyan: "#67e8f9",
-        brightWhite: "#f8fafc"
-      }
-    })
-    const fit = new fitModule.FitAddon()
-    term.loadAddon(fit)
-    term.open(el)
-    fit.fit()
-    this.setGlobal("tylixTerm", term)
-    this.setGlobal("tylixFit", fit)
-
-    // The code is used once: it is cleared before the request goes out.
-    const code = this.pendingCode
-    this.pendingCode = ""
-
-    const body = code ? { cols: term.cols, rows: term.rows, code: code } : { cols: term.cols, rows: term.rows }
-
-    const result = await useApi("/api/servers/" + this.serverId + "/terminal", {
-      method: "POST",
-      body: body
-    })
-
-    if result.status is 401 {
-      window.location.href = "/login"
-      return null
-    }
-
-    // Two-factor is on: ask for a code, then connect() runs again with it.
-    if result.status is 403 and result.data?.two_factor_required {
-      this.askForCode(result.data.methods, "")
-      return null
-    }
-
-    if not result.ok {
-      const fieldErrors = result.data?.errors?.code
-      const fieldMessage = fieldErrors ? fieldErrors[0] : ""
-
-      // A wrong code or a lockout stays on the code prompt.
-      if code and (fieldMessage or result.status is 429) {
-        this.askForCode(null, fieldMessage or result.data?.error or "That code didn't work.")
-        return null
-      }
-
-      this.error = result.data?.error or "Couldn't open a terminal."
-      this.clearTerminal()
-      this.phase = "idle"
-      return null
-    }
-
-    let url = result.data.url
-    if not url {
-      const hostname = window.location.hostname
-      if hostname is "localhost" or hostname is "127.0.0.1" {
-        const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
-        url = "ws://" + hostname + ":" + port + "/terminal"
-      } else {
-        url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.host + "/channels/terminal"
-      }
-    }
-
-    const ticket = result.data.ticket
-    const ws = new WebSocket(url)
-    ws.onopen = () => ws.send(JSON.stringify({ t: "auth", ticket: ticket }))
-    ws.onmessage = (e) => this.onMessage(e.data)
-    ws.onclose = () => this.onClosed()
-    this.setGlobal("tylixSocket", ws)
-
-    term.onData((d) => this.sendInput(d))
-  }
-
-  disconnect() {
-    const ws = this.global("tylixSocket")
-    if ws {
-      ws.close()
-    }
   }
 
 onMount
@@ -612,332 +55,84 @@ onMount
       return null
     }
 
-    document.body.style.overflow = ""
-
-    const old = this.global("tylixTermHandlers")
-    if old {
-      document.removeEventListener("keydown", old.key)
-      window.removeEventListener("resize", old.resize)
-    }
-
-    const keyHandler = (e) => this.onKey(e)
-    const resizeHandler = () => this.refit()
-    document.addEventListener("keydown", keyHandler)
-    window.addEventListener("resize", resizeHandler)
-    this.setGlobal("tylixTermHandlers", { key: keyHandler, resize: resizeHandler })
+    const params = new URLSearchParams(window.location.search)
+    this.serverId = params.get("id") or ""
 
     await Servers.load()
-
-    const params = new URLSearchParams(window.location.search)
-    const id = params.get("id")
-
-    if id {
-      this.serverId = id
-      this.server = Servers.data.find((s) => ("" + s.id) is id) or null
+    if this.serverId {
+      this.server = Servers.data.find((s) => ("" + s.id) is this.serverId) or null
     }
-
-    this.buildChips()
-    this.checkedAuth = true
+    this.buildTiles()
+    this.loading = false
   }
 
 template
-{{#if checkedAuth}}
   <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+{{#if serverId}}
     <ServerSidebar active="terminal" serverId="{{ serverId }}" />
+{{#else}}
+    <div></div>
+{{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
+{{#if server}}
+      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> {{ server.name }}
+      </a>
+{{#else}}
       <a href="/servers" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
         <IconArrowLeft class="w-4 h-4" /> Servers
       </a>
+{{/if}}
 
       <LockedBanner />
 
       <div class="mb-6">
-        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 mb-2">Terminal</h1>
-        <p class="text-slate-500 text-sm">Open a shell on any of your servers. Switching servers ends the current session.</p>
+        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Terminal</h1>
+        <p class="text-slate-500 text-sm">A shell on your server, in a console that opens over the page. Minimise it and it keeps running while you work elsewhere in the app.</p>
       </div>
 
-{{#if chips.length is 0}}
-      <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-panel p-8 text-center mb-6">
+{{#if loading}}
+      <div data-page-loader="true" class="min-h-[40vh] flex items-center justify-center">
+        <LoaderMark label="Loading servers…" />
+      </div>
+{{/if}}
+
+{{#if not loading}}
+{{#if server}}
+      <div class="mb-8">
+        <ConsoleLauncher href="{{ '/servers/server-terminal?id=' + serverId }}" kind="terminal" heading="{{ 'Open a shell on ' + server.name }}" body="{{ 'You connect as ' + (server.ssh_user or 'root') + '. Sessions close after 15 minutes without typing, and you can switch servers from the console header.' }}" host="{{ (server.ssh_user or 'root') + '@' + server.host }}" cmd="uptime" label="Open terminal" locked="{{ Billing.locked }}" />
+      </div>
+{{/if}}
+
+{{#if tiles.length is 0}}
+      <div class="rounded-2xl border border-dashed border-line-strong bg-panel p-8 text-center">
         <p class="text-slate-500 text-sm mb-3">No servers yet. Add one to open a terminal on it.</p>
         <a href="/servers" class="inline-flex text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 transition-all">Add a server</a>
       </div>
-{{/if}}
-
-      <div class="flex flex-wrap items-center gap-2 mb-6">
-{{#each c in chips}}
-        <button onclick="{{ pick(c.id) }}" class="{{ c.cls }}">
-          <span class="w-1.5 h-1.5 rounded-full {{ c.dot }}"></span>{{ c.name }}
-        </button>
+{{#else}}
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
+        <h2 class="text-slate-900 dark:text-slate-100 font-semibold">{{ server ? "Or open one on another server" : "Choose a server" }}</h2>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+{{#each t in tiles}}
+        <a href="{{ t.href }}" class="{{ t.cls }}">
+          <span class="w-9 h-9 shrink-0 rounded-xl border border-line bg-sunken flex items-center justify-center text-slate-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+            <IconServer class="w-4 h-4" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{{ t.name }}</span>
+            <span class="block text-xs font-mono text-slate-500 truncate">{{ t.host }}</span>
+          </span>
+          <span class="{{ t.dot }}"></span>
+        </a>
 {{/each}}
       </div>
-
-{{#if error}}
-      <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6 flex items-start justify-between gap-4">
-        <p class="text-rose-500 text-sm break-words">{{ error }}</p>
-{{#if server}}
-{{#if Billing.locked}}
-        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-            <rect x="4" y="9" width="12" height="8" rx="2" />
-            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-          </svg>
-          Try again
-        </button>
 {{/if}}
-{{#if not Billing.locked}}
-        <button onclick="{{ connect() }}" class="shrink-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-1.5 hover:bg-rose-500/5 transition-colors">Try again</button>
-{{/if}}
-{{/if}}
-      </div>
-{{/if}}
-
-      <div class="{{ wrapCls }}">
-        <div onclick="{{ collapse() }}" class="{{ backdropCls }}"></div>
-
-        <div class="{{ cardCls }}">
-
-          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/80">
-            <div class="flex items-center gap-3 min-w-0">
-{{#if phase is "connected"}}
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-{{/if}}
-{{#if phase is "connecting"}}
-              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
-{{/if}}
-{{#if phase is "code"}}
-              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-{{/if}}
-{{#if phase is "idle"}}
-              <span class="w-2.5 h-2.5 rounded-full bg-slate-600 shrink-0"></span>
-{{/if}}
-{{#if phase is "closed"}}
-              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
-{{/if}}
-{{#if server}}
-              <p class="text-slate-200 text-sm font-mono truncate">{{ server.ssh_user }}@{{ server.host }}</p>
-              <p class="text-slate-500 text-xs truncate hidden md:block">{{ server.name }}</p>
-{{/if}}
-{{#if not server}}
-              <p class="text-slate-500 text-sm">No server selected</p>
-{{/if}}
-{{#if phase is "connected"}}
-              <span class="hidden sm:inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5">Connected</span>
-{{/if}}
-{{#if phase is "connecting"}}
-              <span class="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">Connecting</span>
-{{/if}}
-{{#if phase is "code"}}
-              <span class="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">Verification needed</span>
-{{/if}}
-{{#if phase is "closed"}}
-              <span class="hidden sm:inline-flex items-center rounded-full bg-rose-500/10 text-rose-400 text-xs font-medium px-2.5 py-0.5">Disconnected</span>
-{{/if}}
-            </div>
-
-            <div class="flex items-center gap-2">
-{{#if live}}
-{{#if copied}}
-              <button class="text-xs text-brand-400 font-medium px-3 py-1.5">Copied</button>
-{{/if}}
-{{#if not copied}}
-              <button onclick="{{ copySelection() }}" title="Copy the selected text" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Copy</button>
-{{/if}}
-              <button onclick="{{ pasteClipboard() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Paste</button>
-              <button onclick="{{ clearScreen() }}" class="text-xs text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-full px-3 py-1.5 transition-colors">Clear</button>
-              <button onclick="{{ disconnect() }}" class="text-xs text-rose-500 border border-rose-500/30 rounded-full px-3 py-1.5 hover:bg-rose-500/5 transition-colors">Disconnect</button>
-{{/if}}
-{{#if phase is "closed"}}
-{{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-xs bg-slate-800 text-slate-500 border border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                  <rect x="4" y="9" width="12" height="8" rx="2" />
-                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                </svg>
-                Reconnect
-              </button>
-{{/if}}
-{{#if not Billing.locked}}
-              <button onclick="{{ connect() }}" class="text-xs bg-brand-500 text-white font-semibold rounded-full px-4 py-1.5 hover:bg-brand-400 transition-all">Reconnect</button>
-{{/if}}
-{{/if}}
-              <button onclick="{{ toggleExpand() }}" title="Expand or collapse (Esc to exit)" aria-label="Toggle expanded terminal" class="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-700 hover:border-brand-500/60 rounded-full px-3 py-1.5 transition-colors">
-{{#if expanded}}
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
-                  <path d="M8 3v5H3M12 17v-5h5M8 8L3 3M12 12l5 5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                Collapse
-{{/if}}
-{{#if not expanded}}
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
-                  <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                Expand
-{{/if}}
-              </button>
-            </div>
-          </div>
-
-{{#if live}}
-          <div class="h-0.5 bg-slate-800">
-            <div class="h-full transition-all duration-1000 ease-linear {{ idleBar }}" style="width: {{ idlePct }}%"></div>
-          </div>
-{{/if}}
-
-          <div class="{{ bodyCls }}">
-            <div class="{{ hostCls }}">
-              <div id="terminal-host" class="h-full w-full overflow-hidden"></div>
-            </div>
-
-{{#if phase is "idle"}}
-            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
-              <div class="text-center max-w-sm">
-                <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-brand-400">
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-6 h-6">
-                    <path d="M4 6l4 4-4 4M10 14h6" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </div>
-{{#if server}}
-                <p class="text-slate-200 font-medium mb-1">Ready to connect to {{ server.name }}</p>
-                <p class="text-slate-500 text-sm mb-6">You'll get a shell as <span class="font-mono text-slate-400">{{ server.ssh_user }}</span>. Sessions close after 15 minutes without typing.</p>
-{{#if Billing.locked}}
-                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-800 text-slate-500 border border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                    <rect x="4" y="9" width="12" height="8" rx="2" />
-                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                  </svg>
-                  Connect
-                </button>
-{{/if}}
-{{#if not Billing.locked}}
-                <button onclick="{{ connect() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Connect</button>
-{{/if}}
-{{/if}}
-{{#if not server}}
-                <p class="text-slate-200 font-medium mb-1">Choose a server</p>
-                <p class="text-slate-500 text-sm">Pick one from the list above to open a shell on it.</p>
-{{/if}}
-              </div>
-            </div>
-{{/if}}
-
-{{#if phase is "code"}}
-            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
-              <div class="w-full max-w-sm text-center">
-                <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-amber-400">
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-6 h-6">
-                    <rect x="4" y="9" width="12" height="8" rx="2" />
-                    <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                  </svg>
-                </div>
-                <p class="text-slate-200 font-medium mb-1">Confirm it's you</p>
-                <p class="text-slate-500 text-sm mb-5">Opening a shell on {{ server.name }} needs a verification code from your authenticator app, a recovery code, or a text message.</p>
-                <input id="terminal-code" type="text" autocomplete="one-time-code" maxlength="32" placeholder="Verification code" class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 text-center font-mono tracking-widest px-4 py-2.5 focus:outline-none focus:border-brand-500/60" />
-{{#if codeError}}
-                <p role="alert" class="text-rose-400 text-xs mt-2 break-words">{{ codeError }}</p>
-{{/if}}
-{{#if smsNote}}
-                <p class="text-brand-400 text-xs mt-2">{{ smsNote }}</p>
-{{/if}}
-                <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
-                  <button onclick="{{ submitCode() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2 shadow-sm hover:bg-brand-400 transition-all">Verify and connect</button>
-                  <button onclick="{{ cancelCode() }}" class="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-full px-4 py-2 transition-colors">Cancel</button>
-                </div>
-{{#if hasSms}}
-                <button onclick="{{ sendSms() }}" class="text-xs text-brand-400 hover:underline mt-4">Text me a code</button>
-{{/if}}
-              </div>
-            </div>
-{{/if}}
-
-{{#if phase is "connecting"}}
-            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-6">
-              <div class="flex items-center gap-3">
-                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                <p class="text-slate-300 text-sm">Opening a shell…</p>
-              </div>
-            </div>
-{{/if}}
-          </div>
-
-          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-800 bg-slate-900/80">
-{{#if live}}
-            <p class="text-slate-500 text-xs">Connected for <span class="font-mono text-slate-300">{{ sessionText }}</span></p>
-{{#if expanded}}
-            <div class="flex flex-wrap items-center gap-1.5">
-{{#each c in commands}}
-{{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-xs bg-slate-800 text-slate-500 border border-slate-700 rounded-full px-3 py-1 cursor-not-allowed select-none">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                  <rect x="4" y="9" width="12" height="8" rx="2" />
-                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                </svg>
-                {{ c.label }}
-              </button>
-{{/if}}
-{{#if not Billing.locked}}
-              <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-xs rounded-full border border-slate-700 bg-slate-950/60 text-slate-300 px-3 py-1 hover:border-brand-500/50 transition-all">{{ c.label }}</button>
-{{/if}}
-{{/each}}
-            </div>
-{{/if}}
-{{#if idleWarn}}
-            <p class="text-amber-500 text-xs font-medium">Closing in <span class="font-mono">{{ idleText }}</span> without typing</p>
-{{/if}}
-{{#if not idleWarn}}
-            <p class="text-slate-500 text-xs">Idle limit <span class="font-mono text-slate-300">{{ idleText }}</span></p>
-{{/if}}
-{{/if}}
-{{#if phase is "connecting"}}
-            <p class="text-slate-500 text-xs">Connecting…</p>
-{{/if}}
-{{#if phase is "code"}}
-            <p class="text-slate-500 text-xs">Waiting for your verification code</p>
-{{/if}}
-{{#if phase is "idle"}}
-            <p class="text-slate-500 text-xs">Not connected</p>
-{{/if}}
-{{#if phase is "closed"}}
-            <p class="text-slate-500 text-xs">Session ended. Reconnect to start a new one.</p>
-{{/if}}
-          </div>
-        </div>
-      </div>
-
-{{#if not expanded}}
-      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 mt-6 shadow-sm dark:shadow-none">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-slate-800 dark:text-slate-200 font-medium text-sm">Quick checks</h2>
-{{#if live}}
-          <p class="text-slate-500 text-xs">Runs in the open session</p>
-{{/if}}
-        </div>
-{{#if live}}
-        <div class="flex flex-wrap gap-2">
-{{#each c in commands}}
-{{#if Billing.locked}}
-          <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            {{ c.label }}
-          </button>
-{{/if}}
-{{#if not Billing.locked}}
-          <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-sm rounded-full border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 px-4 py-1.5 hover:border-brand-500/50 transition-all">{{ c.label }}</button>
-{{/if}}
-{{/each}}
-        </div>
-{{/if}}
-{{#if not live}}
-        <p class="text-slate-500 text-sm">Connect to a server to run common checks like disk, memory, and nginx logs in one click.</p>
-{{/if}}
-      </div>
 {{/if}}
 
     </div>
     </div>
   </div>
-{{/if}}

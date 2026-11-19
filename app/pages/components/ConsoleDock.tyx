@@ -1,0 +1,2447 @@
+component ConsoleDock
+
+import { IconTerminal, IconDocumentText, IconX, IconMinus, IconMaximize, IconMinimize, IconPanelRight, IconCopy, IconClipboard, IconRefresh, IconSearch, IconChevronDown, IconServer, IconGlobe, IconLockClosed, IconPower, IconPlay, IconPause, IconChevronRight } from "tylix-icons"
+
+// The server and site terminal, and the server and site logs, as one
+// console that pops over whatever app page you're on.
+//
+// It is mounted once with the app shell (app/pages/_layout.tyx), so it is
+// not torn down when you move between pages: a shell you minimise keeps
+// running while you browse, and reopens exactly where you left it. That is
+// also why it uses the shell's native WebSocket and timers (__flux.native,
+// __flux.every): the patched globals belong to whichever page is on screen
+// and are released when you leave it.
+//
+// How it opens:
+//   * any click on a link to /servers/server-terminal, site-terminal,
+//     server-logs or site-logs (with ?id=) is caught here and opens the
+//     console instead of loading a page. Ctrl/Cmd/middle-click still open
+//     the page in a new tab.
+//   * arriving on one of those URLs (a bookmark, back button) opens it too.
+//   * pages can ask for it: __flux.emit("flux:console", { kind, id, tab,
+//     source, entry }).
+//   * Ctrl+` shows and hides it.
+
+uses
+  Billing
+
+state
+  view: "closed"
+  tab: "terminal"
+  full: false
+  side: true
+  lastFocus: null
+  menuOpen: false
+  menuQuery: ""
+  menuLoading: false
+  menuServers: []
+  menuSites: []
+  confirmEnd: false
+  pending: null
+  pendingTitle: ""
+  mosaic: []
+
+  // Terminal
+  tKind: ""
+  tId: ""
+  tReady: false
+  tTitle: ""
+  tUser: ""
+  tHost: ""
+  tCwd: ""
+  tSub: ""
+  phase: "idle"
+  live: false
+  error: ""
+  pendingCode: ""
+  codeError: ""
+  smsNote: ""
+  smsBusy: false
+  hasSms: false
+  connectedAt: 0
+  lastInputAt: 0
+  idleText: "15:00"
+  idleWarn: false
+  idleLeft: 900
+  sessionText: "0:00"
+  meter: []
+  totalText: "0 B"
+  copied: ""
+  fontSize: 13
+
+  // Logs
+  lKind: ""
+  lId: ""
+  lReady: true
+  lTitle: ""
+  lPrompt: ""
+  lStale: true
+  logSources: []
+  source: ""
+  lines: 1000
+  errorsOnly: true
+  sLevel: ""
+  sCategory: ""
+  search: ""
+  entries: []
+  openIds: []
+  logBusy: false
+  logSeq: 0
+  logError: ""
+  logLoaded: false
+  logMissing: false
+  scanned: 0
+  fetchedAt: ""
+  logLive: false
+  jumpTo: ""
+
+computed
+  commands() {
+    if this.tKind is "site" {
+      return [
+        { label: "List files", cmd: "ls -la" },
+        { label: "Git status", cmd: "git status" },
+        { label: "Recent commits", cmd: "git log --oneline -n 10" },
+        { label: "Folder sizes", cmd: "du -sh * 2>/dev/null | sort -h" },
+        { label: "Disk space", cmd: "df -h ." },
+        { label: "Node version", cmd: "node -v && npm -v" },
+        { label: "PHP version", cmd: "php -v" }
+      ]
+    }
+    return [
+      { label: "Disk", cmd: "df -h" },
+      { label: "Memory", cmd: "free -h" },
+      { label: "Top processes", cmd: "top -bn1 | head -n 15" },
+      { label: "Nginx status", cmd: "systemctl status nginx --no-pager" },
+      { label: "Nginx errors", cmd: "sudo tail -n 50 /var/log/nginx/error.log" },
+      { label: "Listening ports", cmd: "sudo ss -tlnp" }
+    ]
+  }
+
+  keys() {
+    const esc = String.fromCharCode(27)
+    return [
+      { label: "esc", seq: esc },
+      { label: "tab", seq: String.fromCharCode(9) },
+      { label: "ctrl-c", seq: String.fromCharCode(3) },
+      { label: "↑", seq: esc + "[A" },
+      { label: "↓", seq: esc + "[B" },
+      { label: "←", seq: esc + "[D" },
+      { label: "→", seq: esc + "[C" },
+      { label: "|", seq: "|" },
+      { label: "/", seq: "/" },
+      { label: "~", seq: "~" },
+      { label: "-", seq: "-" }
+    ]
+  }
+
+  // Twelve LED segments for the idle limit.
+  idleLeds() {
+    const lit = Math.ceil(this.idleLeft / 75)
+    const tone = this.idleWarn ? "warn" : "ok"
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => ({ on: i < lit, tone: tone }))
+  }
+
+  // The rail's vertical version of the same meter.
+  idleDots() {
+    const lit = this.live ? Math.ceil(this.idleLeft / 150) : 0
+    return [0, 1, 2, 3, 4, 5].map((i) => {
+      let cls = "w-1.5 h-1.5 rounded-full bg-white/[0.07] transition-colors duration-500"
+      if i < lit {
+        cls = this.idleWarn ? "w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgb(251_191_36/0.6)] transition-colors duration-500" : "w-1.5 h-1.5 rounded-full bg-brand-400 shadow-[0_0_6px_rgb(240_103_107/0.6)] transition-colors duration-500"
+      }
+      return { cls: cls }
+    })
+  }
+
+  pillBars() {
+    return this.meter.slice(-10)
+  }
+
+  phaseText() {
+    if this.phase is "connected" {
+      return "Connected"
+    }
+    if this.phase is "connecting" {
+      return "Connecting"
+    }
+    if this.phase is "code" {
+      return "Verification needed"
+    }
+    if this.phase is "closed" {
+      return "Session ended"
+    }
+    return "Not connected"
+  }
+
+  orbCls() {
+    const base = "relative w-2.5 h-2.5 shrink-0 rounded-full "
+    if this.tab is "logs" {
+      if this.logLive {
+        return base + "bg-emerald-400 shadow-[0_0_10px_rgb(52_211_153/0.7)]"
+      }
+      return base + (this.logLoaded ? "bg-sky-400" : "bg-zinc-600")
+    }
+    if this.phase is "connected" {
+      return base + (this.idleWarn ? "bg-amber-400 shadow-[0_0_10px_rgb(251_191_36/0.7)]" : "bg-emerald-400 shadow-[0_0_10px_rgb(52_211_153/0.7)]")
+    }
+    if this.phase is "connecting" or this.phase is "code" {
+      return base + "bg-amber-400 animate-pulse"
+    }
+    if this.phase is "closed" {
+      return base + "bg-brand-500"
+    }
+    return base + "bg-zinc-600"
+  }
+
+  headTitle() {
+    if this.tab is "logs" {
+      return this.lTitle or "Logs"
+    }
+    if this.tUser and this.tHost {
+      return this.tUser + "@" + this.tHost
+    }
+    return this.tTitle or "Terminal"
+  }
+
+  headSub() {
+    if this.tab is "logs" {
+      const what = this.lKind is "site" ? "Site logs" : "Server activity"
+      return this.logLive ? what + " · live" : what
+    }
+    if this.live {
+      return this.tTitle + " · " + this.sessionText
+    }
+    return this.tTitle ? this.tTitle + " · " + this.phaseText : this.phaseText
+  }
+
+  outerCls() {
+    if this.full {
+      return "fixed inset-0 z-[70] flex"
+    }
+    return "fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center sm:p-5 lg:p-8"
+  }
+
+  windowCls() {
+    const base = "cx-shell cx-grain cx-pop relative flex w-full overflow-hidden text-zinc-300 "
+    if this.full {
+      return base + "h-full"
+    }
+    return base + "h-full sm:h-[min(880px,calc(100vh-2.5rem))] max-w-[1380px] sm:rounded-[22px]"
+  }
+
+  sideCls() {
+    if this.side {
+      return "hidden lg:flex w-[288px] shrink-0 flex-col gap-3 p-3 pl-0 overflow-y-auto cx-scroll"
+    }
+    return "hidden"
+  }
+
+  railBtn() {
+    return "relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors "
+  }
+
+  termTabCls() {
+    if this.tab is "terminal" {
+      return this.railBtn + "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]"
+    }
+    return this.railBtn + "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]"
+  }
+
+  logTabCls() {
+    if this.tab is "logs" {
+      return this.railBtn + "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]"
+    }
+    return this.railBtn + "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]"
+  }
+
+  // ---- logs -------------------------------------------------------------
+
+  logNav() {
+    if this.lKind is "site" {
+      return this.logSources.map((s) => ({
+        id: s.id,
+        label: s.label,
+        desc: this.describeSource(s.id),
+        letter: String(s.label or "?").charAt(0).toUpperCase(),
+        tile: this.sourceTone(s.id),
+        on: s.id is this.source
+      }))
+    }
+    return [
+      { id: "", label: "Everything", desc: "Every event, newest first.", letter: "*", tile: this.sourceTone("all"), on: this.sLevel is "" },
+      { id: "error", label: "Errors", desc: "Failed actions and blocked requests.", letter: "E", tile: this.sourceTone("error"), on: this.sLevel is "error" },
+      { id: "warning", label: "Warnings", desc: "Things that need a look.", letter: "W", tile: this.sourceTone("warning"), on: this.sLevel is "warning" },
+      { id: "success", label: "Success", desc: "Finished jobs and changes.", letter: "S", tile: this.sourceTone("success"), on: this.sLevel is "success" },
+      { id: "info", label: "Info", desc: "Everything else that happened.", letter: "I", tile: this.sourceTone("info"), on: this.sLevel is "info" }
+    ]
+  }
+
+  areaNav() {
+    return [
+      { id: "", label: "All areas", on: this.sCategory is "" },
+      { id: "firewall", label: "Firewall", on: this.sCategory is "firewall" }
+    ]
+  }
+
+  sizeNav() {
+    return [500, 1000, 3000].map((n) => ({ n: n, label: String(n), on: n is this.lines }))
+  }
+
+  logView() {
+    const needle = this.search.trim().toLowerCase()
+    const list = this.entries.filter((e) => needle is "" or (e.message + " " + e.detail + " " + e.level).toLowerCase().includes(needle))
+    return list.map((e) => {
+      const warn = e.level is "warn" or e.level is "warning"
+      const good = e.level is "success"
+      let stripe = "bg-zinc-700"
+      let levelCls = "shrink-0 w-[4.5rem] text-[10.5px] uppercase tracking-[0.12em] text-sky-300/80"
+      let edge = "border-zinc-700"
+      if e.error {
+        stripe = "bg-brand-400 shadow-[0_0_8px_rgb(240_103_107/0.6)]"
+        levelCls = "shrink-0 w-[4.5rem] text-[10.5px] uppercase tracking-[0.12em] font-semibold text-brand-300"
+        edge = "border-brand-400/60"
+      } else if warn {
+        stripe = "bg-amber-400"
+        levelCls = "shrink-0 w-[4.5rem] text-[10.5px] uppercase tracking-[0.12em] font-semibold text-amber-300"
+        edge = "border-amber-400/60"
+      } else if good {
+        stripe = "bg-emerald-400"
+        levelCls = "shrink-0 w-[4.5rem] text-[10.5px] uppercase tracking-[0.12em] text-emerald-300"
+        edge = "border-emerald-400/50"
+      }
+      const open = this.openIds.includes(e.id)
+      return Object.assign({}, e, {
+        open: open,
+        stripe: stripe,
+        levelCls: levelCls,
+        edge: edge,
+        levelText: e.level or "log",
+        timeText: e.time or "",
+        moreText: this.moreText(e),
+        rowId: "cx-log-" + e.id,
+        rowCls: open ? "group flex items-start gap-2.5 pl-2 pr-3 sm:pr-4 py-1 bg-white/[0.035]" : "group flex items-start gap-2.5 pl-2 pr-3 sm:pr-4 py-1 hover:bg-white/[0.03]",
+        copyText: this.copied is e.id ? "copied" : "copy"
+      })
+    })
+  }
+
+  // One tick per entry down the right edge, like a minimap.
+  minimap() {
+    return this.logView.slice(0, 400).map((e) => {
+      let cls = "bg-white/[0.08]"
+      if e.error {
+        cls = "bg-brand-400"
+      } else if e.level is "warn" or e.level is "warning" {
+        cls = "bg-amber-400"
+      } else if e.level is "success" {
+        cls = "bg-emerald-400/80"
+      }
+      return { id: e.id, cls: "w-full flex-1 min-h-[1px] max-h-[6px] rounded-[1px] hover:bg-white transition-colors " + cls }
+    })
+  }
+
+  errorCount() {
+    return this.entries.filter((e) => e.error).length
+  }
+
+action
+  shell() {
+    return Reflect.get(window, "__flux")
+  }
+
+  global(name) {
+    return Reflect.get(window, name)
+  }
+
+  setGlobal(name, value) {
+    Reflect.set(window, name, value)
+  }
+
+  later(ms, fn) {
+    const flux = this.shell()
+    if flux {
+      return flux.later(ms, fn)
+    }
+    const id = window.setTimeout(fn, ms)
+    return () => window.clearTimeout(id)
+  }
+
+  every(ms, fn) {
+    const flux = this.shell()
+    if flux {
+      return flux.every(ms, fn)
+    }
+    const id = window.setInterval(fn, ms)
+    return () => window.clearInterval(id)
+  }
+
+  listen(target, type, fn, opts) {
+    const flux = this.shell()
+    if flux {
+      return flux.on(target, type, fn, opts)
+    }
+    target.addEventListener(type, fn, opts)
+    return () => target.removeEventListener(type, fn, opts)
+  }
+
+  toast(opts) {
+    const flux = this.shell()
+    if flux and flux.toast {
+      flux.toast(opts)
+    }
+  }
+
+  saveLocal(key, value) {
+    try {
+      window.localStorage.setItem(key, value)
+    } catch (err) {
+      // Private mode: the preference just isn't remembered.
+    }
+  }
+
+  readLocal(key) {
+    try {
+      return window.localStorage.getItem(key)
+    } catch (err) {
+      return null
+    }
+  }
+
+  // ---- where the console is asked to open ---------------------------------
+
+  routeOf(url) {
+    const id = url.searchParams.get("id") or ""
+    let p = url.pathname
+    if p.length > 1 and p.endsWith("/") {
+      p = p.slice(0, -1)
+    }
+    if p is "/servers/server-terminal" {
+      return { kind: "server", tab: "terminal", id: id }
+    }
+    if p is "/servers/site-terminal" {
+      return { kind: "site", tab: "terminal", id: id }
+    }
+    if p is "/servers/server-logs" {
+      return { kind: "server", tab: "logs", id: id }
+    }
+    if p is "/servers/site-logs" {
+      return { kind: "site", tab: "logs", id: id }
+    }
+    return null
+  }
+
+  // The server or site whose pages you're on, for Ctrl+` from anywhere.
+  pageContext() {
+    const url = new URL(window.location.href)
+    const id = url.searchParams.get("id") or ""
+    if not id {
+      return null
+    }
+    const p = url.pathname
+    if p.startsWith("/servers/site-") and not p.startsWith("/servers/site-create") {
+      return { kind: "site", id: id }
+    }
+    if p.startsWith("/servers/server-") {
+      return { kind: "server", id: id }
+    }
+    return null
+  }
+
+  onLinkClick(e) {
+    if e.defaultPrevented or e.button is not 0 or e.metaKey or e.ctrlKey or e.shiftKey or e.altKey {
+      return null
+    }
+    const t = e.target
+    const a = t and t.closest ? t.closest("a[href]") : null
+    if not a {
+      return null
+    }
+    if a.target and a.target is not "_self" {
+      return null
+    }
+    if a.hasAttribute("download") or a.hasAttribute("data-no-console") {
+      return null
+    }
+    let url = null
+    try {
+      url = new URL(a.href, window.location.href)
+    } catch (err) {
+      return null
+    }
+    if url.origin is not window.location.origin {
+      return null
+    }
+    const r = this.routeOf(url)
+    if not r or not r.id {
+      return null
+    }
+    e.preventDefault()
+    e.stopPropagation()
+    this.openFor(r)
+  }
+
+  fromUrl() {
+    const r = this.routeOf(new URL(window.location.href))
+    if r and r.id {
+      this.openFor(r)
+      return true
+    }
+    return false
+  }
+
+  onNavigated() {
+    this.menuOpen = false
+    if this.fromUrl() {
+      return null
+    }
+    // A jump from the command palette lands behind the console: get out of
+    // the way, keeping any live shell in the pill.
+    if this.view is "open" {
+      this.minimize()
+    }
+  }
+
+  openFor(r) {
+    if not r or not r.id {
+      return null
+    }
+    const kind = r.kind is "site" ? "site" : "server"
+    const id = "" + r.id
+    this.menuOpen = false
+
+    if r.tab is "logs" {
+      this.tab = "logs"
+      this.setLogsTarget(kind, id, r.source or "", r.entry or "")
+      if not this.tId {
+        this.setTerminalTarget(kind, id, false)
+      }
+    } else {
+      this.tab = "terminal"
+      this.stopLogLive()
+      this.setTerminalTarget(kind, id, true)
+      if not this.lId {
+        this.setLogsTarget(kind, id, "", "")
+      }
+    }
+    this.reveal()
+  }
+
+  // ---- window -------------------------------------------------------------
+
+  reveal() {
+    if this.view is not "open" {
+      this.lastFocus = document.activeElement
+    }
+    this.view = "open"
+    document.body.style.overflow = "hidden"
+    this.afterShow()
+  }
+
+  afterShow() {
+    window.requestAnimationFrame(() => {
+      if this.view is not "open" {
+        return null
+      }
+      if this.tab is "terminal" {
+        this.refit()
+        this.wakeCursor()
+        this.focusTerm()
+      } else {
+        this.ensureLogs()
+      }
+    })
+    this.later(260, () => this.refit())
+  }
+
+  restoreFocus() {
+    const back = this.lastFocus
+    this.lastFocus = null
+    if back and back.focus and document.contains(back) {
+      try {
+        back.focus()
+      } catch (err) {
+        // The element is gone; focus stays on the body.
+      }
+    }
+  }
+
+  // Hide the window. A live shell keeps running in the pill.
+  minimize() {
+    this.menuOpen = false
+    this.confirmEnd = false
+    this.stopLogLive()
+    // Logs are read again (quietly, over the old ones) when it reopens.
+    this.lStale = true
+    if this.phase is "connected" or this.phase is "connecting" {
+      this.view = "min"
+    } else {
+      this.view = "closed"
+    }
+    document.body.style.overflow = ""
+    this.restoreFocus()
+  }
+
+  close() {
+    if this.live {
+      this.confirmEnd = true
+      if this.view is not "open" {
+        this.reveal()
+      }
+      return null
+    }
+    this.endAndClose()
+  }
+
+  endAndClose() {
+    this.confirmEnd = false
+    this.pending = null
+    this.resetTerminal()
+    this.stopLogLive()
+    this.lStale = true
+    this.view = "closed"
+    this.menuOpen = false
+    document.body.style.overflow = ""
+    this.restoreFocus()
+  }
+
+  toggleFull() {
+    this.full = not this.full
+    this.saveLocal("flux-console-full", this.full ? "1" : "0")
+    const term = this.global("fluxConsoleTerm")
+    if term {
+      term.options.fontSize = this.full ? this.fontSize + 1 : this.fontSize
+    }
+    this.later(60, () => this.refit())
+    this.later(300, () => this.refit())
+    this.focusTerm()
+  }
+
+  toggleSide() {
+    this.side = not this.side
+    this.saveLocal("flux-console-side", this.side ? "1" : "0")
+    this.later(60, () => this.refit())
+    this.later(300, () => this.refit())
+  }
+
+  selectTab(tab) {
+    this.menuOpen = false
+    if tab is this.tab {
+      return null
+    }
+    this.tab = tab
+    if tab is "terminal" {
+      this.stopLogLive()
+      if this.phase is "idle" and this.tReady and not this.error {
+        this.connect()
+      }
+      window.requestAnimationFrame(() => {
+        this.refit()
+        this.wakeCursor()
+        this.focusTerm()
+      })
+    } else {
+      if not this.lId and this.tId {
+        this.setLogsTarget(this.tKind, this.tId, "", "")
+      }
+      this.ensureLogs()
+    }
+  }
+
+  isTyping(e) {
+    const t = e.target
+    if not t or not t.tagName {
+      return false
+    }
+    return t.tagName is "INPUT" or t.tagName is "TEXTAREA" or t.tagName is "SELECT" or t.isContentEditable
+  }
+
+  inShell(e) {
+    const t = e.target
+    return t and t.closest and t.closest("#flux-console-term") ? true : false
+  }
+
+  // Capture phase, so the shortcut works while the shell has focus.
+  onKeyCapture(e) {
+    const backquote = e.code is "Backquote" or e.key is "`"
+    if backquote and e.ctrlKey and not e.altKey and not e.metaKey {
+      e.preventDefault()
+      e.stopPropagation()
+      this.toggleShortcut()
+    }
+  }
+
+  onKey(e) {
+    if this.view is not "open" or e.key is not "Escape" {
+      return null
+    }
+    // Esc belongs to the shell (vim, less, readline) while it has focus.
+    if this.inShell(e) {
+      return null
+    }
+    e.preventDefault()
+    if this.menuOpen {
+      this.menuOpen = false
+    } else if this.confirmEnd {
+      this.confirmEnd = false
+    } else if this.pending {
+      this.pending = null
+    } else if this.isTyping(e) and this.search {
+      this.search = ""
+    } else {
+      this.minimize()
+    }
+  }
+
+  toggleShortcut() {
+    if this.view is "open" {
+      this.minimize()
+      return null
+    }
+    if this.tId or this.lId {
+      this.reveal()
+      if this.tab is "terminal" and this.phase is "idle" and this.tReady {
+        this.connect()
+      }
+      return null
+    }
+    const ctx = this.pageContext()
+    if ctx {
+      this.openFor({ kind: ctx.kind, id: ctx.id, tab: "terminal" })
+    }
+  }
+
+  // ---- target switcher ----------------------------------------------------
+
+  rows(res) {
+    if res.ok and Array.isArray(res.data) {
+      return res.data
+    }
+    if res.ok and res.data and Array.isArray(res.data.data) {
+      return res.data.data
+    }
+    return []
+  }
+
+  async toggleMenu() {
+    this.menuOpen = not this.menuOpen
+    if not this.menuOpen {
+      return null
+    }
+    this.menuQuery = ""
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById("cx-menu-input")
+      if el {
+        el.focus()
+      }
+    })
+    if this.menuServers.length > 0 or this.menuLoading {
+      return null
+    }
+    this.menuLoading = true
+    const all = await Promise.all([useApi("/api/servers"), useApi("/api/sites")])
+    const servers = this.rows(all[0])
+    const sites = this.rows(all[1])
+    this.menuServers = servers.map((s) => ({ id: "" + s.id, name: s.name or ("Server " + s.id), host: s.host or s.ip_address or "", status: s.status or "" }))
+    this.menuSites = sites.map((s) => ({ id: "" + s.id, name: s.domain or ("Site " + s.id), serverId: "" + s.server_id, status: s.status or "" }))
+    this.menuLoading = false
+  }
+
+  menuGroups() {
+    const q = this.menuQuery.trim().toLowerCase()
+    const hit = (text) => q is "" or String(text).toLowerCase().includes(q)
+    return this.menuServers.map((s) => {
+      const sites = this.menuSites.filter((x) => x.serverId is s.id and (hit(x.name) or hit(s.name)))
+      return Object.assign({}, s, {
+        sites: sites,
+        show: hit(s.name) or hit(s.host) or sites.length > 0,
+        dot: this.statusDot(s.status),
+        on: (this.tab is "terminal" ? this.tKind : this.lKind) is "server" and (this.tab is "terminal" ? this.tId : this.lId) is s.id
+      })
+    }).filter((s) => s.show)
+  }
+
+  statusDot(status) {
+    if status is "online" or status is "ready" {
+      return "w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-400"
+    }
+    if status is "offline" or status is "failed" {
+      return "w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500"
+    }
+    return "w-1.5 h-1.5 shrink-0 rounded-full bg-amber-400"
+  }
+
+  choose(kind, id) {
+    this.menuOpen = false
+    this.openFor({ kind: kind, id: id, tab: this.tab })
+  }
+
+  // ---- terminal: target ---------------------------------------------------
+
+  async fetchTarget(kind, id) {
+    const result = await useApi((kind is "site" ? "/api/sites/" : "/api/servers/") + id)
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if not result.ok or not result.data {
+      return null
+    }
+    const d = result.data
+    if kind is "site" {
+      return {
+        title: String(d.domain or ""),
+        user: String(d.isolated_user or ""),
+        host: String(d.domain or ""),
+        cwd: "/home/" + d.isolated_user + "/" + d.domain,
+        ready: d.status is "ready",
+        site: d
+      }
+    }
+    return {
+      title: String(d.name or ""),
+      user: String(d.ssh_user or "root"),
+      host: String(d.host or ""),
+      cwd: "~",
+      ready: true,
+      site: null
+    }
+  }
+
+  busy() {
+    return this.phase is "connecting" or this.phase is "connected"
+  }
+
+  async setTerminalTarget(kind, id, auto) {
+    if kind is this.tKind and id is this.tId {
+      if auto and this.tReady and (this.phase is "idle") and not Billing.locked {
+        this.connect()
+      }
+      return null
+    }
+
+    // A shell is open somewhere else: ask before ending it.
+    if this.busy() {
+      this.pending = { kind: kind, id: id }
+      this.pendingTitle = kind is "site" ? "this site" : "this server"
+      const info = await this.fetchTarget(kind, id)
+      if this.pending and this.pending.id is id and this.pending.kind is kind and info {
+        this.pendingTitle = info.title
+      }
+      return null
+    }
+
+    this.pending = null
+    this.resetTerminal()
+    this.tKind = kind
+    this.tId = id
+    this.tReady = false
+    this.tTitle = ""
+    this.tUser = ""
+    this.tHost = ""
+    this.tCwd = ""
+
+    const info = await this.fetchTarget(kind, id)
+    if kind is not this.tKind or id is not this.tId {
+      return null
+    }
+    if not info {
+      this.error = kind is "site" ? "That site wasn't found. It may have been removed." : "That server wasn't found. It may have been deleted."
+      return null
+    }
+    this.tTitle = info.title
+    this.tUser = info.user
+    this.tHost = info.host
+    this.tCwd = info.cwd
+    if not info.ready {
+      this.error = "The terminal opens once the site has finished creating."
+      return null
+    }
+    this.tReady = true
+    if auto and this.tab is "terminal" and not Billing.locked {
+      this.connect()
+    }
+  }
+
+  async confirmSwitch() {
+    const next = this.pending
+    if not next {
+      return null
+    }
+    this.pending = null
+    this.resetTerminal()
+    this.tKind = ""
+    this.tId = ""
+    await this.setTerminalTarget(next.kind, next.id, true)
+  }
+
+  // ---- terminal: xterm ----------------------------------------------------
+
+  loadScript(src, done) {
+    const el = document.createElement("script")
+    el.src = src
+    el.onload = () => done(true)
+    el.onerror = () => done(false)
+    document.head.appendChild(el)
+  }
+
+  loadAsync(src) {
+    return new Promise((resolve) => this.loadScript(src, resolve))
+  }
+
+  async ensureXterm() {
+    if this.global("Terminal") and this.global("FitAddon") {
+      return true
+    }
+
+    if not document.getElementById("cx-xterm-css") {
+      const css = document.createElement("link")
+      css.id = "cx-xterm-css"
+      css.rel = "stylesheet"
+      css.href = "https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css"
+      document.head.appendChild(css)
+    }
+
+    const core = await this.loadAsync("https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js")
+    const fit = await this.loadAsync("https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js")
+    // Clickable links are a nicety: the terminal works without them.
+    await this.loadAsync("https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.js")
+
+    if core and fit {
+      return true
+    }
+
+    this.error = "Couldn't load the terminal library. Check your internet connection and try again."
+    return false
+  }
+
+  async ensureFont() {
+    try {
+      await Promise.race([
+        document.fonts.load('13px "Geist Mono"'),
+        new Promise((resolve) => this.later(800, resolve))
+      ])
+    } catch (err) {
+      // The fallback monospace font is fine.
+    }
+  }
+
+  clearTerminal() {
+    const term = this.global("fluxConsoleTerm")
+    if term {
+      term.dispose()
+      this.setGlobal("fluxConsoleTerm", null)
+    }
+    this.setGlobal("fluxConsoleFit", null)
+    const el = document.getElementById("flux-console-term")
+    if el {
+      el.innerHTML = ""
+    }
+  }
+
+  dropSocket() {
+    const ws = this.global("fluxConsoleSocket")
+    if ws {
+      ws.onopen = null
+      ws.onmessage = null
+      ws.onclose = null
+      ws.close()
+      this.setGlobal("fluxConsoleSocket", null)
+    }
+  }
+
+  resetTerminal() {
+    this.dropSocket()
+    this.clearTerminal()
+    this.stopTicker()
+    this.live = false
+    this.phase = "idle"
+    this.error = ""
+    this.codeError = ""
+    this.smsNote = ""
+    this.pendingCode = ""
+    this.confirmEnd = false
+  }
+
+  refit() {
+    if this.view is not "open" or this.tab is not "terminal" {
+      return null
+    }
+    const fit = this.global("fluxConsoleFit")
+    const term = this.global("fluxConsoleTerm")
+    if not fit or not term {
+      return null
+    }
+    try {
+      fit.fit()
+    } catch (err) {
+      return null
+    }
+    const ws = this.global("fluxConsoleSocket")
+    if ws and ws.readyState is 1 {
+      ws.send(JSON.stringify({ t: "r", cols: term.cols, rows: term.rows }))
+    }
+  }
+
+  focusTerm() {
+    const term = this.global("fluxConsoleTerm")
+    if term and this.view is "open" and this.tab is "terminal" {
+      term.focus()
+    }
+  }
+
+  // xterm's cursor blink runs on a page timer, which the shell releases on
+  // navigation. Turning blink off and on starts a fresh one.
+  wakeCursor() {
+    const term = this.global("fluxConsoleTerm")
+    if term {
+      term.options.cursorBlink = false
+      term.options.cursorBlink = true
+    }
+  }
+
+  setFont(delta) {
+    const next = Math.max(10, Math.min(20, this.fontSize + delta))
+    this.fontSize = next
+    this.saveLocal("flux-console-font", "" + next)
+    const term = this.global("fluxConsoleTerm")
+    if term {
+      term.options.fontSize = this.full ? next + 1 : next
+      this.refit()
+    }
+  }
+
+  // ---- terminal: session clock --------------------------------------------
+
+  clock(total) {
+    const h = Math.floor(total / 3600)
+    const m = Math.floor((total % 3600) / 60)
+    const s = total % 60
+    const ss = s < 10 ? "0" + s : "" + s
+    if h > 0 {
+      const mm = m < 10 ? "0" + m : "" + m
+      return h + ":" + mm + ":" + ss
+    }
+    return m + ":" + ss
+  }
+
+  bytes(n) {
+    if n < 1024 {
+      return n + " B"
+    }
+    if n < 1048576 {
+      return (n / 1024).toFixed(1) + " KB"
+    }
+    return (n / 1048576).toFixed(1) + " MB"
+  }
+
+  io() {
+    let box = this.global("fluxConsoleIO")
+    if not box {
+      box = { now: 0, total: 0, history: [] }
+      this.setGlobal("fluxConsoleIO", box)
+    }
+    return box
+  }
+
+  resetMeter() {
+    const box = this.io()
+    box.now = 0
+    box.total = 0
+    box.history = new Array(24).fill(0)
+    this.meter = box.history.map(() => ({ h: 6, cls: "flex-1 rounded-[2px] bg-white/[0.06]" }))
+    this.totalText = "0 B"
+  }
+
+  sampleMeter() {
+    const box = this.io()
+    box.history.push(box.now)
+    box.history = box.history.slice(-24)
+    box.now = 0
+    const peak = box.history.reduce((a, b) => Math.max(a, b), 1)
+    this.meter = box.history.map((b) => {
+      if b is 0 {
+        return { h: 6, cls: "flex-1 rounded-[2px] bg-white/[0.06] transition-[height] duration-500" }
+      }
+      const h = Math.round(18 + 82 * Math.log(1 + b) / Math.log(1 + peak))
+      const hot = h > 70
+      return { h: h, cls: hot ? "flex-1 rounded-[2px] bg-gradient-to-t from-brand-500 to-amber-300 transition-[height] duration-500" : "flex-1 rounded-[2px] bg-gradient-to-t from-brand-600/70 to-brand-400 transition-[height] duration-500" }
+    })
+    this.totalText = this.bytes(box.total)
+  }
+
+  tick() {
+    if not this.live {
+      this.stopTicker()
+      return null
+    }
+    const now = Date.now()
+    const left = Math.max(0, 900 - Math.floor((now - this.lastInputAt) / 1000))
+    this.idleLeft = left
+    this.idleText = this.clock(left)
+    this.idleWarn = left <= 120
+    this.sessionText = this.clock(Math.floor((now - this.connectedAt) / 1000))
+    this.sampleMeter()
+  }
+
+  startTicker() {
+    this.stopTicker()
+    this.setGlobal("fluxConsoleTick", this.every(1000, () => this.tick()))
+  }
+
+  stopTicker() {
+    const stop = this.global("fluxConsoleTick")
+    if stop {
+      stop()
+      this.setGlobal("fluxConsoleTick", null)
+    }
+  }
+
+  // ---- terminal: input ----------------------------------------------------
+
+  sendInput(d) {
+    if Billing.locked {
+      return null
+    }
+    const ws = this.global("fluxConsoleSocket")
+    if ws and ws.readyState is 1 {
+      this.lastInputAt = Date.now()
+      ws.send(JSON.stringify({ t: "i", d: d }))
+    }
+  }
+
+  // Touch keys: mousedown would move focus off the shell.
+  keepFocus() {
+    return null
+  }
+
+  sendKey(seq) {
+    this.sendInput(seq)
+    this.focusTerm()
+  }
+
+  runCommand(cmd) {
+    if Billing.locked or not this.live {
+      return null
+    }
+    this.sendInput(cmd + String.fromCharCode(13))
+    this.focusTerm()
+  }
+
+  clearScreen() {
+    const term = this.global("fluxConsoleTerm")
+    if term {
+      term.clear()
+      term.focus()
+    }
+  }
+
+  flash(label) {
+    this.copied = label
+    this.later(1600, () => {
+      if this.copied is label {
+        this.copied = ""
+      }
+    })
+  }
+
+  async copySelection() {
+    const term = this.global("fluxConsoleTerm")
+    if not term {
+      return null
+    }
+    const text = term.getSelection()
+    if not text {
+      this.flash("none")
+      term.focus()
+      return null
+    }
+    await this.copyText(text, "term")
+    term.focus()
+  }
+
+  async pasteClipboard() {
+    const term = this.global("fluxConsoleTerm")
+    if not term {
+      return null
+    }
+    const text = await navigator.clipboard.readText().catch(() => "")
+    if text.trim() {
+      term.paste(text)
+    }
+    term.focus()
+  }
+
+  // ---- terminal: connection -----------------------------------------------
+
+  onMessage(raw) {
+    const msg = JSON.parse(raw)
+    const term = this.global("fluxConsoleTerm")
+    if not term {
+      return null
+    }
+
+    if msg.t is "out" {
+      const bytes = Uint8Array.from(atob(msg.d), (c) => c.charCodeAt(0))
+      const box = this.io()
+      box.now = box.now + bytes.length
+      box.total = box.total + bytes.length
+      term.write(bytes)
+    } else if msg.t is "ready" {
+      const now = Date.now()
+      this.connectedAt = now
+      this.lastInputAt = now
+      this.idleLeft = 900
+      this.idleText = "15:00"
+      this.idleWarn = false
+      this.sessionText = "0:00"
+      this.live = true
+      this.phase = "connected"
+      this.startTicker()
+      this.refit()
+      this.focusTerm()
+    } else if msg.t is "exit" {
+      const cr = String.fromCharCode(13)
+      const nl = String.fromCharCode(10)
+      const esc = String.fromCharCode(27)
+      term.write(cr + nl + esc + "[90m[" + msg.m + "]" + esc + "[0m" + cr + nl)
+    }
+  }
+
+  onClosed() {
+    const wasLive = this.live
+    this.stopTicker()
+    this.live = false
+    this.phase = "closed"
+    this.confirmEnd = false
+    if wasLive and this.view is not "open" {
+      this.view = "closed"
+      this.toast({
+        tone: "warn",
+        title: "Terminal session ended",
+        text: this.tUser + "@" + this.tHost,
+        action: { label: "Reopen", run: () => this.reveal() }
+      })
+    }
+  }
+
+  askForCode(methods, message) {
+    this.clearTerminal()
+    if methods {
+      this.hasSms = methods.some((m) => ("" + m).toLowerCase().includes("sms"))
+    }
+    this.smsNote = ""
+    this.codeError = message
+    this.phase = "code"
+    this.later(80, () => {
+      const el = document.getElementById("cx-code")
+      if el {
+        el.focus()
+      }
+    })
+  }
+
+  submitCode() {
+    const el = document.getElementById("cx-code")
+    const value = el ? ("" + Reflect.get(el, "value")).trim() : ""
+    if not value {
+      this.codeError = "Enter your verification code."
+      return null
+    }
+    this.pendingCode = value
+    this.codeError = ""
+    this.phase = "idle"
+    this.connect()
+  }
+
+  cancelCode() {
+    this.pendingCode = ""
+    this.codeError = ""
+    this.smsNote = ""
+    this.phase = "idle"
+    this.error = "Verification cancelled."
+  }
+
+  async sendSms() {
+    if this.smsBusy {
+      return null
+    }
+    this.smsBusy = true
+    this.codeError = ""
+    this.smsNote = ""
+    const result = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
+    this.smsBusy = false
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if result.ok {
+      const hint = result.data?.phone_hint
+      this.smsNote = hint ? "Code sent to " + hint + "." : "Code sent."
+    } else {
+      this.codeError = result.data?.error or "Couldn't send the code."
+    }
+  }
+
+  retry() {
+    this.error = ""
+    if this.tReady {
+      this.phase = "idle"
+      this.connect()
+    }
+  }
+
+  async connect() {
+    if Billing.locked or not this.tReady {
+      return null
+    }
+    if this.phase is "connecting" or this.phase is "connected" {
+      return null
+    }
+
+    const kind = this.tKind
+    const id = this.tId
+    this.error = ""
+    this.phase = "connecting"
+
+    const ready = await this.ensureXterm()
+    if not ready {
+      this.pendingCode = ""
+      this.phase = "idle"
+      return null
+    }
+    await this.ensureFont()
+    if kind is not this.tKind or id is not this.tId {
+      return null
+    }
+
+    this.dropSocket()
+    this.clearTerminal()
+
+    const el = document.getElementById("flux-console-term")
+    if not el {
+      this.error = "The terminal couldn't start. Reload the page and try again."
+      this.pendingCode = ""
+      this.phase = "idle"
+      return null
+    }
+
+    const TerminalClass = this.global("Terminal")
+    const fitModule = this.global("FitAddon")
+    const linksModule = this.global("WebLinksAddon")
+
+    const term = new TerminalClass({
+      allowTransparency: true,
+      cursorBlink: true,
+      cursorStyle: "bar",
+      cursorWidth: 2,
+      fontSize: this.full ? this.fontSize + 1 : this.fontSize,
+      lineHeight: 1.3,
+      scrollback: 10000,
+      smoothScrollDuration: 80,
+      fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      theme: {
+        background: "#00000000",
+        foreground: "#e3e3e6",
+        cursor: "#f0676b",
+        cursorAccent: "#0a0a0b",
+        selectionBackground: "#f0676b47",
+        black: "#232327",
+        red: "#f0676b",
+        green: "#34d399",
+        yellow: "#fbbf24",
+        blue: "#7dd3fc",
+        magenta: "#c4b5fd",
+        cyan: "#67e8f9",
+        white: "#cacacf",
+        brightBlack: "#75757e",
+        brightRed: "#f6a8a6",
+        brightGreen: "#6ee7b7",
+        brightYellow: "#fcd34d",
+        brightBlue: "#bae6fd",
+        brightMagenta: "#ddd6fe",
+        brightCyan: "#a5f3fc",
+        brightWhite: "#f7f7f8"
+      }
+    })
+    const fit = new fitModule.FitAddon()
+    term.loadAddon(fit)
+    if linksModule {
+      term.loadAddon(new linksModule.WebLinksAddon())
+    }
+    term.open(el)
+    try {
+      fit.fit()
+    } catch (err) {
+      // Hidden right now; the next refit sizes it.
+    }
+    this.setGlobal("fluxConsoleTerm", term)
+    this.setGlobal("fluxConsoleFit", fit)
+    this.resetMeter()
+
+    // The code is used once: it is cleared before the request goes out.
+    const code = this.pendingCode
+    this.pendingCode = ""
+    const body = Object.assign({ cols: term.cols, rows: term.rows }, code ? { code: code } : {})
+    const base = kind is "site" ? "/api/sites/" : "/api/servers/"
+
+    const result = await useApi(base + id + "/terminal", { method: "POST", body: body })
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if kind is not this.tKind or id is not this.tId {
+      return null
+    }
+
+    // Two-factor is on: ask for a code, then connect() runs again with it.
+    if result.status is 403 and result.data?.two_factor_required {
+      this.askForCode(result.data.methods, "")
+      return null
+    }
+
+    if not result.ok {
+      const fieldErrors = result.data?.errors?.code
+      const fieldMessage = fieldErrors ? fieldErrors[0] : ""
+      // A wrong code or a lockout stays on the code prompt.
+      if code and (fieldMessage or result.status is 429) {
+        this.askForCode(null, fieldMessage or result.data?.error or "That code didn't work.")
+        return null
+      }
+      this.error = result.data?.error or "Couldn't open a terminal."
+      this.clearTerminal()
+      this.phase = "idle"
+      return null
+    }
+
+    let url = result.data.url
+    if not url {
+      const hostname = window.location.hostname
+      if hostname is "localhost" or hostname is "127.0.0.1" {
+        const port = this.global("__TYLIX_CHANNELS_PORT__") or 6001
+        url = "ws://" + hostname + ":" + port + "/terminal"
+      } else {
+        url = (window.location.protocol is "https:" ? "wss://" : "ws://") + window.location.host + "/channels/terminal"
+      }
+    }
+
+    // The shell's own WebSocket: the page's one is closed on navigation.
+    const flux = this.shell()
+    const SocketClass = flux and flux.native and flux.native.WebSocket ? flux.native.WebSocket : window.WebSocket
+    const ticket = result.data.ticket
+    const ws = new SocketClass(url)
+    ws.onopen = () => ws.send(JSON.stringify({ t: "auth", ticket: ticket }))
+    ws.onmessage = (e) => this.onMessage(e.data)
+    ws.onclose = () => this.onClosed()
+    this.setGlobal("fluxConsoleSocket", ws)
+
+    term.onData((d) => this.sendInput(d))
+  }
+
+  disconnect() {
+    const ws = this.global("fluxConsoleSocket")
+    if ws {
+      ws.close()
+    }
+  }
+
+  reconnect() {
+    this.phase = "idle"
+    this.connect()
+  }
+
+  // ---- logs ---------------------------------------------------------------
+
+  describeSource(id) {
+    if id is "app" {
+      return "The app's service: crashes and anything it prints."
+    }
+    if id is "laravel" {
+      return "Newest laravel.log, stack traces kept whole."
+    }
+    if id is "nginx" {
+      return "Upstream failures, permissions, bad configs."
+    }
+    if id is "phpfpm" {
+      return "Warnings and errors from the PHP-FPM pool."
+    }
+    return "Requests answered with a 5xx status."
+  }
+
+  sourceTone(id) {
+    const base = "w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-[12px] font-bold font-mono "
+    if id is "app" or id is "all" {
+      return base + "bg-brand-500/15 text-brand-300 shadow-[inset_0_0_0_1px_rgb(240_103_107/0.25)]"
+    }
+    if id is "laravel" or id is "error" {
+      return base + "bg-rose-500/15 text-rose-300 shadow-[inset_0_0_0_1px_rgb(244_63_94/0.25)]"
+    }
+    if id is "nginx" or id is "info" {
+      return base + "bg-sky-500/15 text-sky-300 shadow-[inset_0_0_0_1px_rgb(14_165_233/0.25)]"
+    }
+    if id is "phpfpm" {
+      return base + "bg-violet-500/15 text-violet-300 shadow-[inset_0_0_0_1px_rgb(139_92_246/0.25)]"
+    }
+    if id is "success" {
+      return base + "bg-emerald-500/15 text-emerald-300 shadow-[inset_0_0_0_1px_rgb(16_185_129/0.25)]"
+    }
+    return base + "bg-amber-500/15 text-amber-300 shadow-[inset_0_0_0_1px_rgb(245_158_11/0.25)]"
+  }
+
+  navCls(on) {
+    const base = "w-full flex items-start gap-3 text-left rounded-xl px-2.5 py-2 transition-colors "
+    if on {
+      return base + "bg-white/[0.06] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]"
+    }
+    return base + "hover:bg-white/[0.03]"
+  }
+
+  buildPrompt(site) {
+    if not site {
+      return ""
+    }
+    const n = this.lines
+    const d = site.domain
+    if this.source is "app" {
+      return "journalctl -u app-" + site.isolated_user + " -n " + n
+    }
+    if this.source is "laravel" {
+      return "tail -n " + n + " storage/logs/laravel.log"
+    }
+    if this.source is "nginx" {
+      return "tail -n " + n + " /var/log/nginx/" + d + "-error.log"
+    }
+    if this.source is "phpfpm" {
+      return "tail -n " + n + " /var/log/php" + site.php_version + "-fpm.log | grep pool"
+    }
+    return "tail -n " + n + " /var/log/nginx/" + d + "-access.log | awk '5xx'"
+  }
+
+  resetLogs() {
+    this.stopLogLive()
+    this.logSeq = this.logSeq + 1
+    this.entries = []
+    this.openIds = []
+    this.logLoaded = false
+    this.logMissing = false
+    this.logError = ""
+    this.logBusy = false
+    this.scanned = 0
+    this.fetchedAt = ""
+    this.search = ""
+  }
+
+  async setLogsTarget(kind, id, source, entry) {
+    if entry {
+      this.openIds = [entry]
+      this.jumpTo = entry
+    }
+    if kind is this.lKind and id is this.lId {
+      if source and source is not this.source and this.lKind is "site" {
+        this.pickSource(source)
+      } else if this.lStale {
+        if this.tab is "logs" and this.view is "open" {
+          this.ensureLogs()
+        }
+      } else if entry {
+        this.jumpTo = ""
+        window.requestAnimationFrame(() => this.scrollToEntry(entry))
+      }
+      return null
+    }
+
+    this.resetLogs()
+    if entry {
+      this.openIds = [entry]
+    }
+    this.lKind = kind
+    this.lId = id
+    this.lTitle = ""
+    this.lPrompt = ""
+    this.lReady = true
+    this.logSources = []
+    this.source = source
+    this.sLevel = ""
+    this.sCategory = ""
+    this.lStale = true
+
+    const info = await this.fetchTarget(kind, id)
+    if kind is not this.lKind or id is not this.lId {
+      return null
+    }
+    if not info {
+      this.logError = kind is "site" ? "That site wasn't found." : "That server wasn't found."
+      return null
+    }
+    this.lTitle = info.title
+    this.lReady = info.ready
+    this.setGlobal("fluxConsoleLogSite", info.site)
+    this.lPrompt = info.user + "@" + info.host
+    if this.tab is "logs" and this.view is "open" {
+      this.ensureLogs()
+    }
+  }
+
+  ensureLogs() {
+    if this.lId and this.lStale and this.lTitle and this.lReady {
+      this.loadLogs(false)
+    }
+  }
+
+  promptCmd() {
+    if this.lKind is "site" {
+      return this.buildPrompt(this.global("fluxConsoleLogSite"))
+    }
+    let cmd = "flux events --limit 200"
+    if this.sLevel {
+      cmd = cmd + " --level " + this.sLevel
+    }
+    if this.sCategory {
+      cmd = cmd + " --area " + this.sCategory
+    }
+    return cmd
+  }
+
+  moreText(e) {
+    if e.more {
+      return e.more
+    }
+    const n = (e.line_count or 1) - 1
+    if n < 1 {
+      return ""
+    }
+    return n is 1 ? "+1 line" : "+" + n + " lines"
+  }
+
+  fmtDate(value) {
+    const d = new Date(value)
+    if isNaN(d.getTime()) {
+      return String(value or "")
+    }
+    return d.toISOString().slice(0, 19).replace("T", " ")
+  }
+
+  async loadLogs(quiet) {
+    if not this.lId {
+      return null
+    }
+    if quiet and this.logBusy {
+      return null
+    }
+
+    this.logSeq = this.logSeq + 1
+    const ticket = this.logSeq
+    const kind = this.lKind
+    this.logBusy = true
+    this.lStale = false
+    if not quiet {
+      this.logError = ""
+    }
+
+    let url = ""
+    if kind is "site" {
+      url = "/api/sites/" + this.lId + "/logs?source=" + encodeURIComponent(this.source) + "&lines=" + this.lines + "&errors=" + (this.errorsOnly ? "1" : "0")
+    } else {
+      // Level and category come from fixed buttons, so they are safe as is.
+      url = "/api/servers/" + this.lId + "/logs?limit=200"
+      if this.sLevel {
+        url = url + "&level=" + this.sLevel
+      }
+      if this.sCategory {
+        url = url + "&category=" + this.sCategory
+      }
+    }
+
+    const result = await useApi(url)
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if ticket is not this.logSeq {
+      return null
+    }
+
+    if result.ok and kind is "site" {
+      this.logSources = result.data.sources or []
+      this.source = result.data.source
+      this.entries = result.data.entries or []
+      this.scanned = result.data.scanned
+      this.logMissing = result.data.missing
+    } else if result.ok {
+      const list = Array.isArray(result.data) ? result.data : []
+      const nl = String.fromCharCode(10)
+      this.entries = list.map((l) => {
+        const meta = l.meta or {}
+        const hasMeta = Object.keys(meta).length > 0
+        return {
+          id: "" + l.id,
+          level: l.level,
+          error: l.level is "error",
+          time: this.fmtDate(l.created_at),
+          message: String(l.message or ""),
+          detail: "event: " + l.event + (hasMeta ? nl + JSON.stringify(meta, null, 2) : ""),
+          line_count: 1,
+          more: hasMeta ? "· details" : ""
+        }
+      })
+      this.scanned = list.length
+      this.logMissing = false
+    } else if result.status is 403 {
+      this.logError = kind is "site" ? "Only team admins can view site logs." : "You don't have access to this server's logs."
+    } else {
+      this.logError = result.data?.error or "Couldn't load the logs."
+    }
+
+    if result.ok {
+      this.logLoaded = true
+      this.fetchedAt = new Date().toLocaleTimeString()
+      const ids = this.entries.map((e) => e.id)
+      this.openIds = this.openIds.filter((id) => ids.includes(id))
+      if this.jumpTo {
+        const target = this.jumpTo
+        this.jumpTo = ""
+        window.requestAnimationFrame(() => this.scrollToEntry(target))
+      }
+    }
+    this.logBusy = false
+  }
+
+  pickSource(id) {
+    if this.lKind is "site" {
+      if id is this.source {
+        return null
+      }
+      this.source = id
+    } else {
+      if id is this.sLevel {
+        return null
+      }
+      this.sLevel = id
+    }
+    this.entries = []
+    this.openIds = []
+    this.logLoaded = false
+    this.loadLogs(false)
+  }
+
+  pickArea(id) {
+    if id is this.sCategory {
+      return null
+    }
+    this.sCategory = id
+    this.entries = []
+    this.logLoaded = false
+    this.loadLogs(false)
+  }
+
+  setLines(n) {
+    this.lines = n
+    this.loadLogs(false)
+  }
+
+  toggleErrors() {
+    this.errorsOnly = not this.errorsOnly
+    this.loadLogs(false)
+  }
+
+  toggleEntry(id) {
+    if this.openIds.includes(id) {
+      this.openIds = this.openIds.filter((x) => x is not id)
+    } else {
+      this.openIds = this.openIds.concat([id])
+    }
+  }
+
+  expandAll() {
+    this.openIds = this.logView.map((e) => e.id)
+  }
+
+  collapseAll() {
+    this.openIds = []
+  }
+
+  scrollToEntry(id) {
+    const row = document.getElementById("cx-log-" + id)
+    if row {
+      row.scrollIntoView({ block: "center", behavior: "smooth" })
+    }
+  }
+
+  jump(id) {
+    if not this.openIds.includes(id) {
+      this.openIds = this.openIds.concat([id])
+    }
+    window.requestAnimationFrame(() => this.scrollToEntry(id))
+  }
+
+  toggleLogLive() {
+    if this.logLive {
+      this.stopLogLive()
+      return null
+    }
+    this.logLive = true
+    this.loadLogs(true)
+    this.setGlobal("fluxConsoleLogTick", this.every(10000, () => {
+      if this.view is not "open" or this.tab is not "logs" {
+        this.stopLogLive()
+        return null
+      }
+      this.loadLogs(true)
+    }))
+  }
+
+  stopLogLive() {
+    this.logLive = false
+    const stop = this.global("fluxConsoleLogTick")
+    if stop {
+      stop()
+      this.setGlobal("fluxConsoleLogTick", null)
+    }
+  }
+
+  fallbackCopy(text) {
+    const ta = document.createElement("textarea")
+    ta.value = text
+    ta.style.position = "fixed"
+    ta.style.opacity = "0"
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand("copy")
+    document.body.removeChild(ta)
+  }
+
+  async copyText(text, label) {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch (err) {
+      this.fallbackCopy(text)
+    }
+    this.flash(label)
+  }
+
+  formatEntry(e) {
+    const nl = String.fromCharCode(10)
+    return "[" + e.level + "] " + (e.time or "") + nl + e.message + nl + e.detail
+  }
+
+  copyOne(id) {
+    const hit = this.entries.find((e) => e.id is id)
+    if hit {
+      this.copyText(this.formatEntry(hit), id)
+    }
+  }
+
+  copyAll() {
+    const nl = String.fromCharCode(10)
+    const picked = this.logView.slice(0, 50)
+    if picked.length is 0 {
+      return null
+    }
+    const head = [
+      (this.lKind is "site" ? "Site: " : "Server: ") + this.lTitle,
+      "Copied: " + new Date().toISOString(),
+      "Entries: " + picked.length + " of " + this.logView.length + " (newest first)"
+    ].join(nl)
+    const body = picked.map((e) => this.formatEntry(e)).join(nl + nl + "----" + nl + nl)
+    this.copyText(head + nl + nl + body, "all")
+  }
+
+  // ---- decoration ---------------------------------------------------------
+
+  buildMosaic() {
+    // A fixed pseudo-random pattern, so it looks the same every time.
+    this.mosaic = Array.from({ length: 72 }, (v, i) => {
+      const r = ((i * 7919 + 104729) % 997) / 997
+      let cls = ""
+      if r > 0.965 {
+        cls = "!bg-brand-400/70"
+      } else if r > 0.94 {
+        cls = "!bg-amber-300/50"
+      } else if r > 0.92 {
+        cls = "!bg-emerald-400/50"
+      }
+      return { a: (0.02 + r * 0.09).toFixed(3), cls: cls }
+    })
+  }
+
+onMount
+  async {
+    this.buildMosaic()
+    this.resetMeter()
+    this.full = this.readLocal("flux-console-full") is "1"
+    this.side = this.readLocal("flux-console-side") is not "0"
+    const font = Number(this.readLocal("flux-console-font"))
+    if font >= 10 and font <= 20 {
+      this.fontSize = font
+    }
+
+    // Before the shell's own link handler, so these links never navigate.
+    this.listen(document, "click", (e) => this.onLinkClick(e), true)
+    this.listen(window, "keydown", (e) => this.onKeyCapture(e), true)
+    this.listen(document, "keydown", (e) => this.onKey(e), false)
+    this.listen(window, "resize", () => this.refit(), false)
+    this.listen(window, "flux:console", (e) => this.openFor(e.detail), false)
+    this.listen(window, "flux:navigated", () => this.onNavigated(), false)
+
+    this.fromUrl()
+  }
+
+template
+<div class="cx-root contents">
+
+  <!-- ================= the console window ================= -->
+  <div class="{{ outerCls }}" class:hidden="{{ view is not 'open' }}">
+    <div onclick="{{ minimize() }}" aria-hidden="true" class="cx-fade cx-grain absolute inset-0 bg-[#050506]/75 backdrop-blur-md"></div>
+
+    <div role="dialog" aria-modal="true" aria-label="{{ tab is 'logs' ? 'Logs' : 'Terminal' }}" class="{{ windowCls }}">
+
+      <!-- rail -->
+      <nav aria-label="Console" class="hidden md:flex w-[64px] shrink-0 flex-col items-center gap-2 py-3 border-r border-white/[0.05] bg-black/25">
+        <span aria-hidden="true" class="mb-2 w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-[0_0_24px_-4px_rgb(240_103_107/0.7),inset_0_1px_0_rgb(255_255_255/0.25)]">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M5 6.5l3.5 3.5L5 13.5M10.5 14h4.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </span>
+
+        <button onclick="{{ selectTab('terminal') }}" title="Terminal" aria-label="Terminal" aria-pressed="{{ tab is 'terminal' }}" class="{{ termTabCls }}">
+          <IconTerminal class="w-5 h-5" />
+{{#if live}}
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#111113]"></span>
+{{/if}}
+        </button>
+        <button onclick="{{ selectTab('logs') }}" title="Logs" aria-label="Logs" aria-pressed="{{ tab is 'logs' }}" class="{{ logTabCls }}">
+          <IconDocumentText class="w-5 h-5" />
+{{#if errorCount > 0}}
+          <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[10px] font-bold leading-[18px] text-center ring-2 ring-[#111113]">{{ errorCount > 99 ? "99+" : errorCount }}</span>
+{{/if}}
+        </button>
+
+        <div class="mt-4 flex flex-col items-center gap-2" title="Idle limit" aria-hidden="true">
+{{#each d in idleDots}}
+          <span class="{{ d.cls }}"></span>
+{{/each}}
+        </div>
+
+        <div class="mt-auto flex flex-col items-center gap-1">
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" class="w-4 h-4 text-zinc-700"><path d="M5 6l5 4 5-4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" class="-mt-2 w-4 h-4 text-zinc-800"><path d="M5 6l5 4 5-4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <button onclick="{{ toggleFull() }}" title="{{ full ? 'Exit full screen' : 'Full screen' }}" aria-label="Toggle full screen" class="cx-icon-btn mt-2">
+{{#if full}}
+            <IconMinimize class="w-4 h-4" />
+{{#else}}
+            <IconMaximize class="w-4 h-4" />
+{{/if}}
+          </button>
+        </div>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex flex-col">
+
+        <!-- header -->
+        <header class="relative z-30 flex items-center gap-2 sm:gap-3 h-14 shrink-0 px-2.5 sm:px-4 border-b border-white/[0.05]">
+          <button onclick="{{ toggleMenu() }}" aria-haspopup="menu" aria-expanded="{{ menuOpen }}" class="group min-w-0 flex items-center gap-3 rounded-xl pl-2 pr-2.5 py-1.5 hover:bg-white/[0.04] transition-colors">
+            <span class="{{ orbCls }}"></span>
+            <span class="min-w-0 text-left">
+              <span class="block font-mono text-[13px] sm:text-[13.5px] text-zinc-100 truncate leading-tight">{{ headTitle }}</span>
+              <span class="block text-[11px] text-zinc-500 truncate leading-tight mt-0.5">{{ headSub }}</span>
+            </span>
+            <IconChevronDown class="w-4 h-4 shrink-0 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+          </button>
+
+          <!-- phone tabs -->
+          <div class="md:hidden ml-auto flex items-center gap-0.5 rounded-lg p-0.5 bg-black/40 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]">
+            <button onclick="{{ selectTab('terminal') }}" aria-label="Terminal" aria-pressed="{{ tab is 'terminal' }}" class="cx-chip !h-7 !shadow-none">
+              <IconTerminal class="w-4 h-4" />
+            </button>
+            <button onclick="{{ selectTab('logs') }}" aria-label="Logs" aria-pressed="{{ tab is 'logs' }}" class="cx-chip !h-7 !shadow-none">
+              <IconDocumentText class="w-4 h-4" />
+            </button>
+          </div>
+
+          <div class="md:ml-auto flex items-center gap-1">
+{{#if tab is "terminal"}}
+{{#if live}}
+            <button onclick="{{ copySelection() }}" title="Copy the selection" aria-label="Copy the selection" class="cx-icon-btn hidden sm:inline-flex">
+{{#if copied is "term"}}
+              <span class="text-[11px] font-medium text-emerald-300">Copied</span>
+{{#else}}
+              <IconCopy class="w-4 h-4" />
+{{/if}}
+            </button>
+            <button onclick="{{ pasteClipboard() }}" title="Paste" aria-label="Paste" class="cx-icon-btn hidden sm:inline-flex"><IconClipboard class="w-4 h-4" /></button>
+            <button onclick="{{ clearScreen() }}" title="Clear the screen" aria-label="Clear the screen" class="cx-icon-btn hidden sm:inline-flex">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" class="w-4 h-4"><path d="M4 16h12M6.5 12.5l6-8 3 2.2-6 8H6.5v-2.2z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+            <button onclick="{{ disconnect() }}" title="End the session" class="hidden sm:inline-flex items-center gap-1.5 h-8 ml-1 rounded-lg px-3 text-[12px] font-medium text-brand-300 hover:text-white bg-brand-500/10 hover:bg-brand-500/25 shadow-[inset_0_0_0_1px_rgb(240_103_107/0.3)] transition-colors">
+              <IconPower class="w-3.5 h-3.5" /> Disconnect
+            </button>
+{{/if}}
+{{#if phase is "closed"}}
+{{#if not Billing.locked}}
+            <button onclick="{{ reconnect() }}" class="inline-flex items-center gap-1.5 h-8 rounded-lg px-3 text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-[0_0_20px_-6px_rgb(240_103_107/0.8)] transition-colors">
+              <IconRefresh class="w-3.5 h-3.5" /> Reconnect
+            </button>
+{{/if}}
+{{/if}}
+{{/if}}
+            <span class="hidden sm:block w-px h-5 mx-1.5 bg-white/[0.07]"></span>
+            <button onclick="{{ toggleSide() }}" title="Show or hide the side panel" aria-label="Toggle the side panel" aria-pressed="{{ side }}" class="cx-icon-btn hidden lg:inline-flex"><IconPanelRight class="w-4 h-4" /></button>
+            <button onclick="{{ toggleFull() }}" title="Full screen" aria-label="Toggle full screen" class="cx-icon-btn md:hidden">
+{{#if full}}
+              <IconMinimize class="w-4 h-4" />
+{{#else}}
+              <IconMaximize class="w-4 h-4" />
+{{/if}}
+            </button>
+            <button onclick="{{ minimize() }}" title="Minimise (Ctrl+`)" aria-label="Minimise" class="cx-icon-btn"><IconMinus class="w-4 h-4" /></button>
+            <button onclick="{{ close() }}" title="Close" aria-label="Close" class="cx-icon-btn hover:!bg-brand-500/20 hover:!text-brand-200"><IconX class="w-4 h-4" /></button>
+          </div>
+
+          <!-- target menu -->
+{{#if menuOpen}}
+          <div class="fixed inset-0 z-10" onclick="{{ menuOpen = false }}" aria-hidden="true"></div>
+          <div role="menu" class="cx-tile cx-pop absolute z-20 left-2 sm:left-4 top-[3.25rem] w-[min(360px,calc(100vw-1.5rem))] rounded-2xl overflow-hidden">
+            <div class="flex items-center gap-2 px-3 h-11 border-b border-white/[0.06]">
+              <IconSearch class="w-4 h-4 shrink-0 text-zinc-500" />
+              <input id="cx-menu-input" type="text" bind:value="{{ menuQuery }}" placeholder="Switch to a server or site…" autocomplete="off" spellcheck="false" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 text-[13px] text-zinc-100 placeholder:text-zinc-600" />
+            </div>
+            <div class="max-h-[min(55vh,420px)] overflow-y-auto cx-scroll p-1.5">
+{{#if menuLoading}}
+              <p class="px-3 py-6 text-center text-[12px] text-zinc-500">Loading…</p>
+{{/if}}
+{{#each g in menuGroups()}}
+              <button role="menuitem" onclick="{{ choose('server', g.id) }}" class="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-white/[0.05] transition-colors">
+                <IconServer class="w-4 h-4 shrink-0 text-zinc-500" />
+                <span class="min-w-0 flex-1">
+                  <span class="block text-[13px] text-zinc-100 truncate">{{ g.name }}</span>
+                  <span class="block text-[11px] font-mono text-zinc-500 truncate">{{ g.host }}</span>
+                </span>
+                <span class="{{ g.dot }}"></span>
+{{#if g.on}}
+                <span class="text-[10px] uppercase tracking-[0.12em] text-brand-300">here</span>
+{{/if}}
+              </button>
+{{#each s in g.sites}}
+              <button role="menuitem" onclick="{{ choose('site', s.id) }}" class="w-full flex items-center gap-2.5 rounded-lg pl-8 pr-2.5 py-1.5 text-left hover:bg-white/[0.05] transition-colors">
+                <IconGlobe class="w-3.5 h-3.5 shrink-0 text-zinc-600" />
+                <span class="min-w-0 flex-1 text-[12.5px] text-zinc-300 truncate">{{ s.name }}</span>
+                <span class="{{ statusDot(s.status) }}"></span>
+              </button>
+{{/each}}
+{{#else}}
+{{#if not menuLoading}}
+              <p class="px-3 py-6 text-center text-[12px] text-zinc-500">Nothing matches.</p>
+{{/if}}
+{{/each}}
+            </div>
+          </div>
+{{/if}}
+        </header>
+
+        <!-- banners -->
+{{#if confirmEnd}}
+        <div role="alertdialog" aria-label="End the session" class="cx-fade shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-brand-500/20 bg-brand-500/[0.08]">
+          <span class="w-2 h-2 rounded-full bg-brand-400 shadow-[0_0_8px_rgb(240_103_107/0.8)]"></span>
+          <p class="flex-1 min-w-0 text-[13px] text-zinc-200">End the session on <span class="font-mono text-white">{{ tUser }}@{{ tHost }}</span>? Anything still running in it stops.</p>
+          <div class="flex items-center gap-2">
+            <button onclick="{{ minimize() }}" class="h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Keep it running</button>
+            <button onclick="{{ endAndClose() }}" class="h-8 rounded-lg px-3 text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors">End session</button>
+          </div>
+        </div>
+{{/if}}
+{{#if pending}}
+        <div role="alertdialog" aria-label="Switch session" class="cx-fade shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-amber-400/20 bg-amber-400/[0.07]">
+          <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgb(251_191_36/0.8)]"></span>
+          <p class="flex-1 min-w-0 text-[13px] text-zinc-200">You're connected to <span class="font-mono text-white">{{ tHost }}</span>. Switch to <span class="font-semibold text-white">{{ pendingTitle }}</span>? This ends the current session.</p>
+          <div class="flex items-center gap-2">
+            <button onclick="{{ pending = null }}" class="h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Stay here</button>
+            <button onclick="{{ confirmSwitch() }}" class="h-8 rounded-lg px-3 text-[12px] font-semibold text-zinc-950 bg-amber-300 hover:bg-amber-200 transition-colors">Switch</button>
+          </div>
+        </div>
+{{/if}}
+
+        <!-- body -->
+        <div class="relative flex-1 min-h-0">
+
+          <!-- ============ terminal ============ -->
+          <section aria-label="Terminal" class="absolute inset-0 flex" class:hidden="{{ tab is not 'terminal' }}">
+            <div class="flex-1 min-w-0 flex flex-col gap-2 p-2 sm:p-3">
+              <div class="cx-frame cx-well relative z-[1] flex-1 min-h-0 rounded-2xl overflow-hidden" data-live="{{ live }}" data-tone="{{ idleWarn ? 'warn' : 'ok' }}">
+                <div class="absolute inset-0 pl-3 pr-1 py-2.5 sm:pl-4 sm:py-3">
+                  <div id="flux-console-term" class="h-full w-full"></div>
+                </div>
+
+{{#if phase is "idle"}}
+                <div class="cx-fade absolute inset-0 flex items-center justify-center p-6 bg-[#0a0a0b]">
+                  <div class="w-full max-w-md text-center">
+                    <div aria-hidden="true" class="cx-mosaic w-56 mx-auto mb-7 opacity-90 [mask-image:radial-gradient(closest-side,#000_55%,transparent)]">
+{{#each m in mosaic}}
+                      <span class="{{ m.cls }}" style="--a: {{ m.a }}"></span>
+{{/each}}
+                    </div>
+{{#if error}}
+                    <p class="text-[15px] font-medium text-zinc-100 mb-1.5">The terminal didn't open</p>
+                    <p role="alert" class="text-[13px] text-brand-300 mb-6 break-words">{{ error }}</p>
+{{#if tReady}}
+{{#if not Billing.locked}}
+                    <button onclick="{{ retry() }}" class="inline-flex items-center gap-2 h-10 rounded-xl px-5 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-[0_0_30px_-6px_rgb(240_103_107/0.8)] transition-colors"><IconRefresh class="w-4 h-4" /> Try again</button>
+{{/if}}
+{{/if}}
+{{#else}}
+{{#if tReady}}
+                    <p class="text-[15px] font-medium text-zinc-100 mb-1.5">Ready when you are</p>
+                    <p class="text-[13px] text-zinc-500 mb-6 leading-relaxed">A shell as <span class="font-mono text-zinc-300">{{ tUser }}</span> in <span class="font-mono text-zinc-300">{{ tCwd }}</span>. It closes after 15 minutes without typing, and keeps running while you browse if you minimise it.</p>
+{{#if Billing.locked}}
+                    <span class="inline-flex items-center gap-2 h-10 rounded-xl px-5 text-[13px] text-zinc-500 bg-white/[0.04] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] cursor-not-allowed select-none"><IconLockClosed class="w-4 h-4" /> Pay to continue</span>
+{{#else}}
+                    <button onclick="{{ connect() }}" class="inline-flex items-center gap-2 h-10 rounded-xl px-6 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-[0_0_30px_-6px_rgb(240_103_107/0.8)] transition-colors"><IconPlay class="w-4 h-4" /> Connect</button>
+{{/if}}
+{{#else}}
+                    <p class="flex items-center justify-center gap-2 text-[13px] text-zinc-500"><span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-pulse"></span> Looking it up…</p>
+{{/if}}
+{{/if}}
+                  </div>
+                </div>
+{{/if}}
+
+{{#if phase is "connecting"}}
+                <div class="cx-fade absolute inset-0 flex items-center justify-center p-6 bg-[#0a0a0b]/95 overflow-hidden">
+                  <div aria-hidden="true" class="cx-scanline absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-transparent via-brand-500/[0.06] to-transparent"></div>
+                  <div class="relative text-center">
+                    <div class="flex items-center justify-center gap-1.5 mb-4" aria-hidden="true">
+                      <span class="w-2 h-2 rounded-[2px] bg-brand-400 animate-pulse"></span>
+                      <span class="w-2 h-2 rounded-[2px] bg-brand-400/70 animate-pulse [animation-delay:150ms]"></span>
+                      <span class="w-2 h-2 rounded-[2px] bg-amber-300/70 animate-pulse [animation-delay:300ms]"></span>
+                      <span class="w-2 h-2 rounded-[2px] bg-amber-300/40 animate-pulse [animation-delay:450ms]"></span>
+                    </div>
+                    <p class="text-[13px] text-zinc-300">Opening a shell on <span class="font-mono text-white">{{ tHost }}</span>…</p>
+                  </div>
+                </div>
+{{/if}}
+
+{{#if phase is "code"}}
+                <div class="cx-fade absolute inset-0 flex items-center justify-center p-6 bg-[#0a0a0b]">
+                  <div class="w-full max-w-sm text-center">
+                    <div class="mx-auto mb-5 w-12 h-12 rounded-2xl flex items-center justify-center text-amber-300 bg-amber-400/10 shadow-[inset_0_0_0_1px_rgb(251_191_36/0.3),0_0_30px_-8px_rgb(251_191_36/0.6)]">
+                      <IconLockClosed class="w-5 h-5" />
+                    </div>
+                    <p class="text-[15px] font-medium text-zinc-100 mb-1.5">Confirm it's you</p>
+                    <p class="text-[13px] text-zinc-500 mb-5">Opening a shell on {{ tTitle }} needs a code from your authenticator app, a recovery code, or a text message.</p>
+                    <input id="cx-code" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="32" placeholder="000000" onkeydown.enter="{{ submitCode() }}" class="cx-well w-full h-12 rounded-xl border-0 bg-transparent text-zinc-100 text-center text-lg font-mono tracking-[0.4em] placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50" />
+{{#if codeError}}
+                    <p role="alert" class="text-brand-300 text-[12px] mt-2 break-words">{{ codeError }}</p>
+{{/if}}
+{{#if smsNote}}
+                    <p class="text-emerald-300 text-[12px] mt-2">{{ smsNote }}</p>
+{{/if}}
+                    <div class="flex items-center justify-center gap-2 mt-5">
+                      <button onclick="{{ cancelCode() }}" class="h-9 rounded-xl px-4 text-[13px] text-zinc-400 hover:text-white bg-white/[0.04] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">Cancel</button>
+                      <button onclick="{{ submitCode() }}" class="h-9 rounded-xl px-5 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors">Verify and connect</button>
+                    </div>
+{{#if hasSms}}
+                    <button onclick="{{ sendSms() }}" class="mt-4 text-[12px] text-brand-300 hover:text-brand-200 hover:underline">{{ smsBusy ? "Sending…" : "Text me a code" }}</button>
+{{/if}}
+                  </div>
+                </div>
+{{/if}}
+
+{{#if phase is "closed"}}
+                <div class="cx-pop absolute left-1/2 -translate-x-1/2 bottom-4 z-10 flex items-center gap-3 rounded-xl pl-3.5 pr-1.5 py-1.5 cx-tile">
+                  <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+                  <p class="text-[12.5px] text-zinc-300 whitespace-nowrap">Session ended</p>
+{{#if not Billing.locked}}
+                  <button onclick="{{ reconnect() }}" class="h-7 rounded-lg px-3 text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors">Reconnect</button>
+{{/if}}
+                </div>
+{{/if}}
+              </div>
+
+{{#if live}}
+              <!-- touch keys -->
+              <div class="cx-touch-only items-center gap-1 overflow-x-auto no-scrollbar -mx-0.5 px-0.5">
+{{#each k in keys}}
+                <button onmousedown.prevent="{{ keepFocus() }}" onclick="{{ sendKey(k.seq) }}" class="cx-kbd !h-9 !min-w-[2.5rem] !px-2.5 !text-[12px] shrink-0">{{ k.label }}</button>
+{{/each}}
+              </div>
+              <!-- quick commands for screens without the side panel -->
+              <div class="lg:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+{{#each c in commands}}
+                <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" disabled="{{ Billing.locked }}" class="cx-chip">{{ c.label }}</button>
+{{/each}}
+              </div>
+{{/if}}
+            </div>
+
+            <!-- inspector -->
+            <aside class="{{ sideCls }}" aria-label="Session">
+              <div class="cx-tile rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Session</p>
+                  <span class="text-[11px] text-zinc-500">{{ phaseText }}</span>
+                </div>
+                <p class="font-mono text-[28px] leading-none tracking-tight text-white tabular-nums">{{ live ? sessionText : "0:00" }}</p>
+                <p class="text-[11px] text-zinc-500 mt-1.5">connected</p>
+                <div class="mt-4 flex items-center gap-1" aria-hidden="true">
+{{#each l in idleLeds}}
+                  <span class="cx-led" data-on="{{ live and l.on }}" data-tone="{{ l.tone }}"></span>
+{{/each}}
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[11px]">
+{{#if idleWarn}}
+                  <span class="text-amber-300 font-medium">Closing soon without typing</span>
+                  <span class="font-mono text-amber-300 tabular-nums">{{ idleText }}</span>
+{{#else}}
+                  <span class="text-zinc-500">Idle limit</span>
+                  <span class="font-mono text-zinc-300 tabular-nums">{{ live ? idleText : "15:00" }}</span>
+{{/if}}
+                </div>
+              </div>
+
+              <div class="cx-tile rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Output</p>
+                  <span class="font-mono text-[11px] text-zinc-400 tabular-nums">{{ totalText }}</span>
+                </div>
+                <div class="cx-well rounded-lg h-14 px-1.5 py-1.5 flex items-end gap-[3px]" aria-hidden="true">
+{{#each b in meter}}
+                  <span class="{{ b.cls }}" style="height: {{ b.h }}%"></span>
+{{/each}}
+                </div>
+                <p class="text-[11px] text-zinc-600 mt-2">last 24 seconds</p>
+              </div>
+
+              <div class="cx-tile rounded-2xl p-2">
+                <p class="px-2 pt-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Quick commands</p>
+{{#each c in commands}}
+                <button onclick="{{ runCommand(c.cmd) }}" disabled="{{ not live or Billing.locked }}" title="{{ live ? 'Run in the open session' : 'Connect first' }}" class="group w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left enabled:hover:bg-white/[0.05] disabled:opacity-40 transition-colors">
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-[12.5px] text-zinc-200 truncate">{{ c.label }}</span>
+                    <span class="block text-[11px] font-mono text-zinc-600 truncate">{{ c.cmd }}</span>
+                  </span>
+                  <IconChevronRight class="w-3.5 h-3.5 shrink-0 text-zinc-600 group-enabled:group-hover:text-brand-300 group-enabled:group-hover:translate-x-0.5 transition-all" />
+                </button>
+{{/each}}
+              </div>
+
+              <div class="cx-tile rounded-2xl p-4">
+                <div class="flex items-center justify-between">
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Text size</p>
+                  <div class="flex items-center gap-1">
+                    <button onclick="{{ setFont(-1) }}" aria-label="Smaller text" class="cx-kbd !h-7 !min-w-[1.75rem] hover:!text-white">A-</button>
+                    <span class="w-9 text-center font-mono text-[12px] text-zinc-300 tabular-nums">{{ fontSize }}</span>
+                    <button onclick="{{ setFont(1) }}" aria-label="Larger text" class="cx-kbd !h-7 !min-w-[1.75rem] hover:!text-white">A+</button>
+                  </div>
+                </div>
+                <div class="mt-4 space-y-2 text-[11.5px] text-zinc-500">
+                  <p class="flex items-center justify-between gap-2">Show or hide <span class="flex gap-1"><span class="cx-kbd">Ctrl</span><span class="cx-kbd">`</span></span></p>
+                  <p class="flex items-center justify-between gap-2">Minimise, outside the shell <span class="cx-kbd">Esc</span></p>
+                  <p class="flex items-center justify-between gap-2">Copy <span class="text-zinc-400">select, then the copy button</span></p>
+                </div>
+              </div>
+            </aside>
+          </section>
+
+          <!-- ============ logs ============ -->
+          <section aria-label="Logs" class="absolute inset-0 flex" class:hidden="{{ tab is not 'logs' }}">
+            <aside class="hidden lg:flex w-[264px] shrink-0 flex-col gap-1 p-3 pr-0 overflow-y-auto cx-scroll">
+              <p class="px-2.5 pt-1 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{{ lKind is "site" ? "Sources" : "Level" }}</p>
+{{#each s in logNav}}
+              <button onclick="{{ pickSource(s.id) }}" aria-pressed="{{ s.on }}" class="{{ navCls(s.on) }}">
+                <span class="{{ s.tile }}">{{ s.letter }}</span>
+                <span class="min-w-0">
+                  <span class="block text-[13px] font-medium text-zinc-100">{{ s.label }}</span>
+                  <span class="block text-[11.5px] leading-snug text-zinc-500">{{ s.desc }}</span>
+                </span>
+              </button>
+{{/each}}
+{{#if lKind is "server"}}
+              <p class="px-2.5 pt-5 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Area</p>
+              <div class="flex flex-wrap gap-1.5 px-2.5">
+{{#each a in areaNav}}
+                <button onclick="{{ pickArea(a.id) }}" aria-pressed="{{ a.on }}" class="cx-chip">{{ a.label }}</button>
+{{/each}}
+              </div>
+{{/if}}
+              <div class="mt-auto pt-4 px-2.5">
+                <div class="cx-well rounded-xl p-3">
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-500 mb-2">This read</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <p class="font-mono text-[20px] leading-none tabular-nums {{ errorCount > 0 ? 'text-brand-300' : 'text-emerald-300' }}">{{ errorCount }}</p>
+                      <p class="text-[11px] text-zinc-500 mt-1">errors</p>
+                    </div>
+                    <div>
+                      <p class="font-mono text-[20px] leading-none tabular-nums text-zinc-100">{{ scanned }}</p>
+                      <p class="text-[11px] text-zinc-500 mt-1">{{ lKind is "site" ? "lines read" : "events" }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            <div class="flex-1 min-w-0 flex flex-col gap-2 p-2 sm:p-3">
+              <!-- phone source picker -->
+              <div class="lg:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+{{#each s in logNav}}
+                <button onclick="{{ pickSource(s.id) }}" aria-pressed="{{ s.on }}" class="cx-chip">{{ s.label }}</button>
+{{/each}}
+              </div>
+
+              <!-- toolbar -->
+              <div class="flex flex-wrap items-center gap-1.5">
+                <label class="cx-well flex items-center gap-2 h-8 flex-1 min-w-[10rem] sm:max-w-xs rounded-lg px-2.5">
+                  <IconSearch class="w-3.5 h-3.5 shrink-0 text-zinc-600" />
+                  <span class="sr-only">Filter</span>
+                  <input type="text" bind:value="{{ search }}" placeholder="grep…" autocomplete="off" spellcheck="false" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 p-0 font-mono text-base sm:text-[12px] text-zinc-200 placeholder:text-zinc-600" />
+                </label>
+{{#if lKind is "site"}}
+                <button onclick="{{ toggleErrors() }}" aria-pressed="{{ errorsOnly }}" class="cx-chip">Errors only</button>
+                <div class="flex items-center gap-0.5 rounded-lg p-0.5 bg-black/30 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.05)]" title="Lines to read">
+{{#each z in sizeNav}}
+                  <button onclick="{{ setLines(z.n) }}" aria-pressed="{{ z.on }}" class="cx-chip !h-6 !shadow-none font-mono">{{ z.label }}</button>
+{{/each}}
+                </div>
+{{/if}}
+                <div class="flex items-center gap-1 ml-auto">
+                  <button onclick="{{ toggleLogLive() }}" aria-pressed="{{ logLive }}" title="Refresh every 10 seconds" class="cx-chip">
+{{#if logLive}}
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live <IconPause class="w-3 h-3" />
+{{#else}}
+                    <IconPlay class="w-3 h-3" /> Live
+{{/if}}
+                  </button>
+                  <button onclick="{{ loadLogs(false) }}" title="Refresh" aria-label="Refresh" class="cx-icon-btn">
+                    <IconRefresh class="{{ logBusy ? 'w-4 h-4 animate-spin' : 'w-4 h-4' }}" />
+                  </button>
+                  <button onclick="{{ expandAll() }}" class="cx-chip hidden sm:inline-flex">Expand</button>
+                  <button onclick="{{ collapseAll() }}" class="cx-chip hidden sm:inline-flex">Collapse</button>
+                  <button onclick="{{ copyAll() }}" class="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors">
+                    <IconCopy class="w-3.5 h-3.5" /> {{ copied is "all" ? "Copied" : "Copy all" }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- stream -->
+              <div class="cx-frame cx-well relative z-[1] flex-1 min-h-0 rounded-2xl overflow-hidden flex" data-live="{{ logLive }}">
+                <div id="flux-console-logs" class="flex-1 min-w-0 overflow-auto cx-scroll py-3 font-mono text-[12.5px] leading-6">
+{{#if lPrompt}}
+                  <p class="px-3 sm:px-4 pb-2 text-zinc-500 break-all"><span class="text-brand-300">{{ lPrompt }}</span><span class="text-zinc-600">:~$</span> <span class="text-zinc-300">{{ promptCmd() }}</span><span class="inline-block w-[7px] h-[14px] -mb-[2px] ml-1 bg-brand-400/80 animate-pulse"></span></p>
+{{/if}}
+
+{{#if not lReady}}
+                  <p class="px-3 sm:px-4 text-zinc-400">Logs are available once the site has finished creating.</p>
+{{/if}}
+
+{{#if logError}}
+                  <div role="alert" class="mx-3 sm:mx-4 my-2 rounded-xl p-3 bg-brand-500/[0.07] shadow-[inset_0_0_0_1px_rgb(240_103_107/0.25)]">
+                    <p class="text-brand-300 text-[11px] font-semibold uppercase tracking-[0.14em] mb-1">Couldn't read the log</p>
+                    <p class="text-brand-200/90 text-[12px] whitespace-pre-wrap break-words">{{ logError }}</p>
+                  </div>
+{{/if}}
+
+{{#if lReady}}
+{{#if not logLoaded}}
+{{#if not logError}}
+                  <div class="px-3 sm:px-4 space-y-2 pt-1" aria-label="Loading">
+                    <p class="flex items-center gap-2 text-zinc-500"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Reading from the server…</p>
+                    <div class="h-3 w-2/3 rounded bg-white/[0.04] animate-pulse"></div>
+                    <div class="h-3 w-1/2 rounded bg-white/[0.04] animate-pulse"></div>
+                    <div class="h-3 w-3/4 rounded bg-white/[0.04] animate-pulse"></div>
+                  </div>
+{{/if}}
+{{/if}}
+{{/if}}
+
+{{#if logLoaded}}
+{{#if logMissing}}
+                  <p class="px-3 sm:px-4 text-zinc-400">No such file. Nothing has been written to this log yet.</p>
+{{/if}}
+{{#if not logMissing}}
+{{#if logView.length is 0}}
+                  <div class="px-3 sm:px-4 py-6">
+                    <p class="text-emerald-300">{{ search ? "Nothing matches “" + search + "”." : "All quiet. Nothing to show." }}</p>
+                    <p class="text-zinc-500">{{ lKind is "site" ? "Turn off Errors only, clear the filter, or read more lines." : "Try another level or clear the filter." }}</p>
+                  </div>
+{{/if}}
+{{/if}}
+{{/if}}
+
+{{#each e in logView}}
+                  <div id="{{ e.rowId }}" class="border-b border-white/[0.025]">
+                    <div class="{{ e.rowCls }}">
+                      <span class="w-[3px] self-stretch my-1 shrink-0 rounded-full {{ e.stripe }}"></span>
+                      <button onclick="{{ toggleEntry(e.id) }}" aria-expanded="{{ e.open }}" class="min-w-0 flex-1 flex items-start gap-2 text-left">
+                        <span class="w-3 shrink-0 text-zinc-600 select-none">{{ e.open ? "▾" : "▸" }}</span>
+                        <span class="hidden md:inline shrink-0 text-zinc-600 tabular-nums">{{ e.timeText }}</span>
+                        <span class="{{ e.levelCls }}">{{ e.levelText }}</span>
+                        <span class="min-w-0 text-zinc-200 break-words">{{ e.message }} <span class="text-zinc-600">{{ e.moreText }}</span></span>
+                      </button>
+                      <button onclick="{{ copyOne(e.id) }}" class="shrink-0 text-[11px] text-zinc-600 hover:text-brand-300 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">{{ e.copyText }}</button>
+                    </div>
+{{#if e.open}}
+                    <div class="cx-fade ml-8 sm:ml-10 mr-3 sm:mr-4 mb-2 border-l-2 {{ e.edge }} pl-3 text-[12px] leading-5 text-zinc-400 whitespace-pre-wrap break-words max-h-80 overflow-auto cx-scroll select-text">{{ e.detail }}</div>
+{{/if}}
+                  </div>
+{{/each}}
+                </div>
+
+                <!-- minimap -->
+{{#if logView.length > 0}}
+                <div class="hidden sm:flex w-4 shrink-0 flex-col gap-px py-3 pr-1.5 pl-0.5 border-l border-white/[0.03]" aria-hidden="true">
+{{#each m in minimap}}
+                  <button tabindex="-1" onclick="{{ jump(m.id) }}" class="{{ m.cls }}"></button>
+{{/each}}
+                </div>
+{{/if}}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- status bar -->
+        <footer class="shrink-0 flex items-center gap-3 h-9 px-3 sm:px-4 border-t border-white/[0.05] bg-black/20 text-[11px] text-zinc-500">
+{{#if tab is "terminal"}}
+          <span class="flex items-center gap-1.5 shrink-0"><span class="{{ orbCls }} !w-1.5 !h-1.5"></span>{{ phaseText }}</span>
+{{#if live}}
+          <span class="hidden sm:inline font-mono tabular-nums text-zinc-400">{{ sessionText }}</span>
+          <span class="{{ idleWarn ? 'text-amber-300 font-medium' : '' }}">idle limit <span class="font-mono tabular-nums">{{ idleText }}</span></span>
+{{/if}}
+{{#if tCwd}}
+          <span class="hidden md:inline truncate font-mono text-zinc-600">{{ tCwd }}</span>
+{{/if}}
+{{#else}}
+          <span><span class="font-mono text-zinc-300">{{ logView.length }}</span> shown</span>
+          <span><span class="font-mono {{ errorCount > 0 ? 'text-brand-300' : 'text-zinc-300' }}">{{ errorCount }}</span> errors</span>
+{{#if fetchedAt}}
+          <span class="hidden sm:inline">updated {{ fetchedAt }}</span>
+{{/if}}
+{{/if}}
+          <span class="ml-auto hidden sm:flex items-center gap-1.5"><span class="cx-kbd">Ctrl</span><span class="cx-kbd">`</span> hide</span>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= the minimised pill ================= -->
+{{#if view is "min"}}
+  <!-- Bottom centre keeps clear of toasts (bottom right). Under the install
+       prompt (z-60): that one is dismissable, the pill stays. -->
+  <div class="cx-pill fixed inset-x-0 z-[55] flex justify-center px-3 pointer-events-none">
+    <div class="cx-frame cx-shell cx-pop pointer-events-auto flex items-center gap-1 rounded-2xl pl-1 pr-1 h-12 max-w-full" data-live="{{ live }}" data-tone="{{ idleWarn ? 'warn' : 'ok' }}">
+      <button onclick="{{ reveal() }}" title="Open the terminal (Ctrl+`)" class="flex items-center gap-3 min-w-0 h-10 pl-3 pr-2 rounded-xl hover:bg-white/[0.04] transition-colors text-left">
+        <span class="{{ orbCls }}"></span>
+        <span class="min-w-0">
+          <span class="block font-mono text-[12px] text-zinc-100 truncate max-w-[9rem] sm:max-w-[13rem] leading-tight">{{ tUser }}@{{ tHost }}</span>
+          <span class="block text-[10.5px] leading-tight mt-0.5 {{ idleWarn ? 'text-amber-300' : 'text-zinc-500' }}">{{ idleWarn ? "closes in " + idleText : (live ? sessionText : phaseText) }}</span>
+        </span>
+        <span class="hidden sm:flex items-end gap-[2px] h-5 w-12" aria-hidden="true">
+{{#each b in pillBars}}
+          <span class="{{ b.cls }}" style="height: {{ b.h }}%"></span>
+{{/each}}
+        </span>
+      </button>
+      <button onclick="{{ close() }}" title="End the session" aria-label="End the session" class="cx-icon-btn"><IconX class="w-4 h-4" /></button>
+    </div>
+  </div>
+{{/if}}
+</div>
