@@ -1,6 +1,6 @@
 page SiteSsl
 
-import { IconArrowLeft, IconX } from "tylix-icons"
+import { IconX } from "tylix-icons"
 
 title "SSL"
 
@@ -154,6 +154,16 @@ onMount
     const id = params.get("id")
     this.siteId = id or ""
 
+    // The site sidebar remembers each site's server, so the server sidebar
+    // can render before this page's first request comes back.
+    const cached = id ? window.localStorage.getItem("flux-site:" + id) : null
+    if cached {
+      const saved = JSON.parse(cached)
+      if saved and saved.server_id {
+        this.serverId = "" + saved.server_id
+      }
+    }
+
     if not id {
       this.isMissing = true
       this.loading = false
@@ -185,20 +195,27 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
-{{#if serverId}}
-{{#if not isMissing}}
-    <ServerSidebar active="sites" serverId="{{ serverId }}" />
-{{/if}}
-{{/if}}
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_minmax(0,1fr)] bg-page transition-colors">
 {{#if isMissing}}
     <div></div>
+    <div></div>
+{{/if}}
+{{#if not isMissing}}
+{{#if serverId}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+{{#if not serverId}}
+    <div aria-hidden="true" class="hidden lg:block lg:w-[240px] lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 border-r border-line"></div>
+{{/if}}
+    <SiteSidebar active="ssl" siteId="{{ siteId }}" site="{{ site }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
 {{#if loading}}
-      <LoaderMark label="Loading…" />
+      <div data-page-loader="true" class="min-h-[60vh] flex items-center justify-center">
+        <LoaderMark label="Loading SSL…" />
+      </div>
 {{/if}}
 
 {{#if isMissing}}
@@ -206,37 +223,23 @@ template
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
-        <IconArrowLeft class="w-4 h-4" /> Sites
-      </a>
+      <SiteHeader title="SSL" description="HTTPS certificates for this site and its aliases." domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
+        <span slot="badge" class="contents">
+{{#if status is "working"}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working</span>
+{{/if}}
+{{#if status is "failed"}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed</span>
+{{/if}}
+{{#if status is "active"}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Secured</span>
+{{/if}}
+        </span>
+      </SiteHeader>
 
       <LockedBanner />
 
-      <div class="mb-8">
-        <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
-{{#if status is "working"}}
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
-          </span>
-{{/if}}
-{{#if status is "failed"}}
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-          </span>
-{{/if}}
-{{#if status is "active"}}
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Secured
-          </span>
-{{/if}}
-        </div>
-        <p class="text-slate-500 text-sm">SSL</p>
-      </div>
-
-      <div class="flex flex-col lg:flex-row gap-8">
-        <SiteSidebar active="ssl" siteId="{{ siteId }}" />
-
+      <div class="min-w-0">
         <div class="min-w-0 flex-1">
 
 {{#if error}}
@@ -254,7 +257,7 @@ template
           </div>
 {{/if}}
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-5">HTTPS</h2>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
@@ -280,7 +283,7 @@ template
             </div>
           </div>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Certificate</h2>
             <p class="text-slate-500 text-sm mb-5">Get a free certificate from Let's Encrypt, or install one you bought.</p>
 
@@ -290,7 +293,7 @@ template
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2.5 cursor-not-allowed select-none">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                   <rect x="4" y="9" width="12" height="8" rx="2" />
                   <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -302,7 +305,7 @@ template
               <button onclick="{{ openModal('le') }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">Let's Encrypt</button>
 {{/if}}
 {{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-4 py-2.5 cursor-not-allowed select-none">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                   <rect x="4" y="9" width="12" height="8" rx="2" />
                   <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -311,11 +314,11 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ openModal('custom') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Custom certificate</button>
+              <button onclick="{{ openModal('custom') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Custom certificate</button>
 {{/if}}
 {{#if mode is not "none"}}
 {{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 cursor-not-allowed select-none">
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-4 py-2.5 cursor-not-allowed select-none">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                   <rect x="4" y="9" width="12" height="8" rx="2" />
                   <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -328,7 +331,7 @@ template
 {{/if}}
 {{/if}}
 {{/if}}
-              <button onclick="{{ openModal('log') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">SSL log</button>
+              <button onclick="{{ openModal('log') }}" class="text-sm text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">SSL log</button>
             </div>
           </div>
 
@@ -354,7 +357,7 @@ template
             autocomplete="off"
             value="{{ emailInput }}"
             oninput="{{ emailInput = $event.target.value }}"
-            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
+            class="w-full mb-4 rounded-lg border border-line bg-sunken text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
             placeholder="you@example.com"
           />
 
@@ -369,7 +372,7 @@ template
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-4 py-2 cursor-not-allowed select-none">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                 <rect x="4" y="9" width="12" height="8" rx="2" />
                 <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -405,7 +408,7 @@ template
             autocomplete="off"
             value="{{ certText }}"
             oninput="{{ certText = $event.target.value }}"
-            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 resize-none transition-colors"
+            class="w-full mb-4 rounded-lg border border-line bg-sunken text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 resize-none transition-colors"
             placeholder="-----BEGIN CERTIFICATE-----"
           ></textarea>
 
@@ -417,7 +420,7 @@ template
             autocomplete="off"
             value="{{ keyText }}"
             oninput="{{ keyText = $event.target.value }}"
-            class="w-full mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 resize-none transition-colors"
+            class="w-full mb-4 rounded-lg border border-line bg-sunken text-slate-900 dark:text-slate-200 text-xs font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 resize-none transition-colors"
             placeholder="-----BEGIN PRIVATE KEY-----"
           ></textarea>
 
@@ -432,7 +435,7 @@ template
 {{/if}}
 {{#if not busy}}
 {{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 cursor-not-allowed select-none">
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-4 py-2 cursor-not-allowed select-none">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                 <rect x="4" y="9" width="12" height="8" rx="2" />
                 <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -472,7 +475,7 @@ template
             </button>
           </div>
 {{#if sslLog}}
-          <div class="max-h-[60vh] overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ sslLog }}</div>
+          <div class="max-h-[60vh] overflow-y-auto rounded-lg bg-sunken border border-line p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ sslLog }}</div>
 {{/if}}
 {{#if not sslLog}}
           <p class="text-slate-500 text-sm">Nothing logged yet.</p>

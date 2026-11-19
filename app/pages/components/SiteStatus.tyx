@@ -1,0 +1,68 @@
+component SiteStatus
+
+// A site's status as a pill (ready, creating, failed, ...), used in the
+// SiteHeader badge slot.
+
+props
+  status: String
+
+action
+  text() {
+    const s = this.status
+    if s is "ready" {
+      return "Live"
+    }
+    if s is "failed" {
+      return "Failed"
+    }
+    if s is "creating" {
+      return "Creating"
+    }
+    if s is "pending" {
+      return "Queued"
+    }
+    if s is "deleting" {
+      return "Deleting"
+    }
+    if s is "delete_failed" {
+      return "Delete failed"
+    }
+    return s or ""
+  }
+
+  pillCls() {
+    const base = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider "
+    const s = this.status
+    if s is "ready" {
+      return base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+    }
+    if s is "creating" or s is "pending" {
+      return base + "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+    }
+    if s is "failed" or s is "delete_failed" or s is "deleting" {
+      return base + "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    }
+    return base + "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
+  }
+
+  dotCls() {
+    const s = this.status
+    if s is "ready" {
+      return "w-1.5 h-1.5 rounded-full bg-emerald-500"
+    }
+    if s is "creating" or s is "pending" {
+      return "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"
+    }
+    if s is "deleting" {
+      return "w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"
+    }
+    if s is "failed" or s is "delete_failed" {
+      return "w-1.5 h-1.5 rounded-full bg-rose-500"
+    }
+    return "w-1.5 h-1.5 rounded-full bg-zinc-400"
+  }
+
+template
+{{#if status}}
+<span class="{{ pillCls() }}"><span class="{{ dotCls() }}"></span> {{ text() }}</span>
+{{/if}}

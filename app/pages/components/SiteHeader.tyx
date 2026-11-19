@@ -1,0 +1,38 @@
+component SiteHeader
+
+import { IconChevronRight } from "tylix-icons"
+
+// The heading of every site page: a breadcrumb back to the server's sites
+// and this site, the page title and a line about it. Put a status pill in
+// slot="badge" and buttons in slot="actions":
+//
+//   <SiteHeader title="SSL" description="..." domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
+//     <span slot="badge">...</span>
+//     <div slot="actions">...</div>
+//   </SiteHeader>
+
+props
+  title: String
+  description: String
+  domain: String
+  serverId: String
+  siteId: String
+
+template
+<header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 sm:mb-8">
+  <div class="min-w-0">
+    <nav aria-label="Breadcrumb" class="flex items-center gap-1 min-w-0 text-[13px] text-zinc-500 mb-2">
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="shrink-0 rounded-md hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Sites</a>
+      <IconChevronRight class="w-3.5 h-3.5 shrink-0 text-zinc-400 dark:text-zinc-600" />
+      <a href="{{ '/servers/site-detail?id=' + siteId }}" class="min-w-0 truncate font-mono text-[12.5px] rounded-md hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">{{ domain }}</a>
+    </nav>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">{{ title }}</h1>
+      <slot name="badge" />
+    </div>
+{{#if description}}
+    <p class="text-zinc-500 text-sm mt-1.5 max-w-2xl leading-relaxed">{{ description }}</p>
+{{/if}}
+  </div>
+  <slot name="actions" />
+</header>

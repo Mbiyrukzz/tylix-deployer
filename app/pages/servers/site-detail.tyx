@@ -1,6 +1,6 @@
 page SiteDetail
 
-import { IconArrowLeft } from "tylix-icons"
+import { IconExternalLink, IconTerminal, IconChevronRight } from "tylix-icons"
 
 title "Site"
 
@@ -211,6 +211,16 @@ onMount
     const id = params.get("id")
     this.siteId = id or ""
 
+    // The site sidebar remembers each site's server, so the server sidebar
+    // can render before this page's first request comes back.
+    const cached = id ? window.localStorage.getItem("flux-site:" + id) : null
+    if cached {
+      const saved = JSON.parse(cached)
+      if saved and saved.server_id {
+        this.serverId = "" + saved.server_id
+      }
+    }
+
     if not id {
       this.isMissing = true
       this.loading = false
@@ -243,20 +253,27 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
-{{#if serverId}}
-{{#if not isMissing}}
-    <ServerSidebar active="sites" serverId="{{ serverId }}" />
-{{/if}}
-{{/if}}
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_minmax(0,1fr)] bg-page transition-colors">
 {{#if isMissing}}
     <div></div>
+    <div></div>
+{{/if}}
+{{#if not isMissing}}
+{{#if serverId}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+{{#if not serverId}}
+    <div aria-hidden="true" class="hidden lg:block lg:w-[240px] lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 border-r border-line"></div>
+{{/if}}
+    <SiteSidebar active="application" siteId="{{ siteId }}" site="{{ site }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
 {{#if loading}}
-      <LoaderMark label="Loading site…" />
+      <div data-page-loader="true" class="min-h-[60vh] flex items-center justify-center">
+        <LoaderMark label="Loading site…" />
+      </div>
 {{/if}}
 
 {{#if isMissing}}
@@ -264,210 +281,190 @@ template
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
-        <IconArrowLeft class="w-4 h-4" /> Sites
-      </a>
-
-      <LockedBanner />
-
-      <div class="flex items-start justify-between gap-4 mb-8">
-        <div class="min-w-0">
-          <div class="flex items-center gap-3 mb-2">
-            <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 truncate">{{ site.domain }}</h1>
+      <SiteHeader title="Overview" description="{{ typeLabel + ' app, running as ' + site.isolated_user + ' in its own folder.' }}" domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
+        <SiteStatus slot="badge" status="{{ site.status }}" />
+        <div slot="actions" class="flex flex-wrap items-center gap-2 shrink-0">
+          <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+            <IconExternalLink class="w-4 h-4" /> Visit site
+          </a>
 {{#if site.status is "ready"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
-            </span>
-{{/if}}
-{{#if site.status is "failed"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-            </span>
-{{/if}}
-{{#if site.status is "creating"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Creating
-            </span>
-{{/if}}
-{{#if site.status is "pending"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Queued
-            </span>
-{{/if}}
-{{#if site.status is "deleting"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> Deleting
-            </span>
-{{/if}}
-{{#if site.status is "delete_failed"}}
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Delete failed
-            </span>
-{{/if}}
-          </div>
-          <p class="text-slate-500 text-sm font-mono">{{ typeLabel }} / {{ site.isolated_user }}</p>
-        </div>
-
-{{#if site.status is "ready"}}
-        <div class="shrink-0">
 {{#if Billing.locked}}
-          <span title="Pay to continue" class="inline-flex items-center gap-2 text-sm bg-slate-300 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 cursor-not-allowed select-none">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-              <rect x="4" y="9" width="12" height="8" rx="2" />
-              <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-            </svg>
-            <span class="font-mono">&gt;_</span> Terminal
+          <span title="Pay to continue" class="inline-flex items-center gap-2 h-9 text-sm bg-zinc-200 dark:bg-zinc-800 text-zinc-500 rounded-full px-4 cursor-not-allowed select-none">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4"><rect x="4" y="9" width="12" height="8" rx="2" /><path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" /></svg>
+            Terminal
           </span>
 {{/if}}
 {{#if not Billing.locked}}
-          <a href="{{ '/servers/site-terminal?id=' + siteId }}" class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-all">
-            <span class="font-mono">&gt;_</span> Terminal
+          <a href="{{ '/servers/site-terminal?id=' + siteId }}" class="inline-flex items-center gap-2 h-9 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 shadow-sm hover:bg-brand-400 transition-colors">
+            <IconTerminal class="w-4 h-4" /> Terminal
           </a>
 {{/if}}
-        </div>
 {{/if}}
-      </div>
+        </div>
+      </SiteHeader>
 
-      <div class="flex flex-col lg:flex-row gap-8">
-        <SiteSidebar active="application" siteId="{{ siteId }}" />
+      <LockedBanner />
 
-        <div class="min-w-0 flex-1">
+      <div class="min-w-0">
+        <div class="min-w-0 space-y-6">
 
 {{#if site.status is "failed"}}
-          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
-            <p class="text-rose-500 text-sm font-medium mb-1">Failed at: {{ stepText }}</p>
-            <p class="text-rose-500 text-sm break-words">{{ site.error }}</p>
+          <div role="alert" class="flex gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] p-4 sm:p-5">
+            <span class="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-rose-500"></span>
+            <div class="min-w-0">
+              <p class="text-rose-600 dark:text-rose-400 text-sm font-semibold mb-1">Failed at: {{ stepText }}</p>
+              <p class="text-rose-600/90 dark:text-rose-300/90 text-sm font-mono break-words">{{ site.error }}</p>
+            </div>
           </div>
 {{/if}}
 
 {{#if site.status is "delete_failed"}}
-          <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
-            <p class="text-rose-500 text-sm font-medium mb-1">Couldn't finish deleting (stopped at: {{ stepText }})</p>
-            <p class="text-rose-500 text-sm break-words">{{ site.error }}</p>
+          <div role="alert" class="flex gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] p-4 sm:p-5">
+            <span class="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-rose-500"></span>
+            <div class="min-w-0">
+              <p class="text-rose-600 dark:text-rose-400 text-sm font-semibold mb-1">Couldn't finish deleting (stopped at: {{ stepText }})</p>
+              <p class="text-rose-600/90 dark:text-rose-300/90 text-sm font-mono break-words">{{ site.error }}</p>
+            </div>
           </div>
 {{/if}}
 
 {{#if deleting}}
-          <div role="status" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6">
-            <p class="text-rose-500 text-xs font-medium uppercase tracking-wider mb-1">Deleting site</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm">{{ stepText }}…</p>
+          <div role="status" class="flex gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] p-4 sm:p-5">
+            <span class="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-rose-500 animate-pulse"></span>
+            <div class="min-w-0">
+              <p class="text-rose-600 dark:text-rose-400 text-sm font-semibold mb-0.5">Deleting this site</p>
+              <p class="text-zinc-600 dark:text-zinc-300 text-sm">{{ stepText }}…</p>
+            </div>
           </div>
 {{/if}}
 
 {{#if site.status is "creating"}}
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 mb-6">
-            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Current step</p>
-            <p class="text-slate-800 dark:text-slate-200 text-sm">{{ stepText }}…</p>
+          <div role="status" class="flex gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-4 sm:p-5">
+            <span class="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-amber-500 animate-pulse"></span>
+            <div class="min-w-0">
+              <p class="text-amber-700 dark:text-amber-400 text-sm font-semibold mb-0.5">Setting up the site</p>
+              <p class="text-zinc-600 dark:text-zinc-300 text-sm">{{ stepText }}… This page updates by itself.</p>
+            </div>
           </div>
 {{/if}}
 
 {{#if site.status is "pending"}}
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 mb-6">
-            <p class="text-slate-800 dark:text-slate-200 text-sm">Queued, starting shortly…</p>
+          <div role="status" class="flex gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-4 sm:p-5">
+            <span class="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-amber-500 animate-pulse"></span>
+            <p class="text-zinc-700 dark:text-zinc-200 text-sm">Queued, starting shortly…</p>
           </div>
 {{/if}}
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
-            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-5">Application</h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Type</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm">{{ typeLabel }}</p>
+          <section class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+            <div class="px-5 sm:px-6 pt-5 pb-4 border-b border-line">
+              <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">Application</h2>
+              <p class="text-zinc-500 text-[13px] mt-0.5">How this site is set up on the server.</p>
+            </div>
+            <dl class="divide-y divide-line">
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Type</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm ">{{ typeLabel }}</dd>
               </div>
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Isolated user</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ site.isolated_user }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Isolated user</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono">{{ site.isolated_user }}</dd>
               </div>
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Site folder</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ rootPath }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Site folder</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ rootPath }}</dd>
               </div>
 {{#if aliasText}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Aliases</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ aliasText }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Aliases</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ aliasText }}</dd>
               </div>
 {{/if}}
 {{#if site.php_version}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">PHP version</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ site.php_version }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">PHP version</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono">{{ site.php_version }}</dd>
               </div>
 {{/if}}
 {{#if site.port}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">App port</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ site.port }}</p>
-              </div>
-{{/if}}
-{{#if site.repository}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Repository</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ site.repository }}</p>
-              </div>
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Branch</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ site.branch }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">App port</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono">{{ site.port }}</dd>
               </div>
 {{/if}}
 {{#if site.web_directory}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Web directory</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ site.web_directory }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Web directory</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ site.web_directory }}</dd>
               </div>
 {{/if}}
 {{#if site.app_directory}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">App folder</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ site.app_directory }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">App folder</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ site.app_directory }}</dd>
               </div>
 {{/if}}
 {{#if site.backend_directory}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">API folder</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono">{{ site.backend_directory }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">API folder</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ site.backend_directory }}</dd>
               </div>
 {{/if}}
 {{#if site.build_command}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Build command</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ site.build_command }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Build command</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ site.build_command }}</dd>
               </div>
 {{/if}}
 {{#if site.start_command}}
-              <div>
-                <p class="text-slate-500 text-xs mb-1">Start command</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm font-mono break-all">{{ site.start_command }}</p>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Start command</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ site.start_command }}</dd>
               </div>
 {{/if}}
+{{#if site.repository}}
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Repository</dt>
+                <dd class="min-w-0 flex-1 flex flex-wrap items-center gap-2 text-zinc-900 dark:text-zinc-100 text-sm">
+                  <span class="font-mono break-all">{{ site.repository }}</span>
+                  <span class="inline-flex items-center rounded-md bg-sunken border border-line px-1.5 py-px text-xs font-mono text-zinc-600 dark:text-zinc-300">{{ site.branch }}</span>
+                  <a href="{{ '/servers/site-deploy?id=' + siteId }}" class="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 dark:text-brand-400 hover:underline">Deployments <IconChevronRight class="w-3.5 h-3.5" /></a>
+                </dd>
+              </div>
+{{/if}}
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 px-5 sm:px-6 py-3.5">
+                <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">Created</dt>
+                <dd class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm tabular-nums">{{ site.created_at.slice(0, 10) }}</dd>
+              </div>
+            </dl>
+          </section>
+
+
+          <section class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+            <div class="flex items-center justify-between gap-4 px-5 sm:px-6 pt-5 pb-4 border-b border-line">
               <div>
-                <p class="text-slate-500 text-xs mb-1">Created</p>
-                <p class="text-slate-800 dark:text-slate-200 text-sm">{{ site.created_at.slice(0, 10) }}</p>
+                <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">Setup log</h2>
+                <p class="text-zinc-500 text-[13px] mt-0.5">Output from creating this site.</p>
               </div>
             </div>
-          </div>
-
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
-            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-4">Deployment log</h2>
 {{#if site.log}}
-            <div class="max-h-96 overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ site.log }}</div>
+            <div class="max-h-[28rem] overflow-y-auto bg-zinc-950 px-5 sm:px-6 py-4 text-[12.5px] leading-6 font-mono text-zinc-300 whitespace-pre-wrap [overflow-wrap:anywhere]">{{ site.log }}</div>
 {{/if}}
 {{#if not site.log}}
-            <p class="text-slate-500 text-sm">Nothing logged yet.</p>
+            <p class="px-5 sm:px-6 py-6 text-zinc-500 text-sm">Nothing logged yet.</p>
 {{/if}}
-          </div>
+          </section>
 
 {{#if canDelete}}
-          <div class="rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-panel p-6">
-            <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Delete site</h2>
-            <p class="text-slate-500 text-sm mb-4">Permanently removes this site and everything it created on the server: the app service, the nginx site, the PHP pool, the SSL certificate, any WordPress database, the isolated user and every file under <span class="font-mono">/home/{{ site.isolated_user }}</span>. This can't be undone.</p>
+          <section class="rounded-2xl border border-rose-500/25 bg-panel p-5 sm:p-6">
+            <h2 class="text-rose-600 dark:text-rose-400 text-[15px] font-semibold mb-1">Delete site</h2>
+            <p class="text-zinc-500 text-sm mb-4 max-w-3xl leading-relaxed">Permanently removes this site and everything it created on the server: the app service, the nginx site, the PHP pool, the SSL certificate, any WordPress database, the isolated user and every file under <span class="font-mono">/home/{{ site.isolated_user }}</span>. This can't be undone.</p>
 
 {{#if deleteError}}
             <p role="alert" class="text-rose-500 text-sm mb-4">{{ deleteError }}</p>
 {{/if}}
 
 {{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 cursor-not-allowed select-none">
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-lg px-4 py-2 cursor-not-allowed select-none">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                 <rect x="4" y="9" width="12" height="8" rx="2" />
                 <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -486,7 +483,7 @@ template
 
 {{#if confirmDelete}}
 {{#if askCode}}
-            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-4 mb-4 max-w-sm">
+            <div class="rounded-xl border border-line bg-sunken p-4 mb-4 max-w-sm">
               <label for="delete-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-2">Verification code</label>
               <input
                 id="delete-code"
@@ -496,7 +493,7 @@ template
                 maxlength="12"
                 value="{{ code }}"
                 oninput="{{ code = $event.target.value }}"
-                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
+                class="w-full rounded-lg border border-line-strong bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
               />
               <p class="text-slate-500 text-xs mt-2">{{ TwoFactor.totp ? "Enter a code from your authenticator app, or a recovery code." : "Enter the code texted to " + TwoFactor.smsHint + "." }}</p>
 {{#if TwoFactor.notice}}
@@ -506,7 +503,7 @@ template
               <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
 {{/if}}
 {{#if TwoFactor.sms}}
-              <button disabled="{{ TwoFactor.sending }}" onclick="{{ sendCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">{{ TwoFactor.sending ? "Sending…" : "Text me a code" }}</button>
+              <button disabled="{{ TwoFactor.sending }}" onclick="{{ sendCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-line rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">{{ TwoFactor.sending ? "Sending…" : "Text me a code" }}</button>
 {{/if}}
             </div>
 {{/if}}
@@ -515,7 +512,7 @@ template
                 type="text"
                 value="{{ confirmText }}"
                 oninput="{{ confirmText = $event.target.value }}"
-                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                class="rounded-lg border border-line-strong bg-sunken text-slate-900 dark:text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
                 placeholder="Type {{ site.domain }} to confirm"
               />
               <button onclick="{{ deleteSite(false) }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-lg px-4 py-2 transition">
@@ -532,7 +529,7 @@ template
             </div>
 {{/if}}
 {{/if}}
-          </div>
+          </section>
 {{/if}}
 
         </div>

@@ -1,6 +1,5 @@
 page SiteLogs
 
-import { IconArrowLeft } from "tylix-icons"
 
 title "Site logs"
 
@@ -390,6 +389,16 @@ onMount
     const id = params.get("id")
     this.siteId = id or ""
 
+    // The site sidebar remembers each site's server, so the server sidebar
+    // can render before this page's first request comes back.
+    const cached = id ? window.localStorage.getItem("flux-site:" + id) : null
+    if cached {
+      const saved = JSON.parse(cached)
+      if saved and saved.server_id {
+        this.serverId = "" + saved.server_id
+      }
+    }
+
     if not id {
       this.isMissing = true
       this.loading = false
@@ -416,20 +425,27 @@ onMount
   }
 
 template
-  <div id="site-logs-root" class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
-{{#if serverId}}
-{{#if not isMissing}}
-    <ServerSidebar active="sites" serverId="{{ serverId }}" />
-{{/if}}
-{{/if}}
+  <div id="site-logs-root" class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_minmax(0,1fr)] bg-page transition-colors">
 {{#if isMissing}}
     <div></div>
+    <div></div>
+{{/if}}
+{{#if not isMissing}}
+{{#if serverId}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+{{#if not serverId}}
+    <div aria-hidden="true" class="hidden lg:block lg:w-[240px] lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 border-r border-line"></div>
+{{/if}}
+    <SiteSidebar active="logs" siteId="{{ siteId }}" site="{{ site }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
 {{#if loading}}
-      <LoaderMark label="Loading…" />
+      <div data-page-loader="true" class="min-h-[60vh] flex items-center justify-center">
+        <LoaderMark label="Loading logs…" />
+      </div>
 {{/if}}
 
 {{#if isMissing}}
@@ -437,34 +453,18 @@ template
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-4 sm:mb-6 py-1">
-        <IconArrowLeft class="w-4 h-4" /> Sites
-      </a>
-
-      <div class="relative overflow-hidden rounded-2xl border border-line bg-panel px-5 sm:px-8 py-7 sm:py-9 mb-6 sm:mb-8">
-        <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div class="min-w-0">
-            <span class="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-4 max-w-full">
-              <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500"></span>
-              <span class="truncate">Logs</span>
-            </span>
-            <h1 class="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-slate-900 dark:text-slate-100 break-all sm:break-normal sm:truncate mb-2">{{ site.domain }}</h1>
-            <p class="text-slate-600 dark:text-slate-400 text-sm max-w-xl leading-relaxed">Find out why a site is failing. Open the log terminal, expand an error to see its full trace, and copy it.</p>
-          </div>
+      <SiteHeader title="Logs" description="Find out why a site is failing: open the log terminal, expand an error to see its full trace, and copy it." domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
+        <div slot="actions" class="shrink-0">
 {{#if siteReady}}
-          <button onclick="{{ openTerminal('') }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-2 text-sm bg-slate-950 text-brand-400 border border-slate-700 font-mono font-semibold rounded-full px-6 py-2.5 shadow-sm hover:border-brand-500/60 transition-colors">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
-              <path d="M4 6l4 4-4 4M10 15h6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+          <button onclick="{{ openTerminal('') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-10 sm:h-9 text-sm bg-zinc-950 text-brand-400 border border-zinc-700 font-mono font-semibold rounded-full px-5 shadow-sm hover:border-brand-500/60 transition-colors">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4"><path d="M4 6l4 4-4 4M10 15h6" stroke-linecap="round" stroke-linejoin="round" /></svg>
             Open log terminal
           </button>
 {{/if}}
         </div>
-      </div>
+      </SiteHeader>
 
-      <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
-        <SiteSidebar active="logs" siteId="{{ siteId }}" />
-
+      <div class="min-w-0">
         <div class="min-w-0 flex-1 space-y-4 sm:space-y-6">
 
 {{#if not siteReady}}
@@ -537,14 +537,14 @@ template
 
 {{#if loaded}}
 {{#if logsMissing}}
-            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
+            <div class="rounded-xl border border-dashed border-line-strong px-4 py-8 text-center">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No log file yet</p>
               <p class="text-slate-500 text-sm">It hasn't been created on the server, which usually means nothing has been written to it.</p>
             </div>
 {{/if}}
 {{#if not logsMissing}}
 {{#if preview.length is 0}}
-            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
+            <div class="rounded-xl border border-dashed border-line-strong px-4 py-8 text-center">
               <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">No recent errors</p>
               <p class="text-slate-500 text-sm">Nothing was logged at error level in the last {{ lines }} lines.</p>
             </div>
@@ -560,8 +560,8 @@ template
                 <p class="text-slate-500 text-xs mt-1">{{ e.timeText }} {{ e.moreText }}</p>
               </div>
               <div class="shrink-0 flex items-center gap-2">
-                <button onclick="{{ openEntry(e.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View</button>
-                <button onclick="{{ copyOne(e.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button onclick="{{ openEntry(e.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">View</button>
+                <button onclick="{{ copyOne(e.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                   {{#if copied is e.id}}Copied{{/if}}{{#if copied is not e.id}}Copy{{/if}}
                 </button>
               </div>

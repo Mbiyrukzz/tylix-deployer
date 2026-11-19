@@ -1,6 +1,5 @@
 page SiteCommands
 
-import { IconArrowLeft } from "tylix-icons"
 
 title "Site commands"
 
@@ -159,6 +158,16 @@ onMount
     const id = params.get("id")
     this.siteId = id or ""
 
+    // The site sidebar remembers each site's server, so the server sidebar
+    // can render before this page's first request comes back.
+    const cached = id ? window.localStorage.getItem("flux-site:" + id) : null
+    if cached {
+      const saved = JSON.parse(cached)
+      if saved and saved.server_id {
+        this.serverId = "" + saved.server_id
+      }
+    }
+
     if not id {
       this.isMissing = true
       this.loading = false
@@ -169,8 +178,8 @@ onMount
         window.location.href = "/login"
       } else if result.ok {
         this.describe(result.data)
-        this.loading = false
         await this.loadRuns()
+        this.loading = false
       } else {
         this.isMissing = true
         this.loading = false
@@ -179,20 +188,27 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
-{{#if serverId}}
-{{#if not isMissing}}
-    <ServerSidebar active="sites" serverId="{{ serverId }}" />
-{{/if}}
-{{/if}}
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_minmax(0,1fr)] bg-page transition-colors">
 {{#if isMissing}}
     <div></div>
+    <div></div>
+{{/if}}
+{{#if not isMissing}}
+{{#if serverId}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+{{#if not serverId}}
+    <div aria-hidden="true" class="hidden lg:block lg:w-[240px] lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 border-r border-line"></div>
+{{/if}}
+    <SiteSidebar active="commands" siteId="{{ siteId }}" site="{{ site }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
 {{#if loading}}
-      <LoaderMark label="Loading…" />
+      <div data-page-loader="true" class="min-h-[60vh] flex items-center justify-center">
+        <LoaderMark label="Loading commands…" />
+      </div>
 {{/if}}
 
 {{#if isMissing}}
@@ -200,23 +216,14 @@ template
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
-        <IconArrowLeft class="w-4 h-4" /> Sites
-      </a>
+      <SiteHeader title="Commands" description="Migrations, builds, cache clears and other one-off commands for this site." domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}" />
 
       <LockedBanner />
 
-      <div class="mb-8">
-        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-2">{{ site.domain }}</h1>
-        <p class="text-slate-500 text-sm">Commands</p>
-      </div>
-
-      <div class="flex flex-col lg:flex-row gap-8">
-        <SiteSidebar active="commands" siteId="{{ siteId }}" />
-
+      <div class="min-w-0">
         <div class="min-w-0 flex-1">
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none mb-6">
+          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none mb-6">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Run a command</h2>
             <p class="text-slate-500 text-sm mb-5">Runs on the server in the site folder as <span class="font-mono">{{ site.isolated_user }}</span>, never as root. One command at a time, stopped after 10 minutes.</p>
 
@@ -227,7 +234,7 @@ template
 {{#if canRun}}
             <div class="flex flex-wrap gap-2 mb-4">
 {{#each c in presets}}
-              <button onclick="{{ pick(c.command) }}" title="{{ c.command }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">{{ c.label }}</button>
+              <button onclick="{{ pick(c.command) }}" title="{{ c.command }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">{{ c.label }}</button>
 {{/each}}
             </div>
 
@@ -237,7 +244,7 @@ template
                 value="{{ command }}"
                 oninput="{{ command = $event.target.value }}"
                 spellcheck="false"
-                class="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+                class="w-full rounded-lg border border-line bg-sunken text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                 placeholder="Command, for example: npm run build"
               />
               <div class="flex flex-wrap items-center gap-3">
@@ -246,11 +253,11 @@ template
                   value="{{ directory }}"
                   oninput="{{ directory = $event.target.value }}"
                   spellcheck="false"
-                  class="min-w-0 flex-1 sm:flex-none sm:w-64 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+                  class="min-w-0 flex-1 sm:flex-none sm:w-64 rounded-lg border border-line bg-sunken text-slate-900 dark:text-slate-200 text-sm font-mono px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                   placeholder="Folder (optional), e.g. client"
                 />
 {{#if Billing.locked}}
-                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2 cursor-not-allowed select-none">
+                <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2 cursor-not-allowed select-none">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                     <rect x="4" y="9" width="12" height="8" rx="2" />
                     <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -272,7 +279,7 @@ template
 {{/if}}
           </div>
 
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-6 shadow-sm dark:shadow-none">
             <h2 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Recent runs</h2>
             <p class="text-slate-500 text-sm mb-5">The last 20 runs for this site. History is cleared when the app restarts.</p>
 
@@ -281,7 +288,7 @@ template
 {{/if}}
 
 {{#each r in runs}}
-            <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 p-5 mb-3">
+            <div class="rounded-xl border border-line bg-sunken p-5 mb-3">
               <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -312,14 +319,14 @@ template
                 </div>
 
                 <div class="shrink-0 flex items-center gap-2">
-                  <button onclick="{{ toggleRun(r.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Output</button>
-                  <button onclick="{{ reuse(r.command, r.directory) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Use again</button>
+                  <button onclick="{{ toggleRun(r.id) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Output</button>
+                  <button onclick="{{ reuse(r.command, r.directory) }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Use again</button>
                 </div>
               </div>
 
 {{#if openRun is r.id}}
 {{#if r.output}}
-              <div class="mt-4 max-h-96 overflow-y-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ r.output }}</div>
+              <div class="mt-4 max-h-96 overflow-y-auto rounded-lg bg-sunken border border-line p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ r.output }}</div>
 {{/if}}
 {{#if not r.output}}
 {{#if r.isRunning}}

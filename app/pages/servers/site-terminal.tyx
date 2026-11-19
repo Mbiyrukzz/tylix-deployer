@@ -1,6 +1,6 @@
 page SiteTerminal
 
-import { IconArrowLeft } from "tylix-icons"
+import { IconExternalLink } from "tylix-icons"
 
 title "Terminal"
 
@@ -40,7 +40,7 @@ state
   expanded: false
   wrapCls: ""
   backdropCls: "hidden"
-  cardCls: "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
+  cardCls: "rounded-2xl border border-line bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
   bodyCls: "relative h-[60vh] min-h-[420px]"
   hostCls: "absolute inset-0 p-3"
   commands: [
@@ -191,7 +191,7 @@ action
     } else {
       this.wrapCls = ""
       this.backdropCls = "hidden"
-      this.cardCls = "rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
+      this.cardCls = "rounded-2xl border border-line bg-slate-950 overflow-hidden shadow-sm dark:shadow-none"
       this.bodyCls = "relative h-[60vh] min-h-[420px]"
       this.hostCls = "absolute inset-0 p-3"
     }
@@ -583,6 +583,16 @@ onMount
     const id = params.get("id")
     this.siteId = id or ""
 
+    // The site sidebar remembers each site's server, so the server sidebar
+    // can render before this page's first request comes back.
+    const cached = id ? window.localStorage.getItem("flux-site:" + id) : null
+    if cached {
+      const saved = JSON.parse(cached)
+      if saved and saved.server_id {
+        this.serverId = "" + saved.server_id
+      }
+    }
+
     if not id {
       this.isMissing = true
       this.loading = false
@@ -605,24 +615,26 @@ onMount
   }
 
 template
-  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
-{{#if serverId}}
-{{#if not isMissing}}
-    <ServerSidebar active="sites" serverId="{{ serverId }}" />
-{{/if}}
-{{/if}}
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_auto_minmax(0,1fr)] bg-page transition-colors">
 {{#if isMissing}}
     <div></div>
+    <div></div>
+{{/if}}
+{{#if not isMissing}}
+{{#if serverId}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+{{#if not serverId}}
+    <div aria-hidden="true" class="hidden lg:block lg:w-[240px] lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 border-r border-line"></div>
+{{/if}}
+    <SiteSidebar active="terminal" siteId="{{ siteId }}" site="{{ site }}" />
 {{/if}}
     <div class="min-w-0">
-    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-10">
+    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
 
 {{#if loading}}
-      <div class="animate-pulse">
-        <div class="h-4 w-20 rounded bg-slate-300 dark:bg-slate-800 mb-6"></div>
-        <div class="h-8 w-64 rounded bg-slate-300 dark:bg-slate-800 mb-3"></div>
-        <div class="h-4 w-24 rounded bg-slate-300 dark:bg-slate-800 mb-8"></div>
-        <div class="h-[420px] rounded-2xl bg-slate-300 dark:bg-slate-900"></div>
+      <div data-page-loader="true" class="min-h-[60vh] flex items-center justify-center">
+        <LoaderMark label="Loading terminal…" />
       </div>
 {{/if}}
 
@@ -631,30 +643,24 @@ template
 {{/if}}
 
 {{#if site}}
-      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
-        <IconArrowLeft class="w-4 h-4" /> Sites
-      </a>
+      <SiteHeader title="Terminal" description="Open a shell inside this site's folder." domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
+        <div slot="actions" class="flex items-center gap-2 shrink-0">
+          <a href="{{ siteUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+            <IconExternalLink class="w-4 h-4" /> Visit site
+          </a>
+        </div>
+      </SiteHeader>
 
       <LockedBanner />
 
-      <div class="flex flex-wrap items-start justify-between gap-4 mb-8">
-        <div class="min-w-0">
-          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200 truncate mb-1">{{ site.domain }}</h1>
-          <p class="text-slate-500 text-sm">Terminal · open a shell inside this site's folder</p>
-        </div>
-        <a href="{{ siteUrl }}" target="_blank" rel="noopener" class="inline-flex items-center text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-800 rounded-full px-4 py-2 hover:border-brand-500/50 transition-all">Visit site</a>
-      </div>
-
-      <div class="flex flex-col lg:flex-row gap-8">
-        <SiteSidebar active="terminal" siteId="{{ siteId }}" />
-
+      <div class="min-w-0">
         <div class="min-w-0 flex-1">
 
 {{#if error}}
           <div role="alert" class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 mb-6 flex items-start justify-between gap-4">
             <p class="text-rose-500 text-sm break-words">{{ error }}</p>
 {{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
+            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-4 py-1.5 cursor-not-allowed select-none">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                 <rect x="4" y="9" width="12" height="8" rx="2" />
                 <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -869,7 +875,7 @@ template
           </div>
 
 {{#if not expanded}}
-          <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 mt-6 shadow-sm dark:shadow-none">
+          <div class="rounded-2xl border border-line bg-panel p-5 mt-6 shadow-sm dark:shadow-none">
             <div class="flex items-center justify-between mb-3">
               <h2 class="text-slate-800 dark:text-slate-200 font-medium text-sm">Quick checks</h2>
 {{#if live}}
@@ -880,7 +886,7 @@ template
             <div class="flex flex-wrap gap-2">
 {{#each c in commands}}
 {{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-1.5 cursor-not-allowed select-none">
+              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-4 py-1.5 cursor-not-allowed select-none">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
                   <rect x="4" y="9" width="12" height="8" rx="2" />
                   <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
@@ -889,7 +895,7 @@ template
               </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-sm rounded-full border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 px-4 py-1.5 hover:border-brand-500/50 transition-all">{{ c.label }}</button>
+              <button onclick="{{ runCommand(c.cmd) }}" title="{{ c.cmd }}" class="text-sm rounded-full border border-line bg-sunken text-slate-700 dark:text-slate-300 px-4 py-1.5 hover:border-brand-500/50 transition-all">{{ c.label }}</button>
 {{/if}}
 {{/each}}
             </div>
