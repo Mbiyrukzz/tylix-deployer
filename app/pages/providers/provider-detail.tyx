@@ -20,8 +20,6 @@ state
   provider: null
   isMissing: false
   kindName: ""
-  tileLetter: ""
-  tileClass: ""
   manage: false
   rows: []
   locked: false
@@ -79,31 +77,21 @@ state
 action
   applyKind(kind) {
     this.kindName = "Linode (Akamai)"
-    this.tileLetter = "L"
-    this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-brand-500/10 text-brand-700 dark:text-brand-500"
     this.manage = true
 
     if kind is "hetzner" {
       this.kindName = "Hetzner Cloud"
-      this.tileLetter = "H"
-      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400"
     }
     if kind is "digitalocean" {
       this.kindName = "DigitalOcean"
-      this.tileLetter = "D"
-      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400"
       this.manage = false
     }
     if kind is "vultr" {
       this.kindName = "Vultr"
-      this.tileLetter = "V"
-      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400"
       this.manage = false
     }
     if kind is "aws" {
       this.kindName = "Amazon Web Services"
-      this.tileLetter = "A"
-      this.tileClass = "w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400"
       this.manage = false
     }
   }
@@ -390,9 +378,9 @@ template
 
       <LockedBanner />
 
-      <div class="flex items-start justify-between gap-4 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div class="flex items-center gap-4 min-w-0">
-          <span class="{{ tileClass }}">{{ tileLetter }}</span>
+          <BrandLogo kind="{{ provider.kind }}" label="{{ kindName }}" size="xl" />
           <div class="min-w-0">
             <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ provider.label }}</h1>
             <p class="text-slate-500 text-sm">{{ kindName }} · connected {{ provider.created_at.slice(0, 10) }}</p>

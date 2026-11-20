@@ -10,6 +10,8 @@ needs
 uses
   Servers
   Provisions
+  Providers
+  Logos
   Billing
   TwoFactor
   ProvisionActions
@@ -145,6 +147,21 @@ action
     return found ? found[1] : tones.pending
   }
 
+  // The cloud provider a provision was made at: its kind (for the logo)
+  // and a name to show. Empty for servers that were added by hand.
+  providerOf(prov) {
+    if not prov {
+      return { kind: "", name: "", label: "" }
+    }
+    const found = Providers.data.find((x) => x.id is prov.provider_id)
+    const kind = found ? found.kind : ""
+    return {
+      kind: kind,
+      name: Logos.name(kind) or (found ? found.label : "") or "Cloud provider",
+      label: found ? found.label : ""
+    }
+  }
+
   decorateProvision(p) {
     const steps = {
       pending: [5, "Queued"],
@@ -184,8 +201,13 @@ action
 
     // has_instance is true for numeric ids and UUIDs alike (Vultr's old instance_id was 0).
     // has_root_password is only true on Linode and Hetzner.
+    const provider = this.providerOf(p)
+
     return {
       ...p,
+      providerKind: provider.kind,
+      providerName: provider.name,
+      providerLabel: provider.label,
       pct: step ? step[0] : 5,
       label: step ? step[1] : p.step,
       statusLabel: tone.label,
@@ -201,6 +223,7 @@ action
     const prov = Provisions.data.find((p) => p.server_id is s.id)
     const tone = this.tone(s.status)
     const ssh = s.ssh_user + "@" + s.host + (s.port is 22 ? "" : " -p " + s.port)
+    const provider = this.providerOf(prov)
 
     return {
       id: s.id,
@@ -213,6 +236,9 @@ action
       plan: prov?.plan or "—",
       sites: Servers.siteServerIds.filter((x) => x is s.id).length,
       managed: Boolean(prov),
+      providerKind: provider.kind,
+      providerName: prov ? provider.name : "Added by SSH",
+      providerLabel: provider.label,
       provId: prov ? prov.id : 0,
       hasInstance: prov ? Boolean(prov.has_instance) : false,
       hasRootPassword: prov ? Boolean(prov.has_root_password) : false,
@@ -221,7 +247,7 @@ action
       pillCls: tone.pill,
       dotCls: tone.dot,
       solidCls: tone.solid,
-      search: (s.name + " " + s.host + " " + s.ssh_user).toLowerCase()
+      search: (s.name + " " + s.host + " " + s.ssh_user + " " + provider.name + " " + provider.label).toLowerCase()
     }
   }
 
@@ -451,7 +477,7 @@ onMount
       return null
     }
 
-    await Promise.all([Servers.load(), Servers.loadSites(), TwoFactor.load()])
+    await Promise.all([Servers.load(), Servers.loadSites(), TwoFactor.load(), Providers.load()])
     await this.reload()
 
     this.doneCount = Provisions.data.filter((p) => p.status is "done").length
@@ -468,7 +494,7 @@ template
       <LockedBanner />
 
       <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-5">
-        <div class="px-6 sm:px-8 py-6">
+        <div class="px-4 sm:px-8 py-5 sm:py-6">
           <div class="flex flex-col sm:flex-row sm:items-center gap-4">
             <span class="w-14 h-14 shrink-0 rounded-2xl bg-brand-500 text-white flex items-center justify-center">
               <IconDatabase class="w-9 h-9" />
@@ -503,9 +529,9 @@ template
         </div>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
 {{#each st in stats}}
-        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
+        <div class="rounded-2xl border border-line bg-panel p-4 sm:p-5 shadow-sm dark:shadow-none">
           <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">{{ st.label }}</p>
           <p class="text-2xl sm:text-[28px] font-semibold tracking-tight tabular-nums {{ st.cls }}">{{ st.value }}</p>
         </div>
@@ -518,7 +544,7 @@ template
 
 {{#if setupRows.length is not 0}}
       <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-6">
-        <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-line">
+        <div class="flex items-center justify-between gap-4 px-4 sm:px-6 py-4 border-b border-line">
           <div>
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Setting up</h2>
             <p class="text-slate-500 text-xs mt-0.5">This page updates on its own while servers are created.</p>
@@ -530,16 +556,19 @@ template
 {{/if}}
         </div>
 
-        <div class="p-4 space-y-3">
+        <div class="p-3 sm:p-4 space-y-3">
 {{#each pr in setupRows}}
-          <div class="rounded-2xl border border-line p-5">
+          <div class="rounded-2xl border border-line p-4 sm:p-5">
             <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
-                <a href="{{ pr.href }}" class="text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 hover:underline transition-colors">{{ pr.name }}</a>
-                <p class="text-slate-500 text-xs font-mono mt-1 truncate">{{ pr.region }} / {{ pr.plan }} / {{ pr.template }}</p>
+              <div class="flex items-start gap-3 min-w-0">
+                <span title="{{ pr.providerLabel ? pr.providerName + ' · ' + pr.providerLabel : pr.providerName }}"><BrandLogo kind="{{ pr.providerKind }}" label="{{ pr.providerName }}" /></span>
+                <div class="min-w-0">
+                  <a href="{{ pr.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 hover:underline transition-colors">{{ pr.name }}</a>
+                  <p class="text-slate-500 text-xs font-mono mt-1 truncate">{{ pr.region }} / {{ pr.plan }} / {{ pr.template }}</p>
 {{#if pr.ip}}
-                <p class="text-slate-500 text-xs font-mono">{{ pr.ip }}</p>
+                  <p class="text-slate-500 text-xs font-mono">{{ pr.ip }}</p>
 {{/if}}
+                </div>
               </div>
               <div class="flex flex-col items-end gap-2 shrink-0">
                 <span class="{{ pr.pillCls }}">
@@ -598,21 +627,21 @@ template
 
 {{#if Servers.loading}}
       <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
-        <div class="flex items-center gap-4 px-6 py-5 animate-pulse">
+        <div class="flex items-center gap-4 px-4 sm:px-6 py-5 animate-pulse">
           <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
           <div class="flex-1 space-y-2">
             <div class="h-3 w-40 rounded bg-slate-200 dark:bg-slate-800"></div>
             <div class="h-3 w-28 rounded bg-slate-100 dark:bg-slate-800/60"></div>
           </div>
         </div>
-        <div class="flex items-center gap-4 px-6 py-5 animate-pulse">
+        <div class="flex items-center gap-4 px-4 sm:px-6 py-5 animate-pulse">
           <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
           <div class="flex-1 space-y-2">
             <div class="h-3 w-48 rounded bg-slate-200 dark:bg-slate-800"></div>
             <div class="h-3 w-24 rounded bg-slate-100 dark:bg-slate-800/60"></div>
           </div>
         </div>
-        <div class="flex items-center gap-4 px-6 py-5 animate-pulse">
+        <div class="flex items-center gap-4 px-4 sm:px-6 py-5 animate-pulse">
           <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
           <div class="flex-1 space-y-2">
             <div class="h-3 w-32 rounded bg-slate-200 dark:bg-slate-800"></div>
@@ -643,8 +672,8 @@ template
 {{#if Servers.data.length is not 0}}
       <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
 
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-line">
-          <div class="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-200/70 dark:bg-slate-900 p-1 self-start">
+        <div class="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-b border-line">
+          <div class="flex sm:inline-flex items-center gap-1 rounded-full bg-slate-200/70 dark:bg-slate-900 p-1 max-w-full overflow-x-auto no-scrollbar self-stretch sm:self-start [&>button]:shrink-0">
 {{#each t in tabs}}
             <button onclick="{{ setFilter(t.key) }}" class="{{ t.cls }}">
               {{ t.label }}
@@ -661,7 +690,7 @@ template
               type="text"
               value="{{ query }}"
               oninput="{{ setQuery($event.target.value) }}"
-              placeholder="Search by name, host or user"
+              placeholder="Search by name, host or provider"
               aria-label="Search servers"
               class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm pl-9 pr-9 py-2 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
@@ -693,18 +722,22 @@ template
           </div>
 
 {{#each s in cards}}
-          <div class="relative flex flex-col gap-3 px-6 py-4 md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] md:items-center md:gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+          <div class="relative px-4 sm:px-6 py-4 md:grid md:grid-cols-[minmax(0,2fr)_120px_minmax(0,1.2fr)_64px_176px] md:items-center md:gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
 
-            <div class="flex items-center justify-between gap-3 min-w-0">
-              <div class="flex items-center gap-3.5 min-w-0">
-                <div class="relative w-10 h-10 shrink-0 rounded-xl bg-brand-500/10 flex items-center justify-center">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="relative shrink-0" title="{{ s.providerLabel ? s.providerName + ' · ' + s.providerLabel : s.providerName }}">
+{{#if s.managed}}
+                <BrandLogo kind="{{ s.providerKind }}" label="{{ s.providerName }}" />
+{{#else}}
+                <span class="w-9 h-9 rounded-xl border border-line bg-brand-500/10 flex items-center justify-center">
                   <IconDatabase class="w-4 h-4 text-brand-700 dark:text-brand-500" />
-                  <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 {{ s.solidCls }}"></span>
-                </div>
-                <div class="min-w-0">
-                  <a href="{{ s.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 transition-colors after:absolute after:inset-0">{{ s.name }}</a>
-                  <p class="text-slate-500 text-xs font-mono truncate">{{ s.host }}</p>
-                </div>
+                </span>
+{{/if}}
+                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 {{ s.solidCls }}"></span>
+              </span>
+              <div class="min-w-0 flex-1">
+                <a href="{{ s.href }}" class="block truncate text-slate-900 dark:text-slate-100 font-semibold hover:text-brand-700 dark:hover:text-brand-500 transition-colors after:absolute after:inset-0">{{ s.name }}</a>
+                <p class="text-slate-500 text-xs font-mono truncate">{{ s.host }}</p>
               </div>
               <span class="md:hidden {{ s.pillCls }}">
                 <span class="{{ s.dotCls }}"></span> {{ s.label }}
@@ -717,46 +750,47 @@ template
               </span>
             </div>
 
-            <div class="min-w-0 text-sm">
-              <p class="text-slate-900 dark:text-slate-100 font-mono truncate">{{ s.region }}</p>
-              <p class="text-slate-500 text-xs font-mono truncate">{{ s.plan }}</p>
-            </div>
+            <!-- On phones: one line under the name (location, plan, sites, then the
+                 buttons). From md up its children are the grid's last three cells. -->
+            <div class="mt-3 pl-12 flex items-center gap-3 md:contents">
+              <div class="min-w-0 flex-1 text-xs md:text-sm">
+                <p class="text-slate-900 dark:text-slate-100 font-mono truncate">{{ s.region }}<span class="md:hidden text-slate-500"> · {{ s.plan }}</span></p>
+                <p class="text-slate-500 text-xs truncate">{{ s.providerName }}<span class="hidden md:inline font-mono"> · {{ s.plan }}</span><span class="md:hidden"> · {{ s.sites }} {{ s.sites is 1 ? "site" : "sites" }}</span></p>
+              </div>
 
-            <p class="text-slate-900 dark:text-slate-100 text-sm font-mono tabular-nums">
-              {{ s.sites }}<span class="md:hidden text-slate-500 font-sans"> {{ s.sites is 1 ? "site" : "sites" }}</span>
-            </p>
+              <p class="hidden md:block text-slate-900 dark:text-slate-100 text-sm font-mono tabular-nums">{{ s.sites }}</p>
 
-            <div class="relative z-10 flex items-center gap-1 md:justify-end">
-              <button onclick="{{ copySsh(s.id, s.ssh) }}" title="{{ s.ssh }}" aria-label="Copy SSH command" class="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <div class="relative z-10 shrink-0 flex items-center gap-0.5 md:gap-1 md:justify-end">
+                <button onclick="{{ copySsh(s.id, s.ssh) }}" title="{{ s.ssh }}" aria-label="Copy SSH command" class="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
 {{#if copiedId is s.id}}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-500">
-                  <path d="M5 12l5 5L20 7" />
-                </svg>
-                <span class="text-brand-700 dark:text-brand-500">Copied</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-600 dark:text-brand-500">
+                    <path d="M5 12l5 5L20 7" />
+                  </svg>
+                  <span class="text-brand-700 dark:text-brand-500">Copied</span>
+{{#else}}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                    <rect x="9" y="9" width="11" height="11" rx="2" />
+                    <path d="M5 15V6a2 2 0 012-2h9" />
+                  </svg>
+                  <span>SSH</span>
 {{/if}}
-{{#if copiedId is not s.id}}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                  <rect x="9" y="9" width="11" height="11" rx="2" />
-                  <path d="M5 15V6a2 2 0 012-2h9" />
-                </svg>
-                <span>SSH</span>
-{{/if}}
-              </button>
+                </button>
 {{#if s.hasRootPassword}}
-              <button onclick="{{ openPassword(s.provId, s.name, s.ip) }}" title="Root password" aria-label="Show root password" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                  <circle cx="8" cy="15" r="4" />
-                  <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
-                </svg>
-              </button>
+                <button onclick="{{ openPassword(s.provId, s.name, s.ip) }}" title="Root password" aria-label="Show root password" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                    <circle cx="8" cy="15" r="4" />
+                    <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
+                  </svg>
+                </button>
 {{/if}}
 {{#if s.managed}}
-              <button disabled="{{ Billing.locked }}" onclick="{{ openDelete(s.provId, s.name, s.hasInstance) }}" title="{{ Billing.locked ? 'Pay to continue' : 'Delete server' }}" aria-label="Delete server" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
-                </svg>
-              </button>
+                <button disabled="{{ Billing.locked }}" onclick="{{ openDelete(s.provId, s.name, s.hasInstance) }}" title="{{ Billing.locked ? 'Pay to continue' : 'Delete server' }}" aria-label="Delete server" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" />
+                  </svg>
+                </button>
 {{/if}}
+              </div>
             </div>
           </div>
 {{/each}}

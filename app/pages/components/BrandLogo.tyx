@@ -8,7 +8,8 @@ import { IconGithub } from "tylix-icons"
 // GitHub mark, or the first letter of `label` / the kind.
 //   <BrandLogo kind="{{ p.kind }}" label="{{ p.label }}" />
 //   <BrandLogo kind="github" src="{{ p.avatar_url }}" size="lg" />
-// size: "xs" (20px, a corner badge), "sm" (28px), "md" (default, 36px) or "lg" (44px).
+// size: "xs" (20px, a corner badge), "sm" (28px), "md" (default, 36px),
+// "lg" (44px) or "xl" (48px, a page heading).
 
 uses
   Logos
@@ -39,6 +40,9 @@ computed
     if this.size is "lg" {
       return "w-11 h-11 rounded-xl"
     }
+    if this.size is "xl" {
+      return "w-12 h-12 rounded-xl"
+    }
     return "w-9 h-9 rounded-xl"
   }
 
@@ -51,6 +55,9 @@ computed
     }
     if this.size is "lg" {
       return "w-6 h-6"
+    }
+    if this.size is "xl" {
+      return "w-7 h-7"
     }
     return "w-5 h-5"
   }
