@@ -2,9 +2,14 @@ component DeployEditorModal
 
 import { IconX } from "tylix-icons"
 
+uses
+  Syntax
+
 // The deployment page's text editor dialog, for the deploy script
 // (kind="script") or the .env file (kind="env"). The textarea keeps the
 // page's ids (script-input / env-input): the page reads its value on input.
+// A coloured copy of the text (Syntax.html) sits under the see-through
+// textarea, with a line gutter beside it; all three scroll together.
 
 props
   kind: String
@@ -17,6 +22,36 @@ props
   onSave: Function
   onReset: Function
   onClose: Function
+
+computed
+  isEnv() {
+    return this.kind is "env"
+  }
+
+  inputId() {
+    return this.isEnv ? "env-input" : "script-input"
+  }
+
+  lineCount() {
+    return (this.value or "").split(String.fromCharCode(10)).length
+  }
+
+  lineNums() {
+    return Array.from({ length: this.lineCount }, (x, i) => i + 1).join(String.fromCharCode(10))
+  }
+
+  coloured() {
+    return Syntax.html(this.value, this.isEnv ? "env" : "bash")
+  }
+
+  fileName() {
+    if not this.isEnv {
+      return "deploy.sh"
+    }
+    const path = this.envPath or ".env"
+    const cut = path.lastIndexOf("/")
+    return cut >= 0 ? path.slice(cut + 1) : path
+  }
 
 action
   input() {
@@ -35,47 +70,96 @@ action
     this.onClose()
   }
 
+  syncScroll(e) {
+    const ta = e.target
+    const pre = document.getElementById(this.inputId + "-hl")
+    if pre {
+      pre.scrollTop = ta.scrollTop
+      pre.scrollLeft = ta.scrollLeft
+    }
+    const gutter = document.getElementById(this.inputId + "-gutter")
+    if gutter {
+      gutter.scrollTop = ta.scrollTop
+    }
+  }
+
 template
 <div role="dialog" aria-modal="true" aria-labelledby="{{ kind + '-title' }}" class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
-  <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
+  <div class="w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-5 sm:p-6">
     <div class="flex items-center justify-between mb-2">
-      <h3 id="{{ kind + '-title' }}" class="text-slate-900 dark:text-slate-100 font-semibold">{{ kind is "env" ? "Environment" : "Deployment script" }}</h3>
+      <h3 id="{{ kind + '-title' }}" class="text-slate-900 dark:text-slate-100 font-semibold">{{ isEnv ? "Environment" : "Deployment script" }}</h3>
       <button onclick="{{ dismiss() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
         <IconX class="w-4 h-4" />
       </button>
     </div>
-{{#if kind is "env"}}
+{{#if isEnv}}
     <p class="text-slate-500 text-xs mb-4">Written to <span class="font-mono break-all">{{ envPath }}</span> on every deploy (permissions 600). Stored encrypted. Leave empty to keep the file on the server as it is.</p>
-    <textarea
-      id="env-input"
-      rows="14"
-      spellcheck="false"
-      autocomplete="off"
-      value="{{ value }}"
-      oninput="{{ input() }}"
-      class="w-full mb-4 rounded-xl border border-line-strong bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
-      placeholder="APP_ENV=production"
-    ></textarea>
 {{#else}}
     <p class="text-slate-500 text-xs mb-4">Runs as the isolated user after the latest code is pulled, starting in the site folder. A failing command stops the deployment. Available variables: <span class="font-mono">$SITE_ROOT $DOMAIN $BRANCH $PHP_VERSION $APP_DIR $BACKEND_DIR $PORT</span>.</p>
-    <textarea
-      id="script-input"
-      rows="16"
-      spellcheck="false"
-      autocomplete="off"
-      value="{{ value }}"
-      oninput="{{ input() }}"
-      class="w-full mb-4 rounded-xl border border-line-strong bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
-    ></textarea>
 {{/if}}
+
+    <!-- editor: always dark, like the console -->
+    <div class="cx-root mb-4 rounded-xl overflow-hidden bg-[#0a0a0b] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06),0_10px_30px_-12px_rgb(0_0_0/0.5)] focus-within:shadow-[inset_0_0_0_1px_rgb(240_103_107/0.45),0_0_30px_-10px_rgb(240_103_107/0.35)] transition-shadow">
+      <div class="flex items-center gap-1.5 px-3.5 h-9 border-b border-white/[0.05] bg-white/[0.02]">
+        <span class="w-2 h-2 rounded-full bg-brand-400/80"></span>
+        <span class="w-2 h-2 rounded-full bg-amber-300/70"></span>
+        <span class="w-2 h-2 rounded-full bg-emerald-400/70"></span>
+        <span class="ml-2 min-w-0 truncate font-mono text-[11.5px] text-zinc-300">{{ fileName }}</span>
+        <span class="ml-auto shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] {{ isEnv ? 'bg-emerald-400/10 text-emerald-300' : 'bg-sky-400/10 text-sky-300' }}">{{ isEnv ? "dotenv" : "bash" }}</span>
+        <span class="shrink-0 font-mono text-[11px] text-zinc-500 tabular-nums ml-2">{{ lineCount }} {{ lineCount is 1 ? "line" : "lines" }}</span>
+      </div>
+      <div class="flex h-[min(52vh,26rem)]">
+        <div
+          id="{{ inputId + '-gutter' }}"
+          aria-hidden="true"
+          class="shrink-0 w-10 sm:w-12 overflow-hidden select-none text-right pr-2.5 sm:pr-3 pt-3 pb-8 bg-white/[0.015] border-r border-white/[0.05] text-zinc-600 text-[12.5px] leading-6 font-mono whitespace-pre"
+        >{{ lineNums }}</div>
+        <div class="relative flex-1 min-w-0">
+          <pre
+            id="{{ inputId + '-hl' }}"
+            aria-hidden="true"
+            class="absolute inset-0 m-0 overflow-hidden pointer-events-none text-zinc-200 text-[12.5px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-8 whitespace-pre [tab-size:4]"
+          >{{@html coloured }}</pre>
+{{#if isEnv}}
+          <textarea
+            id="env-input"
+            spellcheck="false"
+            autocomplete="off"
+            autocapitalize="off"
+            wrap="off"
+            value="{{ value }}"
+            oninput="{{ input() }}"
+            onscroll="{{ syncScroll($event) }}"
+            aria-label="Environment file"
+            placeholder="APP_ENV=production"
+            class="absolute inset-0 w-full h-full resize-none bg-transparent text-transparent caret-brand-300 selection:bg-brand-500/30 placeholder:text-zinc-600 text-[12.5px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-8 overflow-auto whitespace-pre [tab-size:4] cx-scroll focus:outline-none"
+          ></textarea>
+{{#else}}
+          <textarea
+            id="script-input"
+            spellcheck="false"
+            autocomplete="off"
+            autocapitalize="off"
+            wrap="off"
+            value="{{ value }}"
+            oninput="{{ input() }}"
+            onscroll="{{ syncScroll($event) }}"
+            aria-label="Deployment script"
+            class="absolute inset-0 w-full h-full resize-none bg-transparent text-transparent caret-brand-300 selection:bg-brand-500/30 text-[12.5px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-8 overflow-auto whitespace-pre [tab-size:4] cx-scroll focus:outline-none"
+          ></textarea>
+{{/if}}
+        </div>
+      </div>
+    </div>
+
 {{#if error}}
     <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
 {{/if}}
     <div class="flex items-center justify-between gap-3">
-{{#if kind is "script"}}
-      <button onclick="{{ reset() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reset to default</button>
-{{#else}}
+{{#if isEnv}}
       <span></span>
+{{#else}}
+      <button onclick="{{ reset() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reset to default</button>
 {{/if}}
       <div class="flex items-center gap-3">
         <button onclick="{{ dismiss() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>

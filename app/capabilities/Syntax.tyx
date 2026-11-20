@@ -1,0 +1,111 @@
+capability Syntax
+
+// Syntax colouring for the code editors (the nginx config, the deploy
+// script, the .env file). Syntax.html(text, lang) returns escaped HTML with
+// <span class="..."> around each token, for a <pre> laid exactly under a
+// transparent <textarea>: the textarea keeps the typing, the pre shows the
+// colours. lang: "nginx", "bash" or "env". The colours are for a dark
+// editor surface.
+//
+// Each language is a list of [pattern, class] rules, tried left to right at
+// every position; the first rule that matches there wins. Patterns may not
+// use capturing groups (use (?:...)), since the group number says which
+// rule matched.
+
+action
+  palette() {
+    return {
+      com: "text-zinc-500 italic",
+      str: "text-amber-200",
+      var: "text-violet-300",
+      key: "text-sky-300",
+      block: "text-brand-300 font-semibold",
+      kw: "text-fuchsia-300",
+      cmd: "text-sky-300",
+      lit: "text-emerald-300",
+      num: "text-orange-300",
+      op: "text-zinc-500",
+      flag: "text-teal-300",
+      val: "text-emerald-200"
+    }
+  }
+
+  rules(lang) {
+    if lang is "nginx" {
+      return [
+        ["#[^\\n]*", "com"],
+        ["\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*'", "str"],
+        ["\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?", "var"],
+        ["(?<=(?:^|[{};])[ \\t]*)(?:server|location|upstream|http|events|if|map|types|limit_except|geo|split_clients|stream|mail)(?![\\w.-])", "block"],
+        ["(?<=(?:^|[{};])[ \\t]*)[A-Za-z_][A-Za-z0-9_]*", "key"],
+        ["(?<=location[ \\t]+)(?:=|~\\*?|\\^~)(?=[ \\t])", "op"],
+        ["\\b(?:on|off|default_server|ssl|http2|always|any|all|permanent|redirect|last|break|reuseport|ipv6only)\\b", "lit"],
+        ["\\b\\d+(?:\\.\\d+)*(?:ms|[kKmMgGsShHdDwWyY])?\\b", "num"],
+        ["[{};]", "op"]
+      ]
+    }
+
+    if lang is "env" {
+      return [
+        ["^[ \\t]*#[^\\n]*", "com"],
+        ["^[ \\t]*export(?=[ \\t])", "kw"],
+        ["(?<=^[ \\t]*(?:export[ \\t]+)?)[A-Za-z_][A-Za-z0-9_.]*(?=[ \\t]*=)", "key"],
+        ["(?<=^[^=\\n#]*)=", "op"],
+        ["\"(?:[^\"\\\\\\n]|\\\\.)*\"|'[^'\\n]*'", "str"],
+        ["\\$\\{[^}\\n]*\\}|\\$[A-Za-z_][A-Za-z0-9_]*", "var"],
+        ["(?<==[ \\t]*)(?:true|false|null|yes|no|on|off)(?=[ \\t]*$)", "lit"],
+        ["(?<==[ \\t]*)-?\\d+(?:\\.\\d+)?(?=[ \\t]*$)", "num"],
+        ["(?<=^[^#\\n]*=[^\\n]*)[^\\n$\"']+", "val"]
+      ]
+    }
+
+    // bash, the deploy script
+    return [
+      ["(?<=^|[ \\t;])#[^\\n]*", "com"],
+      ["\"(?:[^\"\\\\]|\\\\.)*\"", "str"],
+      ["'[^']*'", "str"],
+      ["\\$(?:\\{[^}\\n]*\\}|\\([^)\\n]*\\)|[A-Za-z_][A-Za-z0-9_]*|[0-9#?@*$!-])", "var"],
+      ["\\b(?:if|then|else|elif|fi|for|in|do|done|while|until|case|esac|function|return|exit|set|export|local|readonly|source|true|false)\\b", "kw"],
+      ["(?<=(?:^|&&|\\|\\||[;|(]|\\bexport|\\blocal)[ \\t]*)[A-Za-z_][A-Za-z0-9_]*(?==)", "var"],
+      ["(?<=(?:^|&&|\\|\\||[;|(]|\\bthen|\\bdo|\\belse|\\bsudo)[ \\t]*)[A-Za-z_./~][\\w./:@+-]*", "cmd"],
+      ["(?<=[ \\t])--?[A-Za-z0-9][\\w-]*", "flag"],
+      ["&&|\\|\\||2>&1|>>|[|;<>]", "op"],
+      ["\\b\\d+\\b", "num"]
+    ]
+  }
+
+  escape(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  }
+
+  html(text, lang) {
+    const src = text or ""
+    const list = this.rules(lang)
+    const colours = this.palette()
+    const classes = list.map((r) => Reflect.get(colours, r[1]))
+    const re = new RegExp(list.map((r) => "(" + r[0] + ")").join("|"), "gm")
+
+    let out = ""
+    let last = 0
+    for m of src.matchAll(re) {
+      const at = m.index
+      if at > last {
+        out = out + this.escape(src.slice(last, at))
+      }
+      const group = m.findIndex((g, k) => k > 0 and g is not undefined)
+      let inner = this.escape(m[0])
+      // "$VAR" and "${VAR}" still stand out inside double quotes.
+      if list[group - 1][1] is "str" and m[0].startsWith("\"") and lang is not "env" {
+        inner = inner.replace(/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, (v) => "<span class=\"" + Reflect.get(colours, "var") + "\">" + v + "</span>")
+      }
+      out = out + "<span class=\"" + classes[group - 1] + "\">" + inner + "</span>"
+      last = at + m[0].length
+    }
+    if last < src.length {
+      out = out + this.escape(src.slice(last))
+    }
+
+    // A <pre> drops a final empty line; the textarea doesn't. Keep the
+    // heights equal so the two scroll together.
+    return out + "\n "
+  }

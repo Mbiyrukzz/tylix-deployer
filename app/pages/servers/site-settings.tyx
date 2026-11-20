@@ -8,6 +8,7 @@ needs
 
 uses
   Billing
+  Syntax
 
 background
   Billing
@@ -662,6 +663,11 @@ action
       if gutter {
         gutter.scrollTop = e.target.scrollTop
       }
+      const colours = document.getElementById("nginx-hl")
+      if colours {
+        colours.scrollTop = e.target.scrollTop
+        colours.scrollLeft = e.target.scrollLeft
+      }
     }
   }
 
@@ -1055,6 +1061,7 @@ template
                 <p class="text-slate-200 text-sm font-medium truncate">nginx configuration</p>
                 <p class="text-slate-500 text-xs font-mono truncate">{{ nginxFile }}</p>
               </div>
+              <span class="hidden sm:inline-flex shrink-0 items-center rounded-md bg-sky-400/10 text-sky-300 text-[10.5px] font-semibold uppercase tracking-[0.12em] px-2 py-0.5 shadow-[inset_0_0_0_1px_rgb(56_189_248/0.25)]">nginx</span>
 {{#if nginxText is not nginxOriginal}}
               <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-0.5">
                 <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Unsaved changes
@@ -1112,16 +1119,26 @@ template
                 aria-hidden="true"
                 class="shrink-0 w-10 sm:w-14 overflow-hidden select-none text-right pr-2 sm:pr-3 pl-1 sm:pl-2 pt-3 pb-10 bg-slate-900/60 border-r border-slate-800 text-slate-600 text-[13px] leading-6 font-mono whitespace-pre"
               >{{ nginxLineNums }}</div>
-              <textarea
-                id="nginx-editor"
-                value="{{ nginxText }}"
-                spellcheck="false"
-                autocapitalize="off"
-                autocomplete="off"
-                wrap="off"
-                aria-label="nginx configuration"
-                class="flex-1 min-w-0 h-full resize-none bg-transparent text-slate-200 text-base sm:text-[13px] leading-6 font-mono pl-3 sm:pl-4 pr-4 pt-3 pb-10 overflow-auto whitespace-pre focus:outline-none"
-              ></textarea>
+              <!-- The coloured copy sits under a see-through textarea that keeps
+                   the typing, Tab and Ctrl+S; both share the same metrics and
+                   scroll together (onNginxScroll). -->
+              <div class="relative flex-1 min-w-0 h-full">
+                <pre
+                  id="nginx-hl"
+                  aria-hidden="true"
+                  class="absolute inset-0 m-0 overflow-hidden pointer-events-none text-slate-200 text-base sm:text-[13px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-10 whitespace-pre [tab-size:4]"
+                >{{@html Syntax.html(nginxText, "nginx") }}</pre>
+                <textarea
+                  id="nginx-editor"
+                  value="{{ nginxText }}"
+                  spellcheck="false"
+                  autocapitalize="off"
+                  autocomplete="off"
+                  wrap="off"
+                  aria-label="nginx configuration"
+                  class="absolute inset-0 w-full h-full resize-none bg-transparent text-transparent caret-brand-300 selection:bg-brand-500/30 text-base sm:text-[13px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-10 overflow-auto whitespace-pre [tab-size:4] focus:outline-none"
+                ></textarea>
+              </div>
             </div>
 
             <p class="text-slate-500 text-xs mt-3 leading-relaxed">Keep the <span class="font-mono text-slate-400">include</span> line in place. Plugins and redirects keep their settings in separate files that this config pulls in, and they stop working without it. Certificates added by HTTPS also live here, and recreating the site or changing its HTTPS settings can rewrite this file.</p>
