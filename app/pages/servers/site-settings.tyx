@@ -1117,17 +1117,18 @@ template
               <div
                 id="nginx-gutter"
                 aria-hidden="true"
-                class="shrink-0 w-10 sm:w-14 overflow-hidden select-none text-right pr-2 sm:pr-3 pl-1 sm:pl-2 pt-3 pb-10 bg-slate-900/60 border-r border-slate-800 text-slate-600 text-[13px] leading-6 font-mono whitespace-pre"
+                class="shrink-0 w-10 sm:w-14 overflow-hidden select-none text-right pr-2 sm:pr-3 pl-1 sm:pl-2 pt-3 pb-10 bg-slate-900/60 border-r border-slate-800 text-slate-600 text-base sm:text-[13px] leading-6 font-mono whitespace-pre"
               >{{ nginxLineNums }}</div>
-              <!-- The coloured copy sits under a see-through textarea that keeps
+              <!-- The coloured copy (a div, since Tylix shows a pre element's content
+                   as plain text) sits under a see-through textarea that keeps
                    the typing, Tab and Ctrl+S; both share the same metrics and
                    scroll together (onNginxScroll). -->
               <div class="relative flex-1 min-w-0 h-full">
-                <pre
+                <div
                   id="nginx-hl"
                   aria-hidden="true"
-                  class="absolute inset-0 m-0 overflow-hidden pointer-events-none text-slate-200 text-base sm:text-[13px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-10 whitespace-pre [tab-size:4]"
-                >{{@html Syntax.html(nginxText, "nginx") }}</pre>
+                  class="absolute inset-0 overflow-hidden pointer-events-none text-slate-200 text-base sm:text-[13px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-10 whitespace-pre [tab-size:4]"
+                >{{@html Syntax.html(nginxText, "nginx") }}</div>
                 <textarea
                   id="nginx-editor"
                   value="{{ nginxText }}"
@@ -1136,6 +1137,7 @@ template
                   autocomplete="off"
                   wrap="off"
                   aria-label="nginx configuration"
+                  style="color: transparent; -webkit-text-fill-color: transparent; caret-color: #f6a8a6"
                   class="absolute inset-0 w-full h-full resize-none bg-transparent text-transparent caret-brand-300 selection:bg-brand-500/30 text-base sm:text-[13px] leading-6 font-mono font-normal pl-3 sm:pl-4 pr-4 pt-3 pb-10 overflow-auto whitespace-pre [tab-size:4] focus:outline-none"
                 ></textarea>
               </div>
