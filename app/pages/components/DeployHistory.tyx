@@ -1,0 +1,156 @@
+component DeployHistory
+
+// The deployment history on the deployment page: status tabs, one row per
+// run (commit, when, how long) with log / cancel / delete buttons, and the
+// pager. The page loads the rows; this only shows them and reports clicks.
+
+props
+  rows: any
+  tabs: any
+  rangeText: String
+  loading: Boolean
+  bodyCls: String
+  page: any
+  totalPages: any
+  pageNumbers: any
+  hasPrev: Boolean
+  hasNext: Boolean
+  onFilter: Function
+  onPage: Function
+  onViewLog: Function
+  onCancel: Function
+  onDelete: Function
+
+action
+  filter(key) {
+    this.onFilter(key)
+  }
+
+  go(n) {
+    this.onPage(n)
+  }
+
+  prev() {
+    this.onPage(this.page - 1)
+  }
+
+  next() {
+    this.onPage(this.page + 1)
+  }
+
+  viewLog(id) {
+    this.onViewLog(id)
+  }
+
+  cancel(id) {
+    this.onCancel(id)
+  }
+
+  remove(id) {
+    this.onDelete(id)
+  }
+
+template
+<div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+  <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-line">
+    <div>
+      <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">History</h2>
+{{#if rangeText}}
+      <p class="text-slate-500 text-xs mt-0.5">{{ rangeText }}</p>
+{{/if}}
+    </div>
+    <div class="flex flex-wrap items-center gap-1 rounded-lg bg-sunken/60 p-1">
+{{#each t in tabs}}
+      <button onclick="{{ filter(t.key) }}" class="{{ t.cls }}">
+        {{ t.label }}
+        <span class="opacity-60">{{ t.count }}</span>
+      </button>
+{{/each}}
+    </div>
+  </div>
+
+{{#if rows.length is 0}}
+{{#if not loading}}
+  <div class="px-6 py-14 text-center">
+    <p class="text-slate-500 text-sm">No deployments to show.</p>
+  </div>
+{{/if}}
+{{/if}}
+
+  <div class="divide-y divide-line {{ bodyCls }}">
+{{#each d in rows}}
+    <div class="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors">
+      <span class="{{ d.dotCls }}"></span>
+
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <p class="min-w-0 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{{ d.title }}</p>
+          <span class="{{ d.badgeCls }}">{{ d.label }}</span>
+        </div>
+        <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+{{#if d.branch}}
+          <span class="inline-flex items-center gap-1.5 font-mono max-w-[12rem]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 shrink-0"><circle cx="6" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="8" r="2.5" /><path d="M6 8.5v7M18 10.5c0 4-12 2-12 5.5" /></svg>
+            <span class="truncate">{{ d.branch }}</span>
+          </span>
+{{/if}}
+{{#if d.shortCommit}}
+{{#if d.commitUrl}}
+          <a href="{{ d.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ d.commitTitle }}" class="inline-flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
+            {{ d.shortCommit }}
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 opacity-60"><path d="M6 14L14 6M7 6h7v7" /></svg>
+          </a>
+{{#else}}
+          <span class="font-mono text-slate-600 dark:text-slate-300">{{ d.shortCommit }}</span>
+{{/if}}
+{{/if}}
+          <span title="{{ d.whenText }} UTC">{{ d.agoText }}</span>
+{{#if d.duration}}
+          <span class="font-mono">{{ d.duration }}</span>
+{{/if}}
+{{#if d.queueText}}
+          <span class="text-sky-600 dark:text-sky-400">{{ d.queueText }}</span>
+{{/if}}
+        </div>
+      </div>
+
+      <div class="flex items-center gap-0.5 shrink-0">
+{{#if d.canCancel}}
+        <button onclick="{{ cancel(d.id) }}" aria-label="Cancel deployment" title="Cancel deployment" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+        </button>
+{{/if}}
+        <button onclick="{{ viewLog(d.id) }}" aria-label="View log" title="View log" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+        </button>
+{{#if d.canDelete}}
+        <button onclick="{{ remove(d.id) }}" aria-label="Delete deployment" title="Delete deployment" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" /></svg>
+        </button>
+{{/if}}
+      </div>
+    </div>
+{{/each}}
+  </div>
+
+{{#if totalPages is not 1}}
+  <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-3.5 border-t border-line">
+    <p class="text-slate-500 text-xs">Page {{ page }} of {{ totalPages }}</p>
+    <div class="flex items-center gap-1">
+{{#if hasPrev}}
+      <button onclick="{{ prev() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">← Previous</button>
+{{#else}}
+      <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">← Previous</button>
+{{/if}}
+{{#each p in pageNumbers}}
+      <button onclick="{{ go(p.n) }}" class="{{ p.cls }}">{{ p.n }}</button>
+{{/each}}
+{{#if hasNext}}
+      <button onclick="{{ next() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Next →</button>
+{{#else}}
+      <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">Next →</button>
+{{/if}}
+    </div>
+  </div>
+{{/if}}
+</div>

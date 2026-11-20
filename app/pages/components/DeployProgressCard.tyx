@@ -1,0 +1,96 @@
+component DeployProgressCard
+
+// "Latest deployment" on the deployment page: the queue notice, each step
+// of the run with its state, and the last few lines of output in a small
+// console that opens the full log (DeployLogConsole).
+
+props
+  deployStatus: String
+  queuedText: String
+  stages: any
+  stageCount: any
+  tail: any
+  domain: String
+  onOpenLog: Function
+
+action
+  openLog() {
+    this.onOpenLog()
+  }
+
+template
+<div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+  <div class="flex items-center justify-between gap-3 px-6 py-4 border-b border-line">
+    <div class="flex items-center gap-3">
+      <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest deployment</h2>
+{{#if deployStatus is "deploying"}}
+      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Live
+      </span>
+{{/if}}
+    </div>
+    <button onclick="{{ openLog() }}" class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M5 6.5l3.5 3.5L5 13.5M10.5 14h4.5" /></svg>
+      Full log
+    </button>
+  </div>
+
+{{#if deployStatus is "queued"}}
+  <div class="flex items-center gap-3 px-6 py-6">
+    <span class="w-4 h-4 shrink-0 rounded-full border-2 border-sky-400 border-t-transparent animate-spin"></span>
+    <p class="text-sm text-slate-500">{{ queuedText }}</p>
+  </div>
+{{/if}}
+
+{{#if stages.length is not 0}}
+  <ol class="px-6 py-3 divide-y divide-line/60">
+{{#each s in stages}}
+    <li class="flex items-center gap-3 py-2.5">
+{{#if s.running}}
+      <span class="w-5 h-5 shrink-0 inline-flex items-center justify-center"><span class="w-3.5 h-3.5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></span></span>
+{{#else}}
+      <span class="{{ s.iconCls }}">{{ s.icon }}</span>
+{{/if}}
+      <span class="{{ s.textCls }}">{{ s.text }}</span>
+{{#if s.note}}
+      <span class="shrink-0 text-xs text-slate-400">{{ s.note }}</span>
+{{/if}}
+    </li>
+{{/each}}
+  </ol>
+{{/if}}
+
+{{#if deployStatus is "deploying"}}
+{{#if stageCount is 0}}
+  <div class="flex items-center gap-3 px-6 py-6">
+    <span class="w-4 h-4 shrink-0 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></span>
+    <p class="text-sm text-slate-500">Starting deployment…</p>
+  </div>
+{{/if}}
+{{/if}}
+
+{{#if tail.length is not 0}}
+  <div class="cx-root border-t border-line bg-[#111113] p-2.5 sm:p-3">
+    <button onclick="{{ openLog() }}" title="Open the full log" class="group cx-frame cx-well block w-full text-left rounded-xl overflow-hidden transition-shadow duration-300 hover:shadow-[0_0_40px_-10px_rgb(240_103_107/0.45)]" data-live="{{ deployStatus is 'deploying' }}">
+      <span class="flex items-center gap-1.5 px-3.5 h-8 border-b border-white/[0.04]">
+        <span class="w-2 h-2 rounded-full bg-brand-400/80"></span>
+        <span class="w-2 h-2 rounded-full bg-amber-300/70"></span>
+        <span class="w-2 h-2 rounded-full bg-emerald-400/70"></span>
+        <span class="ml-2 font-mono text-[10.5px] text-zinc-400 truncate">{{ domain }}</span>
+        <span class="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-zinc-300 group-hover:text-brand-300 transition-colors">
+          Open log
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><path d="M6 14L14 6M7 6h7v7" /></svg>
+        </span>
+      </span>
+      <span class="block px-4 py-3 font-mono font-medium text-[12px] leading-6">
+{{#each l in tail}}
+        <span class="block whitespace-pre-wrap [overflow-wrap:anywhere] {{ l.cls }}">{{ l.text }}</span>
+{{/each}}
+{{#if deployStatus is "deploying"}}
+        <span class="block"><span class="inline-block w-[7px] h-[13px] -mb-[2px] bg-brand-400/80 animate-pulse"></span></span>
+{{/if}}
+      </span>
+    </button>
+  </div>
+{{/if}}
+</div>

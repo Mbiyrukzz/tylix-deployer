@@ -1,0 +1,72 @@
+component DeployConfirmModal
+
+// The deployment page's confirm dialog: delete a deployment from the
+// history (kind="delete") or cancel one that is queued or running
+// (kind="cancel"). `target` is the history row it is about.
+
+props
+  kind: String
+  target: Object
+  error: String
+  busy: Boolean
+  locked: Boolean
+  onConfirm: Function
+  onClose: Function
+
+action
+  confirm() {
+    this.onConfirm()
+  }
+
+  dismiss() {
+    this.onClose()
+  }
+
+template
+<div role="dialog" aria-modal="true" aria-labelledby="{{ kind + '-title' }}" class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
+  <div class="w-full max-w-md rounded-2xl border border-line bg-panel shadow-xl p-6">
+    <div class="flex items-start gap-4">
+      <span class="w-10 h-10 shrink-0 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+{{#if kind is "delete"}}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" /></svg>
+{{#else}}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+{{/if}}
+      </span>
+      <div class="min-w-0">
+{{#if kind is "delete"}}
+        <h3 id="delete-title" class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Delete this deployment?</h3>
+        <p class="text-slate-500 text-sm leading-relaxed">This removes the record and its log from the history. It does not change anything on the server.</p>
+{{#if target}}
+        <p class="mt-3 text-xs font-mono text-slate-500">{{ target.whenText }} UTC{{#if target.shortCommit}} · {{ target.shortCommit }}{{/if}}</p>
+{{/if}}
+{{#else}}
+        <h3 id="cancel-title" class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Cancel this deployment?</h3>
+{{#if target}}
+{{#if target.status is "queued"}}
+        <p class="text-slate-500 text-sm leading-relaxed">It hasn't started yet. It will be removed from the queue and nothing changes on the server.</p>
+{{/if}}
+{{#if target.status is "deploying"}}
+        <p class="text-slate-500 text-sm leading-relaxed">The running commands on the server are stopped, and the deploy script rolls back where it can. The code may be partially updated, so deploy again afterwards.</p>
+{{/if}}
+{{/if}}
+{{/if}}
+      </div>
+    </div>
+{{#if error}}
+    <p role="alert" class="text-rose-500 text-sm mt-4">{{ error }}</p>
+{{/if}}
+    <div class="flex items-center justify-end gap-3 mt-6">
+      <button onclick="{{ dismiss() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">{{ kind is "delete" ? "Cancel" : "Keep deploying" }}</button>
+{{#if busy}}
+      <button disabled class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">{{ kind is "delete" ? "Deleting…" : "Cancelling…" }}</button>
+{{#else}}
+{{#if locked}}
+      <button disabled title="Pay to continue" class="text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2 cursor-not-allowed select-none">{{ kind is "delete" ? "Delete" : "Cancel deployment" }}</button>
+{{#else}}
+      <button onclick="{{ confirm() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">{{ kind is "delete" ? "Delete" : "Cancel deployment" }}</button>
+{{/if}}
+{{/if}}
+    </div>
+  </div>
+</div>

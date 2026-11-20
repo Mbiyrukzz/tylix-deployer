@@ -1,0 +1,100 @@
+component DeployEditorModal
+
+import { IconX } from "tylix-icons"
+
+// The deployment page's text editor dialog, for the deploy script
+// (kind="script") or the .env file (kind="env"). The textarea keeps the
+// page's ids (script-input / env-input): the page reads its value on input.
+
+props
+  kind: String
+  value: String
+  envPath: String
+  error: String
+  saving: Boolean
+  locked: Boolean
+  onInput: Function
+  onSave: Function
+  onReset: Function
+  onClose: Function
+
+action
+  input() {
+    this.onInput()
+  }
+
+  save() {
+    this.onSave()
+  }
+
+  reset() {
+    this.onReset()
+  }
+
+  dismiss() {
+    this.onClose()
+  }
+
+template
+<div role="dialog" aria-modal="true" aria-labelledby="{{ kind + '-title' }}" class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
+  <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 id="{{ kind + '-title' }}" class="text-slate-900 dark:text-slate-100 font-semibold">{{ kind is "env" ? "Environment" : "Deployment script" }}</h3>
+      <button onclick="{{ dismiss() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <IconX class="w-4 h-4" />
+      </button>
+    </div>
+{{#if kind is "env"}}
+    <p class="text-slate-500 text-xs mb-4">Written to <span class="font-mono break-all">{{ envPath }}</span> on every deploy (permissions 600). Stored encrypted. Leave empty to keep the file on the server as it is.</p>
+    <textarea
+      id="env-input"
+      rows="14"
+      spellcheck="false"
+      autocomplete="off"
+      value="{{ value }}"
+      oninput="{{ input() }}"
+      class="w-full mb-4 rounded-xl border border-line-strong bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
+      placeholder="APP_ENV=production"
+    ></textarea>
+{{#else}}
+    <p class="text-slate-500 text-xs mb-4">Runs as the isolated user after the latest code is pulled, starting in the site folder. A failing command stops the deployment. Available variables: <span class="font-mono">$SITE_ROOT $DOMAIN $BRANCH $PHP_VERSION $APP_DIR $BACKEND_DIR $PORT</span>.</p>
+    <textarea
+      id="script-input"
+      rows="16"
+      spellcheck="false"
+      autocomplete="off"
+      value="{{ value }}"
+      oninput="{{ input() }}"
+      class="w-full mb-4 rounded-xl border border-line-strong bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
+    ></textarea>
+{{/if}}
+{{#if error}}
+    <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
+{{/if}}
+    <div class="flex items-center justify-between gap-3">
+{{#if kind is "script"}}
+      <button onclick="{{ reset() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reset to default</button>
+{{#else}}
+      <span></span>
+{{/if}}
+      <div class="flex items-center gap-3">
+        <button onclick="{{ dismiss() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
+{{#if saving}}
+        <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
+{{#else}}
+{{#if locked}}
+        <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2 cursor-not-allowed select-none">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
+            <rect x="4" y="9" width="12" height="8" rx="2" />
+            <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
+          </svg>
+          Save
+        </button>
+{{#else}}
+        <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
+{{/if}}
+{{/if}}
+      </div>
+    </div>
+  </div>
+</div>

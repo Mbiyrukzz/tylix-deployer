@@ -1,6 +1,6 @@
 page SiteDeploy
 
-import { IconArrowLeft, IconX, IconExternalLink } from "tylix-icons"
+import { IconExternalLink } from "tylix-icons"
 
 title "Deployment"
 
@@ -289,16 +289,29 @@ action
     }
   }
 
+  // The log scrolls inside the popup's well, not the window.
   scrollPageEnd() {
-    window.scrollTo(0, document.documentElement.scrollHeight)
+    const el = document.getElementById("deploy-log-scroll")
+    if el {
+      el.scrollTop = el.scrollHeight
+    }
   }
 
   onPageScroll() {
     if not this.logPage {
       return null
     }
-    const doc = document.documentElement
-    this.atBottom = window.innerHeight + window.scrollY >= doc.scrollHeight - 48
+    const el = document.getElementById("deploy-log-scroll")
+    if el {
+      this.atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 48
+    }
+  }
+
+  jumpToLine(n) {
+    this.logFilter = "all"
+    this.applyLogFilter()
+    this.atBottom = false
+    window.setTimeout(() => this.scrollToLine(n), 60)
   }
 
   setScript() {
@@ -531,6 +544,14 @@ action
     this.modal = name
   }
 
+  openScript() {
+    this.openModal("script")
+  }
+
+  openEnv() {
+    this.openModal("env")
+  }
+
   closeModal() {
     this.modal = ""
     this.error = ""
@@ -538,19 +559,30 @@ action
     this.cancelError = ""
   }
 
+  // The log pops over the page like the console: the page stays put
+  // behind it and doesn't scroll while it's open.
   openLogPage() {
     if not this.logPage {
-      this.savedScroll = window.scrollY
+      const flux = Reflect.get(window, "__flux")
+      if flux {
+        // Leaving the page with the log open must not leave the next page
+        // unscrollable (this page's own listeners are gone by then).
+        flux.on(window, "flux:navigated", () => this.releaseScroll(), { once: true })
+      }
     }
     this.error = ""
     this.saved = false
     this.logPage = true
-    window.scrollTo(0, 0)
+    document.body.style.overflow = "hidden"
+  }
+
+  releaseScroll() {
+    document.body.style.overflow = ""
   }
 
   closeLog() {
     this.logPage = false
-    window.setTimeout(() => window.scrollTo(0, this.savedScroll), 30)
+    this.releaseScroll()
   }
 
   openLive() {
@@ -1004,7 +1036,7 @@ action
 onMount
   async {
     window.addEventListener("keydown", (e) => this.onKey(e))
-    window.addEventListener("scroll", () => this.onPageScroll())
+    window.addEventListener("scroll", () => this.onPageScroll(), true)
 
     const params = new URLSearchParams(window.location.search)
     const id = params.get("id")
@@ -1086,117 +1118,6 @@ template
 {{/if}}
 
 {{#if site}}
-{{#if logPage}}
-
-      <div class="min-w-0">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <button onclick="{{ closeLog() }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium">
-            <IconArrowLeft class="w-4 h-4" /> Back to deployment
-          </button>
-          <p class="min-w-0 truncate text-slate-500 text-sm">{{ site.domain }}</p>
-        </div>
-
-        <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-sm">
-
-          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-800">
-            <div class="flex items-center gap-3 min-w-0">
-              <h2 class="text-slate-200 text-sm font-medium">Deployment log</h2>
-{{#if logStatus is "queued"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sky-400"><span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> Queued</span>
-{{/if}}
-{{#if logStatus is "deploying"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-400"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Deploying</span>
-{{/if}}
-{{#if logStatus is "success"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deployed</span>
-{{/if}}
-{{#if logStatus is "failed"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-400"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed</span>
-{{/if}}
-{{#if logStatus is "cancelled"}}
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-orange-400"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Cancelled</span>
-{{/if}}
-            </div>
-
-            <div class="flex items-center gap-1.5">
-{{#if logErrors is not 0}}
-              <button onclick="{{ jumpToError() }}" class="text-xs text-rose-300 rounded-md px-2.5 py-1.5 hover:bg-rose-500/10 transition-colors">Jump to first error</button>
-{{/if}}
-              <button onclick="{{ copyLog() }}" class="text-xs text-slate-300 rounded-md px-2.5 py-1.5 hover:bg-slate-800 transition-colors">
-                {{#if copied}}Copied{{/if}}{{#if not copied}}Copy{{/if}}
-              </button>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-slate-800/70">
-{{#each t in logTabs}}
-            <button onclick="{{ setLogFilter(t.key) }}" class="{{ t.cls }}">
-              {{ t.label }}
-              <span class="opacity-60">{{ t.count }}</span>
-            </button>
-{{/each}}
-          </div>
-
-{{#if logStatus is "deploying"}}
-          <div class="h-0.5 w-full bg-slate-800 overflow-hidden">
-            <div class="h-full w-1/3 bg-brand-500 animate-pulse"></div>
-          </div>
-{{/if}}
-
-{{#if logLoading}}
-          <div class="flex items-center justify-center py-24">
-            <p class="text-slate-500 text-sm font-mono">loading log…</p>
-          </div>
-{{/if}}
-
-{{#if not logLoading}}
-{{#if logText}}
-          <div class="py-3 text-[12.5px] leading-6 font-mono">
-{{#if shownLogLines.length is 0}}
-            <p class="px-5 py-6 text-slate-500 text-xs">No lines match this filter.</p>
-{{/if}}
-{{#each l in shownLogLines}}
-{{#if l.isStage}}
-            <div id="log-line-{{ l.n }}" class="mt-5 mb-1 flex items-center gap-3 px-5">
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-400 [overflow-wrap:anywhere]">{{ l.text }}</span>
-              <span class="h-px flex-1 bg-slate-800"></span>
-            </div>
-{{/if}}
-{{#if not l.isStage}}
-            <div id="log-line-{{ l.n }}" class="flex items-start border-l-2 hover:bg-white/[0.03] {{ l.rowCls }}">
-              <span class="w-12 shrink-0 pr-3 text-right text-slate-700 select-none">{{ l.n }}</span>
-              <span class="w-4 shrink-0 text-center select-none opacity-80 {{ l.cls }}">{{ l.icon }}</span>
-              <span class="min-w-0 flex-1 pl-2 pr-5 whitespace-pre-wrap [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-slate-600 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
-            </div>
-{{/if}}
-{{/each}}
-          </div>
-{{/if}}
-{{#if not logText}}
-          <div class="flex items-center justify-center py-24">
-            <p class="text-slate-500 text-sm font-mono">no output yet</p>
-          </div>
-{{/if}}
-{{/if}}
-
-{{#if deployedText}}
-          <div class="px-5 py-3 border-t border-slate-800">
-            <p class="text-slate-500 text-xs">Last deployed <span class="font-mono text-slate-400">{{ deployedText }} UTC</span></p>
-          </div>
-{{/if}}
-        </div>
-      </div>
-
-{{#if not atBottom}}
-      <button onclick="{{ jumpBottom() }}" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-1.5 text-xs font-semibold bg-brand-500 text-white rounded-full px-3.5 py-2 shadow-lg hover:bg-brand-400 transition-colors">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M10 4v12M5 11l5 5 5-5" /></svg>
-        Jump to bottom
-      </button>
-{{/if}}
-
-{{/if}}
-
-{{#if not logPage}}
       <SiteHeader title="Deployment" description="Push to deploy, or deploy by hand, and follow every release." domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
         <div slot="actions" class="flex items-center gap-2 shrink-0">
           <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
@@ -1225,444 +1146,110 @@ template
 {{/if}}
 
 {{#if canDeploy}}
-
-          <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
-            <div class="p-6 sm:p-7">
-              <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-3">
-                    <span class="w-3 h-3 shrink-0 rounded-full {{ heroCls }}"></span>
-                    <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ statusTitle }}</h2>
-{{#if elapsedText}}
-                    <span class="text-xs font-mono text-slate-500">{{ elapsedText }}</span>
-{{/if}}
-                  </div>
-                  <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 [overflow-wrap:anywhere]">{{ statusSub }}</p>
-                </div>
-
-                <div class="shrink-0">
-{{#if busy}}
-                  <div class="flex flex-wrap items-center gap-3">
-{{#if cancelling}}
-                    <button disabled class="inline-flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400 border border-orange-500/40 rounded-full px-5 py-2.5 opacity-70">
-                      <span class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Cancelling…
-                    </button>
-{{/if}}
-{{#if not cancelling}}
-                    <button onclick="{{ openCancelActive() }}" class="inline-flex items-center gap-2 text-sm text-rose-600 dark:text-rose-400 border border-rose-500/40 rounded-full px-5 py-2.5 hover:bg-rose-500/10 transition-colors">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
-                      Cancel
-                    </button>
-{{/if}}
-                  </div>
-{{/if}}
-{{#if not busy}}
-{{#if Billing.locked}}
-                  <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-6 py-2.5 cursor-not-allowed select-none">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                      <rect x="4" y="9" width="12" height="8" rx="2" />
-                      <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                    </svg>
-                    Deploy now
-                  </button>
-{{/if}}
-{{#if not Billing.locked}}
-                  <button onclick="{{ deploy() }}" class="inline-flex items-center gap-2 text-sm bg-brand-500 text-white font-semibold rounded-full px-6 py-2.5 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-                    Deploy now
-                  </button>
-{{/if}}
-{{/if}}
-                </div>
-              </div>
-
-{{#if idleText}}
-              <p class="mt-5 max-w-2xl rounded-lg border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs leading-relaxed text-amber-700 dark:text-amber-400">No output for {{ idleText }}. If the app was restarted, this deployment is marked failed automatically within a couple of minutes. You can also cancel it.</p>
-{{/if}}
-{{#if saved}}
-              <p class="mt-4 text-sm text-brand-700 dark:text-brand-500">Saved.</p>
-{{/if}}
-            </div>
-
-            <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-line bg-slate-50/70 dark:bg-slate-950/30 px-6 sm:px-7 py-3.5">
-              <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-500">
-                <span class="inline-flex items-center gap-1.5 font-mono max-w-[16rem]">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 shrink-0"><circle cx="6" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="8" r="2.5" /><path d="M6 8.5v7M18 10.5c0 4-12 2-12 5.5" /></svg>
-                  <span class="truncate">{{ site.branch }}</span>
-                </span>
-{{#if latestCommit}}
-{{#if latestCommit.commitUrl}}
-                <a href="{{ latestCommit.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ latestCommit.commitTitle }}" class="inline-flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
-                  {{ latestCommit.shortCommit }}
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 opacity-60"><path d="M6 14L14 6M7 6h7v7" /></svg>
-                </a>
-{{/if}}
-{{#if not latestCommit.commitUrl}}
-                <span class="font-mono text-slate-600 dark:text-slate-300">{{ latestCommit.shortCommit }}</span>
-{{/if}}
-{{/if}}
-{{#if histAll is not 0}}
-                <span class="inline-flex items-center gap-2">
-                  <span class="h-1.5 w-16 overflow-hidden rounded-full bg-rose-500/20"><span class="block h-full rounded-full bg-brand-500 transition-all" style="{{ rateStyle }}"></span></span>
-                  {{ successRate }}% success
-                </span>
-{{/if}}
-              </div>
-              <div class="flex items-center gap-1">
-                <button onclick="{{ openModal('script') }}" class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M4 17l6-6-6-6M12 19h8" /></svg>
-                  Script
-                </button>
-{{#if envPath}}
-                <button onclick="{{ openModal('env') }}" class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                  Environment
-                </button>
-{{/if}}
-              </div>
-            </div>
-          </div>
+          <DeployStatusCard
+            title="{{ statusTitle }}"
+            sub="{{ statusSub }}"
+            dotCls="{{ heroCls }}"
+            elapsed="{{ elapsedText }}"
+            idle="{{ idleText }}"
+            busy="{{ busy }}"
+            cancelling="{{ cancelling }}"
+            locked="{{ Billing.locked }}"
+            saved="{{ saved }}"
+            branch="{{ site.branch }}"
+            commit="{{ latestCommit }}"
+            runs="{{ histAll }}"
+            successRate="{{ successRate }}"
+            rateStyle="{{ rateStyle }}"
+            hasEnv="{{ envPath is not '' }}"
+            onDeploy="{{ deploy }}"
+            onCancel="{{ openCancelActive }}"
+            onScript="{{ openScript }}"
+            onEnv="{{ openEnv }}"
+          />
 
 {{#if hasProgress}}
-          <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
-            <div class="flex items-center justify-between gap-3 px-6 py-4 border-b border-line">
-              <div class="flex items-center gap-3">
-                <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest deployment</h2>
-{{#if deployStatus is "deploying"}}
-                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Live
-                </span>
-{{/if}}
-              </div>
-              <button onclick="{{ openLive() }}" class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 3h5v5M8 17H3v-5M17 3l-6 6M3 17l6-6" /></svg>
-                Full log
-              </button>
-            </div>
-
-{{#if deployStatus is "queued"}}
-            <div class="flex items-center gap-3 px-6 py-6">
-              <span class="w-4 h-4 shrink-0 rounded-full border-2 border-sky-400 border-t-transparent animate-spin"></span>
-              <p class="text-sm text-slate-500">{{ queuedText }}</p>
-            </div>
+          <DeployProgressCard
+            deployStatus="{{ deployStatus }}"
+            queuedText="{{ queuedText }}"
+            stages="{{ stageList }}"
+            stageCount="{{ latestStages }}"
+            tail="{{ tailLines }}"
+            domain="{{ site.domain }}"
+            onOpenLog="{{ openLive }}"
+          />
 {{/if}}
 
-{{#if stageList.length is not 0}}
-            <ol class="px-6 py-3 divide-y divide-line/60">
-{{#each s in stageList}}
-              <li class="flex items-center gap-3 py-2.5">
-{{#if s.running}}
-                <span class="w-5 h-5 shrink-0 inline-flex items-center justify-center"><span class="w-3.5 h-3.5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></span></span>
-{{/if}}
-{{#if not s.running}}
-                <span class="{{ s.iconCls }}">{{ s.icon }}</span>
-{{/if}}
-                <span class="{{ s.textCls }}">{{ s.text }}</span>
-{{#if s.note}}
-                <span class="shrink-0 text-xs text-slate-400">{{ s.note }}</span>
-{{/if}}
-              </li>
-{{/each}}
-            </ol>
-{{/if}}
-
-{{#if deployStatus is "deploying"}}
-{{#if latestStages is 0}}
-            <div class="flex items-center gap-3 px-6 py-6">
-              <span class="w-4 h-4 shrink-0 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></span>
-              <p class="text-sm text-slate-500">Starting deployment…</p>
-            </div>
-{{/if}}
-{{/if}}
-
-{{#if tailLines.length is not 0}}
-            <div class="border-t border-slate-800 bg-slate-950 px-5 py-4 font-mono text-xs leading-6">
-{{#each l in tailLines}}
-              <p class="whitespace-pre-wrap [overflow-wrap:anywhere] {{ l.cls }}">{{ l.text }}</p>
-{{/each}}
-            </div>
-{{/if}}
-          </div>
-{{/if}}
-
-          <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
-            <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-line">
-              <div>
-                <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">History</h2>
-{{#if rangeText}}
-                <p class="text-slate-500 text-xs mt-0.5">{{ rangeText }}</p>
-{{/if}}
-              </div>
-              <div class="flex flex-wrap items-center gap-1 rounded-lg bg-sunken/60 p-1">
-{{#each t in histTabs}}
-                <button onclick="{{ setHistFilter(t.key) }}" class="{{ t.cls }}">
-                  {{ t.label }}
-                  <span class="opacity-60">{{ t.count }}</span>
-                </button>
-{{/each}}
-              </div>
-            </div>
-
-{{#if history.length is 0}}
-{{#if not histLoading}}
-            <div class="px-6 py-14 text-center">
-              <p class="text-slate-500 text-sm">No deployments to show.</p>
-            </div>
-{{/if}}
-{{/if}}
-
-            <div class="divide-y divide-line {{ histBodyCls }}">
-{{#each d in history}}
-              <div class="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors">
-                <span class="{{ d.dotCls }}"></span>
-
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2.5 min-w-0">
-                    <p class="min-w-0 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{{ d.title }}</p>
-                    <span class="{{ d.badgeCls }}">{{ d.label }}</span>
-                  </div>
-                  <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-{{#if d.branch}}
-                    <span class="inline-flex items-center gap-1.5 font-mono max-w-[12rem]">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 shrink-0"><circle cx="6" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="8" r="2.5" /><path d="M6 8.5v7M18 10.5c0 4-12 2-12 5.5" /></svg>
-                      <span class="truncate">{{ d.branch }}</span>
-                    </span>
-{{/if}}
-{{#if d.shortCommit}}
-{{#if d.commitUrl}}
-                    <a href="{{ d.commitUrl }}" target="_blank" rel="noopener noreferrer" title="{{ d.commitTitle }}" class="inline-flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 transition-colors">
-                      {{ d.shortCommit }}
-                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 opacity-60"><path d="M6 14L14 6M7 6h7v7" /></svg>
-                    </a>
-{{/if}}
-{{#if not d.commitUrl}}
-                    <span class="font-mono text-slate-600 dark:text-slate-300">{{ d.shortCommit }}</span>
-{{/if}}
-{{/if}}
-                    <span title="{{ d.whenText }} UTC">{{ d.agoText }}</span>
-{{#if d.duration}}
-                    <span class="font-mono">{{ d.duration }}</span>
-{{/if}}
-{{#if d.queueText}}
-                    <span class="text-sky-600 dark:text-sky-400">{{ d.queueText }}</span>
-{{/if}}
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-0.5 shrink-0">
-{{#if d.canCancel}}
-                  <button onclick="{{ openCancel(d.id) }}" aria-label="Cancel deployment" title="Cancel deployment" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
-                  </button>
-{{/if}}
-                  <button onclick="{{ openDeployLog(d.id) }}" aria-label="View log" title="View log" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
-                  </button>
-{{#if d.canDelete}}
-                  <button onclick="{{ openDelete(d.id) }}" aria-label="Delete deployment" title="Delete deployment" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" /></svg>
-                  </button>
-{{/if}}
-                </div>
-              </div>
-{{/each}}
-            </div>
-
-{{#if totalPages is not 1}}
-            <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-3.5 border-t border-line">
-              <p class="text-slate-500 text-xs">Page {{ page }} of {{ totalPages }}</p>
-              <div class="flex items-center gap-1">
-{{#if hasPrev}}
-                <button onclick="{{ prevPage() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">← Previous</button>
-{{/if}}
-{{#if not hasPrev}}
-                <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">← Previous</button>
-{{/if}}
-{{#each p in pageNumbers}}
-                <button onclick="{{ goPage(p.n) }}" class="{{ p.cls }}">{{ p.n }}</button>
-{{/each}}
-{{#if hasNext}}
-                <button onclick="{{ nextPage() }}" class="text-xs text-slate-600 dark:text-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Next →</button>
-{{/if}}
-{{#if not hasNext}}
-                <button disabled class="text-xs text-slate-400 rounded-md px-3 py-1.5 opacity-50 cursor-not-allowed">Next →</button>
-{{/if}}
-              </div>
-            </div>
-{{/if}}
-          </div>
+          <DeployHistory
+            rows="{{ history }}"
+            tabs="{{ histTabs }}"
+            rangeText="{{ rangeText }}"
+            loading="{{ histLoading }}"
+            bodyCls="{{ histBodyCls }}"
+            page="{{ page }}"
+            totalPages="{{ totalPages }}"
+            pageNumbers="{{ pageNumbers }}"
+            hasPrev="{{ hasPrev }}"
+            hasNext="{{ hasNext }}"
+            onFilter="{{ setHistFilter }}"
+            onPage="{{ goPage }}"
+            onViewLog="{{ openDeployLog }}"
+            onCancel="{{ openCancel }}"
+            onDelete="{{ openDelete }}"
+          />
 {{/if}}
 
         </div>
       </div>
+{{/if}}
+
+{{#if logPage}}
+{{#if site}}
+      <DeployLogConsole
+        site="{{ site }}"
+        viewId="{{ viewId }}"
+        logStatus="{{ logStatus }}"
+        lines="{{ logLines }}"
+        shown="{{ shownLogLines }}"
+        tabs="{{ logTabs }}"
+        filter="{{ logFilter }}"
+        text="{{ logText }}"
+        loading="{{ logLoading }}"
+        atBottom="{{ atBottom }}"
+        copied="{{ copied }}"
+        errors="{{ logErrors }}"
+        warns="{{ logWarns }}"
+        stages="{{ logStages }}"
+        queuedText="{{ queuedText }}"
+        elapsed="{{ elapsedText }}"
+        deployedText="{{ deployedText }}"
+        canCancel="{{ viewId is '' and busy and runId is not 0 }}"
+        cancelling="{{ cancelling }}"
+        onClose="{{ closeLog }}"
+        onCopy="{{ copyLog }}"
+        onFilter="{{ setLogFilter }}"
+        onJumpLine="{{ jumpToLine }}"
+        onJumpError="{{ jumpToError }}"
+        onJumpBottom="{{ jumpBottom }}"
+        onCancel="{{ openCancelActive }}"
+      />
 {{/if}}
 {{/if}}
 
 {{#if modal is "script"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="script-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
-        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
-          <div class="flex items-center justify-between mb-2">
-            <h3 id="script-title" class="text-slate-900 dark:text-slate-100 font-semibold">Deployment script</h3>
-            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <IconX class="w-4 h-4" />
-            </button>
-          </div>
-          <p class="text-slate-500 text-xs mb-4">Runs as the isolated user after the latest code is pulled, starting in the site folder. A failing command stops the deployment. Available variables: <span class="font-mono">$SITE_ROOT $DOMAIN $BRANCH $PHP_VERSION $APP_DIR $BACKEND_DIR $PORT</span>.</p>
-          <textarea
-            id="script-input"
-            rows="16"
-            spellcheck="false"
-            autocomplete="off"
-            value="{{ scriptText }}"
-            oninput="{{ setScript() }}"
-            class="w-full mb-4 rounded-xl border border-line-strong bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
-          ></textarea>
-{{#if error}}
-          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
-{{/if}}
-          <div class="flex items-center justify-between gap-3">
-            <button onclick="{{ resetScript() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-line rounded-full px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reset to default</button>
-            <div class="flex items-center gap-3">
-              <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
-{{#if saving}}
-              <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
-{{/if}}
-{{#if not saving}}
-{{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2 cursor-not-allowed select-none">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                  <rect x="4" y="9" width="12" height="8" rx="2" />
-                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                </svg>
-                Save
-              </button>
-{{/if}}
-{{#if not Billing.locked}}
-              <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
-{{/if}}
-{{/if}}
-            </div>
-          </div>
-        </div>
-      </div>
+      <DeployEditorModal kind="script" value="{{ scriptText }}" error="{{ error }}" saving="{{ saving }}" locked="{{ Billing.locked }}" onInput="{{ setScript }}" onSave="{{ save }}" onReset="{{ resetScript }}" onClose="{{ closeModal }}" />
 {{/if}}
 
 {{#if modal is "env"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="env-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
-        <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-panel shadow-xl p-6">
-          <div class="flex items-center justify-between mb-2">
-            <h3 id="env-title" class="text-slate-900 dark:text-slate-100 font-semibold">Environment</h3>
-            <button onclick="{{ closeModal() }}" aria-label="Close" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <IconX class="w-4 h-4" />
-            </button>
-          </div>
-          <p class="text-slate-500 text-xs mb-4">Written to <span class="font-mono break-all">{{ envPath }}</span> on every deploy (permissions 600). Stored encrypted. Leave empty to keep the file on the server as it is.</p>
-          <textarea
-            id="env-input"
-            rows="14"
-            spellcheck="false"
-            autocomplete="off"
-            value="{{ envText }}"
-            oninput="{{ setEnv() }}"
-            class="w-full mb-4 rounded-xl border border-line-strong bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs font-mono px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors resize-y"
-            placeholder="APP_ENV=production"
-          ></textarea>
-{{#if error}}
-          <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
-{{/if}}
-          <div class="flex items-center justify-end gap-3">
-            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
-{{#if saving}}
-            <button disabled class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Saving…</button>
-{{/if}}
-{{#if not saving}}
-{{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2 cursor-not-allowed select-none">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-              </svg>
-              Save
-            </button>
-{{/if}}
-{{#if not Billing.locked}}
-            <button onclick="{{ save() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">Save</button>
-{{/if}}
-{{/if}}
-          </div>
-        </div>
-      </div>
+      <DeployEditorModal kind="env" value="{{ envText }}" envPath="{{ envPath }}" error="{{ error }}" saving="{{ saving }}" locked="{{ Billing.locked }}" onInput="{{ setEnv }}" onSave="{{ save }}" onClose="{{ closeModal }}" />
 {{/if}}
 
 {{#if modal is "delete"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="delete-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
-        <div class="w-full max-w-md rounded-2xl border border-line bg-panel shadow-xl p-6">
-          <div class="flex items-start gap-4">
-            <span class="w-10 h-10 shrink-0 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" /></svg>
-            </span>
-            <div class="min-w-0">
-              <h3 id="delete-title" class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Delete this deployment?</h3>
-              <p class="text-slate-500 text-sm leading-relaxed">This removes the record and its log from the history. It does not change anything on the server.</p>
-{{#if deleteTarget}}
-              <p class="mt-3 text-xs font-mono text-slate-500">{{ deleteTarget.whenText }} UTC{{#if deleteTarget.shortCommit}} · {{ deleteTarget.shortCommit }}{{/if}}</p>
-{{/if}}
-            </div>
-          </div>
-{{#if deleteError}}
-          <p role="alert" class="text-rose-500 text-sm mt-4">{{ deleteError }}</p>
-{{/if}}
-          <div class="flex items-center justify-end gap-3 mt-6">
-            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Cancel</button>
-{{#if deleting}}
-            <button disabled class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Deleting…</button>
-{{/if}}
-{{#if not deleting}}
-{{#if Billing.locked}}
-            <button disabled title="Pay to continue" class="text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2 cursor-not-allowed select-none">Delete</button>
-{{/if}}
-{{#if not Billing.locked}}
-            <button onclick="{{ confirmDelete() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">Delete</button>
-{{/if}}
-{{/if}}
-          </div>
-        </div>
-      </div>
+      <DeployConfirmModal kind="delete" target="{{ deleteTarget }}" error="{{ deleteError }}" busy="{{ deleting }}" locked="{{ Billing.locked }}" onConfirm="{{ confirmDelete }}" onClose="{{ closeModal }}" />
 {{/if}}
 
 {{#if modal is "cancel"}}
-      <div role="dialog" aria-modal="true" aria-labelledby="cancel-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4 sm:px-6">
-        <div class="w-full max-w-md rounded-2xl border border-line bg-panel shadow-xl p-6">
-          <div class="flex items-start gap-4">
-            <span class="w-10 h-10 shrink-0 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
-            </span>
-            <div class="min-w-0">
-              <h3 id="cancel-title" class="text-slate-900 dark:text-slate-100 font-semibold mb-1.5">Cancel this deployment?</h3>
-{{#if cancelTarget}}
-{{#if cancelTarget.status is "queued"}}
-              <p class="text-slate-500 text-sm leading-relaxed">It hasn't started yet. It will be removed from the queue and nothing changes on the server.</p>
-{{/if}}
-{{#if cancelTarget.status is "deploying"}}
-              <p class="text-slate-500 text-sm leading-relaxed">The running commands on the server are stopped, and the deploy script rolls back where it can. The code may be partially updated, so deploy again afterwards.</p>
-{{/if}}
-{{/if}}
-            </div>
-          </div>
-{{#if cancelError}}
-          <p role="alert" class="text-rose-500 text-sm mt-4">{{ cancelError }}</p>
-{{/if}}
-          <div class="flex items-center justify-end gap-3 mt-6">
-            <button onclick="{{ closeModal() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-3 py-2 transition-colors">Keep deploying</button>
-{{#if cancelBusy}}
-            <button disabled class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 opacity-50">Cancelling…</button>
-{{/if}}
-{{#if not cancelBusy}}
-            <button onclick="{{ confirmCancel() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">Cancel deployment</button>
-{{/if}}
-          </div>
-        </div>
-      </div>
+      <DeployConfirmModal kind="cancel" target="{{ cancelTarget }}" error="{{ cancelError }}" busy="{{ cancelBusy }}" onConfirm="{{ confirmCancel }}" onClose="{{ closeModal }}" />
 {{/if}}
 
     </div>
