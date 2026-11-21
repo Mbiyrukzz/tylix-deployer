@@ -129,6 +129,12 @@ action
         dot: "w-1.5 h-1.5 rounded-full bg-rose-500",
         bar: "h-1.5 rounded-full bg-rose-500"
       },
+      needs_password: {
+        label: "Action needed",
+        pill: base + "bg-amber-500/10 text-amber-600 dark:text-amber-500",
+        dot: "w-1.5 h-1.5 rounded-full bg-amber-500",
+        bar: "h-1.5 rounded-full bg-amber-500 transition-all duration-500"
+      },
       running: {
         label: "Setting up",
         pill: base + "bg-amber-500/10 text-amber-600 dark:text-amber-500",
@@ -197,6 +203,8 @@ action
       linkText = "Open server"
     } else if p.status is "failed" {
       linkText = "View details"
+    } else if p.status is "needs_password" {
+      linkText = "Set root password"
     }
 
     // has_instance is true for numeric ids and UUIDs alike (Vultr's old instance_id was 0).
@@ -209,7 +217,7 @@ action
       providerName: provider.name,
       providerLabel: provider.label,
       pct: step ? step[0] : 5,
-      label: step ? step[1] : p.step,
+      label: p.status is "needs_password" ? "Waiting for a new root password" : (step ? step[1] : p.step),
       statusLabel: tone.label,
       pillCls: tone.pill,
       dotCls: tone.dot,
@@ -271,7 +279,7 @@ action
 
   summarize() {
     const online = Servers.data.filter((s) => s.status is "online").length
-    this.busyCount = this.rows.filter((r) => r.status is "running" or r.status is "pending").length
+    this.busyCount = this.rows.filter((r) => r.status is "running" or r.status is "pending" or r.status is "needs_password").length
 
     this.stats = [
       { label: "Servers", value: Servers.data.length, cls: "text-slate-900 dark:text-slate-100" },
@@ -596,6 +604,9 @@ template
 
 {{#if pr.status is not "running"}}
             <div class="mt-4 pt-4 border-t border-line flex flex-wrap items-center gap-3">
+{{#if pr.status is "needs_password"}}
+              <a href="{{ pr.href }}" class="text-sm font-semibold text-white bg-amber-600 hover:bg-amber-500 rounded-full px-4 py-2 transition">Set root password</a>
+{{/if}}
 {{#if pr.status is "failed"}}
               <button disabled="{{ Billing.locked }}" title="{{ Billing.locked ? 'Pay to continue' : '' }}" onclick="{{ retryProvision(pr.id) }}" class="text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Retry</button>
 {{/if}}

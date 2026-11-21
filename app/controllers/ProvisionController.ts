@@ -154,7 +154,7 @@ export class ProvisionController {
         const inFlight = existing.filter(
             (p) =>
                 Number(p.team_id) === teamId &&
-                (p.status === "pending" || p.status === "running") &&
+                (p.status === "pending" || p.status === "running" || p.status === "needs_password") &&
                 !Number(p.server_id),
         ).length;
 

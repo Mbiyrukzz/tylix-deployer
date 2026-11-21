@@ -17,6 +17,8 @@ state
   serverId: 0
   failed: false
   finished: false
+  needsPassword: false
+  passwordBusy: false
   notFound: false
   live: false
   streaming: false
@@ -39,6 +41,7 @@ action
       ["done", "#10b981", "1", "Done"],
       ["running", "#0ea5e9", "1", "In progress"],
       ["failed", "#f43f5e", "1", "Failed"],
+      ["action", "#f59e0b", "1", "Needs you"],
       ["pending", "#64748b", "0.55", "Waiting"]
     ]
     const hit = tones.find((t) => t[0] is s.state)
@@ -84,7 +87,7 @@ action
     }
 
     const filled = Math.round(this.shown * this.total / 100)
-    const running = not this.failed and not this.finished
+    const running = not this.failed and not this.finished and not this.needsPassword
 
     if filled is 0 {
       this.sweep = (this.sweep + 2) % (this.total + 10)
@@ -129,11 +132,39 @@ action
     this.serverId = p.server_id or 0
     this.failed = p.status is "failed"
     this.finished = p.status is "done"
+    this.needsPassword = Boolean(p.needs_password)
 
-    const current = p.steps.find((s) => s.state is "running" or s.state is "failed")
-    this.headline = this.finished ? "Server ready" : (current ? current.label : "Starting")
+    const current = p.steps.find((s) => s.state is "running" or s.state is "failed" or s.state is "action")
+    if this.needsPassword {
+      this.headline = "Set a new root password to continue"
+    } else {
+      this.headline = this.finished ? "Server ready" : (current ? current.label : "Starting")
+    }
 
     this.startTicker()
+  }
+
+  // The provider expired the root password: set a new one and setup resumes.
+  // Returns the raw result so the page can show code and validation errors.
+  async changePassword(password, code) {
+    if this.passwordBusy {
+      return { ok: false, skipped: true }
+    }
+
+    this.passwordBusy = true
+    const result = await useApi("/api/provisions/" + this.provisionId + "/change-password", {
+      method: "POST",
+      body: { password: password, code: code }
+    })
+    this.passwordBusy = false
+
+    if result.ok {
+      this.needsPassword = false
+      this.headline = "Wait for SSH"
+      this.startTicker()
+    }
+
+    return result
   }
 
   goToServer() {

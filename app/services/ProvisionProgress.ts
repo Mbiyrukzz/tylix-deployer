@@ -5,6 +5,9 @@
  *   "" (keypair), creating, booting, waiting_ssh, install_<id>..., firewall, provisioned
  * The install steps come from installStepsFor(), so they follow the template.
  * Bare has no firewall step, same as the job.
+ *
+ * status "needs_password" (Hetzner expired the root password) marks the
+ * current step "action": the job is paused until the user sets a new one.
  */
 
 import { installStepsFor } from "./Installers.js";
@@ -26,7 +29,7 @@ export interface ProvisionRow {
 export interface ProgressStep {
     id: string;
     label: string;
-    state: "done" | "running" | "failed" | "pending";
+    state: "done" | "running" | "failed" | "action" | "pending";
 }
 
 export interface Progress {
@@ -38,6 +41,8 @@ export interface Progress {
     error: string;
     ip: string;
     server_id: number;
+    /** The provision is paused until the user sets a new root password. */
+    needs_password: boolean;
     steps: ProgressStep[];
 }
 
@@ -58,6 +63,7 @@ export function progressOf(row: ProvisionRow): Progress {
 
     const finished = row.status === "done";
     const failed = row.status === "failed";
+    const waiting = row.status === "needs_password";
     const found = plan.findIndex((s) => s.id === row.step);
     const current = finished ? plan.length - 1 : Math.max(found, 0);
 
@@ -65,7 +71,7 @@ export function progressOf(row: ProvisionRow): Progress {
         (s, i): ProgressStep => ({
             id: s.id,
             label: s.label,
-            state: finished || i < current ? "done" : i === current ? (failed ? "failed" : "running") : "pending",
+            state: finished || i < current ? "done" : i === current ? (failed ? "failed" : waiting ? "action" : "running") : "pending",
         }),
     );
 
@@ -78,6 +84,7 @@ export function progressOf(row: ProvisionRow): Progress {
         error: row.error || "",
         ip: row.ip || "",
         server_id: Number(row.server_id) || 0,
+        needs_password: waiting,
         steps,
     };
 }

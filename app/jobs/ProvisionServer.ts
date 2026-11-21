@@ -35,7 +35,7 @@ import { Server } from "../models/Server.js";
 import { CryptoService } from "../services/CryptoService.js";
 // REF: instanceRefOf is new in this import. AWS: providerSecret reads api_token or credentials.
 import { adapterFor, instanceRefOf, providerSecret, type ProviderAdapter } from "../services/ProviderAdapter.js";
-import { generateKeyPair, derivePublicKey, sshExec } from "../services/Ssh.js";
+import { generateKeyPair, derivePublicKey, sshExec, PASSWORD_EXPIRED_RE } from "../services/Ssh.js";
 import { installStepsFor, runInstallStep } from "../services/Installers.js";
 import { ServerLogService, type LogLevel } from "../services/ServerLogService.js";
 import { syncFirewall } from "../services/FirewallSync.js";
@@ -66,6 +66,18 @@ interface ProvisionRow {
     server_id: number;
     root_password: string;
     [key: string]: unknown;
+}
+
+/**
+ * The machine is up and accepts our key, but its root password has expired
+ * (Hetzner does this to the password it generates), so sshd refuses commands
+ * until someone changes it. Not a failure: the provision waits for the user.
+ */
+class PasswordChangeRequired extends Error {
+    constructor() {
+        super("The server's root password has expired. Log in as root over SSH, set a new password, then press Retry.");
+        this.name = "PasswordChangeRequired";
+    }
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -127,6 +139,7 @@ async function waitForSsh(host: string, privateKey: string): Promise<void> {
     while (Date.now() < deadline) {
         const result = await sshExec({ host, port: 22, user: "root", privateKey }, "true", 20_000);
         if (result.code === 0) return;
+        if (PASSWORD_EXPIRED_RE.test(result.stderr)) throw new PasswordChangeRequired();
 
         last = result.stderr.trim().split("\n").pop() ?? "";
         await sleep(SSH_POLL_MS);
@@ -379,6 +392,20 @@ export const ProvisionServer = {
             await save(id, { step: "provisioned", status: "done", error: "" });
             await log(row, "provision.completed", "Provisioning finished.", "success");
         } catch (error) {
+            // Not a failure: park the provision until the user sets a new root
+            // password (POST /api/provisions/:id/change-password), which re-queues it.
+            // Only offered when we hold the current password, since passwd may ask for it.
+            if (error instanceof PasswordChangeRequired && row.root_password) {
+                await save(id, { status: "needs_password", step: "waiting_ssh", error: "" }).catch(() => {});
+                await log(
+                    row,
+                    "provision.password_change_required",
+                    "The provider expired the root password. Waiting for a new one to be set.",
+                    "warning",
+                );
+                return;
+            }
+
             // "Linode: ..." / "Hetzner: ..." / "Vultr: ..." / "AWS: ..." prefix comes from the adapter.
             const message =
                 adapter?.describeError(error) ??

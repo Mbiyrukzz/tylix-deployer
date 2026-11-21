@@ -199,6 +199,159 @@ function runStreaming(
     });
 }
 
+/**
+ * What sshd prints when the account's password has expired and the login has
+ * no TTY (Hetzner expires the root password it generates, so a key login with
+ * a command gets refused until the password is changed).
+ */
+export const PASSWORD_EXPIRED_RE =
+    /password has expired|password change required|required to change your password/i;
+
+export interface PasswordChangeResult {
+    ok: boolean;
+    /** True when the server never asked for a new password: it was already changed. */
+    alreadyChanged?: boolean;
+    /** Why the change failed. Never contains either password. */
+    error?: string;
+}
+
+// Prompts from passwd / pam_unix on Debian and Ubuntu, old and new wording.
+// Retype is matched before New because "Retype new password:" contains both.
+const PROMPT_CURRENT = /(current|old)[^\n]*password[^\n]*:\s*$/i;
+const PROMPT_RETYPE = /(retype|re-enter|again)[^\n]*password[^\n]*:\s*$/i;
+const PROMPT_NEW = /new[^\n]*password[^\n]*:\s*$/i;
+
+/** The last line that says why passwd refused, without prompts or ssh noise. */
+function passwdReason(output: string): string {
+    const lines = output
+        .split(/\r?\n|\r/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .filter((l) => !/password[^\n]*:\s*$/i.test(l))
+        .filter((l) => !/^connection to .* closed/i.test(l))
+        .filter((l) => !/^(warning: your password has expired|you must change your password|changing password for)/i.test(l));
+
+    const hit = [...lines].reverse().find((l) =>
+        /bad password|sorry|do not match|too short|too simple|unchanged|manipulation error|failure|error/i.test(l),
+    );
+    return (hit ?? lines.pop() ?? "").replace(/^passwd:\s*/i, "").slice(0, 200);
+}
+
+/**
+ * Changes an expired root password by answering the passwd prompts that sshd
+ * runs on a forced TTY (ssh -tt), logging in with the deploy key.
+ *
+ * `current` is only typed if the server asks for it. The new password is
+ * written to the remote pty with echo off, so it never appears in the output.
+ * Never throws.
+ */
+export async function changeExpiredPassword(
+    target: SshTarget,
+    current: string | null,
+    next: string,
+    timeoutMs = 45_000,
+): Promise<PasswordChangeResult> {
+    const dir = await mkdtemp(join(tmpdir(), "tylix-ssh-"));
+    try {
+        const keyFile = join(dir, "key");
+        await writeFile(keyFile, withNewline(target.privateKey), { mode: 0o600 });
+
+        const args = [
+            "-tt",
+            "-i", keyFile,
+            "-p", String(target.port),
+            "-o", "BatchMode=yes",
+            "-o", "IdentitiesOnly=yes",
+            "-o", "ConnectTimeout=10",
+            ...(await hostKeyArgs(dir, target.hostKey)),
+            `${target.user}@${target.host}`,
+            // Only runs when no password change is forced, i.e. it was already changed.
+            "exit 0",
+        ];
+
+        return await new Promise<PasswordChangeResult>((resolve) => {
+            const child = spawn("ssh", args, { stdio: ["pipe", "pipe", "pipe"] });
+            child.stdout.setEncoding("utf8");
+            child.stderr.setEncoding("utf8");
+
+            let all = "";
+            let pending = ""; // output since the last answer
+            let prompted = false;
+            let newPrompts = 0;
+            let rejected = "";
+            let settled = false;
+
+            const finish = (result: PasswordChangeResult) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve(result);
+            };
+
+            const answer = (value: string) => {
+                pending = "";
+                try {
+                    child.stdin.write(value + "\n");
+                } catch {
+                    // the close handler reports what happened
+                }
+            };
+
+            const onData = (chunk: string) => {
+                all = (all + chunk).slice(-20_000);
+                pending += chunk;
+
+                if (PROMPT_CURRENT.test(pending)) {
+                    prompted = true;
+                    if (!current) {
+                        rejected = "The server asked for the current password, and none is stored for this machine.";
+                        child.kill("SIGTERM");
+                        return;
+                    }
+                    answer(current);
+                } else if (PROMPT_RETYPE.test(pending)) {
+                    prompted = true;
+                    answer(next);
+                } else if (PROMPT_NEW.test(pending)) {
+                    prompted = true;
+                    newPrompts += 1;
+                    if (newPrompts > 1) {
+                        // passwd refused the first attempt and is asking again.
+                        rejected = passwdReason(pending) || "The server didn't accept that password.";
+                        child.kill("SIGTERM");
+                        return;
+                    }
+                    answer(next);
+                }
+            };
+
+            child.stdout.on("data", onData);
+            child.stderr.on("data", onData);
+
+            const timer = setTimeout(() => {
+                rejected = rejected || "The server took too long to respond.";
+                child.kill("SIGTERM");
+                setTimeout(() => child.kill("SIGKILL"), 5000).unref?.();
+            }, timeoutMs);
+
+            child.on("error", (err) => finish({ ok: false, error: `Couldn't run ssh: ${err.message}` }));
+
+            child.on("close", (code) => {
+                if (rejected) return finish({ ok: false, error: rejected });
+                if (code === 0 && !prompted) return finish({ ok: true, alreadyChanged: true });
+                if (code === 0 || /updated successfully|password changed/i.test(all)) return finish({ ok: true });
+                if (!prompted) {
+                    const last = all.trim().split("\n").pop()?.trim() ?? "";
+                    return finish({ ok: false, error: last ? `Couldn't connect: ${last}` : "Couldn't connect to the server." });
+                }
+                return finish({ ok: false, error: passwdReason(all) || "The password change didn't complete." });
+            });
+        });
+    } finally {
+        await rm(dir, { recursive: true, force: true });
+    }
+}
+
 /** Runs one command over SSH. Never throws: a failed connection returns a non-zero code. */
 export async function sshExec(
     target: SshTarget,

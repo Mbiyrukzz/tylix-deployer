@@ -843,6 +843,13 @@ export interface ApiRoutes {
     response: { data: Provision }
     auth: true
   }
+  "POST /api/provisions/:id/change-password": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
   "GET /api/provisions/:id/progress": {
     params: { id: string | number }
     query: Record<string, string | number | boolean | undefined>
@@ -2016,6 +2023,7 @@ export interface RouteClient {
     destroy(params: ApiRoutes["DELETE /api/provisions/:id"]['params'], options?: RouteOptions<ApiRoutes["DELETE /api/provisions/:id"]['query']>): Promise<ApiResult<ApiRoutes["DELETE /api/provisions/:id"]['response']>>
     show(params: ApiRoutes["GET /api/provisions/:id"]['params'], options?: RouteOptions<ApiRoutes["GET /api/provisions/:id"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/provisions/:id"]['response']>>
     update(params: ApiRoutes["PUT /api/provisions/:id"]['params'], body: ApiRoutes["PUT /api/provisions/:id"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/provisions/:id"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/provisions/:id"]['response']>>
+    changePassword(params: ApiRoutes["POST /api/provisions/:id/change-password"]['params'], body?: ApiRoutes["POST /api/provisions/:id/change-password"]['body'], options?: RouteOptions<ApiRoutes["POST /api/provisions/:id/change-password"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/provisions/:id/change-password"]['response']>>
     progress(params: ApiRoutes["GET /api/provisions/:id/progress"]['params'], options?: RouteOptions<ApiRoutes["GET /api/provisions/:id/progress"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/provisions/:id/progress"]['response']>>
     progressTicket(params: ApiRoutes["POST /api/provisions/:id/progress-ticket"]['params'], body?: ApiRoutes["POST /api/provisions/:id/progress-ticket"]['body'], options?: RouteOptions<ApiRoutes["POST /api/provisions/:id/progress-ticket"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/provisions/:id/progress-ticket"]['response']>>
     retry(params: ApiRoutes["POST /api/provisions/:id/retry"]['params'], body?: ApiRoutes["POST /api/provisions/:id/retry"]['body'], options?: RouteOptions<ApiRoutes["POST /api/provisions/:id/retry"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/provisions/:id/retry"]['response']>>

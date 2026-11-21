@@ -1,6 +1,6 @@
 page ServerDetail
 
-import { IconArrowLeft } from "tylix-icons"
+import { IconArrowLeft, IconX } from "tylix-icons"
 
 title "Server"
 
@@ -10,6 +10,7 @@ needs
 uses
   Billing
   Provisioning
+  TwoFactor
 
 background
   Billing
@@ -58,6 +59,15 @@ state
   rebooting: false
   rebootStartedAt: 0
   rebootError: ""
+  pwDismissed: false
+  newPw: ""
+  newPwConfirm: ""
+  newPwShown: false
+  newPwCopied: false
+  newPwError: ""
+  newPwCode: ""
+  newPwAskCode: false
+  newPwCodeError: ""
 
 action
   global(name) {
@@ -80,6 +90,130 @@ action
       cmd = cmd + " -p " + server.port
     }
     return cmd
+  }
+
+  // ---------- expired root password (Hetzner) ----------
+
+  dismissPassword() {
+    this.pwDismissed = true
+  }
+
+  reopenPassword() {
+    this.pwDismissed = false
+    this.newPwError = ""
+  }
+
+  toggleNewPw() {
+    this.newPwShown = this.newPwShown ? false : true
+  }
+
+  setNewPw(value) {
+    this.newPw = value
+    this.newPwCopied = false
+    this.newPwError = ""
+  }
+
+  setNewPwConfirm(value) {
+    this.newPwConfirm = value
+    this.newPwError = ""
+  }
+
+  // 20 characters from an alphabet without look-alikes (0/O, 1/l/I).
+  generatePassword() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%^*-_=+"
+    const bytes = new Uint32Array(20)
+    window.crypto.getRandomValues(bytes)
+    const value = Array.from(bytes).map((b) => chars[b % chars.length]).join("")
+    this.newPw = value
+    this.newPwConfirm = value
+    this.newPwShown = true
+    this.newPwCopied = false
+    this.newPwError = ""
+  }
+
+  async copyNewPw() {
+    if not this.newPw {
+      return null
+    }
+    await navigator.clipboard.writeText(this.newPw)
+    this.newPwCopied = true
+  }
+
+  // Same rules as the server, so most mistakes never leave the page.
+  newPwProblem() {
+    const value = this.newPw
+    if value is "" {
+      return "Enter a new password."
+    }
+    if value.length < 12 {
+      return "Use at least 12 characters."
+    }
+    if value.length > 128 {
+      return "Use at most 128 characters."
+    }
+    if not /^[\x20-\x7e]+$/.test(value) {
+      return "Use letters, numbers, spaces and symbols only (no accents or emoji)."
+    }
+    if value is not value.trim() {
+      return "The password can't start or end with a space."
+    }
+    if value is not this.newPwConfirm {
+      return "The two passwords don't match."
+    }
+    return ""
+  }
+
+  async sendPwCode() {
+    this.newPwCodeError = ""
+    const result = await TwoFactor.sendCode()
+
+    if result.status is 401 {
+      window.location.href = "/login"
+    } else if not result.ok {
+      this.newPwCodeError = result.data?.error or "Couldn't send the code."
+    }
+  }
+
+  async submitPassword() {
+    if Provisioning.passwordBusy or Billing.locked {
+      return null
+    }
+
+    this.newPwError = this.newPwProblem()
+    this.newPwCodeError = ""
+    if this.newPwError {
+      return null
+    }
+
+    const code = this.newPwCode.trim()
+    if this.newPwAskCode and code is "" {
+      this.newPwCodeError = "Enter a verification code to set the password."
+      return null
+    }
+
+    const result = await Provisioning.changePassword(this.newPw, code)
+    const data = result.data
+
+    if result.ok {
+      this.newPw = ""
+      this.newPwConfirm = ""
+      this.newPwCode = ""
+      this.newPwShown = false
+      this.newPwCopied = false
+      this.newPwAskCode = false
+      this.pwDismissed = false
+    } else if result.status is 401 {
+      window.location.href = "/login"
+    } else if result.status is 403 and data?.two_factor_required {
+      TwoFactor.apply(data.methods or [])
+      this.newPwAskCode = true
+      this.newPwCodeError = data.error or "Enter a verification code to continue."
+    } else if result.status is 422 and data?.errors?.code {
+      this.newPwAskCode = true
+      this.newPwCodeError = data.errors.code[0]
+    } else if not result.skipped {
+      this.newPwError = data?.error or "Couldn't set the password. Try again."
+    }
   }
 
   askReboot() {
@@ -356,7 +490,8 @@ onMount
       this.provisioning = true
       this.loading = false
 
-      await Provisioning.connect(Number(provisionParam))
+      await Promise.all([Provisioning.connect(Number(provisionParam)), TwoFactor.load()])
+      this.newPwAskCode = TwoFactor.enabled
 
       if Provisioning.notFound {
         this.provisioning = false
@@ -443,11 +578,18 @@ template
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ready
           </span>
 {{/if}}
+{{#if Provisioning.needsPassword}}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Needs your input
+          </span>
+{{/if}}
 {{#if not Provisioning.failed}}
 {{#if not Provisioning.finished}}
+{{#if not Provisioning.needsPassword}}
           <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
             <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span> Setting up
           </span>
+{{/if}}
 {{/if}}
 {{/if}}
         </div>
@@ -461,6 +603,16 @@ template
 
 {{#if Provisioning.error}}
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ Provisioning.error }}</p>
+{{/if}}
+
+{{#if Provisioning.needsPassword}}
+      <div role="status" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 sm:px-5 mb-4">
+        <div class="min-w-0">
+          <p class="text-slate-900 dark:text-slate-100 text-sm font-medium">Choose a root password to finish setup</p>
+          <p class="text-slate-600 dark:text-slate-300 text-sm mt-0.5">The provider created this server with a temporary root password. Setup continues as soon as you set your own.</p>
+        </div>
+        <button onclick="{{ reopenPassword() }}" class="self-start sm:self-auto shrink-0 h-9 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-500 rounded-full px-4 transition">Set password</button>
+      </div>
 {{/if}}
 
       <div class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none mb-2">
@@ -507,6 +659,9 @@ template
 {{#if s.state is "failed"}}
             <span class="w-2 h-2 shrink-0 rounded-full bg-rose-500"></span>
 {{/if}}
+{{#if s.state is "action"}}
+            <span class="w-2 h-2 shrink-0 rounded-full bg-amber-500"></span>
+{{/if}}
 {{#if s.state is "pending"}}
             <span class="w-2 h-2 shrink-0 rounded-full bg-slate-500"></span>
             <p class="text-sm font-medium truncate text-slate-900 dark:text-slate-100 opacity-60">{{ s.label }}</p>
@@ -535,6 +690,112 @@ template
         <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
         Reconnecting…
       </p>
+{{/if}}
+{{/if}}
+
+{{#if Provisioning.needsPassword}}
+{{#if not pwDismissed}}
+      <div role="dialog" aria-modal="true" aria-labelledby="pw-modal-title" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4 py-6">
+        <div class="w-full max-w-md max-h-full overflow-y-auto rounded-2xl border border-line bg-panel shadow-2xl">
+
+          <div class="flex items-start justify-between gap-4 p-6 pb-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-brand-500/10 text-brand-700 dark:text-brand-500">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                  <circle cx="8" cy="15" r="4" />
+                  <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <h3 id="pw-modal-title" class="text-slate-900 dark:text-slate-100 font-semibold">Set a root password</h3>
+                <p class="text-slate-500 text-xs font-mono truncate">{{ Provisioning.name }}{{ Provisioning.ip ? " · " + Provisioning.ip : "" }}</p>
+              </div>
+            </div>
+            <button onclick="{{ dismissPassword() }}" disabled="{{ Provisioning.passwordBusy }}" aria-label="Close" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
+              <IconX class="w-4 h-4" />
+            </button>
+          </div>
+
+          <div class="px-6 pb-6">
+            <p class="text-slate-600 dark:text-slate-300 text-sm mb-4">Your server is up. The provider gave it a temporary root password that has to be replaced before setup can continue. Choose a new one and the rest of the setup runs by itself.</p>
+
+            <div class="flex items-center justify-between gap-3 mb-1.5">
+              <label for="new-root-pw" class="text-slate-700 dark:text-slate-300 text-sm font-medium">New password</label>
+              <button onclick="{{ generatePassword() }}" disabled="{{ Provisioning.passwordBusy }}" class="text-xs font-medium text-brand-700 dark:text-brand-500 hover:underline disabled:opacity-50">Generate one</button>
+            </div>
+            <div class="relative mb-3">
+              <input
+                id="new-root-pw"
+                type="{{ newPwShown ? 'text' : 'password' }}"
+                value="{{ newPw }}"
+                oninput="{{ setNewPw($event.target.value) }}"
+                autocomplete="new-password"
+                spellcheck="false"
+                maxlength="128"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono pl-3 pr-28 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
+              />
+              <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                <button onclick="{{ toggleNewPw() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-2 py-1 rounded-md transition-colors">{{ newPwShown ? "Hide" : "Show" }}</button>
+{{#if newPw}}
+                <button onclick="{{ copyNewPw() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 px-2 py-1 rounded-md transition-colors">{{ newPwCopied ? "Copied" : "Copy" }}</button>
+{{/if}}
+              </div>
+            </div>
+
+            <label for="new-root-pw-confirm" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Confirm password</label>
+            <input
+              id="new-root-pw-confirm"
+              type="{{ newPwShown ? 'text' : 'password' }}"
+              value="{{ newPwConfirm }}"
+              oninput="{{ setNewPwConfirm($event.target.value) }}"
+              autocomplete="new-password"
+              spellcheck="false"
+              maxlength="128"
+              class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
+            />
+            <p class="text-slate-500 text-xs mt-2">At least 12 characters. It's stored encrypted, and you can view it later with the Root password button.</p>
+
+{{#if newPwAskCode}}
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-4 mt-4">
+              <label for="new-root-pw-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-2">Verification code</label>
+              <input
+                id="new-root-pw-code"
+                type="text"
+                inputmode="text"
+                autocomplete="one-time-code"
+                maxlength="12"
+                value="{{ newPwCode }}"
+                oninput="{{ newPwCode = $event.target.value }}"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
+              />
+              <p class="text-slate-500 text-xs mt-2">{{ TwoFactor.totp ? "Enter a code from your authenticator app, or a recovery code." : "Enter the code texted to " + TwoFactor.smsHint + "." }}</p>
+{{#if TwoFactor.notice}}
+              <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
+{{/if}}
+{{#if newPwCodeError}}
+              <p role="alert" class="text-rose-500 text-xs mt-2">{{ newPwCodeError }}</p>
+{{/if}}
+{{#if TwoFactor.sms}}
+              <button disabled="{{ TwoFactor.sending }}" onclick="{{ sendPwCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">{{ TwoFactor.sending ? "Sending…" : "Text me a code" }}</button>
+{{/if}}
+            </div>
+{{/if}}
+
+{{#if newPwError}}
+            <p role="alert" class="text-rose-500 text-sm mt-4">{{ newPwError }}</p>
+{{/if}}
+{{#if Provisioning.passwordBusy}}
+            <p role="status" class="text-slate-500 text-sm mt-4">Setting the password on the server. This takes a few seconds…</p>
+{{/if}}
+          </div>
+
+          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-line bg-slate-50 dark:bg-slate-950/40">
+            <button onclick="{{ dismissPassword() }}" disabled="{{ Provisioning.passwordBusy }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors disabled:opacity-50">Later</button>
+            <button onclick="{{ submitPassword() }}" disabled="{{ Provisioning.passwordBusy or Billing.locked }}" title="{{ Billing.locked ? 'Pay to continue' : '' }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 shadow-sm hover:bg-brand-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed">{{ Provisioning.passwordBusy ? "Setting password…" : "Set password and continue" }}</button>
+          </div>
+
+        </div>
+      </div>
 {{/if}}
 {{/if}}
 {{/if}}
