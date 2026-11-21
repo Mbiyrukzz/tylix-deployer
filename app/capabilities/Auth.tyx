@@ -25,8 +25,11 @@ init
     if me.ok {
       this.user = me.data
     } else {
+      // Pages anyone can open signed out. Everything else sends them to sign in.
       const path = window.location.pathname
-      const isPublic = path is "/" or path is "/login" or path is "/register" or path is "/status" or path is "/changelog" or path is "/terms"  or path is "/forgot-password"or path is "/pricing" or path is "/reset-password" or path is "/privacy" or path.startsWith("/accept-invite")
+      const publicPages = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/pricing", "/status", "/changelog", "/terms", "/privacy", "/docs"]
+      const publicSections = ["/docs/", "/accept-invite"]
+      const isPublic = publicPages.includes(path) or publicSections.some((p) => path.startsWith(p))
       if not isPublic {
         // Come back to this page after signing in (see Login.nextUrl).
         window.location.replace("/login?next=" + encodeURIComponent(path + window.location.search))
