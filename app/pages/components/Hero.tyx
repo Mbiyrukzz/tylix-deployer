@@ -36,16 +36,11 @@ computed
 template
 <section class="relative overflow-hidden border-b border-line px-4 sm:px-6 pt-14 sm:pt-24 pb-16 sm:pb-24">
 
-  <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-    <svg class="absolute inset-0 w-full h-full text-slate-400/40 dark:text-white/[0.055] [mask-image:radial-gradient(ellipse_75%_55%_at_50%_0%,black,transparent)]">
-      <defs>
-        <pattern id="hero-grid" width="36" height="36" patternUnits="userSpaceOnUse">
-          <path d="M36 0H0V36" fill="none" stroke="currentColor" stroke-width="1" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#hero-grid)" />
-    </svg>
-    <div class="absolute left-1/2 -top-48 -translate-x-1/2 w-[60rem] max-w-[180vw] h-[30rem] rounded-full bg-brand-500/[0.14] dark:bg-brand-500/[0.11] blur-3xl"></div>
+  <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div class="absolute inset-x-0 top-0 h-[44rem] bg-[radial-gradient(ellipse_55%_60%_at_50%_0%,rgb(224_57_63/0.16),transparent_70%)] dark:bg-[radial-gradient(ellipse_55%_60%_at_50%_0%,rgb(240_79_84/0.18),transparent_70%)]"></div>
+    <div class="absolute -top-32 left-[8%] w-[30rem] max-w-[90vw] h-[30rem] rounded-full bg-brand-500/[0.16] dark:bg-brand-500/[0.14] blur-[110px] motion-safe:animate-hero-drift"></div>
+    <div class="absolute top-0 right-[6%] w-[26rem] max-w-[80vw] h-[26rem] rounded-full bg-amber-400/[0.14] dark:bg-amber-500/[0.08] blur-[110px] motion-safe:animate-hero-drift-alt"></div>
+    <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-500/50 to-transparent"></div>
   </div>
 
   <div class="relative max-w-6xl mx-auto text-center">

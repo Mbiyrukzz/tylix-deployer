@@ -98,6 +98,15 @@ export default {
                     "0%, 100%": { opacity: "1" },
                     "50%": { opacity: "0.35" },
                 },
+                // The home page hero's two background glows.
+                "hero-drift": {
+                    "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+                    "50%": { transform: "translate(6rem, 3rem) scale(1.1)" },
+                },
+                "hero-drift-alt": {
+                    "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+                    "50%": { transform: "translate(-5rem, 4rem) scale(0.92)" },
+                },
             },
             animation: {
                 "loader-slide": "loader-slide 1.4s ease-in-out infinite",
@@ -106,6 +115,8 @@ export default {
                 "flux-in": "flux-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both",
                 "flux-sheet": "flux-sheet 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both",
                 "flux-pulse": "flux-pulse 1.6s ease-in-out infinite",
+                "hero-drift": "hero-drift 18s ease-in-out infinite",
+                "hero-drift-alt": "hero-drift-alt 22s ease-in-out infinite",
             },
         },
     },
