@@ -1,5 +1,8 @@
 component SiteFooter
 
+uses
+  Auth
+
 template
 <footer class="site-footer relative overflow-hidden border-t border-line bg-page transition-colors">
   <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 pb-8">
@@ -20,8 +23,15 @@ template
             Ship your next site<br class="hidden sm:block" /> <span class="text-brand-500">in minutes.</span>
           </h2>
         </div>
-        <div class="flex flex-wrap items-center gap-2 shrink-0">
-          <a href="/register" class="inline-flex text-sm font-semibold bg-brand-500 text-white rounded-full px-6 py-2.5 hover:bg-brand-400 transition-colors">Get started</a>
+        <div class="flex flex-wrap items-center gap-2 shrink-0 min-h-[44px]">
+{{#if Auth.user}}
+          <a href="/dashboard" class="inline-flex text-sm font-semibold bg-brand-500 text-white rounded-full px-6 py-2.5 hover:bg-brand-400 transition-colors">Open dashboard</a>
+{{/if}}
+{{#if not Auth.loading}}
+{{#if not Auth.user}}
+          <a href="/register" class="inline-flex text-sm font-semibold bg-brand-500 text-white rounded-full px-6 py-2.5 hover:bg-brand-400 transition-colors">Start free trial</a>
+{{/if}}
+{{/if}}
           <a href="/docs" class="inline-flex text-sm text-zinc-700 dark:text-zinc-200 border border-stone-300 dark:border-white/15 rounded-full px-6 py-2.5 hover:bg-white dark:hover:bg-white/5 transition-colors">Read the docs</a>
         </div>
       </div>

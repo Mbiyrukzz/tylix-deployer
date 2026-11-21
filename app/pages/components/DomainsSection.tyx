@@ -1,38 +1,96 @@
 component DomainsSection
 
+import { IconCheck, IconArrowRight } from "tylix-icons"
+
+// Home page: domain management. The picture on the right is a still of the
+// domains page (decorative, hidden from screen readers).
+
+computed
+  points() {
+    return [
+      { title: "All domains in one list.", text: "Every registrar you connect, with expiry dates and status at a glance." },
+      { title: "DNS records.", text: "Add, change and remove them, and point a domain at your server." },
+      { title: "Renewals.", text: "See which domains expire soon before they lapse." },
+      { title: "Email and billing.", text: "Check mail settings and the registrar account from the same page." }
+    ]
+  }
+
+  domains() {
+    return [
+      { kind: "cloudflare", name: "example.com", note: "Renews in 41 days", cls: "text-slate-500", row: "bg-brand-500/[0.06]" },
+      { kind: "porkbun", name: "example.dev", note: "Expires in 9 days", cls: "text-amber-600 dark:text-amber-400", row: "" },
+      { kind: "namecheap", name: "example.shop", note: "Renews in 7 months", cls: "text-slate-500", row: "" }
+    ]
+  }
+
+  records() {
+    return [
+      { type: "A", cls: "text-brand-600 dark:text-brand-400", value: "@ → 203.0.113.24", ttl: "300" },
+      { type: "CNAME", cls: "text-sky-600 dark:text-sky-400", value: "www → example.com", ttl: "300" },
+      { type: "MX", cls: "text-amber-600 dark:text-amber-400", value: "mail.example.com · 10", ttl: "3600" }
+    ]
+  }
+
 template
-  <section class="px-6 py-20 bg-slate-100 dark:bg-slate-950 transition-colors">
-    <div class="max-w-5xl mx-auto">
-      <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-2">Domain management</p>
-      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-3">Your domains next to your servers</h2>
-      <p class="text-slate-500 max-w-2xl mb-10">Connect your registrar once, then manage domains, DNS records and renewals from the same place you deploy.</p>
+<section class="px-4 sm:px-6 py-20 sm:py-24 border-b border-line">
+  <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div>
+      <p class="text-brand-700 dark:text-brand-400 text-xs font-semibold uppercase tracking-[0.16em] mb-3">Domains</p>
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-4 text-balance">Your domains, next to your servers</h2>
+      <p class="text-slate-500 leading-relaxed mb-8">Connect your registrar once. Then see every domain, edit its DNS and watch renewals without leaving the deployer.</p>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
-          <div class="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">1</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Connect a registrar</h3>
-          <p class="text-slate-500 text-xs leading-relaxed">Link Namecheap or Cloudflare with an API key. It is stored encrypted.</p>
+      <ul class="space-y-4 mb-8">
+{{#each p in points}}
+        <li class="flex items-start gap-3">
+          <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center"><IconCheck class="w-3 h-3" /></span>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><span class="text-slate-900 dark:text-slate-100 font-medium">{{ p.title }}</span> {{ p.text }}</p>
+        </li>
+{{/each}}
+      </ul>
+
+      <a href="/docs/registrars" class="group inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300">
+        Read how domains work
+        <IconArrowRight class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+      </a>
+    </div>
+
+    <div class="relative" aria-hidden="true">
+      <div class="absolute -inset-6 rounded-[2rem] bg-gradient-to-br from-sky-500/10 via-transparent to-brand-500/10 blur-2xl"></div>
+
+      <div class="relative rounded-2xl border border-line-strong bg-panel shadow-xl shadow-black/[0.06] dark:shadow-black/40 overflow-hidden">
+        <div class="flex items-center justify-between px-4 h-11 border-b border-line bg-sunken">
+          <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">Domains</p>
+          <span class="text-[11px] text-slate-500">3 registrars</span>
         </div>
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
-          <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">2</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">See every domain</h3>
-          <p class="text-slate-500 text-xs leading-relaxed">All your domains in one list, with expiry dates and status.</p>
+{{#each d in domains}}
+        <div class="{{ 'flex items-center gap-3 px-4 py-3 border-b border-line ' + d.row }}">
+          <BrandLogo kind="{{ d.kind }}" size="sm" />
+          <p class="flex-1 min-w-0 text-sm font-medium font-mono text-slate-800 dark:text-slate-200 truncate">{{ d.name }}</p>
+          <p class="{{ 'text-[11px] shrink-0 ' + d.cls }}">{{ d.note }}</p>
         </div>
+{{/each}}
 
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
-          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">3</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Edit DNS records</h3>
-          <p class="text-slate-500 text-xs leading-relaxed">Add, change and remove records, and point a domain at your server.</p>
+        <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">DNS · example.com</p>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+          </span>
         </div>
-
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 shadow-sm dark:shadow-none hover:border-brand-500/50 transition-colors">
-          <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">4</div>
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Track renewals</h3>
-          <p class="text-slate-500 text-xs leading-relaxed">Know which domains expire soon, and check email and billing at the registrar.</p>
+{{#each r in records}}
+        <div class="px-4 py-2.5 grid grid-cols-[52px_1fr_auto] gap-3 items-center border-t border-line text-xs">
+          <span class="{{ 'font-mono font-semibold ' + r.cls }}">{{ r.type }}</span>
+          <span class="font-mono text-slate-600 dark:text-slate-400 truncate">{{ r.value }}</span>
+          <span class="font-mono text-slate-400">{{ r.ttl }}</span>
         </div>
-
+{{/each}}
+        <div class="px-4 py-3 border-t border-line bg-sunken flex items-center justify-between">
+          <span class="text-xs text-slate-500">Points at prod-web-01</span>
+          <span class="text-xs font-semibold text-brand-700 dark:text-brand-400">Add record</span>
+        </div>
       </div>
     </div>
-  </section>
+
+  </div>
+</section>

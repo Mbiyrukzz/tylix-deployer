@@ -1,31 +1,56 @@
 component Hero
 
-import { IconArrowRight } from "tylix-icons"
+import { IconArrowRight, IconLockClosed } from "tylix-icons"
+
+// The top of the home page: the pitch, the two calls to action, a row of
+// the stacks it deploys (real logos, see BrandLogo) and a live-looking
+// server page (DeployPreview).
 
 uses
   Auth
 
-state
-  stacks: []
-  stats: []
+computed
+  stacks() {
+    return [
+      { id: "tylix", name: "Tylix" },
+      { id: "laravel", name: "Laravel" },
+      { id: "nextjs", name: "Next.js" },
+      { id: "nodejs", name: "Node.js" },
+      { id: "wordpress", name: "WordPress" },
+      { id: "django", name: "Django" },
+      { id: "go", name: "Go" },
+      { id: "rust", name: "Rust" }
+    ]
+  }
 
-onMount
-  async {
-    this.stacks = ["Tylix", "Laravel", "PHP", "Node.js", "Next.js", "MERN", "WordPress", "Angular"]
-    this.stats = [
-      { value: "5", label: "cloud providers" },
-      { value: "15+", label: "frameworks" },
-      { value: "Live", label: "CPU, RAM and disk" },
-      { value: "1-click", label: "SSL and DNS" }
+  // Keep in step with PROVIDER_KINDS, REGISTRAR_KINDS and the StackGrid list.
+  stats() {
+    return [
+      { value: "16", label: "stacks, ready to deploy" },
+      { value: "7", label: "cloud providers" },
+      { value: "8", label: "domain registrars" },
+      { value: "Live", label: "CPU, memory and disk" }
     ]
   }
 
 template
-<section class="relative overflow-hidden px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-20 bg-slate-200 dark:bg-slate-950 transition-colors">
+<section class="relative overflow-hidden border-b border-line px-4 sm:px-6 pt-14 sm:pt-24 pb-16 sm:pb-24">
+
+  <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+    <svg class="absolute inset-0 w-full h-full text-slate-400/40 dark:text-white/[0.055] [mask-image:radial-gradient(ellipse_75%_55%_at_50%_0%,black,transparent)]">
+      <defs>
+        <pattern id="hero-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+          <path d="M36 0H0V36" fill="none" stroke="currentColor" stroke-width="1" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#hero-grid)" />
+    </svg>
+    <div class="absolute left-1/2 -top-48 -translate-x-1/2 w-[60rem] max-w-[180vw] h-[30rem] rounded-full bg-brand-500/[0.14] dark:bg-brand-500/[0.11] blur-3xl"></div>
+  </div>
 
   <div class="relative max-w-6xl mx-auto text-center">
 
-    <a href="/pricing" class="group inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 pl-3 pr-2 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-7 hover:bg-brand-500/15 transition-colors">
+    <a href="/pricing" class="group inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 pl-3 pr-1.5 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-7 hover:bg-brand-500/15 transition-colors">
       <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
       14-day free trial for new accounts
       <span class="w-5 h-5 rounded-full bg-brand-500/15 flex items-center justify-center group-hover:translate-x-0.5 transition-transform">
@@ -33,7 +58,7 @@ template
       </span>
     </a>
 
-    <h1 class="text-4xl sm:text-6xl lg:text-7xl font-bold max-w-4xl mx-auto leading-[1.05] mb-6 tracking-tight text-slate-900 dark:text-slate-100">
+    <h1 class="text-[2.6rem] sm:text-6xl lg:text-7xl font-bold max-w-4xl mx-auto leading-[1.04] mb-6 tracking-tight text-slate-900 dark:text-slate-100 text-balance">
       Ship any stack,
       <br class="hidden sm:block" />
       <span class="text-brand-500">manage it all in one place</span>
@@ -43,51 +68,61 @@ template
       Create or connect a server, deploy your app, then point the domain at it and edit its DNS from the same dashboard. Watch CPU, memory and disk live.
     </p>
 
-    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 max-w-md sm:max-w-none mx-auto mb-5 min-h-[48px]">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 max-w-sm sm:max-w-none mx-auto min-h-[48px]">
 {{#if Auth.user}}
-      <a href="/dashboard" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-brand-500 text-white font-semibold shadow-lg hover:bg-brand-400 transition-all">
-        Go to Dashboard
+      <a href="/dashboard" class="inline-flex items-center justify-center gap-2 px-7 h-12 rounded-full bg-brand-500 text-white font-semibold shadow-lg shadow-brand-500/25 hover:bg-brand-400 transition-colors">
+        Go to dashboard
         <IconArrowRight class="w-4 h-4" />
       </a>
-      <a href="/servers" class="inline-flex items-center justify-center px-7 py-3 rounded-full border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-300/50 dark:hover:bg-slate-900 transition-colors">
-        My Servers
-      </a>
-      <a href="/registrars" class="inline-flex items-center justify-center px-7 py-3 rounded-full border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-300/50 dark:hover:bg-slate-900 transition-colors">
-        My Domains
+      <a href="/servers" class="inline-flex items-center justify-center px-7 h-12 rounded-full border border-line-strong bg-panel/70 text-slate-700 dark:text-slate-200 font-medium hover:bg-panel hover:border-slate-400 dark:hover:border-white/25 transition-colors">
+        My servers
       </a>
 {{/if}}
 {{#if not Auth.loading}}
 {{#if not Auth.user}}
-      <a href="/register" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-brand-500 text-white font-semibold shadow-lg hover:bg-brand-400 transition-all">
+      <a href="/register" class="inline-flex items-center justify-center gap-2 px-7 h-12 rounded-full bg-brand-500 text-white font-semibold shadow-lg shadow-brand-500/25 hover:bg-brand-400 transition-colors">
         Start free trial
         <IconArrowRight class="w-4 h-4" />
       </a>
-      <a href="/pricing" class="inline-flex items-center justify-center px-7 py-3 rounded-full border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-300/50 dark:hover:bg-slate-900 transition-colors">
-        See pricing
+      <a href="/docs" class="inline-flex items-center justify-center px-7 h-12 rounded-full border border-line-strong bg-panel/70 text-slate-700 dark:text-slate-200 font-medium hover:bg-panel hover:border-slate-400 dark:hover:border-white/25 transition-colors">
+        Read the docs
       </a>
 {{/if}}
 {{/if}}
     </div>
 
-    <p class="text-slate-500 text-xs font-mono mb-10">SSH keys stored encrypted · Your machine, your rules</p>
+    <p class="mt-5 text-slate-500 text-xs">
+      <IconLockClosed class="inline w-3.5 h-3.5 -mt-0.5 mr-1" />SSH keys stored encrypted · Your servers, your provider account
+    </p>
 
-    <div class="flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto mb-12">
+    <div class="mt-12">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-4">Deploys the stack you already use</p>
+      <ul class="flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
 {{#each s in stacks}}
-      <span class="rounded-full border border-slate-300 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 px-3.5 py-1 text-xs sm:text-sm text-slate-700 dark:text-slate-300">{{ s }}</span>
+        <li>
+          <a href="#stacks" class="flex items-center gap-2 rounded-xl border border-line bg-panel/80 backdrop-blur pl-1 pr-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-brand-500/40 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+            <BrandLogo kind="{{ s.id }}" size="sm" />
+            {{ s.name }}
+          </a>
+        </li>
 {{/each}}
+        <li>
+          <a href="#stacks" class="flex items-center h-9 rounded-xl border border-dashed border-line-strong px-3 text-sm text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-500/40 transition-colors">+8 more</a>
+        </li>
+      </ul>
     </div>
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-px max-w-4xl mx-auto mb-14 sm:mb-16 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-slate-300 dark:bg-slate-800">
+    <div class="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-px max-w-4xl mx-auto rounded-2xl border border-line bg-line overflow-hidden">
 {{#each st in stats}}
-      <div class="bg-white/80 dark:bg-slate-900 px-4 py-5">
-        <p class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">{{ st.value }}</p>
+      <div class="bg-panel px-4 py-5 text-center">
+        <p class="text-2xl sm:text-[1.7rem] font-bold tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">{{ st.value }}</p>
         <p class="text-slate-500 text-xs mt-0.5">{{ st.label }}</p>
       </div>
 {{/each}}
     </div>
   </div>
 
-  <div class="relative max-w-6xl mx-auto">
+  <div class="relative max-w-6xl mx-auto mt-14 sm:mt-16">
     <DeployPreview />
   </div>
 </section>

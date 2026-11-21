@@ -1,10 +1,14 @@
 page Home
 
+// The public home page. The closing call to action is the footer's
+// (SiteFooter), so the page ends on pricing.
+
 template
   <div>
     <Hero />
-    <StackGrid />
-    <PricingTeaser />
+    <Integrations />
     <HowItWorks />
-    <CTASection />
+    <StackGrid />
+    <DomainsSection />
+    <PricingTeaser />
   </div>

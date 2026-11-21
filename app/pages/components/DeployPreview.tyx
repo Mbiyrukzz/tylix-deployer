@@ -1,75 +1,132 @@
 component DeployPreview
 
-template
-  <div class="relative max-w-5xl mx-auto rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel shadow-sm dark:shadow-none p-6 text-left">
+// A still of a server page for the home page hero: the provider, live
+// stats, the sites on the server and the latest deploy. Decorative only,
+// so it is hidden from screen readers.
 
-    <div class="flex items-start justify-between gap-4 mb-6">
-      <div class="min-w-0">
-        <div class="flex items-center gap-3 mb-1.5">
-          <h3 class="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-200 truncate">prod-web-01</h3>
-          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
-          </span>
-        </div>
-        <p class="text-slate-500 text-xs font-mono">deploy@203.0.113.24:22 / nairobi / 4 GB / up 12d 4h</p>
-      </div>
-      <span class="hidden sm:inline-flex text-xs text-slate-500 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5">Live preview</span>
+computed
+  sites() {
+    return [
+      { kind: "laravel", host: "shop.example.com", meta: "Laravel · main", state: "Live", dot: "bg-emerald-500" },
+      { kind: "nextjs", host: "www.example.com", meta: "Next.js · main", state: "Live", dot: "bg-emerald-500" },
+      { kind: "wordpress", host: "blog.example.com", meta: "WordPress", state: "Live", dot: "bg-emerald-500" }
+    ]
+  }
+
+template
+<div class="relative max-w-5xl mx-auto" aria-hidden="true">
+  <div class="absolute -inset-x-6 -inset-y-4 sm:-inset-x-10 rounded-[2rem] bg-gradient-to-b from-brand-500/15 via-brand-500/5 to-transparent blur-2xl"></div>
+
+  <div class="relative rounded-2xl border border-line-strong bg-panel text-left shadow-2xl shadow-black/10 dark:shadow-black/50 overflow-hidden">
+
+    <div class="flex items-center gap-3 h-11 px-4 border-b border-line bg-sunken">
+      <span class="flex items-center gap-1.5 shrink-0">
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-white/15"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-white/15"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-white/15"></span>
+      </span>
+      <p class="min-w-0 flex-1 truncate text-center text-[11px] font-mono text-slate-500">Servers / <span class="text-slate-700 dark:text-slate-300">prod-web-01</span></p>
+      <span class="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-line px-2.5 py-0.5 text-[11px] text-slate-500">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+      </span>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+    <div class="p-4 sm:p-6">
 
-      <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950/60 p-4">
-        <div class="flex items-center justify-between mb-2">
-          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">CPU</p>
-          <p class="text-slate-500 text-xs font-mono">load 0.42  0.38  0.31</p>
-        </div>
-        <p class="text-2xl font-semibold text-slate-800 dark:text-slate-200">32<span class="text-base text-slate-500">%</span></p>
-        <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-16 mt-2">
-          <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
-          <polygon points="0,80 0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32 300,80" fill="#e0393f" fill-opacity="0.15" />
-          <polyline points="0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32" fill="none" stroke="#e0393f" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-        </svg>
-      </div>
-
-      <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950/60 p-4">
-        <div class="flex items-center justify-between mb-2">
-          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Memory</p>
-          <p class="text-slate-500 text-xs font-mono">1.6 GB of 4.0 GB</p>
-        </div>
-        <p class="text-2xl font-semibold text-slate-800 dark:text-slate-200">41<span class="text-base text-slate-500">%</span></p>
-        <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-16 mt-2">
-          <line x1="0" y1="40" x2="300" y2="40" stroke="#64748b" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
-          <polygon points="0,80 0,50 30,49 60,47 90,48 120,45 150,44 180,45 210,42 240,43 270,41 300,40 300,80" fill="#38bdf8" fill-opacity="0.15" />
-          <polyline points="0,50 30,49 60,47 90,48 120,45 150,44 180,45 210,42 240,43 270,41 300,40" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-        </svg>
-      </div>
-
-      <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-200 dark:bg-slate-950/60 p-4">
-        <div class="flex items-center justify-between mb-2">
-          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Disk</p>
-          <p class="text-slate-500 text-xs font-mono">18 GB of 50 GB</p>
-        </div>
-        <div class="relative w-24 h-24 mx-auto mt-1">
-          <svg viewBox="0 0 100 100" class="w-24 h-24">
-            <circle cx="50" cy="50" r="36" fill="none" stroke="#64748b" stroke-opacity="0.2" stroke-width="10" />
-            <circle cx="50" cy="50" r="36" fill="none" stroke="#e0393f" stroke-width="10" stroke-linecap="round" stroke-dasharray="81.4 226.2" transform="rotate(-90 50 50)" />
-          </svg>
-          <div class="absolute inset-0 flex items-center justify-center">
-            <span class="text-lg font-semibold text-slate-800 dark:text-slate-200">36%</span>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+        <div class="flex items-center gap-3.5 min-w-0">
+          <BrandLogo kind="hetzner" size="lg" />
+          <div class="min-w-0">
+            <div class="flex items-center gap-2.5">
+              <h3 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">prod-web-01</h3>
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+              </span>
+            </div>
+            <p class="text-slate-500 text-xs font-mono truncate">Hetzner Cloud · 203.0.113.24 · 4 GB · up 12d 4h</p>
           </div>
         </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">Terminal</span>
+          <span class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white">Deploy</span>
+        </div>
       </div>
 
-    </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
 
-    <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 p-4 font-mono text-xs leading-relaxed">
-      <p class="text-slate-500 mb-2 uppercase tracking-wider text-[11px] font-sans font-medium">Latest deploy</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> SSH connected</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> Pulled main @ 9f3c2ab</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> composer install --no-dev</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> php artisan migrate --force</p>
-      <p class="text-slate-600 dark:text-slate-400"><span class="text-brand-600 dark:text-brand-500">✓</span> Reloaded php-fpm</p>
-      <p class="text-brand-700 dark:text-brand-400 font-semibold mt-1">● Live in 38s</p>
-    </div>
+        <div class="rounded-xl border border-line bg-sunken p-4">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">CPU</p>
+            <p class="text-slate-500 text-[11px] font-mono">load 0.42</p>
+          </div>
+          <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums">32<span class="text-sm text-slate-500">%</span></p>
+          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-12 mt-2">
+            <polygon points="0,80 0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32 300,80" fill="#e0393f" fill-opacity="0.15" />
+            <polyline points="0,60 30,55 60,58 90,40 120,45 150,35 180,42 210,30 240,38 270,28 300,32" fill="none" stroke="#e0393f" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+        </div>
 
+        <div class="rounded-xl border border-line bg-sunken p-4">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Memory</p>
+            <p class="text-slate-500 text-[11px] font-mono">1.6 / 4.0 GB</p>
+          </div>
+          <p class="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums">41<span class="text-sm text-slate-500">%</span></p>
+          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="w-full h-12 mt-2">
+            <polygon points="0,80 0,50 30,49 60,47 90,48 120,45 150,44 180,45 210,42 240,43 270,41 300,40 300,80" fill="#38bdf8" fill-opacity="0.15" />
+            <polyline points="0,50 30,49 60,47 90,48 120,45 150,44 180,45 210,42 240,43 270,41 300,40" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+        </div>
+
+        <div class="rounded-xl border border-line bg-sunken p-4 flex items-center gap-4">
+          <div class="relative w-[4.5rem] h-[4.5rem] shrink-0">
+            <svg viewBox="0 0 100 100" class="w-full h-full">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#75757e" stroke-opacity="0.2" stroke-width="10" />
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#e0393f" stroke-width="10" stroke-linecap="round" stroke-dasharray="86 239" transform="rotate(-90 50 50)" />
+            </svg>
+            <span class="absolute inset-0 flex items-center justify-center text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">36%</span>
+          </div>
+          <div>
+            <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Disk</p>
+            <p class="text-slate-700 dark:text-slate-300 text-sm font-mono mt-1">18 of 50 GB</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+
+        <div class="md:col-span-3 rounded-xl border border-line bg-sunken">
+          <p class="px-4 pt-3 pb-2 text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Sites</p>
+{{#each s in sites}}
+          <div class="flex items-center gap-3 px-4 py-2.5 border-t border-line">
+            <BrandLogo kind="{{ s.kind }}" size="sm" />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{{ s.host }}</p>
+              <p class="text-[11px] text-slate-500 truncate">{{ s.meta }}</p>
+            </div>
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
+              <span class="{{ 'w-1.5 h-1.5 rounded-full ' + s.dot }}"></span> {{ s.state }}
+            </span>
+          </div>
+{{/each}}
+        </div>
+
+        <div class="md:col-span-2 rounded-xl border border-line bg-zinc-950 p-4 font-mono text-[11px] leading-relaxed">
+          <div class="flex items-center justify-between mb-2.5">
+            <p class="text-zinc-500 uppercase tracking-wider font-sans font-semibold">Latest deploy</p>
+            <BrandLogo kind="laravel" size="xs" />
+          </div>
+          <p class="text-zinc-400"><span class="text-emerald-400">✓</span> Pulled main @ 9f3c2ab</p>
+          <p class="text-zinc-400"><span class="text-emerald-400">✓</span> composer install --no-dev</p>
+          <p class="text-zinc-400"><span class="text-emerald-400">✓</span> npm run build</p>
+          <p class="text-zinc-400"><span class="text-emerald-400">✓</span> php artisan migrate --force</p>
+          <p class="text-zinc-400"><span class="text-emerald-400">✓</span> Reloaded php-fpm</p>
+          <div class="h-1 w-full rounded-full bg-zinc-800 overflow-hidden my-2.5"><div class="h-full w-full rounded-full bg-emerald-500"></div></div>
+          <p class="text-emerald-400 font-semibold">● Live in 38s</p>
+        </div>
+
+      </div>
+    </div>
   </div>
+</div>

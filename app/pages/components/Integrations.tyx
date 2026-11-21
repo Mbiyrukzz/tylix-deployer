@@ -1,0 +1,91 @@
+component Integrations
+
+import { IconCloud, IconGlobe, IconTerminal } from "tylix-icons"
+
+// Home page: the clouds and registrars Tylix Flux talks to, with their
+// logos. Keep the lists in step with PROVIDER_KINDS
+// (app/services/ProviderAdapter.ts) and REGISTRAR_KINDS
+// (app/services/RegistrarAdapter.ts). Name.com and Dynadot have no file in
+// public/logos yet, so BrandLogo shows their first letter.
+
+computed
+  clouds() {
+    return [
+      { id: "hetzner", name: "Hetzner" },
+      { id: "digitalocean", name: "DigitalOcean" },
+      { id: "vultr", name: "Vultr" },
+      { id: "linode", name: "Linode" },
+      { id: "aws", name: "AWS" },
+      { id: "upcloud", name: "UpCloud" },
+      { id: "contabo", name: "Contabo" }
+    ]
+  }
+
+  registrars() {
+    return [
+      { id: "cloudflare", name: "Cloudflare" },
+      { id: "porkbun", name: "Porkbun" },
+      { id: "namecheap", name: "Namecheap" },
+      { id: "godaddy", name: "GoDaddy" },
+      { id: "spaceship", name: "Spaceship" },
+      { id: "route53", name: "Route 53" },
+      { id: "namecom", name: "Name.com", label: "N" },
+      { id: "dynadot", name: "Dynadot", label: "D" }
+    ]
+  }
+
+template
+<section class="px-4 sm:px-6 py-20 sm:py-24 border-b border-line">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="max-w-2xl mx-auto text-center mb-12">
+      <p class="text-brand-700 dark:text-brand-400 text-xs font-semibold uppercase tracking-[0.16em] mb-3">Integrations</p>
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-4 text-balance">Works with the clouds and registrars you already pay for</h2>
+      <p class="text-slate-500 leading-relaxed">Connect an API token once. Servers stay in your provider account and domains stay at your registrar; Tylix Flux drives them for you.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+      <div class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-start gap-3 mb-5">
+          <span class="w-9 h-9 shrink-0 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center"><IconCloud class="w-5 h-5" /></span>
+          <div>
+            <h3 class="text-slate-900 dark:text-slate-100 font-semibold">Cloud providers</h3>
+            <p class="text-slate-500 text-sm">Create servers in your account and manage them from the dashboard.</p>
+          </div>
+        </div>
+        <ul class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+{{#each c in clouds}}
+          <li class="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-2.5 py-2 hover:border-line-strong transition-colors">
+            <BrandLogo kind="{{ c.id }}" label="{{ c.name }}" size="sm" />
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{{ c.name }}</span>
+          </li>
+{{/each}}
+          <li class="flex items-center gap-2.5 rounded-xl border border-dashed border-line-strong px-2.5 py-2">
+            <span class="w-7 h-7 shrink-0 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400 flex items-center justify-center"><IconTerminal class="w-4 h-4" /></span>
+            <span class="text-sm text-slate-500 truncate">Any SSH host</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+        <div class="flex items-start gap-3 mb-5">
+          <span class="w-9 h-9 shrink-0 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center"><IconGlobe class="w-5 h-5" /></span>
+          <div>
+            <h3 class="text-slate-900 dark:text-slate-100 font-semibold">Domain registrars</h3>
+            <p class="text-slate-500 text-sm">See every domain, edit DNS and catch renewals before they lapse.</p>
+          </div>
+        </div>
+        <ul class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+{{#each r in registrars}}
+          <li class="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-2.5 py-2 hover:border-line-strong transition-colors">
+            <BrandLogo kind="{{ r.id }}" label="{{ r.label or r.name }}" size="sm" />
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{{ r.name }}</span>
+          </li>
+{{/each}}
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>

@@ -1,32 +1,93 @@
 component PricingTeaser
 
-template
-  <section class="px-6 py-20 bg-slate-200 dark:bg-slate-950 transition-colors">
-    <div class="max-w-5xl mx-auto">
-      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-        <div>
-          <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-2">Pricing</p>
-          <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Start free, pick a plan when you're ready</h2>
-        </div>
-        <a href="/pricing" class="shrink-0 text-sm font-medium text-brand-700 dark:text-brand-400 hover:underline">See all plans</a>
-      </div>
+import { IconCheck, IconArrowRight } from "tylix-icons"
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Personal</h3>
-          <p class="text-slate-900 dark:text-slate-100 mb-2"><span class="text-2xl sm:text-[28px] font-semibold tracking-tight">$10</span><span class="text-slate-500 text-sm"> / month</span></p>
-          <p class="text-slate-500 text-sm">3 servers · 10 sites</p>
-        </div>
-        <div class="rounded-2xl border-2 border-brand-500 bg-panel p-6 shadow-sm dark:shadow-none">
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Pro</h3>
-          <p class="text-slate-900 dark:text-slate-100 mb-2"><span class="text-2xl sm:text-[28px] font-semibold tracking-tight">$20</span><span class="text-slate-500 text-sm"> / month</span></p>
-          <p class="text-slate-500 text-sm">10 servers · 50 sites · 5 members</p>
-        </div>
-        <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-6 shadow-sm dark:shadow-none">
-          <h3 class="text-slate-800 dark:text-slate-200 font-medium mb-1">Business</h3>
-          <p class="text-slate-900 dark:text-slate-100 mb-2"><span class="text-2xl sm:text-[28px] font-semibold tracking-tight">$49</span><span class="text-slate-500 text-sm"> / month</span></p>
-          <p class="text-slate-500 text-sm">30 servers · unlimited sites · 15 members</p>
-        </div>
+// Home page: the three plans at a glance. Prices and limits copy
+// PLANS in app/services/Plans.ts; the full table is on /pricing.
+
+uses
+  Auth
+
+computed
+  plans() {
+    return [
+      {
+        id: "personal", name: "Personal", price: "$10", featured: false,
+        tagline: "For solo developers and side projects.",
+        items: ["1 team member", "3 servers", "10 sites", "2 provider connections"]
+      },
+      {
+        id: "pro", name: "Pro", price: "$20", featured: true,
+        tagline: "For freelancers and growing teams.",
+        items: ["5 team members", "10 servers", "50 sites", "5 provider connections"]
+      },
+      {
+        id: "business", name: "Business", price: "$49", featured: false,
+        tagline: "For agencies and busy production fleets.",
+        items: ["15 team members", "30 servers", "Unlimited sites", "Unlimited provider connections"]
+      }
+    ]
+  }
+
+action
+  cardCls(featured) {
+    const base = "relative flex flex-col rounded-2xl bg-panel p-6 sm:p-7 "
+    if featured {
+      return base + "border-2 border-brand-500 shadow-xl shadow-brand-500/10"
+    }
+    return base + "border border-line"
+  }
+
+template
+<section class="px-4 sm:px-6 py-20 sm:py-24">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
+      <div class="max-w-2xl">
+        <p class="text-brand-700 dark:text-brand-400 text-xs font-semibold uppercase tracking-[0.16em] mb-3">Pricing</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-4 text-balance">Start free, pick a plan when you're ready</h2>
+        <p class="text-slate-500 leading-relaxed">Every new account gets 14 days on the house. Cancel any time.</p>
       </div>
+      <a href="/pricing" class="group shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300">
+        Compare all plans
+        <IconArrowRight class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+      </a>
     </div>
-  </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3">
+{{#each p in plans}}
+      <div class="{{ cardCls(p.featured) }}">
+{{#if p.featured}}
+        <span class="absolute -top-3 left-6 inline-flex rounded-full bg-brand-500 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">Most popular</span>
+{{/if}}
+        <h3 class="text-slate-900 dark:text-slate-100 text-lg font-semibold">{{ p.name }}</h3>
+        <p class="text-slate-500 text-sm mt-1">{{ p.tagline }}</p>
+        <p class="mt-5 mb-5 flex items-end gap-1.5">
+          <span class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ p.price }}</span>
+          <span class="text-slate-500 text-sm pb-1">/ month</span>
+        </p>
+        <ul class="space-y-2.5 pt-5 border-t border-line flex-1">
+{{#each it in p.items}}
+          <li class="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-400">
+            <span class="w-4 h-4 shrink-0 rounded-full bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center"><IconCheck class="w-2.5 h-2.5" /></span>
+            {{ it }}
+          </li>
+{{/each}}
+        </ul>
+{{#if not Auth.loading}}
+{{#if not Auth.user}}
+{{#if p.featured}}
+        <a href="/register" class="mt-6 block text-center text-sm font-semibold rounded-full h-11 leading-[2.75rem] bg-brand-500 text-white hover:bg-brand-400 transition-colors">Start free trial</a>
+{{/if}}
+{{#if not p.featured}}
+        <a href="/register" class="mt-6 block text-center text-sm font-semibold rounded-full h-11 leading-[2.75rem] border border-line-strong text-slate-800 dark:text-slate-200 hover:bg-sunken transition-colors">Start free trial</a>
+{{/if}}
+{{/if}}
+{{/if}}
+      </div>
+{{/each}}
+    </div>
+
+    <p class="mt-6 text-center text-xs text-slate-500">Prices in US dollars. Servers, bandwidth and domains are billed by your provider and registrar.</p>
+  </div>
+</section>
