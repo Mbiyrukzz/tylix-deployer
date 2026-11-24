@@ -1,6 +1,6 @@
 component Sidebar
 
-import { IconLayoutDashboard, IconServer, IconCloud, IconCode, IconCog, IconGlobe, IconDotsHorizontal, IconUsers, IconBookOpen, IconX, IconSearch } from "tylix-icons"
+import { IconLayoutDashboard, IconServer, IconCloud, IconCode, IconCog, IconGlobe, IconDotsHorizontal, IconUsers, IconBookOpen, IconX, IconSearch, IconShieldCheck } from "tylix-icons"
 
 // The main navigation. It lives in app/pages/_layout.tyx and stays mounted
 // while you move between app pages (public/app-shell.js swaps only the page),
@@ -54,6 +54,9 @@ action
     if path.startsWith("/settings") {
       return "settings"
     }
+    if path.startsWith("/admin") {
+      return "admin"
+    }
     return ""
   }
 
@@ -105,7 +108,13 @@ action
 
   inMore() {
     const s = this.sectionOf(this.path)
-    return s is "team" or s is "source-control" or s is "settings"
+    return s is "team" or s is "source-control" or s is "settings" or s is "admin"
+  }
+
+  // Flux admins (FLUX_ADMIN_EMAILS) see the Admin section. Read from Auth,
+  // not `me`: flux:user carries the profile only. The API checks it again.
+  isFluxAdmin() {
+    return Boolean(Auth.user and Auth.user.flux_admin)
   }
 
   moreTabCls() {
@@ -323,6 +332,16 @@ template
         <span class="flux-sb-label truncate">Settings</span>
       </a>
     </div>
+
+{{#if isFluxAdmin()}}
+    <p class="flux-sb-section px-3 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Flux admin</p>
+    <div class="flex flex-col gap-0.5">
+      <a href="/admin" title="Users" aria-current="{{ cur('admin') }}" class="{{ itemCls('admin') }}">
+        <IconShieldCheck class="{{ iconCls('admin') }}" />
+        <span class="flux-sb-label truncate">Users</span>
+      </a>
+    </div>
+{{/if}}
   </nav>
 
   <div class="shrink-0 px-3 pb-3 pt-2 border-t border-line flex flex-col gap-0.5">
@@ -396,6 +415,9 @@ template
     <a href="/source-control" class="{{ sheetLink('source-control') }}"><IconCode class="w-5 h-5 opacity-70" /> Source control</a>
     <a href="/team" class="{{ sheetLink('team') }}"><IconUsers class="w-5 h-5 opacity-70" /> Team &amp; roles</a>
     <a href="/settings" class="{{ sheetLink('settings') }}"><IconCog class="w-5 h-5 opacity-70" /> Settings</a>
+{{#if isFluxAdmin()}}
+    <a href="/admin" class="{{ sheetLink('admin') }}"><IconShieldCheck class="w-5 h-5 opacity-70" /> Admin · Users</a>
+{{/if}}
     <div class="h-px bg-line my-1.5 mx-3"></div>
     <a href="/docs" class="{{ sheetLink('docs') }}"><IconBookOpen class="w-5 h-5 opacity-70" /> Documentation</a>
     <a href="/status" class="{{ sheetLink('status') }}"><span class="w-5 h-5 flex items-center justify-center"><span class="{{ statusDot() }}"></span></span> {{ statusText() }}</a>

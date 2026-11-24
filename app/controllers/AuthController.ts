@@ -53,6 +53,13 @@ import { TwoFactorService } from "../services/TwoFactorService.js";
 import { CaptchaService } from "../services/CaptchaService.js";
 import { PasswordBreachService } from "../services/PasswordBreachService.js";
 import { renderVerifyPage } from "../services/VerifyPage.js";
+import { AdminImpersonation, isoTime } from "../models/AdminImpersonation.js";
+import {
+    impersonationOf,
+    impersonationStillAllowed,
+    impersonatorOf,
+    isFluxAdminUser,
+} from "../services/FluxAdmin.js";
 
 // Taken from the mailer's own signature so it always matches.
 type MailConfig = Parameters<typeof sendVerificationEmail>[2];
@@ -218,7 +225,20 @@ export class AuthController {
             // The Tylix server already refuses cross-site writes before any route runs.
             csrf: false,
             // req.user.userId keeps working in every controller and route.
-            claims: (session) => ({ userId: session.userId }),
+            // `imp` (the Flux admin's id) marks a session an admin opened
+            // as this user. It comes from the session's server-side data,
+            // never from the client (app/services/FluxAdmin.ts).
+            claims: (session) => {
+                const imp = impersonationOf(session.data);
+                return imp ? { userId: session.userId, imp: imp.by } : { userId: session.userId };
+            },
+            // Refreshing an impersonation session past its time limit (or
+            // after the admin lost Flux admin) ends it.
+            validateSession: async (session) => {
+                if (await impersonationStillAllowed(session.data)) return true;
+                await AdminImpersonation.end(session.id, "expired");
+                return false;
+            },
             onEvent: (event) => {
                 if (event.type === "session.reuse_detected") {
                     console.warn(`[auth] A refresh token was used twice: session ${event.sessionId} of user ${event.userId} was ended (possible token theft).`);
@@ -229,7 +249,19 @@ export class AuthController {
 
         // requireAuth (every .auth() route) also checks that the token's
         // session still exists: logout and password resets apply at once.
-        setSessionGuard((claims) => this.auth.isSessionActive(claims.sid, claims.uid));
+        // An impersonation session is also held to its time limit on every
+        // request, not just at the next refresh.
+        setSessionGuard(async (claims) => {
+            if (!(await this.auth.isSessionActive(claims.sid, claims.uid))) return false;
+            if (!impersonatorOf(claims)) return true;
+
+            const record = await this.auth.adapter.get(claims.sid);
+            if (record && (await impersonationStillAllowed(record.data))) return true;
+
+            await this.auth.revokeSession(claims.sid);
+            await AdminImpersonation.end(claims.sid, "expired");
+            return false;
+        });
 
         this.oauth = createOAuth({ sealer: this.auth.sealer, trustProxy: this.auth.options.trustProxy });
     }
@@ -429,7 +461,9 @@ export class AuthController {
     }
 
     async logout(req: TylixRequest, res: TylixResponse) {
-        const { cookies } = await this.auth.signOut(req);
+        const { cookies, sessionId } = await this.auth.signOut(req);
+        // Signing out of an impersonation session closes its audit row.
+        if (sessionId) await AdminImpersonation.end(sessionId, "signed_out");
         applyCookies(res, cookies);
         return res.status(204).send();
     }
@@ -474,7 +508,26 @@ export class AuthController {
         if (!user) {
             return res.status(404).json({ error: "User not found." });
         }
-        return res.json(User.toSafeObject(user));
+
+        // flux_admin shows the Admin item in the sidebar (the routes check it
+        // again). impersonation drives the "You're signed in as" banner.
+        const adminId = impersonatorOf(req.user as Record<string, unknown>);
+        let impersonation: { admin_name: string; admin_email: string; expires_at: string | null } | null = null;
+        if (adminId) {
+            const admin = await User.find(adminId);
+            const row = await AdminImpersonation.bySession(String(currentUser(req).sid ?? ""));
+            impersonation = {
+                admin_name: admin?.name ?? "A Flux admin",
+                admin_email: admin?.email ?? "",
+                expires_at: isoTime(row?.expires_at),
+            };
+        }
+
+        return res.json({
+            ...User.toSafeObject(user),
+            flux_admin: !adminId && isFluxAdminUser(user),
+            impersonation,
+        });
     }
 
     /** The user id in a 0.x verification link, or null. See legacyPurposeSecret. */

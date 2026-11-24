@@ -1,0 +1,88 @@
+component ImpersonationBanner
+
+import { IconShieldAlert, IconArrowUturnLeft } from "tylix-icons"
+
+// Shown on every app page while a Flux admin is signed in as this user
+// (Admin → Users → Sign in as). Pinned under the top bar so it never
+// scrolls away. The server ends the session at expires_at whatever this
+// shows; the countdown is only a reminder.
+
+uses
+  Auth
+
+state
+  now: 0
+  leaving: false
+
+action
+  shell() {
+    return Reflect.get(window, "__flux")
+  }
+
+  info() {
+    return Auth.user ? Auth.user.impersonation : null
+  }
+
+  who() {
+    const u = Auth.user
+    if not u {
+      return ""
+    }
+    return u.name ? u.name + " (" + u.email + ")" : String(u.email or "")
+  }
+
+  admin() {
+    const i = this.info()
+    return i ? (i.admin_name or i.admin_email or "a Flux admin") : ""
+  }
+
+  remaining() {
+    const i = this.info()
+    if not i or not i.expires_at {
+      return ""
+    }
+    const ms = new Date(i.expires_at).getTime() - (this.now or Date.now())
+    if ms <= 0 {
+      return "ending now"
+    }
+    const m = Math.ceil(ms / 60000)
+    return m + " min left"
+  }
+
+  async leave() {
+    if this.leaving {
+      return null
+    }
+    this.leaving = true
+    await Auth.stopImpersonating()
+  }
+
+onMount
+  async {
+    this.now = Date.now()
+    const flux = this.shell()
+    if flux {
+      flux.every(30000, () => {
+        this.now = Date.now()
+      })
+    }
+  }
+
+template
+<div class="contents">
+{{#if Auth.impersonating()}}
+<div role="status" class="sticky top-14 lg:top-16 z-20 border-b border-amber-400/60 bg-amber-100 dark:bg-amber-950/80 dark:border-amber-700/50 backdrop-blur-xl">
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 sm:px-6 py-2.5">
+    <IconShieldAlert class="w-5 h-5 shrink-0 text-amber-700 dark:text-amber-400" />
+    <p class="min-w-0 flex-1 text-sm text-amber-900 dark:text-amber-100">
+      <span class="font-semibold">You're signed in as {{ who() }}.</span>
+      <span class="text-amber-800/80 dark:text-amber-200/70"> Opened by {{ admin() }} · everything you do here is logged · {{ remaining() }}</span>
+    </p>
+    <button onclick="{{ leave() }}" disabled="{{ leaving }}" class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-900 text-amber-50 dark:bg-amber-400 dark:text-amber-950 text-sm font-semibold px-4 py-1.5 hover:opacity-90 transition disabled:opacity-60">
+      <IconArrowUturnLeft class="w-4 h-4" />
+      {{ leaving ? "Returning…" : "Return to admin" }}
+    </button>
+  </div>
+</div>
+{{/if}}
+</div>

@@ -283,6 +283,34 @@ export interface ApiRoutes {
     response: unknown
     auth: true
   }
+  "POST /api/admin/impersonation/stop": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
+  "GET /api/admin/impersonations": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: true
+  }
+  "GET /api/admin/users": {
+    params: Record<string, never>
+    query: Record<string, string | number | boolean | undefined>
+    body: undefined
+    response: unknown
+    auth: true
+  }
+  "POST /api/admin/users/:id/impersonate": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
   "GET /api/announcements": {
     params: Record<string, never>
     query: Record<string, string | number | boolean | undefined>
@@ -1902,6 +1930,16 @@ export interface RouteClient {
         sendCode(body?: ApiRoutes["POST /api/account/two-factor/sms/send-code"]['body'], options?: RouteOptions<ApiRoutes["POST /api/account/two-factor/sms/send-code"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/account/two-factor/sms/send-code"]['response']>>
         setup(body?: ApiRoutes["POST /api/account/two-factor/sms/setup"]['body'], options?: RouteOptions<ApiRoutes["POST /api/account/two-factor/sms/setup"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/account/two-factor/sms/setup"]['response']>>
       }
+    }
+  }
+  admin: {
+    impersonation: {
+      stop(body?: ApiRoutes["POST /api/admin/impersonation/stop"]['body'], options?: RouteOptions<ApiRoutes["POST /api/admin/impersonation/stop"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/admin/impersonation/stop"]['response']>>
+    }
+    impersonations(options?: RouteOptions<ApiRoutes["GET /api/admin/impersonations"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/admin/impersonations"]['response']>>
+    users: {
+      index(options?: RouteOptions<ApiRoutes["GET /api/admin/users"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/admin/users"]['response']>>
+      impersonate(params: ApiRoutes["POST /api/admin/users/:id/impersonate"]['params'], body?: ApiRoutes["POST /api/admin/users/:id/impersonate"]['body'], options?: RouteOptions<ApiRoutes["POST /api/admin/users/:id/impersonate"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/admin/users/:id/impersonate"]['response']>>
     }
   }
   announcements(options?: RouteOptions<ApiRoutes["GET /api/announcements"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/announcements"]['response']>>

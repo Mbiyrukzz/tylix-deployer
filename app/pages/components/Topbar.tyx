@@ -44,6 +44,9 @@ action
     if p.startsWith("/team") {
       return { label: "Team", href: "/team" }
     }
+    if p.startsWith("/admin") {
+      return { label: "Flux admin", href: "/admin" }
+    }
     if p.startsWith("/settings") {
       return { label: "Settings", href: "/settings" }
     }
@@ -113,6 +116,11 @@ action
 
   async logout() {
     this.menuOpen = false
+    // Signed in as someone from Admin: "sign out" means back to the admin.
+    if Auth.impersonating() {
+      await Auth.stopImpersonating()
+      return null
+    }
     await Auth.logout().catch((err) => console.error("logout failed:", err))
     window.location.replace("/login")
   }
@@ -220,7 +228,7 @@ template
         <a role="menuitem" href="/docs" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconBookOpen class="w-4 h-4 text-zinc-400" /> Documentation</a>
         <button role="menuitem" onclick="{{ openPalette() }}" class="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]"><IconKeyboard class="w-4 h-4 text-zinc-400" /> <span class="flex-1 text-left">Shortcuts &amp; search</span><span class="flux-kbd">⌘K</span></button>
         <div class="h-px bg-line my-1"></div>
-        <button role="menuitem" onclick="{{ logout() }}" class="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-500/10"><IconLogout class="w-4 h-4" /> Sign out</button>
+        <button role="menuitem" onclick="{{ logout() }}" class="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-500/10"><IconLogout class="w-4 h-4" /> {{ Auth.impersonating() ? "Return to admin" : "Sign out" }}</button>
       </div>
 {{/if}}
     </div>

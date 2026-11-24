@@ -20,6 +20,7 @@
 import type { TylixRequest, TylixResponse } from "@tylix/core";
 import { TwoFactorService } from "./TwoFactorService.js";
 import { SmsTwoFactorService } from "./SmsTwoFactorService.js";
+import { impersonatorOf } from "./FluxAdmin.js";
 
 export class StepUpService {
     /** Returns true if the action may go ahead. Otherwise it has already answered. */
@@ -29,7 +30,9 @@ export class StepUpService {
         code: unknown,
         action = "continue",
     ): Promise<boolean> {
-        const userId = Number(req.user?.userId);
+        // A Flux admin signed in as this user proves THEIR presence, with
+        // their own second factor (app/services/FluxAdmin.ts).
+        const userId = impersonatorOf(req.user as Record<string, unknown>) ?? Number(req.user?.userId);
 
         const totpOn = await TwoFactorService.isEnabled(userId);
         const smsRow = await SmsTwoFactorService.find(userId);

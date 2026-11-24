@@ -33,6 +33,7 @@ action
   <Sidebar />
   <div class="flux-column min-w-0 flex flex-col min-h-screen min-h-dvh">
     <Topbar />
+    <ImpersonationBanner />
     <AnnouncementBanner />
     <main id="main" tabindex="-1" class="flux-main relative flex-1 min-w-0 outline-none">
       <div data-tylix-slot="true"></div>

@@ -19,6 +19,24 @@ action
     window.location.href = "/"
   }
 
+  // True while a Flux admin is signed in as this user (Admin → Users).
+  impersonating() {
+    return Boolean(this.user and this.user.impersonation)
+  }
+
+  // Ends the "sign in as" session and goes back to the admin's own account.
+  // A full page load, so nothing of the user's account stays on screen.
+  async stopImpersonating() {
+    const result = await useApi("/api/admin/impersonation/stop", { method: "POST" })
+    const to = result.ok and result.data and result.data.redirect ? String(result.data.redirect) : "/login"
+    const flux = Reflect.get(window, "__flux")
+    if flux and flux.hard {
+      flux.hard(to)
+    } else {
+      window.location.replace(to)
+    }
+  }
+
 init
   async {
     const me = await useApi("/api/me")

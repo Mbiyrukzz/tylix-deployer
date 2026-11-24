@@ -52,7 +52,7 @@
     };
 
     // App sections: the pages that live inside the sidebar shell.
-    var APP_PREFIXES = ["/dashboard", "/servers", "/settings", "/team", "/providers", "/registrars", "/source-control"];
+    var APP_PREFIXES = ["/dashboard", "/servers", "/settings", "/team", "/providers", "/registrars", "/source-control", "/admin"];
 
     // Pages that hold something open for their whole life (a one-shot
     // invite). Moving to or from them is always a full load. The terminals
@@ -279,6 +279,12 @@
         swapping: false,
         navigate: function (url) {
             softNavigate(url, {});
+        },
+        // A full page load, never a swap: for when the signed-in user
+        // changes (Admin → sign in as a user, and back), so the sidebar,
+        // top bar and every capability start over as that user.
+        hard: function (url) {
+            hardNavigate(url, true);
         },
         toast: function () {},
         // Diagnostics: what the current page holds open, and what the last

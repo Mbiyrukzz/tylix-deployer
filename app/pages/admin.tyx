@@ -1,0 +1,489 @@
+page Admin
+
+title "Users · Flux admin"
+
+import { IconSearch, IconShieldCheck, IconShieldAlert, IconLogin, IconX } from "tylix-icons"
+
+// Flux admin → Users. Every account on this install, and "Sign in as" to
+// act on a user's behalf (patch a vulnerable site, lock down a server).
+// Only Flux admins get data from /api/admin/*; everyone else gets a 404
+// and sees "not found" here. The rules are in app/services/FluxAdmin.ts.
+
+needs
+  Auth
+
+state
+  loading: true
+  isMissing: false
+  users: []
+  page: 1
+  pages: 1
+  total: 0
+  perPage: 20
+  query: ""
+  searchTimer: 0
+  rangeText: ""
+  hasPrev: false
+  hasNext: false
+  paging: false
+  myTwoFactor: false
+  myTotp: false
+  mySms: false
+  limitMinutes: 60
+  log: []
+
+  // The "Sign in as" dialog.
+  target: null
+  reason: ""
+  code: ""
+  reasonError: ""
+  codeError: ""
+  modalError: ""
+  notice: ""
+  busy: false
+  sending: false
+
+action
+  shell() {
+    return Reflect.get(window, "__flux")
+  }
+
+  ago(iso) {
+    if not iso {
+      return "Never"
+    }
+    const t = new Date(iso).getTime()
+    if Number.isNaN(t) {
+      return "Unknown"
+    }
+    const s = Math.floor((Date.now() - t) / 1000)
+    if s < 60 {
+      return "Just now"
+    }
+    const m = Math.floor(s / 60)
+    if m < 60 {
+      return m + "m ago"
+    }
+    const h = Math.floor(m / 60)
+    if h < 24 {
+      return h + "h ago"
+    }
+    const d = Math.floor(h / 24)
+    if d < 30 {
+      return d + "d ago"
+    }
+    return String(iso).slice(0, 10)
+  }
+
+  decorate(u) {
+    return Object.assign({}, u, {
+      initial: String(u.name or u.email or "?").slice(0, 1).toUpperCase(),
+      avatar: u.avatar_url or "",
+      teamName: u.team ? u.team.name : "No team yet",
+      seen: this.ago(u.last_seen_at),
+      joined: String(u.joined_at or "").slice(0, 10),
+      canImpersonate: not u.flux_admin and u.id is not (Auth.user ? Auth.user.id : 0)
+    })
+  }
+
+  endLabel(r) {
+    if r.active {
+      return "Active"
+    }
+    if r.end_reason is "stopped" {
+      return "Returned"
+    }
+    if r.end_reason is "signed_out" {
+      return "Signed out"
+    }
+    return "Expired"
+  }
+
+  decorateLog(r) {
+    return Object.assign({}, r, {
+      adminName: r.admin ? (r.admin.name or r.admin.email) : "Deleted user",
+      targetName: r.target ? (r.target.name or r.target.email) : "Deleted user",
+      targetEmail: r.target ? r.target.email : "",
+      when: this.ago(r.started_at),
+      status: this.endLabel(r),
+      statusCls: r.active ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
+    })
+  }
+
+  async load(page) {
+    const url = "/api/admin/users?page=" + page + "&per_page=" + this.perPage + "&q=" + encodeURIComponent(this.query.trim())
+    const res = await useApi(url)
+
+    if res.status is 401 {
+      window.location.href = "/login?next=/admin"
+      return null
+    }
+    if res.status is 404 or res.status is 403 {
+      this.isMissing = true
+      this.loading = false
+      return null
+    }
+    if not res.ok {
+      this.loading = false
+      return null
+    }
+
+    const d = res.data
+    this.users = d.users.map((u) => this.decorate(u))
+    this.page = d.page
+    this.pages = d.pages
+    this.total = d.total
+    this.hasPrev = d.page > 1
+    this.hasNext = d.page < d.pages
+    this.myTwoFactor = Boolean(d.me and d.me.two_factor)
+    this.myTotp = Boolean(d.me and d.me.totp)
+    this.mySms = Boolean(d.me and d.me.sms)
+    this.limitMinutes = d.limit_minutes or 60
+
+    if d.total is 0 {
+      this.rangeText = ""
+    } else {
+      const from = (d.page - 1) * d.per_page + 1
+      const to = Math.min(d.page * d.per_page, d.total)
+      this.rangeText = from + "–" + to + " of " + d.total
+    }
+    this.loading = false
+    return d
+  }
+
+  async loadLog() {
+    const res = await useApi("/api/admin/impersonations")
+    if res.ok and res.data and Array.isArray(res.data.impersonations) {
+      this.log = res.data.impersonations.map((r) => this.decorateLog(r))
+    }
+  }
+
+  setQuery(value) {
+    this.query = String(value or "")
+    if this.searchTimer {
+      clearTimeout(this.searchTimer)
+    }
+    this.searchTimer = setTimeout(() => this.load(1), 250)
+  }
+
+  async setPerPage(value) {
+    this.perPage = Number(value) or 20
+    await this.load(1)
+  }
+
+  async prev() {
+    if this.paging or not this.hasPrev {
+      return null
+    }
+    this.paging = true
+    await this.load(this.page - 1)
+    this.paging = false
+  }
+
+  async next() {
+    if this.paging or not this.hasNext {
+      return null
+    }
+    this.paging = true
+    await this.load(this.page + 1)
+    this.paging = false
+  }
+
+  open(u) {
+    this.target = u
+    this.reason = ""
+    this.code = ""
+    this.reasonError = ""
+    this.codeError = ""
+    this.modalError = ""
+    this.notice = ""
+    this.busy = false
+  }
+
+  close() {
+    if this.busy {
+      return null
+    }
+    this.target = null
+  }
+
+  async sendCode() {
+    if this.sending {
+      return null
+    }
+    this.sending = true
+    this.notice = ""
+    this.codeError = ""
+    const res = await useApi("/api/account/two-factor/sms/send-code", { method: "POST" })
+    this.sending = false
+    if res.ok {
+      this.notice = "Code sent to your phone."
+    } else {
+      this.codeError = (res.data and res.data.error) or "Couldn't send the code."
+    }
+  }
+
+  async confirm() {
+    if this.busy or not this.target {
+      return null
+    }
+
+    const reason = this.reason.trim()
+    const code = this.code.trim()
+    this.reasonError = ""
+    this.codeError = ""
+    this.modalError = ""
+
+    if reason.length < 10 {
+      this.reasonError = "Say why (at least 10 characters): a ticket, an incident, a CVE."
+      return null
+    }
+    if code is "" {
+      this.codeError = "Enter a verification code from your own two-factor."
+      return null
+    }
+
+    this.busy = true
+    const res = await useApi("/api/admin/users/" + this.target.id + "/impersonate", {
+      method: "POST",
+      body: { reason: reason, code: code }
+    })
+
+    if res.ok {
+      // A full load: the whole app restarts as the user.
+      const to = (res.data and res.data.redirect) or "/dashboard"
+      const flux = this.shell()
+      if flux and flux.hard {
+        flux.hard(to)
+      } else {
+        window.location.replace(to)
+      }
+      return null
+    }
+
+    this.busy = false
+    const d = res.data or {}
+    if res.status is 401 {
+      window.location.href = "/login?next=/admin"
+    } else if res.status is 403 and d.two_factor_required {
+      this.codeError = d.error or "Enter a verification code."
+    } else if res.status is 422 and d.errors and d.errors.code {
+      this.codeError = d.errors.code[0]
+    } else if res.status is 422 and d.errors and d.errors.reason {
+      this.reasonError = d.errors.reason[0]
+    } else {
+      this.modalError = d.error or "Couldn't sign in as this user."
+    }
+  }
+
+onMount
+  async {
+    await this.load(1)
+    if not this.isMissing {
+      await this.loadLog()
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] bg-page transition-colors">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
+
+{{#if isMissing}}
+      <NotFoundCard heading="Page not found" body="There's nothing here." link="/dashboard" linkLabel="Back to overview" />
+{{/if}}
+
+{{#if not isMissing}}
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+        <div>
+          <p class="flux-eyebrow mb-1">Flux admin</p>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-1">Users</h1>
+          <p class="text-zinc-500 text-sm">Every account on this install. Sign in as a user to fix a problem on their behalf.</p>
+        </div>
+        <label class="relative block w-full sm:w-72">
+          <span class="sr-only">Search users</span>
+          <IconSearch class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+          <input type="search" value="{{ query }}" oninput="{{ setQuery(event.target.value) }}" placeholder="Name, email or id" class="w-full rounded-xl border border-line bg-white dark:bg-zinc-950 pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+        </label>
+      </div>
+
+{{#if not loading}}
+{{#if not myTwoFactor}}
+      <div role="alert" class="flex items-start gap-3 rounded-2xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800/50 px-5 py-4 mb-6">
+        <IconShieldAlert class="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+        <div class="min-w-0 text-sm">
+          <p class="font-semibold text-amber-900 dark:text-amber-100">Turn on two-factor to sign in as users</p>
+          <p class="text-amber-800/80 dark:text-amber-200/70">Signing in as someone always needs a fresh code from your own authenticator or phone. <a href="/settings/two-factor" class="font-semibold underline">Set up two-factor</a></p>
+        </div>
+      </div>
+{{/if}}
+{{/if}}
+
+{{#if loading}}
+      <LoaderMark label="Loading users…" />
+{{/if}}
+
+{{#if not loading}}
+      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none mb-6 overflow-hidden">
+        <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-line">
+          <h2 class="text-zinc-900 dark:text-zinc-100 font-semibold">{{ total }} {{ total is 1 ? "user" : "users" }}</h2>
+          <label class="flex items-center gap-2 text-xs text-zinc-500">
+            Per page
+            <select onchange="{{ setPerPage(event.target.value) }}" class="rounded-lg border border-line bg-white dark:bg-zinc-950 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-brand-500">
+              <option value="10" selected="{{ perPage is 10 }}">10</option>
+              <option value="20" selected="{{ perPage is 20 }}">20</option>
+              <option value="50" selected="{{ perPage is 50 }}">50</option>
+              <option value="100" selected="{{ perPage is 100 }}">100</option>
+            </select>
+          </label>
+        </div>
+
+{{#if users.length is 0}}
+        <p class="px-6 py-10 text-zinc-500 text-sm text-center">No users match “{{ query }}”.</p>
+{{/if}}
+
+        <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+{{#each u in users}}
+          <div class="flex items-center gap-4 px-5 sm:px-6 py-4">
+{{#if u.avatar}}
+            <img src="{{ u.avatar }}" alt="" class="w-10 h-10 shrink-0 rounded-full object-cover border border-line" />
+{{/if}}
+{{#if not u.avatar}}
+            <span class="w-10 h-10 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 text-sm font-semibold flex items-center justify-center">{{ u.initial }}</span>
+{{/if}}
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium truncate">{{ u.name }}</p>
+{{#if u.flux_admin}}
+                <span class="inline-flex items-center gap-1 rounded-full bg-brand-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400"><IconShieldCheck class="w-3 h-3" /> Flux admin</span>
+{{/if}}
+{{#if not u.verified}}
+                <span class="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Unverified</span>
+{{/if}}
+{{#if u.two_factor}}
+                <span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">2FA</span>
+{{/if}}
+              </div>
+              <p class="text-zinc-500 text-xs font-mono truncate">{{ u.email }} · #{{ u.id }}</p>
+              <p class="md:hidden text-zinc-500 text-xs truncate mt-0.5">{{ u.teamName }} · {{ u.servers }} servers · seen {{ u.seen }}</p>
+            </div>
+            <div class="hidden md:block w-40 min-w-0">
+              <p class="text-zinc-900 dark:text-zinc-100 text-sm truncate">{{ u.teamName }}</p>
+              <p class="text-zinc-500 text-xs">{{ u.servers }} {{ u.servers is 1 ? "server" : "servers" }}</p>
+            </div>
+            <div class="hidden lg:block w-28 text-right">
+              <p class="text-zinc-900 dark:text-zinc-100 text-sm">{{ u.seen }}</p>
+              <p class="text-zinc-500 text-xs">joined {{ u.joined }}</p>
+            </div>
+{{#if u.canImpersonate}}
+            <button onclick="{{ open(u) }}" disabled="{{ not myTwoFactor }}" title="{{ myTwoFactor ? 'Sign in as ' + u.email : 'Turn on two-factor first' }}" class="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition disabled:opacity-40 disabled:cursor-not-allowed">
+              <IconLogin class="w-3.5 h-3.5" />
+              <span class="hidden sm:inline">Sign in as</span>
+            </button>
+{{/if}}
+{{#if not u.canImpersonate}}
+            <span class="shrink-0 w-[2.4rem] sm:w-[6.4rem]"></span>
+{{/if}}
+          </div>
+{{/each}}
+        </div>
+
+{{#if total is not 0}}
+        <div class="flex items-center justify-between gap-4 px-5 sm:px-6 py-3 border-t border-line">
+          <p class="text-zinc-500 text-xs">{{ rangeText }}</p>
+          <div class="flex items-center gap-2">
+            <button onclick="{{ prev() }}" disabled="{{ not hasPrev }}" class="text-xs text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
+            <button onclick="{{ next() }}" disabled="{{ not hasNext }}" class="text-xs text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+          </div>
+        </div>
+{{/if}}
+      </div>
+
+      <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-line">
+          <h2 class="text-zinc-900 dark:text-zinc-100 font-semibold">Recent sign-ins as users</h2>
+          <p class="text-zinc-500 text-xs mt-0.5">The last 25, by every Flux admin. Each one lasts at most {{ limitMinutes }} minutes.</p>
+        </div>
+{{#if log.length is 0}}
+        <p class="px-6 py-8 text-zinc-500 text-sm text-center">Nobody has signed in as a user yet.</p>
+{{/if}}
+        <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+{{#each r in log}}
+          <div class="flex items-start gap-3 px-5 sm:px-6 py-3">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-zinc-600 dark:text-zinc-400 truncate">
+                <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ r.adminName }}</span>
+                signed in as
+                <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ r.targetName }}</span>
+                <span class="font-mono text-xs">{{ r.targetEmail }}</span>
+              </p>
+              <p class="text-zinc-500 text-xs truncate mt-0.5">“{{ r.reason }}” · {{ r.ip }}</p>
+            </div>
+            <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider {{ r.statusCls }}">{{ r.status }}</span>
+            <span class="shrink-0 w-16 text-right text-zinc-500 text-xs">{{ r.when }}</span>
+          </div>
+{{/each}}
+        </div>
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+
+{{#if target}}
+    <div role="dialog" aria-modal="true" aria-labelledby="imp-title" class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm px-4 py-6">
+      <div class="w-full max-w-md overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+        <div class="flex items-start justify-between gap-4 p-6 pb-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <IconLogin class="w-5 h-5" />
+            </div>
+            <div class="min-w-0">
+              <h3 id="imp-title" class="text-zinc-900 dark:text-zinc-100 font-semibold">Sign in as {{ target.name }}</h3>
+              <p class="text-zinc-500 text-xs font-mono truncate">{{ target.email }}</p>
+            </div>
+          </div>
+          <button onclick="{{ close() }}" aria-label="Close" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+            <IconX class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="px-6 pb-6">
+          <div class="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 mb-4 text-sm text-zinc-700 dark:text-zinc-300">
+            <p>You'll act as this user for up to {{ limitMinutes }} minutes, with their access to their team. You're signed out of your own account until you return.</p>
+            <p class="mt-1.5 text-zinc-500 text-xs">Their password, two-factor, passkeys, sessions and billing stay locked. The sign-in and its reason are logged.</p>
+          </div>
+
+          <label for="imp-reason" class="block text-zinc-700 dark:text-zinc-300 text-sm font-medium mb-1.5">Reason</label>
+          <textarea id="imp-reason" rows="3" maxlength="500" oninput="{{ reason = $event.target.value }}" placeholder="e.g. SEC-142: patch the exposed .env on their WordPress site" class="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500">{{ reason }}</textarea>
+{{#if reasonError}}
+          <p role="alert" class="text-rose-500 text-xs mt-1.5">{{ reasonError }}</p>
+{{/if}}
+
+          <div class="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950/50 p-4">
+            <label for="imp-code" class="block text-zinc-700 dark:text-zinc-300 text-sm font-medium mb-2">Your verification code</label>
+            <input id="imp-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" value="{{ code }}" oninput="{{ code = $event.target.value }}" class="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500" />
+            <p class="text-zinc-500 text-xs mt-2">{{ myTotp ? "From your own authenticator app, or a recovery code." : "The code texted to your phone." }}</p>
+{{#if notice}}
+            <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ notice }}</p>
+{{/if}}
+{{#if codeError}}
+            <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
+{{/if}}
+{{#if mySms}}
+            <button disabled="{{ sending }}" onclick="{{ sendCode() }}" class="mt-3 text-xs text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-full px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50">{{ sending ? "Sending…" : "Text me a code" }}</button>
+{{/if}}
+          </div>
+
+{{#if modalError}}
+          <p role="alert" class="text-rose-500 text-sm mt-4">{{ modalError }}</p>
+{{/if}}
+        </div>
+
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-line bg-zinc-50 dark:bg-zinc-950/40">
+          <button onclick="{{ close() }}" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 px-3 py-2 transition-colors">Cancel</button>
+          <button onclick="{{ confirm() }}" disabled="{{ busy }}" class="text-sm bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-full px-4 py-2 transition disabled:opacity-50">{{ busy ? "Signing in…" : "Sign in as user" }}</button>
+        </div>
+      </div>
+    </div>
+{{/if}}
+  </div>

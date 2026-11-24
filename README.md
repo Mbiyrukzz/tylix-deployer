@@ -86,6 +86,36 @@ After pulling: `npx tylix migrate` (adds `user_passkeys`).
   `public/logos` (from Simple Icons): `aws`, `route53`, `spaceship`.
   Dynadot and Name.com have no Simple Icons logo, so they show a letter.
 
+## Flux admin: users and "sign in as" (Nov 2026)
+
+After pulling: `npx tylix migrate` (adds `admin_impersonations`) and set
+`FLUX_ADMIN_EMAILS=you@example.com` in `.env`, then restart.
+
+- **Who**: accounts whose verified email is in `FLUX_ADMIN_EMAILS`. It's
+  env-only on purpose, so nothing in the app can grant it. They see
+  **Flux admin → Users** (`/admin`) in the sidebar; everyone else gets 404s
+  from `/api/admin/*`.
+- **Sign in as**: needs the admin's own two-factor (a fresh code) and a
+  written reason. It opens a new session for the user, tagged server-side
+  with the admin's id (`auth_sessions.data.imp`, `imp` claim on the access
+  token), and ends the admin's own session. Hard limit: 60 minutes
+  (`IMPERSONATION_MINUTES`). A banner under the top bar shows it on every
+  page; **Return to admin** (or Sign out in the menu) signs the admin back in.
+- **Locked while signed in as someone** (403 `IMPERSONATION_BLOCKED`): the
+  user's password, two-factor, passkeys and sessions, billing checkout and
+  cancel, provider payments, leaving a team and accepting invites. Not
+  allowed at all: signing in as another Flux admin, or nesting. The list is
+  `BLOCKED` in `app/services/FluxAdmin.ts`, enforced by the global
+  middleware in `app/routes/web.ts`.
+- **Accountability**: step-up codes (deleting a server, ...) are checked
+  against the admin's two-factor, not the user's. Server log entries
+  written meanwhile carry `meta.impersonated_by`. Every session is a row in
+  `admin_impersonations` (who, as whom, why, IP, start, end and how it
+  ended), listed on the Admin page.
+- An admin whose two-factor is texted codes only can start a session, but
+  can't receive step-up texts from inside the user's account (texting
+  would go to the user). Use an authenticator app.
+
 ## App shell (Tylix Flux redesign, Nov 2026)
 
 Every Tylix page is its own document, so a plain link used to rebuild the

@@ -19,6 +19,7 @@
 import { ServerLog } from "../models/ServerLog.js";
 import { Server } from "../models/Server.js";
 import { Provision } from "../models/Provision.js";
+import { currentImpersonator } from "./FluxAdmin.js";
 
 export type LogLevel = "info" | "success" | "warning" | "error";
 
@@ -120,6 +121,10 @@ async function resolveTeamId(input: LogInput): Promise<number | null> {
 export const ServerLogService = {
     async record(input: LogInput): Promise<void> {
         try {
+            // A Flux admin signed in as the user did this: say so.
+            const acting = currentImpersonator();
+            const meta = acting ? { ...(input.meta ?? {}), impersonated_by: acting.adminId } : input.meta ?? {};
+
             await ServerLog.create({
                 user_id: input.userId,
                 team_id: await resolveTeamId(input),
@@ -128,7 +133,7 @@ export const ServerLogService = {
                 event: input.event.slice(0, 64),
                 level: input.level ?? "info",
                 message: String(scrub(input.message)).slice(0, 500),
-                meta: JSON.stringify(scrub(input.meta ?? {})),
+                meta: JSON.stringify(scrub(meta)),
             });
         } catch (error) {
             console.error(`[server-log] could not record ${input.event}:`, error);
