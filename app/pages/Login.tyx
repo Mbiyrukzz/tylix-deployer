@@ -4,10 +4,11 @@ import { IconFingerprint } from "tylix-icons"
 
 title "Log in"
 
-uses
+needs
   Auth
 
 state
+  ready: false
   goAfter: ""
   email: ""
   password: ""
@@ -315,6 +316,13 @@ onMount
     // Remember the destination now: the referrer is gone once the URL changes.
     this.goAfter = this.nextUrl()
 
+    // Already signed in: there is nothing to log in to, go straight on.
+    if Auth.user {
+      window.location.replace(this.goAfter)
+      return null
+    }
+    this.ready = true
+
     const params = new URLSearchParams(window.location.search)
     const code = params.get("error")
     if code {
@@ -379,6 +387,10 @@ template
             <span class="text-slate-800 dark:text-slate-200 font-semibold tracking-tight">Tylix Flux</span>
           </a>
 
+{{#if not ready}}
+          <LoaderMark label="Loading…" size="sm" />
+{{/if}}
+{{#if ready}}
 {{#if not needsCode}}
           <p class="text-brand-700 dark:text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Welcome back</p>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Log in to your account</h1>
@@ -531,6 +543,7 @@ template
           <p class="text-sm text-slate-500 text-center mt-6">
             New to Tylix Flux? <a href="/register" class="text-brand-700 dark:text-brand-400 hover:underline">Create an account</a>
           </p>
+{{/if}}
 {{/if}}
         </div>
       </div>

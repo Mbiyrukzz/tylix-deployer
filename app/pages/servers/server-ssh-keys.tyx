@@ -236,7 +236,7 @@ template
       <div class="rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-4 mb-6">
         <p class="text-amber-800 dark:text-amber-400 text-sm font-semibold mb-1">Save the private key now</p>
         <p class="text-amber-800 dark:text-amber-400 text-sm mb-3">This is the only time it is shown. It is not stored anywhere.</p>
-        <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 overflow-x-auto mb-3">{{ generated }}</pre>
+        <div class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 overflow-x-auto mb-3 whitespace-pre">{{ generated }}</div>
         <div class="flex gap-3">
           <button onclick="{{ downloadPrivate() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-xl px-4 py-2 hover:bg-brand-400 transition-all">Download</button>
           <button onclick="{{ dismissPrivate() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-2 transition-colors">I've saved it</button>

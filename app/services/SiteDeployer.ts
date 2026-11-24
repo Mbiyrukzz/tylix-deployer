@@ -53,6 +53,7 @@ import { SourceProvider } from "../models/SourceProvider.js";
 import { CryptoService } from "./CryptoService.js";
 import { sshExec } from "./Ssh.js";
 import { getType, isAppRuntime } from "./SiteTypes.js";
+import { appUnitScript } from "./SiteProvisioner.js";
 import { shellScript, serverTarget } from "./Shell.js";
 import { teamIdOfRow } from "./TeamScope.js";
 
@@ -601,6 +602,122 @@ if [ "$STOPPED" = "1" ]; then echo "Stopped the running commands on the server."
     );
 }
 
+/**
+ * Restarts the app and only reports success once its port is served by the
+ * process that was just started, so a deploy never ends "successful" while
+ * nginx answers 502.
+ *
+ * - The service app-$SITE_USER exists: restart it (the usual case).
+ * - It doesn't (provisioning skipped it, the server was rebuilt, or the app was
+ *   started by hand): create it, so the app starts on boot and comes back after
+ *   a crash. A copy of the app already holding the port is handed over:
+ *     - run by Supervisor: that program is restarted instead, nothing is created;
+ *     - run by hand as the site's user: the service is started and the old
+ *       process stopped, from a detached systemd job (when the app is the
+ *       deployer itself, stopping it ends this SSH session);
+ *     - run by anyone else: the deploy fails and says which process it is.
+ */
+function appRestartScript(site: DeployRow): string {
+    return `
+UNIT="app-$SITE_USER"
+WAIT_SECS=45
+HOW="systemd"
+OLD_PID=""
+
+listener() {
+  $SUDO ss -ltnpH "sport = :$PORT" 2>/dev/null | grep -o 'pid=[0-9]*' | head -n 1 | cut -d= -f2 || true
+}
+describe() {
+  echo "process $1 ($(ps -o args= -p "$1" 2>/dev/null | cut -c1-120 || true)), user $(stat -c %U "/proc/$1" 2>/dev/null || echo unknown)"
+}
+supervised_by() {
+  command -v supervisorctl >/dev/null 2>&1 || return 0
+  ST="$($SUDO supervisorctl status 2>/dev/null || true)"
+  P="$1"
+  while [ -n "$P" ] && [ "$P" -gt 1 ]; do
+    NAME="$(echo "$ST" | awk -v p="pid $P," 'index($0, p) { print $1; exit }')"
+    if [ -n "$NAME" ]; then echo "$NAME"; return 0; fi
+    P="$(ps -o ppid= -p "$P" 2>/dev/null | tr -d ' ' || true)"
+  done
+}
+serving() {
+  L="$(listener)"
+  [ -n "$L" ] || return 1
+  if [ "$HOW" = "systemd" ]; then
+    grep -q "/$UNIT.service" "/proc/$L/cgroup" 2>/dev/null
+  else
+    [ "$L" != "$OLD_PID" ]
+  fi
+}
+
+if [ "$PORT" = "0" ]; then
+  if [ ! -f "/etc/systemd/system/$UNIT.service" ]; then
+    echo "No service $UNIT yet. Creating it so the app starts on boot and restarts after a crash."
+${appUnitScript(site)}
+  fi
+  $SUDO systemctl restart "$UNIT"
+  sleep 3
+  if $SUDO systemctl is-active --quiet "$UNIT"; then
+    echo "App restarted and running"
+    exit 0
+  fi
+  $SUDO journalctl -u "$UNIT" -n 25 --no-pager || true
+  echo "The app did not stay up after the restart." >&2
+  exit 1
+fi
+
+if [ -f "/etc/systemd/system/$UNIT.service" ]; then
+  $SUDO systemctl restart "$UNIT" || true
+else
+  OLD_PID="$(listener)"
+  PROG=""
+  if [ -n "$OLD_PID" ]; then PROG="$(supervised_by "$OLD_PID")"; fi
+
+  if [ -n "$PROG" ]; then
+    HOW="supervisor"
+    echo "Port $PORT is served by the Supervisor program $PROG. Restarting it."
+    $SUDO systemd-run --quiet --collect supervisorctl restart "$PROG" || $SUDO supervisorctl restart "$PROG"
+  else
+    if [ -n "$OLD_PID" ] && [ "$(stat -c %U "/proc/$OLD_PID" 2>/dev/null || true)" != "$SITE_USER" ]; then
+      echo "Port $PORT is already taken by $(describe "$OLD_PID"), not by $SITE_USER, so the app can't start on it. Stop that process or give the site another port, then deploy again." >&2
+      exit 1
+    fi
+    if [ -n "$OLD_PID" ]; then
+      echo "The app was started by hand ($(describe "$OLD_PID")) and nothing would restart it after a crash or reboot."
+      echo "Replacing it with the service $UNIT."
+    else
+      echo "No service $UNIT yet, so nothing was running the app. Creating it so the app starts on boot and restarts after a crash."
+    fi
+${appUnitScript(site)}
+    if [ -n "$OLD_PID" ]; then
+      $SUDO systemd-run --quiet --collect /bin/sh -c "kill -TERM $OLD_PID 2>/dev/null; for i in 1 2 3 4 5 6 7 8 9 10; do ss -ltnH 'sport = :$PORT' | grep -q . || break; sleep 1; done; kill -KILL $OLD_PID 2>/dev/null; systemctl restart $UNIT"
+    else
+      $SUDO systemctl restart "$UNIT" || true
+    fi
+  fi
+fi
+
+for i in $(seq 1 $WAIT_SECS); do
+  if serving; then
+    echo "App is running and answering on port $PORT"
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "The app isn't answering on port $PORT after $WAIT_SECS seconds, so the site would show 502."
+if [ "$HOW" = "systemd" ]; then
+  $SUDO systemctl status "$UNIT" --no-pager -n 0 2>/dev/null | head -n 5 || true
+  $SUDO journalctl -u "$UNIT" -n 25 --no-pager || true
+else
+  $SUDO supervisorctl tail "$PROG" 2>/dev/null | tail -n 25 || true
+fi
+L="$(listener)"
+if [ -n "$L" ]; then echo "Port $PORT is held by $(describe "$L")."; fi
+echo "Check the start command, and that the app listens on the PORT environment variable ($PORT)." >&2
+exit 1`;
+}
+
 function buildPhases(site: DeployRow, source: { kind: string; token: string } | null, plugins: string[]): Phase[] {
     const runtime = getType(site.type)?.runtime ?? "static";
     const root = `/home/${site.isolated_user}/${site.domain}`;
@@ -759,24 +876,7 @@ echo "Deployment script finished"`,
         phases.push({
             title: "Restarting the app",
             restarts: true,
-            script: shellScript(
-                base,
-                `
-UNIT="app-$SITE_USER"
-if [ ! -f "/etc/systemd/system/$UNIT.service" ]; then
-  echo "No service named $UNIT exists yet, nothing to restart."
-  exit 0
-fi
-$SUDO systemctl restart "$UNIT"
-sleep 3
-if $SUDO systemctl is-active --quiet "$UNIT"; then
-  echo "App restarted and running on port $PORT"
-else
-  $SUDO journalctl -u "$UNIT" -n 15 --no-pager || true
-  echo "The app did not stay up after the restart." >&2
-  exit 1
-fi`,
-            ),
+            script: shellScript({ ...base, START_COMMAND: s(site.start_command) }, appRestartScript(site)),
         });
     }
 

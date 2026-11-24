@@ -283,6 +283,54 @@ const UNIT_ENV: Record<string, string> = {
     dotnet: "EnvironmentFile=-$WORK/.env\nEnvironment=DOTNET_ENVIRONMENT=Production\nEnvironment=ASPNETCORE_ENVIRONMENT=Production",
 };
 
+// ---- the app's systemd service ----
+
+/**
+ * Bash that writes the app's systemd unit (app-$SITE_USER) and the runner
+ * script it starts, then enables it without starting it. Leaves UNIT and WORK
+ * set. Needs SITE_USER, SITE_ROOT, DOMAIN, PORT, APP_DIR, BACKEND_DIR and
+ * START_COMMAND. The deployer uses it too, to create the unit when a deploy
+ * finds it missing (otherwise the site answers 502 until someone starts it).
+ */
+export function appUnitScript(site: { type: string }): string {
+    const runtime = getType(site.type)?.runtime ?? "static";
+    const workSnippet = runtime === "mern" ? BACKEND_WORK : APP_WORK;
+    const extraUnit = [UNIT_ENV[runtime] ?? "", site.type === "nuxt" ? "EnvironmentFile=-$WORK/.env" : ""]
+        .filter(Boolean)
+        .join("\n");
+
+    return `
+${workSnippet}
+UNIT="app-$SITE_USER"
+RUNNER="/home/$SITE_USER/.run-$SITE_USER.sh"
+{
+  printf '%s\\n' '#!/bin/bash'
+  printf '%s\\n' "cd '$WORK' || exit 1"
+  printf '%s\\n' "$START_COMMAND"
+} | $SUDO tee "$RUNNER" >/dev/null
+$SUDO chown "$SITE_USER:$SITE_USER" "$RUNNER"
+$SUDO chmod 750 "$RUNNER"
+cat <<UNIT_CONF | $SUDO tee "/etc/systemd/system/$UNIT.service" >/dev/null
+[Unit]
+Description=$DOMAIN
+After=network.target
+
+[Service]
+Type=simple
+User=$SITE_USER
+${extraUnit}
+Environment=PORT=$PORT
+ExecStart=/bin/bash $RUNNER
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+UNIT_CONF
+$SUDO systemctl daemon-reload
+$SUDO systemctl enable "$UNIT" >/dev/null 2>&1`;
+}
+
 // ---- phases ----
 
 function buildPhases(site: SiteRow, source: Source | null): Phase[] {
@@ -559,14 +607,10 @@ fi`,
     const appRuntime = isAppRuntime(runtime) && runtime !== "docker";
 
     if (appRuntime && hasRepo && s(site.start_command) !== "") {
-        const workSnippet = runtime === "mern" ? BACKEND_WORK : APP_WORK;
         // Only node and mern apps are ready to run now. The others aren't built yet,
         // so the unit is enabled but not started; the first deploy builds the app
         // and starts it.
         const startNow = runtime === "node" || runtime === "mern";
-        const extraUnit = [UNIT_ENV[runtime] ?? "", site.type === "nuxt" ? "EnvironmentFile=-$WORK/.env" : ""]
-            .filter(Boolean)
-            .join("\n");
 
         const afterEnable = startNow
             ? `$SUDO systemctl restart "$UNIT"
@@ -585,35 +629,7 @@ fi`
             script: script(
                 base,
                 `
-${workSnippet}
-UNIT="app-$SITE_USER"
-RUNNER="/home/$SITE_USER/.run-$SITE_USER.sh"
-{
-  printf '%s\\n' '#!/bin/bash'
-  printf '%s\\n' "cd '$WORK' || exit 1"
-  printf '%s\\n' "$START_COMMAND"
-} | $SUDO tee "$RUNNER" >/dev/null
-$SUDO chown "$SITE_USER:$SITE_USER" "$RUNNER"
-$SUDO chmod 750 "$RUNNER"
-cat <<UNIT_CONF | $SUDO tee "/etc/systemd/system/$UNIT.service" >/dev/null
-[Unit]
-Description=$DOMAIN
-After=network.target
-
-[Service]
-Type=simple
-User=$SITE_USER
-${extraUnit}
-Environment=PORT=$PORT
-ExecStart=/bin/bash $RUNNER
-Restart=on-failure
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-UNIT_CONF
-$SUDO systemctl daemon-reload
-$SUDO systemctl enable "$UNIT" >/dev/null 2>&1
+${appUnitScript(site)}
 ${afterEnable}`,
             ),
         });

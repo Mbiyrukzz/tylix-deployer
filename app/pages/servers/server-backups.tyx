@@ -262,6 +262,20 @@ action
     this.dropboxError = ""
   }
 
+  // Opens Dropbox's consent page for this app. After "Allow" it shows a
+  // one-time access code; pasted into the last field, the server swaps it
+  // for a refresh token (offline access, so scheduled backups keep working).
+  openDropboxCode() {
+    const key = this.fieldValue("dKey").trim()
+    if not key {
+      this.dropboxError = "Enter the app key first, then get the access code."
+      return null
+    }
+    this.dropboxError = ""
+    const url = "https://www.dropbox.com/oauth2/authorize?client_id=" + encodeURIComponent(key) + "&response_type=code&token_access_type=offline"
+    window.open(url, "_blank", "noopener")
+  }
+
   async connectDropbox() {
     if Billing.locked {
       return null
@@ -451,16 +465,21 @@ template
           <p class="text-slate-500 text-xs mb-3">
             Create an app at dropbox.com/developers/apps, enable the permissions
             <span class="font-mono">files.content.write</span> and <span class="font-mono">files.metadata.read</span>,
-            then generate a <span class="font-semibold">refresh token</span> with offline access (a plain access token expires after a few hours and would break scheduled backups).
+            then click <span class="font-semibold">Submit</span>. Paste the app key and secret below, then use
+            <span class="font-semibold">Get an access code</span> and paste the code Dropbox shows. We swap it for a refresh token,
+            so scheduled backups keep working (the "Generated access token" on Dropbox's page expires after a few hours).
           </p>
           <label class="block text-slate-500 text-xs mb-1" for="dName">Connection name</label>
           <input id="dName" type="text" placeholder="e.g. Company Dropbox" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 mb-3" />
           <label class="block text-slate-500 text-xs mb-1" for="dKey">App key</label>
-          <input id="dKey" type="text" autocomplete="off" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
+          <input id="dKey" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
           <label class="block text-slate-500 text-xs mb-1" for="dSecret">App secret</label>
-          <input id="dSecret" type="password" autocomplete="off" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
-          <label class="block text-slate-500 text-xs mb-1" for="dRefresh">Refresh token</label>
-          <input id="dRefresh" type="password" autocomplete="off" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
+          <input id="dSecret" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
+          <div class="flex items-center justify-between gap-3 mb-1">
+            <label class="block text-slate-500 text-xs" for="dRefresh">Access code or refresh token</label>
+            <button type="button" onclick="{{ openDropboxCode() }}" class="text-xs text-brand-700 dark:text-brand-500 hover:underline font-medium">Get an access code</button>
+          </div>
+          <input id="dRefresh" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono px-3 py-2 mb-3" />
 {{#if dropboxError}}
           <p role="alert" class="text-rose-500 text-sm mb-3 break-words">{{ dropboxError }}</p>
 {{/if}}
@@ -587,7 +606,7 @@ template
 {{/if}}
 {{#if not panelBusy}}
 {{#if panelKind is "log"}}
-          <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
+          <div class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72 whitespace-pre">{{ logText }}</div>
 {{/if}}
 {{#if panelKind is "files"}}
 {{#if files.length is 0}}

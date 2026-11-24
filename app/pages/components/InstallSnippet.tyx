@@ -65,6 +65,6 @@ template
           </span>
         </button>
       </div>
-      <pre class="text-slate-600 dark:text-slate-300 text-[13px] font-mono p-6 overflow-x-auto leading-relaxed">{{ codeSample }}</pre>
+      <div class="text-slate-600 dark:text-slate-300 text-[13px] font-mono p-6 overflow-x-auto leading-relaxed whitespace-pre">{{ codeSample }}</div>
     </div>
   </section>

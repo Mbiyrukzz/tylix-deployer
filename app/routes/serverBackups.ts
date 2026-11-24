@@ -391,18 +391,82 @@ function downloadScript(id: number, name: string): string {
 
 // ---- Dropbox check (runs in the deployer, never on the server) ---------------
 
-async function checkDropbox(key: string, secret: string, refresh: string): Promise<string | null> {
+// Copying a token on a phone or out of a JSON reply often brings spaces, line
+// breaks, quotes or the "refresh_token": label along. Dropbox credentials never
+// contain any of those, so strip them instead of rejecting the paste.
+function cleanDropboxValue(v: unknown): string {
+    if (typeof v !== "string") return "";
+    let out = v;
+    const inJson = /"(?:refresh_token|code)"\s*:\s*"([^"]+)"/.exec(out);
+    if (inJson) out = inJson[1];
+    out = out.replace(/\s+/g, "");
+    out = out.replace(/^['"`]+|['"`,;]+$/g, "");
+    return out;
+}
+
+// Says which field is wrong, and why, rather than one message for all three.
+function dropboxFieldProblem(key: string, secret: string, refresh: string): string | null {
+    if (!SAFE_SECRET.test(key)) {
+        return "The app key doesn't look right. Copy it again from the app's Settings tab on dropbox.com/developers/apps.";
+    }
+    if (!SAFE_SECRET.test(secret)) {
+        return "The app secret doesn't look right. Click \"Show\" next to it on the app's Settings tab and copy it again (make sure your browser didn't fill in a saved password).";
+    }
+    if (/^sl\./i.test(refresh)) {
+        return "That's a short-lived access token (it starts with \"sl.\") and stops working after a few hours. Use \"Get an access code\" below and paste that code instead.";
+    }
+    if (!SAFE_SECRET.test(refresh)) {
+        return "The refresh token or access code doesn't look right. It only has letters, numbers, - and _. Copy it again.";
+    }
+    return null;
+}
+
+// Checks the credentials with Dropbox and returns the refresh token to keep.
+// The last field takes either a refresh token or a one-time access code from
+// https://www.dropbox.com/oauth2/authorize?...&token_access_type=offline (the
+// code is swapped for a refresh token here, so nobody has to run curl).
+async function checkDropbox(
+    key: string,
+    secret: string,
+    refreshOrCode: string,
+): Promise<{ error: string } | { refresh: string }> {
     try {
         const basic = Buffer.from(`${key}:${secret}`).toString("base64");
-        const tokenRes = await fetch("https://api.dropboxapi.com/oauth2/token", {
-            method: "POST",
-            headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refresh }).toString(),
-        });
-        if (!tokenRes.ok) return "Dropbox rejected the app key, app secret or refresh token.";
+        const tokenCall = (params: Record<string, string>) =>
+            fetch("https://api.dropboxapi.com/oauth2/token", {
+                method: "POST",
+                headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams(params).toString(),
+            });
+        // Dropbox answers some errors as JSON and some as plain text.
+        const badClient = async (r: Response) => /invalid_client|client_id|client_secret/i.test(await r.text().catch(() => ""));
+
+        let refresh = refreshOrCode;
+        let tokenRes = await tokenCall({ grant_type: "refresh_token", refresh_token: refresh });
+
+        if (!tokenRes.ok) {
+            if (await badClient(tokenRes)) {
+                return { error: "Dropbox rejected the app key or app secret. Check both on the app's Settings tab." };
+            }
+
+            // Not a refresh token: try it as a one-time access code.
+            const codeRes = await tokenCall({ grant_type: "authorization_code", code: refreshOrCode });
+            if (!codeRes.ok) {
+                return {
+                    error: "Dropbox didn't accept the refresh token or access code. Access codes work once and expire after a few minutes: get a fresh one and paste it straight away.",
+                };
+            }
+            const exchanged = (await codeRes.json()) as { refresh_token?: string };
+            if (!exchanged.refresh_token || !SAFE_SECRET.test(exchanged.refresh_token)) {
+                return { error: "Dropbox gave an access code without offline access. Use the \"Get an access code\" link here (it asks for offline access) and try again." };
+            }
+            refresh = exchanged.refresh_token;
+            tokenRes = await tokenCall({ grant_type: "refresh_token", refresh_token: refresh });
+            if (!tokenRes.ok) return { error: "Dropbox swapped the access code but then refused the refresh token. Try again." };
+        }
 
         const token = ((await tokenRes.json()) as { access_token?: string }).access_token;
-        if (!token) return "Dropbox didn't return an access token.";
+        if (!token) return { error: "Dropbox didn't return an access token." };
 
         const listRes = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
             method: "POST",
@@ -410,11 +474,13 @@ async function checkDropbox(key: string, secret: string, refresh: string): Promi
             body: JSON.stringify({ path: "", limit: 1 }),
         });
         if (!listRes.ok) {
-            return "Dropbox accepted the login, but the app is missing permissions. Enable files.content.write and files.metadata.read, then generate a new refresh token.";
+            return {
+                error: "Dropbox accepted the login, but the app is missing permissions. Enable files.content.write and files.metadata.read on the Permissions tab, click Submit, then get a new access code.",
+            };
         }
-        return null;
+        return { refresh };
     } catch {
-        return "Couldn't reach Dropbox. Try again in a moment.";
+        return { error: "Couldn't reach Dropbox. Try again in a moment." };
     }
 }
 
@@ -459,24 +525,26 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
         const body = (req.body ?? {}) as Record<string, unknown>;
         const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
         const name = str(body.name);
-        const key = str(body.app_key);
-        const secret = str(body.app_secret);
-        const refresh = str(body.refresh_token);
+        const key = cleanDropboxValue(body.app_key);
+        const secret = cleanDropboxValue(body.app_secret);
+        const given = cleanDropboxValue(body.refresh_token);
 
         if (!name || name.length > 100) {
             res.status(422);
             return res.json({ error: "Give the connection a name (100 characters or fewer)." });
         }
-        if (![key, secret, refresh].every((v) => SAFE_SECRET.test(v))) {
+        const fieldProblem = dropboxFieldProblem(key, secret, given);
+        if (fieldProblem) {
             res.status(422);
-            return res.json({ error: "App key, app secret and refresh token may only contain letters, numbers, - and _." });
+            return res.json({ error: fieldProblem });
         }
 
-        const problem = await checkDropbox(key, secret, refresh);
-        if (problem) {
+        const checked = await checkDropbox(key, secret, given);
+        if ("error" in checked) {
             res.status(422);
-            return res.json({ error: problem });
+            return res.json({ error: checked.error });
         }
+        const refresh = checked.refresh;
 
         const row = (await BackupStorage.create({
             user_id: req.user?.userId,

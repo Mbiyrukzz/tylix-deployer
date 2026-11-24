@@ -371,7 +371,7 @@ template
           <LoaderMark label="Loading…" size="sm" />
 {{/if}}
 {{#if not logBusy}}
-          <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
+          <div class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72 whitespace-pre">{{ logText }}</div>
 {{/if}}
 {{/if}}
         </div>

@@ -27,8 +27,26 @@ state
   statuses: {}
   busyId: null
   logId: null
+  logWorker: null
   logText: ""
-  logBusy: false
+  logLines: []
+  logShown: []
+  logTabs: []
+  logFilter: "all"
+  logErrors: 0
+  logWarns: 0
+  logLoading: false
+  logError: ""
+  logLive: true
+  logTimer: 0
+  logFetching: false
+  logProcs: []
+  logRunning: 0
+  logTotal: 0
+  logReadAt: ""
+  logAtBottom: true
+  logCopied: false
+  logRestarting: false
   confirmId: null
   poller: null
 
@@ -169,22 +187,239 @@ action
     this.busyId = null
   }
 
+  // ---- log console --------------------------------------------------------
+
+  // Colours one log line: errors, warnings and "done" lines stand out, and a
+  // leading [timestamp] is greyed. Same rules as the deployment log.
+  classify(line, n) {
+    const t = line.trim()
+
+    let body = t
+    let ts = ""
+    if t.startsWith("[") {
+      const close = t.indexOf("]")
+      if close > 1 and close < 32 {
+        const inner = t.slice(1, close)
+        const looksLikeTime = "0123456789".includes(inner.charAt(0)) and (inner.includes(":") or inner.includes("-"))
+        if looksLikeTime {
+          ts = t.slice(0, close + 1)
+          body = t.slice(close + 1).trim()
+        }
+      }
+    }
+
+    const lower = body.toLowerCase()
+    const quiet = lower.includes("0 error") or lower.includes("no error") or lower.includes("without error")
+    const isErr = (lower.startsWith("failed") or lower.includes(" fail") or lower.includes("error") or lower.includes("fatal") or lower.includes("exception") or lower.includes("uncaught") or lower.startsWith("at ")) and not quiet
+    const isWarn = lower.includes("warning") or lower.includes("warn ") or lower.includes("deprecat") or lower.includes("retry") or lower.includes("timed out")
+    const isOk = lower.includes(" done") or lower.startsWith("done") or lower.includes("success") or lower.includes("processed") or lower.includes("started") or lower.includes("listening") or lower.includes("ready")
+    const isRun = lower.includes("running") or lower.includes("processing")
+
+    let kind = "text"
+    let cls = "text-slate-300"
+    let rowCls = "border-transparent"
+    let icon = ""
+
+    if isErr {
+      kind = "error"
+      cls = "text-rose-300"
+      rowCls = "border-rose-500 bg-rose-500/10"
+      icon = "✕"
+    } else if isWarn {
+      kind = "warn"
+      cls = "text-amber-300"
+      rowCls = "border-amber-500/60"
+      icon = "!"
+    } else if isOk {
+      kind = "ok"
+      cls = "text-brand-400"
+      icon = "✓"
+    } else if isRun {
+      kind = "run"
+      cls = "text-sky-300"
+      icon = "›"
+    }
+
+    return { n: n, kind: kind, text: ts is "" ? (line is "" ? " " : line) : body, ts: ts, cls: cls, rowCls: rowCls, icon: icon }
+  }
+
+  parseLog(raw) {
+    if not raw {
+      return []
+    }
+    const nl = String.fromCharCode(10)
+    const cr = String.fromCharCode(13)
+    return raw.split(cr + nl).join(nl).split(cr).join(nl).split(nl).map((line, i) => this.classify(line, i + 1))
+  }
+
+  applyLogFilter() {
+    const f = this.logFilter
+    this.logShown = f is "all" ? this.logLines : this.logLines.filter((l) => l.kind is f)
+    this.logTabs = [
+      { key: "all", label: "All", count: this.logLines.length },
+      { key: "error", label: "Errors", count: this.logErrors },
+      { key: "warn", label: "Warnings", count: this.logWarns },
+      { key: "ok", label: "Done", count: this.logLines.filter((l) => l.kind is "ok").length }
+    ]
+  }
+
+  setLogFilter(key) {
+    this.logFilter = key
+    this.applyLogFilter()
+    window.setTimeout(() => this.scrollLogEnd(), 40)
+  }
+
+  scrollLogEnd() {
+    const el = document.getElementById("worker-log-scroll")
+    if el {
+      el.scrollTop = el.scrollHeight
+    }
+  }
+
+  onLogScroll() {
+    if not this.logId {
+      return null
+    }
+    const el = document.getElementById("worker-log-scroll")
+    if el {
+      this.logAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 48
+    }
+  }
+
+  jumpLogBottom() {
+    this.scrollLogEnd()
+    this.logAtBottom = true
+  }
+
+  // One read at a time; a reply for a worker that is no longer open is dropped.
+  async fetchLog() {
+    const id = this.logId
+    if not id or this.logFetching {
+      return null
+    }
+    this.logFetching = true
+    const result = await useApi("/api/servers/" + this.serverId + "/workers/" + id + "/log?lines=500")
+    this.logFetching = false
+    if this.logId is not id {
+      return null
+    }
+    this.logLoading = false
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if not result.ok {
+      this.logError = result.data?.error or "Couldn't read the log. Retrying…"
+      return null
+    }
+
+    this.logError = ""
+    this.logProcs = Array.isArray(result.data.processes) ? result.data.processes : []
+    this.logRunning = result.data.running or 0
+    this.logTotal = result.data.total or 0
+    this.logReadAt = result.data.read_at or ""
+
+    const raw = String(result.data.log or "")
+    if raw is this.logText and this.logLines.length > 0 {
+      return null
+    }
+    this.logText = raw
+    this.logLines = this.parseLog(raw)
+    this.logErrors = this.logLines.filter((l) => l.kind is "error").length
+    this.logWarns = this.logLines.filter((l) => l.kind is "warn").length
+    this.applyLogFilter()
+    if this.logAtBottom {
+      window.setTimeout(() => this.scrollLogEnd(), 40)
+    }
+  }
+
+  startLogTimer() {
+    window.clearInterval(this.logTimer)
+    this.logTimer = window.setInterval(() => this.fetchLog(), 3000)
+  }
+
+  toggleLogLive() {
+    this.logLive = not this.logLive
+    if this.logLive {
+      this.logAtBottom = true
+      this.fetchLog()
+      this.startLogTimer()
+    } else {
+      window.clearInterval(this.logTimer)
+    }
+  }
+
   async viewLog(id) {
-    if this.logId is id {
-      this.logId = null
-      this.logText = ""
+    const w = this.workers.find((x) => x.id is id)
+    if not w {
       return null
     }
     this.logId = id
-    this.logBusy = true
+    this.logWorker = w
     this.logText = ""
-    const result = await useApi("/api/servers/" + this.serverId + "/workers/" + id + "/log")
-    if result.ok {
-      this.logText = result.data.log
-    } else {
-      this.logText = result.data?.error or "Couldn't read the log."
+    this.logLines = []
+    this.logFilter = "all"
+    this.logErrors = 0
+    this.logWarns = 0
+    this.logProcs = []
+    this.logRunning = 0
+    this.logTotal = 0
+    this.logReadAt = ""
+    this.logError = ""
+    this.logLoading = true
+    this.logLive = true
+    this.logAtBottom = true
+    this.applyLogFilter()
+
+    const flux = Reflect.get(window, "__flux")
+    if flux {
+      // Leaving the page with the log open must stop the polling and give
+      // the next page its scrolling back.
+      flux.on(window, "flux:navigated", () => this.closeLog(), { once: true })
     }
-    this.logBusy = false
+    document.body.style.overflow = "hidden"
+
+    this.startLogTimer()
+    await this.fetchLog()
+  }
+
+  closeLog() {
+    window.clearInterval(this.logTimer)
+    this.logId = null
+    this.logWorker = null
+    document.body.style.overflow = ""
+  }
+
+  clearLogCopied() {
+    this.logCopied = false
+  }
+
+  async copyLog() {
+    try {
+      await navigator.clipboard.writeText(this.logText)
+      this.logCopied = true
+      window.setTimeout(() => this.clearLogCopied(), 1800)
+    } catch (err) {
+      this.logError = "Couldn't copy: the browser blocked the clipboard."
+    }
+  }
+
+  async restartFromLog() {
+    if not this.logId or this.logRestarting {
+      return null
+    }
+    this.logRestarting = true
+    this.logAtBottom = true
+    await this.act(this.logId, "restart")
+    this.logRestarting = false
+    await this.fetchLog()
+  }
+
+  onKey(e) {
+    if e.key is "Escape" and this.logId {
+      this.closeLog()
+    }
   }
 
   askRemove(id) {
@@ -212,7 +447,7 @@ action
     if result.ok {
       this.confirmId = null
       if this.logId is id {
-        this.logId = null
+        this.closeLog()
       }
       await this.loadWorkers()
     } else {
@@ -223,6 +458,8 @@ action
 
 onMount
   async {
+    window.addEventListener("keydown", (e) => this.onKey(e))
+    window.addEventListener("scroll", () => this.onLogScroll(), true)
     const params = new URLSearchParams(window.location.search)
     const serverId = params.get("id")
     this.serverId = serverId or ""
@@ -243,6 +480,10 @@ onMount
         await this.loadStatus()
         if not this.poller {
           this.poller = window.setInterval(() => this.loadStatus(), 15000)
+          const flux = Reflect.get(window, "__flux")
+          if flux {
+            flux.on(window, "flux:navigated", () => window.clearInterval(this.poller), { once: true })
+          }
         }
       } else {
         this.isMissing = true
@@ -398,14 +639,6 @@ template
           </div>
 {{/if}}
 
-{{#if logId is w.id}}
-{{#if logBusy}}
-          <LoaderMark label="Loading log…" size="sm" />
-{{/if}}
-{{#if not logBusy}}
-          <pre class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72">{{ logText }}</pre>
-{{/if}}
-{{/if}}
         </div>
 {{/each}}
       </div>
@@ -413,4 +646,33 @@ template
 
     </div>
     </div>
+
+{{#if logWorker}}
+    <WorkerLogConsole
+      worker="{{ logWorker }}"
+      host="{{ server ? server.name : '' }}"
+      lines="{{ logLines }}"
+      shown="{{ logShown }}"
+      tabs="{{ logTabs }}"
+      filter="{{ logFilter }}"
+      loading="{{ logLoading }}"
+      error="{{ logError }}"
+      live="{{ logLive }}"
+      atBottom="{{ logAtBottom }}"
+      copied="{{ logCopied }}"
+      errors="{{ logErrors }}"
+      warns="{{ logWarns }}"
+      processes="{{ logProcs }}"
+      running="{{ logRunning }}"
+      total="{{ logTotal }}"
+      readAt="{{ logReadAt }}"
+      restarting="{{ logRestarting }}"
+      onClose="{{ closeLog }}"
+      onCopy="{{ copyLog }}"
+      onFilter="{{ setLogFilter }}"
+      onToggleLive="{{ toggleLogLive }}"
+      onJumpBottom="{{ jumpLogBottom }}"
+      onRestart="{{ restartFromLog }}"
+    />
+{{/if}}
   </div>

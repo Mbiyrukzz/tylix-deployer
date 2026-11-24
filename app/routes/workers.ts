@@ -265,19 +265,51 @@ export async function routes(router: Router, { auth }: { auth: (handler: Handler
         return res.json({ ok: true });
     }));
 
+    // The log console polls this while it's open: the tail of the log plus
+    // each process's live state (supervisorctl's "pid 123, uptime 0:04:10").
+    // ?lines= picks how much of the tail (50 to 2000, default 500).
     router.get("/api/servers/:id/workers/:wid/log", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const worker = await ownedWorker(req, res, server);
         if (!worker) return;
 
+        const query = (req as { query?: Record<string, unknown> }).query ?? {};
+        const wanted = Math.floor(Number(query.lines ?? 500));
+        const lines = Number.isFinite(wanted) ? Math.min(2000, Math.max(50, wanted)) : 500;
+
+        const marker = "__TYLIX_LOG__";
+        const script = [
+            `supervisorctl status ${sq(program(worker.id) + ":*")} 2>/dev/null || true`,
+            `echo ${marker}`,
+            `if [ -f ${logPath(worker.id)} ]; then tail -n ${lines} ${logPath(worker.id)}; fi`,
+        ].join("\n");
+
         const t = targetFor(server);
-        const r = await sshExec(t, asRoot(t.user, `tail -n 200 ${logPath(worker.id)} 2>&1 || true`));
+        const r = await sshExec(t, asRoot(t.user, script));
         if (r.code !== 0) {
             res.status(502);
             return res.json({ error: r.stderr.trim() || "Could not read the log." });
         }
-        return res.json({ log: r.stdout.trim() || "No output yet." });
+
+        const cut = r.stdout.indexOf(marker);
+        const head = cut === -1 ? "" : r.stdout.slice(0, cut);
+        const log = cut === -1 ? r.stdout : r.stdout.slice(cut + marker.length).replace(/^\r?\n/, "");
+
+        const processes = head
+            .split("\n")
+            .map((line) => /^tylix-worker-\d+:(\S+)\s+(\w+)\s*(.*)$/.exec(line.trim()))
+            .filter((m): m is RegExpExecArray => m !== null)
+            .map((m) => ({ name: m[1], state: m[2], detail: m[3].trim() }));
+
+        return res.json({
+            log: log.replace(/\s+$/, ""),
+            lines,
+            processes,
+            running: processes.filter((p) => p.state === "RUNNING").length,
+            total: processes.length,
+            read_at: new Date().toISOString(),
+        });
     }));
 
     router.delete("/api/servers/:id/workers/:wid", write(async (req, res) => {

@@ -68,13 +68,13 @@ template
       <ol class="space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300 list-decimal pl-5 mb-3">
         <li>Create an app at dropbox.com/developers/apps.</li>
         <li>Turn on the permissions <span class="font-mono text-xs">files.content.write</span> and <span class="font-mono text-xs">files.metadata.read</span>.</li>
-        <li>Generate a refresh token with offline access.</li>
+        <li>Back on the Backups page, enter the App key and select "Get an access code". Allow access on Dropbox and copy the code it shows.</li>
       </ol>
 
-      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Then enter a Connection name, the App key, the App secret and the Refresh token, and select Connect. The button says "Checking with Dropbox…" while it tests them. When it works, the connection appears in the list and is already chosen for this backup.</p>
+      <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-3">Then enter a Connection name, the App key, the App secret and paste the access code (a refresh token you made yourself works too), and select Connect. Tylix Flux swaps the code for a refresh token. The button says "Checking with Dropbox…" while it tests them. When it works, the connection appears in the list and is already chosen for this backup.</p>
 
       <div class="rounded-2xl border-l-2 border-l-brand-500 bg-brand-500/5 px-4 py-3 mb-3">
-        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Use a refresh token, not a plain access token. A plain access token stops working after a few hours and would break your scheduled backups.</p>
+        <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">Don't use the "Generated access token" on Dropbox's app page (it starts with "sl."). It stops working after a few hours and would break your scheduled backups. An access code works only once and only for a few minutes, so paste it straight away.</p>
       </div>
 
       <p class="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-8">Each connection is listed under the storage choices with a Remove link.</p>
@@ -125,7 +125,7 @@ template
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't connect Dropbox.</p>
-          <p class="text-zinc-500 text-xs mt-0.5">Dropbox refused the details. Check the app key, secret and refresh token, and that both permissions are on.</p>
+          <p class="text-zinc-500 text-xs mt-0.5">Dropbox refused the details. Check the app key and secret, get a fresh access code, and check that both permissions are on.</p>
         </div>
         <div class="px-5 py-3.5 border-t border-stone-100 dark:border-white/5">
           <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Couldn't start the backup. / Couldn't read the log.</p>

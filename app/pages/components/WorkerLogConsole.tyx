@@ -1,0 +1,389 @@
+component WorkerLogConsole
+
+import { IconX, IconCopy, IconMaximize, IconMinimize, IconDocumentText } from "tylix-icons"
+
+// A worker's Supervisor log, popped over the workers page in the same
+// console window as the deployment log: the processes and their state down
+// the side, the log tail in a glowing well that follows new output while
+// "live" is on, and a status bar. The page owns the log, the polling and the
+// scrolling; this draws it.
+//
+// The scrolling element is #worker-log-scroll: the page follows the end of
+// the log and jumps to the bottom through it.
+
+props
+  worker: Object
+  host: String
+  lines: any
+  shown: any
+  tabs: any
+  filter: String
+  loading: Boolean
+  error: String
+  live: Boolean
+  atBottom: Boolean
+  copied: Boolean
+  errors: any
+  warns: any
+  processes: any
+  running: any
+  total: any
+  readAt: String
+  restarting: Boolean
+  onClose: Function
+  onCopy: Function
+  onFilter: Function
+  onToggleLive: Function
+  onJumpBottom: Function
+  onRestart: Function
+
+state
+  full: false
+
+computed
+  phase() {
+    if this.total is 0 {
+      return this.loading ? "loading" : "missing"
+    }
+    if this.running is this.total {
+      return "running"
+    }
+    if this.running is 0 {
+      return "stopped"
+    }
+    return "partial"
+  }
+
+  statusText() {
+    const st = this.phase
+    if st is "loading" {
+      return "Connecting"
+    }
+    if st is "missing" {
+      return "Not found in Supervisor"
+    }
+    if st is "running" {
+      return "Running " + this.running + "/" + this.total
+    }
+    if st is "stopped" {
+      const first = this.processes.length > 0 ? String(this.processes[0].state).toLowerCase() : "stopped"
+      return first.charAt(0).toUpperCase() + first.slice(1)
+    }
+    return "Running " + this.running + "/" + this.total
+  }
+
+  orbCls() {
+    const base = "relative w-2.5 h-2.5 shrink-0 rounded-full "
+    const st = this.phase
+    if st is "running" {
+      return base + "bg-emerald-400 animate-pulse shadow-[0_0_10px_rgb(52_211_153/0.7)]"
+    }
+    if st is "partial" {
+      return base + "bg-amber-400 animate-pulse shadow-[0_0_10px_rgb(251_191_36/0.7)]"
+    }
+    if st is "loading" {
+      return base + "bg-sky-400 animate-pulse shadow-[0_0_10px_rgb(56_189_248/0.6)]"
+    }
+    return base + "bg-brand-500 shadow-[0_0_10px_rgb(240_103_107/0.7)]"
+  }
+
+  procs() {
+    return this.processes.map((p) => this.procItem(p))
+  }
+
+  readText() {
+    if not this.readAt {
+      return ""
+    }
+    const d = new Date(this.readAt)
+    if Number.isNaN(d.getTime()) {
+      return ""
+    }
+    return d.toLocaleTimeString()
+  }
+
+  outerCls() {
+    if this.full {
+      return "cx-root fixed inset-0 z-[70] flex"
+    }
+    return "cx-root fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center sm:p-5 lg:p-8"
+  }
+
+  windowCls() {
+    const base = "cx-shell cx-grain cx-pop relative flex w-full overflow-hidden text-zinc-200 "
+    if this.full {
+      return base + "h-full"
+    }
+    return base + "h-full sm:h-[min(880px,calc(100vh-2.5rem))] max-w-[1380px] sm:rounded-[22px]"
+  }
+
+action
+  // One process in the side list. Supervisor's detail is "pid 1234, uptime
+  // 0:04:10" while running, or why it stopped ("Exited too quickly ...").
+  procItem(p) {
+    const st = String(p.state or "")
+    let badge = "bg-brand-500/15 text-brand-300 shadow-[inset_0_0_0_1px_rgb(240_103_107/0.35)]"
+    let icon = "✕"
+    if st is "RUNNING" {
+      badge = "bg-emerald-400/10 text-emerald-300 shadow-[inset_0_0_0_1px_rgb(52_211_153/0.25)]"
+      icon = "✓"
+    }
+    if st is "STARTING" or st is "STOPPING" or st is "BACKOFF" {
+      badge = "bg-amber-400/10 text-amber-300 shadow-[inset_0_0_0_1px_rgb(251_191_36/0.35)]"
+      icon = "!"
+    }
+    if st is "STOPPED" {
+      badge = "bg-white/[0.06] text-zinc-300 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)]"
+      icon = "■"
+    }
+    return {
+      name: p.name,
+      state: st.toLowerCase(),
+      detail: p.detail or "",
+      icon: icon,
+      badgeCls: "w-6 h-6 shrink-0 inline-flex items-center justify-center rounded-lg text-[10.5px] font-semibold " + badge
+    }
+  }
+
+  toggleFull() {
+    this.full = not this.full
+  }
+
+  dismiss() {
+    this.onClose()
+  }
+
+  copy() {
+    this.onCopy()
+  }
+
+  pick(key) {
+    this.onFilter(key)
+  }
+
+  toggleLive() {
+    this.onToggleLive()
+  }
+
+  bottom() {
+    this.onJumpBottom()
+  }
+
+  restart() {
+    this.onRestart()
+  }
+
+template
+<div class="{{ outerCls }}">
+  <div onclick="{{ dismiss() }}" aria-hidden="true" class="cx-fade cx-grain absolute inset-0 bg-[#050506]/75 backdrop-blur-md"></div>
+
+  <div role="dialog" aria-modal="true" aria-label="Worker log" class="{{ windowCls }}">
+
+    <!-- rail -->
+    <nav aria-label="Console" class="hidden md:flex w-[64px] shrink-0 flex-col items-center gap-2 py-3 border-r border-white/[0.05] bg-black/25">
+      <span aria-hidden="true" class="mb-2 w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-[0_0_24px_-4px_rgb(240_103_107/0.7),inset_0_1px_0_rgb(255_255_255/0.25)]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4 17l6-6-6-6M12 19h8" /></svg>
+      </span>
+      <span title="Worker log" class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]">
+        <IconDocumentText class="w-5 h-5" />
+{{#if errors is not 0}}
+        <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[10px] font-bold leading-[18px] text-center ring-2 ring-[#111113]">{{ errors > 99 ? "99+" : errors }}</span>
+{{/if}}
+      </span>
+      <div class="mt-auto flex flex-col items-center gap-1">
+        <button onclick="{{ toggleFull() }}" title="{{ full ? 'Exit full screen' : 'Full screen' }}" aria-label="Toggle full screen" class="cx-icon-btn">
+{{#if full}}
+          <IconMinimize class="w-4 h-4" />
+{{#else}}
+          <IconMaximize class="w-4 h-4" />
+{{/if}}
+        </button>
+      </div>
+    </nav>
+
+    <div class="flex-1 min-w-0 flex flex-col">
+
+      <!-- header -->
+      <header class="flex items-center gap-2 sm:gap-3 h-14 shrink-0 px-2.5 sm:px-4 border-b border-white/[0.05]">
+        <div class="min-w-0 flex items-center gap-3 pl-2 pr-2.5 py-1.5">
+          <span class="{{ orbCls }}"></span>
+          <span class="min-w-0">
+            <span class="block font-mono text-[13px] sm:text-[13.5px] text-zinc-100 truncate leading-tight">{{ worker.name }}</span>
+            <span class="block text-[11px] text-zinc-300 truncate leading-tight mt-0.5">{{ statusText }}{{#if readText}} · updated {{ readText }}{{/if}}</span>
+          </span>
+        </div>
+
+        <div class="ml-auto flex items-center gap-1">
+          <button onclick="{{ toggleLive() }}" title="{{ live ? 'Pause live updates' : 'Follow new output' }}" class="inline-flex shrink-0 items-center gap-1.5 h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-200 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">
+{{#if live}}
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgb(52_211_153/0.9)]"></span> Live
+{{#else}}
+            <span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span> Paused
+{{/if}}
+          </button>
+{{#if restarting}}
+          <span class="hidden sm:inline-flex items-center gap-1.5 h-8 rounded-lg px-3 text-[12px] font-medium text-amber-300 bg-amber-400/10 shadow-[inset_0_0_0_1px_rgb(251_191_36/0.3)]">
+            <span class="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin"></span> Restarting…
+          </span>
+{{#else}}
+          <button onclick="{{ restart() }}" title="Restart this worker" class="hidden sm:inline-flex items-center gap-1.5 h-8 rounded-lg px-3 text-[12px] font-medium text-zinc-200 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)] transition-colors">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7" /></svg>
+            Restart
+          </button>
+{{/if}}
+          <button onclick="{{ copy() }}" title="Copy the log" aria-label="Copy the log" class="cx-icon-btn">
+{{#if copied}}
+            <span class="text-[11px] font-medium text-emerald-300">Copied</span>
+{{#else}}
+            <IconCopy class="w-4 h-4" />
+{{/if}}
+          </button>
+          <span class="hidden sm:block w-px h-5 mx-1.5 bg-white/[0.07]"></span>
+          <button onclick="{{ toggleFull() }}" title="Full screen" aria-label="Toggle full screen" class="cx-icon-btn md:hidden">
+{{#if full}}
+            <IconMinimize class="w-4 h-4" />
+{{#else}}
+            <IconMaximize class="w-4 h-4" />
+{{/if}}
+          </button>
+          <button onclick="{{ dismiss() }}" title="Close (Esc)" aria-label="Close" class="cx-icon-btn hover:!bg-brand-500/20 hover:!text-brand-200"><IconX class="w-4 h-4" /></button>
+        </div>
+      </header>
+
+      <!-- body -->
+      <div class="relative flex-1 min-h-0 flex">
+
+        <!-- processes -->
+        <aside class="hidden lg:flex w-[264px] shrink-0 flex-col gap-1 p-3 pr-0 overflow-y-auto cx-scroll">
+          <p class="px-2.5 pt-1 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300">Processes</p>
+{{#each p in procs}}
+          <div class="w-full flex items-center gap-3 rounded-xl px-2.5 py-2 bg-white/[0.03]">
+            <span class="{{ p.badgeCls }}">{{ p.icon }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-[12.5px] font-medium text-zinc-100 font-mono truncate">{{ p.name }}</span>
+              <span class="block text-[11px] text-zinc-400 font-mono truncate" title="{{ p.detail }}">{{ p.state }}{{#if p.detail}} · {{ p.detail }}{{/if}}</span>
+            </span>
+          </div>
+{{#else}}
+          <p class="px-2.5 text-[12px] text-zinc-400">{{ loading ? "Asking Supervisor…" : "Supervisor doesn't list this worker. Delete it and create it again." }}</p>
+{{/each}}
+
+          <div class="mt-3 px-2.5 space-y-1 text-[11px] text-zinc-400 font-mono">
+            <p class="truncate" title="{{ worker.command }}"><span class="text-zinc-500">$</span> {{ worker.command }}</p>
+            <p class="truncate" title="{{ worker.directory }}"><span class="text-zinc-500">in</span> {{ worker.directory }}</p>
+            <p class="truncate"><span class="text-zinc-500">as</span> {{ worker.ssh_user }}</p>
+          </div>
+
+          <div class="mt-auto pt-4 px-2.5">
+            <div class="cx-well rounded-xl p-3">
+              <p class="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-300 mb-2">Last {{ lines.length }} lines</p>
+              <div class="grid grid-cols-2 gap-x-2 gap-y-3">
+                <div>
+                  <p class="font-mono text-[20px] leading-none tabular-nums {{ errors > 0 ? 'text-brand-300' : 'text-emerald-300' }}">{{ errors }}</p>
+                  <p class="text-[11px] text-zinc-300 mt-1">errors</p>
+                </div>
+                <div>
+                  <p class="font-mono text-[20px] leading-none tabular-nums {{ warns > 0 ? 'text-amber-300' : 'text-zinc-100' }}">{{ warns }}</p>
+                  <p class="text-[11px] text-zinc-300 mt-1">warnings</p>
+                </div>
+                <div>
+                  <p class="font-mono text-[20px] leading-none tabular-nums text-zinc-100">{{ running }}/{{ total }}</p>
+                  <p class="text-[11px] text-zinc-300 mt-1">running</p>
+                </div>
+                <div>
+                  <p class="font-mono text-[20px] leading-none tabular-nums text-zinc-100">{{ lines.length }}</p>
+                  <p class="text-[11px] text-zinc-300 mt-1">lines</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="flex-1 min-w-0 flex flex-col gap-2 p-2 sm:p-3">
+          <!-- toolbar -->
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+{{#each t in tabs}}
+            <button onclick="{{ pick(t.key) }}" aria-pressed="{{ t.key is filter }}" class="cx-chip">
+              {{ t.label }}
+              <span class="font-mono text-[11px] opacity-70 tabular-nums">{{ t.count }}</span>
+            </button>
+{{/each}}
+            <span class="ml-auto shrink-0 inline-flex items-center gap-1.5 text-[11.5px] text-zinc-300">
+{{#if live}}
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> {{ atBottom ? "Following output" : "Paused, scrolled up" }}
+{{#else}}
+              <span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span> Live updates paused
+{{/if}}
+            </span>
+          </div>
+
+          <!-- stream -->
+          <div class="cx-frame cx-well relative z-[1] flex-1 min-h-0 rounded-2xl overflow-hidden flex" data-live="{{ live }}" data-tone="{{ errors > 0 ? 'warn' : 'ok' }}">
+{{#if live}}
+            <div aria-hidden="true" class="absolute inset-x-0 top-0 h-px z-[3] overflow-hidden">
+              <div class="cx-scanline h-full w-full bg-gradient-to-r from-transparent via-brand-400 to-transparent"></div>
+            </div>
+{{/if}}
+            <div id="worker-log-scroll" class="flex-1 min-w-0 overflow-auto overscroll-contain cx-scroll py-3 font-mono font-medium text-[12.5px] leading-6">
+              <p class="px-3 sm:px-4 pb-2 text-zinc-300 break-all"><span class="text-brand-300">root@{{ host }}</span><span class="text-zinc-400">:~$</span> <span class="text-zinc-200">tail -f /var/log/tylix-worker-{{ worker.id }}.log</span></p>
+
+{{#if error}}
+              <p class="px-3 sm:px-4 py-1 text-brand-300">{{ error }}</p>
+{{/if}}
+
+{{#if loading}}
+              <div class="px-3 sm:px-4 space-y-2 pt-1" aria-label="Loading">
+                <p class="flex items-center gap-2 text-zinc-300"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Reading the log…</p>
+                <div class="h-3 w-2/3 rounded bg-white/[0.04] animate-pulse"></div>
+                <div class="h-3 w-1/2 rounded bg-white/[0.04] animate-pulse"></div>
+                <div class="h-3 w-3/4 rounded bg-white/[0.04] animate-pulse"></div>
+              </div>
+{{/if}}
+
+{{#if not loading}}
+{{#if lines.length is 0}}
+              <p class="px-3 sm:px-4 text-zinc-400">No output yet. Anything the worker prints shows up here.</p>
+{{/if}}
+{{#if lines.length is not 0}}
+{{#if shown.length is 0}}
+              <div class="px-3 sm:px-4 py-6">
+                <p class="text-emerald-300">Nothing matches this filter.</p>
+                <p class="text-zinc-400">Pick All to see every line.</p>
+              </div>
+{{/if}}
+{{#each l in shown}}
+              <div class="flex items-start border-l-2 hover:bg-white/[0.03] {{ l.rowCls }}">
+                <span class="w-12 shrink-0 pr-3 text-right text-zinc-600 tabular-nums select-none">{{ l.n }}</span>
+                <span class="w-4 shrink-0 text-center select-none opacity-80 {{ l.cls }}">{{ l.icon }}</span>
+                <span class="min-w-0 flex-1 pl-2 pr-4 whitespace-pre-wrap [overflow-wrap:anywhere] {{ l.cls }}">{{#if l.ts}}<span class="text-zinc-500 mr-2">{{ l.ts }}</span>{{/if}}{{ l.text }}</span>
+              </div>
+{{/each}}
+{{/if}}
+{{#if live}}
+              <p class="px-3 sm:px-4 pt-2 text-zinc-300"><span class="inline-block w-[7px] h-[14px] -mb-[2px] bg-brand-400/80 animate-pulse"></span></p>
+{{/if}}
+{{/if}}
+            </div>
+
+{{#if not atBottom}}
+            <button onclick="{{ bottom() }}" class="cx-pop absolute bottom-3 right-6 z-[4] inline-flex items-center gap-1.5 h-8 rounded-lg px-3 text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-[0_0_24px_-6px_rgb(240_103_107/0.8)] transition-colors">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M10 4v12M5 11l5 5 5-5" /></svg>
+              Jump to bottom
+            </button>
+{{/if}}
+          </div>
+        </div>
+      </div>
+
+      <!-- status bar -->
+      <footer class="shrink-0 flex items-center gap-3 h-9 px-3 sm:px-4 border-t border-white/[0.05] bg-black/20 text-[11px] text-zinc-300">
+        <span class="flex items-center gap-1.5 shrink-0"><span class="{{ orbCls }} !w-1.5 !h-1.5"></span>{{ statusText }}</span>
+        <span><span class="font-mono text-zinc-200">{{ shown.length }}</span> shown</span>
+        <span><span class="font-mono {{ errors > 0 ? 'text-brand-300' : 'text-zinc-200' }}">{{ errors }}</span> errors</span>
+        <span class="hidden sm:inline"><span class="font-mono {{ warns > 0 ? 'text-amber-300' : 'text-zinc-200' }}">{{ warns }}</span> warnings</span>
+        <span class="hidden md:inline">{{ live ? "refreshes every 3s" : "paused" }}</span>
+        <span class="ml-auto hidden sm:flex items-center gap-1.5"><span class="cx-kbd">Esc</span> close</span>
+      </footer>
+    </div>
+  </div>
+</div>

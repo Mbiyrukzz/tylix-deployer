@@ -38,6 +38,8 @@ state
   error: ""
   timer: 0
   lastPolled: ""
+  polling: false
+  doneTicks: 0
   history: []
   histFilter: "all"
   histTabs: []
@@ -906,27 +908,50 @@ action
     this.cancelBusy = false
   }
 
+  // One request at a time: a slow reply that lands after a newer one would
+  // put an older, shorter log back on screen.
   async poll() {
+    if this.polling {
+      return null
+    }
+    this.polling = true
     const result = await useApi("/api/sites/" + this.siteId + "/deployment")
+    this.polling = false
 
     if result.ok {
-      this.applyStatus(result.data)
-
       const st = result.data.deploy_status
+      const running = st is "deploying" or st is "queued"
+      const sameLog = String(result.data.deploy_log or "") is this.deployLog
       const changed = st is not this.lastPolled
       this.lastPolled = st
+      this.applyStatus(result.data)
 
-      if st is not "deploying" and st is not "queued" {
+      if running {
+        this.doneTicks = 0
+        if changed {
+          await this.loadHistory()
+        }
+        return null
+      }
+
+      if changed {
+        await this.loadHistory()
+      }
+
+      // Finished, but keep reading a little longer: the last lines can be
+      // saved just after the status (the deployer restarting itself records
+      // success first), so stop once the log has stopped growing.
+      this.doneTicks = this.doneTicks + 1
+      if (this.doneTicks >= 2 and sameLog) or this.doneTicks >= 8 {
         window.clearInterval(this.timer)
-        await this.loadHistory()
-      } else if changed {
-        await this.loadHistory()
+        this.doneTicks = 0
       }
     }
   }
 
   startPolling() {
     window.clearInterval(this.timer)
+    this.doneTicks = 0
     this.timer = window.setInterval(() => this.poll(), 2000)
   }
 
