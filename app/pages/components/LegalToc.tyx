@@ -1,0 +1,171 @@
+component LegalToc
+
+import { IconChevronDown, IconArrowUp } from "tylix-icons"
+
+// "On this page" for a legal document. On large screens it is a sticky
+// column that highlights the section you're reading and shows how far
+// through you are; on phones it folds into a disclosure above the text.
+// The sections are the <section id> elements inside [data-legal].
+//   <LegalToc kind="terms" />
+
+props
+  kind: String
+
+state
+  current: ""
+  progress: 0
+  terms: [
+    { id: "agreement", n: "1", label: "Agreement" },
+    { id: "service", n: "2", label: "The service" },
+    { id: "accounts", n: "3", label: "Accounts" },
+    { id: "teams", n: "4", label: "Teams and roles" },
+    { id: "billing", n: "5", label: "Plans and billing" },
+    { id: "viewonly", n: "6", label: "View only mode" },
+    { id: "infrastructure", n: "7", label: "Your infrastructure" },
+    { id: "content", n: "8", label: "Your content" },
+    { id: "acceptable", n: "9", label: "Acceptable use" },
+    { id: "backups", n: "10", label: "Backups" },
+    { id: "availability", n: "11", label: "Availability" },
+    { id: "thirdparty", n: "12", label: "Third parties" },
+    { id: "ip", n: "13", label: "Intellectual property" },
+    { id: "termination", n: "14", label: "Suspension and termination" },
+    { id: "disclaimer", n: "15", label: "Disclaimers" },
+    { id: "liability", n: "16", label: "Liability" },
+    { id: "indemnity", n: "17", label: "Indemnity" },
+    { id: "changes", n: "18", label: "Changes" },
+    { id: "law", n: "19", label: "Governing law" },
+    { id: "contact", n: "20", label: "Contact" }
+  ]
+  privacy: [
+    { id: "who", n: "1", label: "Who we are" },
+    { id: "collect", n: "2", label: "What we collect" },
+    { id: "use", n: "3", label: "How we use it" },
+    { id: "basis", n: "4", label: "Legal basis" },
+    { id: "sharing", n: "5", label: "Who we share with" },
+    { id: "security", n: "6", label: "Security" },
+    { id: "cookies", n: "7", label: "Cookies" },
+    { id: "retention", n: "8", label: "Retention" },
+    { id: "transfers", n: "9", label: "International transfers" },
+    { id: "rights", n: "10", label: "Your rights" },
+    { id: "children", n: "11", label: "Children" },
+    { id: "changes", n: "12", label: "Changes" },
+    { id: "contact", n: "13", label: "Contact" }
+  ]
+
+action
+  linkCls(id) {
+    const base = "group flex items-baseline gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] leading-snug transition-colors "
+    if this.current is id {
+      return base + "bg-zinc-900/[0.05] dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-50 font-medium"
+    }
+    return base + "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-900/[0.03] dark:hover:bg-white/[0.03]"
+  }
+
+  numCls(id) {
+    const base = "w-5 shrink-0 text-right font-mono text-[11px] tabular-nums "
+    return base + (this.current is id ? "text-brand-600 dark:text-brand-400" : "text-zinc-400 dark:text-zinc-600")
+  }
+
+  barStyle() {
+    return "width: " + this.progress + "%"
+  }
+
+  // The last section whose top has passed just under the sticky navbar.
+  track() {
+    const root = document.querySelector("[data-legal]")
+    if not root {
+      return null
+    }
+    const sections = root.querySelectorAll("section[id]")
+    let id = sections.length ? sections[0].id : ""
+    for (const s of sections) {
+      if s.getBoundingClientRect().top <= 140 {
+        id = s.id
+      }
+    }
+    const box = root.getBoundingClientRect()
+    const total = box.height - window.innerHeight
+    const done = total > 0 ? Math.min(1, Math.max(0, -box.top / total)) : 1
+    if window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4 and sections.length {
+      id = sections[sections.length - 1].id
+    }
+    this.current = id
+    this.progress = Math.round(done * 100)
+  }
+
+  toTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+onMount
+  async {
+    let queued = false
+    const onScroll = () => {
+      if queued {
+        return null
+      }
+      queued = true
+      window.requestAnimationFrame(() => {
+        queued = false
+        this.track()
+      })
+    }
+    const flux = Reflect.get(window, "__flux")
+    if flux {
+      flux.on(window, "scroll", onScroll, { passive: true })
+      flux.on(window, "resize", onScroll, { passive: true })
+    } else {
+      window.addEventListener("scroll", onScroll, { passive: true })
+      window.addEventListener("resize", onScroll, { passive: true })
+    }
+    this.track()
+  }
+
+template
+<div class="contents">
+
+<details class="lg:hidden group/toc rounded-2xl border border-line bg-panel legal-noprint">
+  <summary class="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none text-sm font-medium text-zinc-900 dark:text-zinc-100">
+    On this page
+    <IconChevronDown class="w-4 h-4 text-zinc-400 transition-transform group-open/toc:rotate-180" />
+  </summary>
+  <ol class="px-2 pb-2 grid grid-cols-1 sm:grid-cols-2 gap-x-2">
+{{#if kind is "terms"}}
+{{#each s in terms}}
+    <li><a href="{{ '#' + s.id }}" class="{{ linkCls(s.id) }}"><span class="{{ numCls(s.id) }}">{{ s.n }}</span>{{ s.label }}</a></li>
+{{/each}}
+{{/if}}
+{{#if kind is "privacy"}}
+{{#each s in privacy}}
+    <li><a href="{{ '#' + s.id }}" class="{{ linkCls(s.id) }}"><span class="{{ numCls(s.id) }}">{{ s.n }}</span>{{ s.label }}</a></li>
+{{/each}}
+{{/if}}
+  </ol>
+</details>
+
+<nav aria-label="On this page" class="hidden lg:block legal-noprint">
+  <div class="sticky top-24">
+    <div class="flex items-center justify-between mb-3 px-2.5">
+      <p class="flux-eyebrow">On this page</p>
+      <span class="text-[11px] font-mono tabular-nums text-zinc-400">{{ progress }}%</span>
+    </div>
+    <div class="mx-2.5 mb-3 h-0.5 rounded-full bg-zinc-200 dark:bg-white/[0.08] overflow-hidden">
+      <div class="h-full bg-brand-500 transition-[width] duration-150" style="{{ barStyle() }}"></div>
+    </div>
+    <ol class="flex flex-col gap-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto no-scrollbar">
+{{#if kind is "terms"}}
+{{#each s in terms}}
+      <li><a href="{{ '#' + s.id }}" aria-current="{{ current is s.id ? 'location' : 'false' }}" class="{{ linkCls(s.id) }}"><span class="{{ numCls(s.id) }}">{{ s.n }}</span>{{ s.label }}</a></li>
+{{/each}}
+{{/if}}
+{{#if kind is "privacy"}}
+{{#each s in privacy}}
+      <li><a href="{{ '#' + s.id }}" aria-current="{{ current is s.id ? 'location' : 'false' }}" class="{{ linkCls(s.id) }}"><span class="{{ numCls(s.id) }}">{{ s.n }}</span>{{ s.label }}</a></li>
+{{/each}}
+{{/if}}
+    </ol>
+    <button type="button" onclick="{{ toTop() }}" class="mt-4 mx-2.5 inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"><IconArrowUp class="w-3.5 h-3.5" /> Back to top</button>
+  </div>
+</nav>
+
+</div>

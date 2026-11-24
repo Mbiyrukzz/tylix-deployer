@@ -35,6 +35,14 @@ export default defineConfig({
       { name: 'New server', url: '/servers/create' },
       { name: 'Billing', url: '/settings/billing' },
     ],
+    // The shell scripts aren't fingerprinted, so the worker's default for
+    // .js (stale-while-revalidate) served the previous deploy's copy once
+    // after every release. An old app-shell.js doesn't know newer app
+    // sections (/admin): the page loaded without the sidebar. Always fetch
+    // them fresh; the cached copy is only for offline.
+    runtimeCaching: [
+      { match: '^/(app-shell|auth-ui)\\.js$', strategy: 'network-first' },
+    ],
   },
 
   auth: {

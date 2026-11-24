@@ -790,3 +790,53 @@ body:has(.app-tabbar) .cx-pill {
     animation: none;
   }
 }
+
+/* ===========================================================================
+   Legal pages (app/pages/Terms.tyx, app/pages/Privacy.tyx)
+   Long-form reading: a comfortable measure and line height, numbered
+   section headings with a hover anchor, and quiet lists.
+=========================================================================== */
+@layer components {
+  .legal-section {
+    @apply relative scroll-mt-24 py-9 sm:py-10 border-t border-line first:border-t-0 first:pt-0;
+  }
+  .legal-section > h2 {
+    @apply flex items-baseline gap-3 text-lg sm:text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-4;
+  }
+  .legal-num {
+    @apply shrink-0 inline-flex items-center justify-center min-w-[2rem] h-6 px-1.5 rounded-md border border-line bg-sunken font-mono text-[11px] font-medium text-zinc-500 tabular-nums translate-y-[-2px];
+  }
+  .legal-anchor {
+    @apply ml-1 text-zinc-300 dark:text-zinc-700 opacity-0 transition-opacity hover:text-brand-500 focus:opacity-100;
+  }
+  .legal-section:hover .legal-anchor {
+    @apply opacity-100;
+  }
+  .legal-prose p {
+    @apply text-[15px] leading-7 text-zinc-600 dark:text-zinc-400 mb-4 last:mb-0;
+  }
+  .legal-prose ul {
+    @apply space-y-2.5 mb-4 last:mb-0;
+  }
+  .legal-prose li {
+    @apply relative pl-5 text-[15px] leading-7 text-zinc-600 dark:text-zinc-400;
+  }
+  .legal-prose li::before {
+    content: "";
+    @apply absolute left-1 top-[0.8rem] w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600;
+  }
+  .legal-prose strong {
+    @apply font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+  .legal-prose a {
+    @apply text-brand-700 dark:text-brand-400 underline decoration-brand-500/30 underline-offset-2 hover:decoration-brand-500;
+  }
+}
+
+@media print {
+  .app-nav,
+  .site-footer,
+  .legal-noprint {
+    display: none !important;
+  }
+}

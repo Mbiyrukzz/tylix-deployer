@@ -41,7 +41,7 @@ action
     if not path.startsWith("/") or path.startsWith("//") or path.startsWith("/login") or path.startsWith("/api/") {
       return ""
     }
-    const sections = ["/dashboard", "/servers", "/settings", "/team", "/providers", "/registrars", "/source-control"]
+    const sections = ["/dashboard", "/servers", "/settings", "/team", "/providers", "/registrars", "/source-control", "/admin"]
     return sections.some((p) => path is p or path.startsWith(p + "/") or path.startsWith(p + "?")) ? path : ""
   }
 

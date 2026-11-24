@@ -38,7 +38,7 @@ action
   // True when the current URL is inside the app (dashboard or server pages).
   checkInApp() {
     const path = window.location.pathname
-    const sections = ["/dashboard", "/server", "/settings", "/team", "/providers", "/registrars", "/source-control"]
+    const sections = ["/dashboard", "/server", "/settings", "/team", "/providers", "/registrars", "/source-control", "/admin"]
     return sections.some((p) => path.startsWith(p))
   }
 

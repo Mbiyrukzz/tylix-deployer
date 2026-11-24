@@ -1,0 +1,45 @@
+component LegalHero
+
+import { IconCalendar, IconClock, IconPrinter } from "tylix-icons"
+
+// The top of a legal page (Terms, Privacy): title, effective date, reading
+// time, a print button and a switch between the two documents.
+//   <LegalHero kind="terms" title="Terms of Service" effective="..." readTime="12 min read" lead="..." />
+
+props
+  kind: String
+  title: String
+  effective: String
+  readTime: String
+  lead: String
+
+action
+  print() {
+    window.print()
+  }
+
+template
+<div class="relative overflow-hidden border-b border-line">
+  <svg class="pointer-events-none absolute inset-0 w-full h-full text-zinc-400/25 dark:text-white/[0.06] [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden="true">
+    <defs>
+      <pattern id="legaldots" width="22" height="22" patternUnits="userSpaceOnUse">
+        <circle cx="1" cy="1" r="1" fill="currentColor" />
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#legaldots)" />
+  </svg>
+  <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-10 sm:pt-16 pb-10 sm:pb-12">
+    <nav aria-label="Legal documents" class="flux-segmented mb-8 legal-noprint">
+      <a href="/terms" aria-current="{{ kind is 'terms' ? 'page' : 'false' }}">Terms of Service</a>
+      <a href="/privacy" aria-current="{{ kind is 'privacy' ? 'page' : 'false' }}">Privacy Policy</a>
+    </nav>
+    <p class="text-brand-700 dark:text-brand-500 text-[11px] font-semibold uppercase tracking-[0.2em] mb-3">Legal</p>
+    <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.05] text-zinc-900 dark:text-zinc-50 mb-4">{{ title }}</h1>
+    <p class="max-w-2xl text-base sm:text-lg leading-relaxed text-zinc-600 dark:text-zinc-400 mb-6">{{ lead }}</p>
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-zinc-500">
+      <span class="inline-flex items-center gap-1.5"><IconCalendar class="w-4 h-4" /> Effective {{ effective }}</span>
+      <span class="inline-flex items-center gap-1.5"><IconClock class="w-4 h-4" /> {{ readTime }}</span>
+      <button type="button" onclick="{{ print() }}" class="legal-noprint inline-flex items-center gap-1.5 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"><IconPrinter class="w-4 h-4" /> Print or save as PDF</button>
+    </div>
+  </div>
+</div>

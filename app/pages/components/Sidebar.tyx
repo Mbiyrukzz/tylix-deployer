@@ -263,7 +263,12 @@ onMount
 
 template
 <div class="contents">
-<aside aria-label="Main" class="flux-sidebar hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 border-r border-line">
+<!--
+  The whole column scrolls, not just the links: on a short screen the
+  footer (Documentation, status, account) flows below the last section
+  instead of sitting on top of it and hiding it (Flux admin, say).
+-->
+<aside aria-label="Main" class="flux-sidebar hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 border-r border-line overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar">
 
   <div class="h-16 shrink-0 flex items-center gap-3 px-4">
     <a href="/dashboard" class="flex items-center gap-3 min-w-0 rounded-xl" title="Tylix Flux">
@@ -283,7 +288,7 @@ template
     </button>
   </div>
 
-  <nav class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pb-3 no-scrollbar">
+  <nav class="flex-1 px-3 pb-3">
     <p class="flux-sb-section px-3 pt-5 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Workspace</p>
     <div class="flex flex-col gap-0.5">
       <a href="/dashboard" title="Overview" aria-current="{{ cur('overview') }}" class="{{ itemCls('overview') }}">

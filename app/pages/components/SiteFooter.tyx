@@ -3,6 +3,14 @@ component SiteFooter
 uses
   Auth
 
+action
+  // No "Read the docs" button while you're already reading them. Public
+  // pages are full page loads, so reading the URL once is enough.
+  onDocs() {
+    const p = window.location.pathname
+    return p is "/docs" or p.startsWith("/docs/")
+  }
+
 template
 <footer class="site-footer relative overflow-hidden border-t border-line bg-page transition-colors">
   <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 pb-8">
@@ -32,7 +40,9 @@ template
           <a href="/register" class="inline-flex text-sm font-semibold bg-brand-500 text-white rounded-full px-6 py-2.5 hover:bg-brand-400 transition-colors">Start free trial</a>
 {{/if}}
 {{/if}}
+{{#if not onDocs()}}
           <a href="/docs" class="inline-flex text-sm text-zinc-700 dark:text-zinc-200 border border-stone-300 dark:border-white/15 rounded-full px-6 py-2.5 hover:bg-white dark:hover:bg-white/5 transition-colors">Read the docs</a>
+{{/if}}
         </div>
       </div>
     </div>
