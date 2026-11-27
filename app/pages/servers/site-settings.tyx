@@ -56,6 +56,7 @@ state
   nginxMessage: ""
   nginxLineNums: "1"
   nginxLineCount: 1
+  repoMessage: ""
 
 action
   global(name) {
@@ -164,6 +165,17 @@ action
         ])
       }
     ].filter((g) => g.rows.length > 0)
+  }
+
+  // SiteRepository changed (or removed) the repository: refresh the details.
+  // Updated in place: a new site object would remount SiteRepository and lose its message.
+  sourceChanged(data) {
+    this.repoMessage = data.notice or ""
+    const site = this.site
+    site.source_control_id = data.source_control_id
+    site.repository = data.repository
+    site.branch = data.branch
+    this.describe(site)
   }
 
   tileFor(group) {
@@ -784,6 +796,12 @@ template
             </section>
 {{/each}}
           </div>
+
+{{#if site.status is "ready"}}
+{{#if site.type is not "wordpress"}}
+          <SiteRepository site="{{ site }}" message="{{ repoMessage }}" onChanged="{{ sourceChanged }}" />
+{{/if}}
+{{/if}}
 
           <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">

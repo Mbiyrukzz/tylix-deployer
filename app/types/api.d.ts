@@ -1613,6 +1613,13 @@ export interface ApiRoutes {
     response: unknown
     auth: true
   }
+  "PUT /api/sites/:id/source": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
   "GET /api/sites/:id/ssl": {
     params: { id: string | number }
     query: Record<string, string | number | boolean | undefined>
@@ -2233,6 +2240,7 @@ export interface RouteClient {
       store(params: ApiRoutes["POST /api/sites/:id/redirects"]['params'], body?: ApiRoutes["POST /api/sites/:id/redirects"]['body'], options?: RouteOptions<ApiRoutes["POST /api/sites/:id/redirects"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/sites/:id/redirects"]['response']>>
       destroy(params: ApiRoutes["DELETE /api/sites/:id/redirects/:redirectId"]['params'], options?: RouteOptions<ApiRoutes["DELETE /api/sites/:id/redirects/:redirectId"]['query']>): Promise<ApiResult<ApiRoutes["DELETE /api/sites/:id/redirects/:redirectId"]['response']>>
     }
+    source(params: ApiRoutes["PUT /api/sites/:id/source"]['params'], body?: ApiRoutes["PUT /api/sites/:id/source"]['body'], options?: RouteOptions<ApiRoutes["PUT /api/sites/:id/source"]['query']>): Promise<ApiResult<ApiRoutes["PUT /api/sites/:id/source"]['response']>>
     ssl: {
       index(params: ApiRoutes["GET /api/sites/:id/ssl"]['params'], options?: RouteOptions<ApiRoutes["GET /api/sites/:id/ssl"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/sites/:id/ssl"]['response']>>
       store(params: ApiRoutes["POST /api/sites/:id/ssl"]['params'], body?: ApiRoutes["POST /api/sites/:id/ssl"]['body'], options?: RouteOptions<ApiRoutes["POST /api/sites/:id/ssl"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/sites/:id/ssl"]['response']>>

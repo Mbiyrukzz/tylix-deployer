@@ -1,0 +1,238 @@
+component SiteRepository
+
+props
+  site: Object
+  onChanged: Function
+  message: String
+
+uses
+  Billing
+  TwoFactor
+
+state
+  editing: false
+  choice: null
+  saving: false
+  error: ""
+  needsReset: ""
+  resetOk: false
+  codeOpen: false
+  code: ""
+  codeError: ""
+  log: ""
+  askingDisconnect: false
+
+action
+  start() {
+    this.editing = true
+    this.choice = null
+    this.error = ""
+    this.needsReset = ""
+    this.resetOk = false
+    this.log = ""
+  }
+
+  stop() {
+    this.editing = false
+    this.choice = null
+    this.error = ""
+    this.needsReset = ""
+    this.resetOk = false
+    this.codeOpen = false
+    this.code = ""
+    this.codeError = ""
+    TwoFactor.reset()
+  }
+
+  picked(value) {
+    this.choice = value
+    this.needsReset = ""
+    this.resetOk = false
+    this.error = ""
+  }
+
+  ready() {
+    const c = this.choice
+    return Boolean(c and c.source_control_id and c.repository and c.branch)
+  }
+
+  async save() {
+    if Billing.locked or this.saving or not this.ready() {
+      return null
+    }
+    if this.needsReset and not this.resetOk {
+      this.error = "Tick the box to let Flux match the folder to the branch, or pick another branch."
+      return null
+    }
+
+    this.saving = true
+    this.error = ""
+    this.codeError = ""
+    this.log = ""
+
+    const body = {
+      source_control_id: this.choice.source_control_id,
+      repository: this.choice.repository,
+      branch: this.choice.branch,
+      reset: Boolean(this.needsReset and this.resetOk),
+      code: this.code.trim()
+    }
+    const result = await useApi("/api/sites/" + this.site.id + "/source", { method: "PUT", body: body })
+    this.saving = false
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      const notice = result.data.commit ? "Connected. The folder is at " + result.data.commit.slice(0, 7) + (result.data.message ? " (" + result.data.message + ")" : "") + ". Deploy to update it." : "Connected."
+      this.stop()
+      this.onChanged({ ...result.data, notice: notice })
+      return null
+    }
+
+    if result.status is 403 and result.data?.two_factor_required {
+      TwoFactor.apply(result.data.methods or [])
+      this.codeOpen = true
+      this.codeError = this.code.trim() ? "" : "Enter a verification code to change the repository."
+      if TwoFactor.sms and not TwoFactor.totp {
+        await TwoFactor.sendCode()
+      }
+      return null
+    }
+
+    const errors = result.data?.errors
+    if errors and errors.code {
+      this.codeOpen = true
+      this.codeError = errors.code[0]
+      return null
+    }
+
+    if result.status is 409 and result.data?.needs_reset {
+      // The amber box explains it and asks; no separate error line.
+      this.needsReset = result.data.needs_reset
+      return null
+    }
+    this.error = result.data?.error or "Couldn't connect the repository."
+    this.log = result.data?.log or ""
+  }
+
+  askDisconnect() {
+    this.askingDisconnect = true
+  }
+
+  keepConnected() {
+    this.askingDisconnect = false
+  }
+
+  async disconnect() {
+    if Billing.locked or this.saving {
+      return null
+    }
+    this.saving = true
+    const result = await useApi("/api/sites/" + this.site.id + "/source", { method: "PUT", body: { source_control_id: 0 } })
+    this.saving = false
+    this.askingDisconnect = false
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if result.ok {
+      this.onChanged({ ...result.data, notice: "Disconnected. Flux won't deploy this site until a repository is connected again." })
+    } else {
+      this.error = result.data?.error or "Couldn't disconnect the repository."
+    }
+  }
+
+template
+  <section id="repository" class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div class="min-w-0">
+        <div class="flex items-center gap-3 mb-1.5">
+          <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
+          <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Repository</h2>
+        </div>
+{{#if site.repository}}
+        <p class="text-slate-500 text-sm">Deploys pull <span class="font-mono text-slate-800 dark:text-slate-200 break-all">{{ site.repository }}</span> on <span class="font-mono text-slate-800 dark:text-slate-200 break-all">{{ site.branch }}</span>.</p>
+{{/if}}
+{{#if not site.repository}}
+        <p class="text-slate-500 text-sm">Not connected, so Flux can't deploy this site. Connect it to one of your GitHub or GitLab repositories.</p>
+{{/if}}
+      </div>
+{{#if not editing}}
+{{#if not Billing.locked}}
+      <div class="flex flex-wrap gap-2 shrink-0">
+        <button onclick="{{ start() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 hover:bg-brand-400 transition-colors">{{ site.repository ? "Change repository" : "Connect repository" }}</button>
+{{#if site.repository}}
+{{#if not askingDisconnect}}
+        <button onclick="{{ askDisconnect() }}" class="text-sm text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Disconnect</button>
+{{/if}}
+{{/if}}
+      </div>
+{{/if}}
+{{/if}}
+    </div>
+
+{{#if askingDisconnect}}
+    <div class="mt-4 rounded-xl border border-line bg-sunken p-4">
+      <p class="text-slate-700 dark:text-slate-300 text-sm mb-3">Stop deploying this site from {{ site.repository }}? Nothing on the server changes.</p>
+      <div class="flex flex-wrap gap-2">
+        <button disabled="{{ saving }}" onclick="{{ disconnect() }}" class="text-sm text-white bg-rose-600 hover:bg-rose-500 rounded-full px-4 py-2 transition-colors disabled:opacity-50">{{ saving ? "Disconnecting…" : "Disconnect" }}</button>
+        <button onclick="{{ keepConnected() }}" class="text-sm text-slate-600 dark:text-slate-300 px-3 py-2">Keep it</button>
+      </div>
+    </div>
+{{/if}}
+
+{{#if message and not editing}}
+    <p role="status" class="mt-4 text-emerald-700 dark:text-emerald-400 text-sm break-words">{{ message }}</p>
+{{/if}}
+
+{{#if editing}}
+    <div class="mt-5 max-w-xl">
+      <RepositoryPicker onChange="{{ picked }}" noneLabel="Choose a connection" />
+
+      <p class="text-slate-500 text-xs mt-3 leading-relaxed">Flux points the site folder's git checkout at this repository and checks that the connection can read it. Untracked files (like .env, uploads and storage) are never touched.</p>
+
+{{#if needsReset}}
+      <div class="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <p class="text-amber-800 dark:text-amber-300 text-sm leading-relaxed">{{ needsReset is "no_git" ? "The site folder isn't a git checkout yet." : "The code in the folder isn't part of this branch, so a deploy couldn't fast-forward it." }}</p>
+        <label class="mt-3 flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200 cursor-pointer">
+          <input type="checkbox" checked="{{ resetOk }}" onchange="{{ resetOk = $event.target.checked }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
+          <span>Match the folder to the latest commit of {{ choice ? choice.branch : "the branch" }} now. Files tracked by git take that version (files only the old code tracked are removed); untracked files like .env and uploads stay.</span>
+        </label>
+      </div>
+{{/if}}
+
+{{#if codeOpen}}
+      <div class="mt-4 rounded-xl border border-line bg-sunken p-4 max-w-sm">
+        <label for="repo-step-up-code" class="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5">Verification code</label>
+        <input id="repo-step-up-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" value="{{ code }}" oninput="{{ code = $event.target.value }}" class="w-full rounded-lg border border-line-strong bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center text-lg font-mono tracking-[0.3em] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500" />
+        <p class="text-slate-500 text-xs mt-2">{{ TwoFactor.totp ? "Enter a code from your authenticator app, or a recovery code." : "Enter the code texted to " + TwoFactor.smsHint + "." }}</p>
+{{#if TwoFactor.notice}}
+        <p role="status" class="text-brand-700 dark:text-brand-500 text-xs mt-2">{{ TwoFactor.notice }}</p>
+{{/if}}
+{{#if codeError}}
+        <p role="alert" class="text-rose-500 text-xs mt-2">{{ codeError }}</p>
+{{/if}}
+{{#if TwoFactor.sms}}
+        <button disabled="{{ TwoFactor.sending }}" onclick="{{ TwoFactor.sendCode() }}" class="mt-3 text-xs text-slate-600 dark:text-slate-300 border border-line rounded-full px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">{{ TwoFactor.sending ? "Sending…" : "Text me a code" }}</button>
+{{/if}}
+      </div>
+{{/if}}
+
+{{#if error}}
+      <p role="alert" class="mt-4 text-rose-500 text-sm break-words">{{ error }}</p>
+{{/if}}
+{{#if log}}
+      <div class="mt-2 max-h-40 overflow-auto rounded-lg bg-zinc-950 text-zinc-300 text-xs font-mono p-3 whitespace-pre-wrap [overflow-wrap:anywhere]">{{ log }}</div>
+{{/if}}
+
+      <div class="mt-5 flex flex-wrap items-center gap-3">
+        <button disabled="{{ saving or not ready() }}" onclick="{{ save() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 hover:bg-brand-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{{ saving ? "Connecting…" : "Connect" }}</button>
+        <button onclick="{{ stop() }}" class="text-sm text-slate-600 dark:text-slate-300 px-3 py-2">Cancel</button>
+      </div>
+    </div>
+{{/if}}
+  </section>

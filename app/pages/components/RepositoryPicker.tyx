@@ -2,6 +2,7 @@ component RepositoryPicker
 
 props
   onChange: Function
+  noneLabel: String
 
 state
   connections: []
@@ -116,12 +117,12 @@ template
         onchange="{{ pickConnection($event.target.value) }}"
         class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
       >
-        <option value="">None (empty site)</option>
+        <option value="">{{ noneLabel or "None (empty site)" }}</option>
 {{#each c in connections}}
-{{#if c.id is connectionId}}
+{{#if '' + c.id is connectionId}}
         <option value="{{ c.id }}" selected>{{ c.label }} ({{ c.kind }}{{ c.username ? ' / ' + c.username : '' }})</option>
 {{/if}}
-{{#if c.id is not connectionId}}
+{{#if '' + c.id is not connectionId}}
         <option value="{{ c.id }}">{{ c.label }} ({{ c.kind }}{{ c.username ? ' / ' + c.username : '' }})</option>
 {{/if}}
 {{/each}}

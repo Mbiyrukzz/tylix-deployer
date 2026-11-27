@@ -149,6 +149,15 @@ you tick and reinstalls nothing. Code: `app/services/ServerImport.ts`, routes
   Supervisor files go to `/etc/supervisor/tylix-backups`). Their file
   builders are shared with the Workers and Cron pages
   (`app/services/WorkerFiles.ts`, `CronFiles.ts`).
+- **Reconnecting a repository**: Site → Settings → Repository (also linked
+  from the Deploy page when a site has none). `PUT /api/sites/:id/source`
+  (`app/services/SiteSource.ts`) points the checkout's origin at the repo over
+  HTTPS, fetches the branch with the team's token (proving access) and
+  switches branch only when nothing would be lost. A folder with no checkout,
+  or code that isn't on that branch, needs an explicit "match the folder"
+  (`git checkout -f -B`; untracked files such as `.env` and uploads stay).
+  Any failure restores the old origin. Needs a 2FA code when two-factor is
+  on; `source_control_id: 0` disconnects without touching the server.
 - **Moving off Vito**: import, deploy each site once from Flux, then shut the
   Vito panel down. Don't delete the server or its sites inside Vito: that can
   remove files, deploy keys or (for provider servers) the VPS itself.

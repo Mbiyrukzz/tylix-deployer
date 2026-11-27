@@ -1167,6 +1167,9 @@ template
 {{#if not canDeploy}}
           <div class="rounded-2xl border border-line bg-panel p-8 shadow-sm dark:shadow-none">
             <p class="text-slate-900 dark:text-slate-100 text-sm">This site has no repository, so there is nothing to deploy.</p>
+{{#if site.type is not "wordpress"}}
+            <a href="{{ '/servers/site-settings?id=' + siteId + '#repository' }}" class="inline-flex mt-4 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 hover:bg-brand-400 transition-colors">Connect a repository</a>
+{{/if}}
           </div>
 {{/if}}
 
