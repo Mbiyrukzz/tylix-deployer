@@ -47,6 +47,10 @@ interface TaskRow {
     step: string;
     status: string;
     error: string;
+    log?: string | null;
+    step_no?: number | null;
+    step_total?: number | null;
+    created_at?: string;
     updated_at: string;
     [key: string]: unknown;
 }
@@ -74,13 +78,36 @@ async function latestTask(serverId: number): Promise<TaskRow | null> {
     return mine[0] ?? null;
 }
 
+function ageMs(raw: unknown): number {
+    // Assumes timestamps are UTC (tylix.config.ts sets TZ=UTC).
+    const text = String(raw ?? "");
+    const ms = Date.parse(text.includes("T") || text.endsWith("Z") ? text : text.replace(" ", "T") + "Z");
+    return Number.isNaN(ms) ? 0 : Date.now() - ms;
+}
+
 function isActive(t: TaskRow | null): boolean {
     if (!t || (t.status !== "pending" && t.status !== "running")) return false;
     // A crashed worker must not lock the server forever.
-    // Assumes updated_at is UTC; adjust if yours is local time.
-    const raw = String(t.updated_at);
-    const ms = Date.parse(raw.includes("T") || raw.endsWith("Z") ? raw : raw.replace(" ", "T") + "Z");
-    return Number.isNaN(ms) ? true : Date.now() - ms < STALE_MS;
+    return ageMs(t.updated_at) < STALE_MS;
+}
+
+const STALLED =
+    "The install stopped reporting progress for 30 minutes, so it was marked failed. " +
+    "The job worker may have restarted or lost the connection. Run it again; finished steps are skipped.";
+
+/**
+ * A task that is still "running" or "pending" with no progress for 30 minutes
+ * is dead (the worker crashed or restarted). Mark it failed with a reason, so
+ * the page stops showing an install that will never finish.
+ */
+async function settleStale(t: TaskRow | null): Promise<TaskRow | null> {
+    if (!t || (t.status !== "pending" && t.status !== "running") || isActive(t)) return t;
+    try {
+        await ServerTask.update(t.id, { status: "failed", error: STALLED });
+    } catch {
+        // Shown as failed below either way.
+    }
+    return { ...t, status: "failed", error: STALLED };
 }
 
 function present(t: TaskRow | null) {
@@ -91,7 +118,21 @@ function present(t: TaskRow | null) {
     } catch {
         packages = [];
     }
-    return { id: t.id, status: t.status, step: t.step, error: t.error, packages };
+    // Queued for more than a minute: the job worker isn't picking jobs up.
+    const waiting = t.status === "pending" && ageMs(t.created_at ?? t.updated_at) > 60_000;
+    return {
+        id: t.id,
+        status: t.status,
+        step: t.step,
+        error: t.error,
+        packages,
+        log: t.log ?? "",
+        step_no: Number(t.step_no ?? 0),
+        step_total: Number(t.step_total ?? 0),
+        created_at: t.created_at ?? null,
+        updated_at: t.updated_at ?? null,
+        waiting_for_worker: waiting,
+    };
 }
 
 const BUSY = "An install is already running on this server. Wait for it to finish.";
@@ -217,12 +258,13 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
                 return res.json({ error: error instanceof Error ? error.message : "Couldn't reach the server." });
             }
 
-            const task = await latestTask(server.id);
+            const task = await settleStale(await latestTask(server.id));
             return res.json({
                 packages: PACKAGES.map((p) => ({
                     id: p.id,
                     label: p.label,
                     group: p.group,
+                    needs: p.needs.filter((n) => n !== "base"),
                     installed: installed.includes(p.id),
                 })),
                 task: present(task),
@@ -241,7 +283,7 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
                 res.status(404);
                 return res.json({ error: "Server not found." });
             }
-            return res.json({ task: present(await latestTask(server.id)) });
+            return res.json({ task: present(await settleStale(await latestTask(server.id))) });
         }),
     );
 

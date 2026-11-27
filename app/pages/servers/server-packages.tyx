@@ -1,6 +1,6 @@
 page ServerPackages
 
-import { IconArrowLeft } from "tylix-icons"
+import { IconChevronRight, IconRefresh, IconArrowPath, IconExclamationTriangle, IconXCircle, IconCheckCircle, IconInformationCircle, IconTerminal, IconCheck, IconCopy, IconSearch, IconX } from "tylix-icons"
 
 title "Packages"
 
@@ -53,6 +53,18 @@ state
   codeTitle: ""
   codeBusy: false
   pending: null
+  showLog: false
+  logCopied: false
+  logLines: []
+  logAtBottom: true
+  taskTitle: ""
+  taskReason: ""
+  taskHint: ""
+  taskWaiting: false
+  taskDone: false
+  progressStyle: "width: 0%"
+  stepText: ""
+  extrasText: ""
 
 action
   global(name) {
@@ -79,7 +91,7 @@ action
 
   tone(enabled) {
     const on = "text-sm font-semibold rounded-full py-2.5 transition-all bg-brand-500 text-white shadow-sm hover:bg-brand-400"
-    const off = "text-sm font-semibold rounded-full py-2.5 transition-all bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 cursor-not-allowed"
+    const off = "text-sm font-semibold rounded-full py-2.5 transition-all bg-zinc-200 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed"
     return enabled ? on : off
   }
 
@@ -109,33 +121,44 @@ action
     }
 
     this.installLabel = label
-    this.installCls = "w-full px-5 " + this.tone(canInstall)
-    this.installBarCls = "min-h-[48px] px-6 " + this.tone(canInstall)
+    this.installCls = "w-full h-11 px-5 " + this.tone(canInstall)
+    this.installBarCls = "h-11 px-5 " + this.tone(canInstall)
     this.upgradeLabel = upLabel
-    this.upgradeCls = "shrink-0 w-full sm:w-auto px-5 " + this.tone(canUpgrade)
+    this.upgradeCls = canUpgrade
+      ? "inline-flex items-center gap-2 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+      : "inline-flex items-center gap-2 h-9 text-sm font-medium text-zinc-400 border border-line rounded-full px-4 cursor-not-allowed"
   }
 
+  // One package row: a checkbox look, its state tag, and what it pulls in.
   itemFor(p, checked) {
-    const base = "min-h-[52px] w-full flex items-center justify-between gap-3 text-left rounded-xl border px-3.5 py-2.5 text-sm transition-colors "
-    const brandTag = "shrink-0 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500"
-    let cls = base + "border-line text-slate-700 dark:text-slate-300 hover:border-brand-500/40"
-    let tag = "Add"
-    let tagCls = "shrink-0 text-[11px] uppercase tracking-wider text-slate-500"
-    let dot = "w-2 h-2 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700"
+    const base = "group w-full min-h-[52px] flex items-center gap-3 text-left px-4 py-3 transition-colors "
+    let cls = base + "hover:bg-zinc-50 dark:hover:bg-white/[0.03]"
+    let box = "w-[18px] h-[18px] shrink-0 rounded-[5px] border-2 border-zinc-300 dark:border-zinc-600 flex items-center justify-center text-white text-[11px] font-bold group-hover:border-brand-500/60"
+    let mark = ""
+    let tag = ""
+    let tagCls = ""
 
     if p.installed {
-      cls = base + "border-line text-slate-900 dark:text-slate-100 cursor-default"
+      cls = base + "cursor-default"
+      box = "w-[18px] h-[18px] shrink-0 rounded-[5px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[11px] font-bold"
+      mark = "✓"
       tag = "Installed"
-      tagCls = brandTag
-      dot = "w-2 h-2 shrink-0 rounded-full bg-brand-500"
+      tagCls = "shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
     } else if checked {
-      cls = base + "border-brand-500 bg-brand-500/5 text-slate-900 dark:text-slate-100"
+      cls = base + "bg-brand-500/[0.05]"
+      box = "w-[18px] h-[18px] shrink-0 rounded-[5px] bg-brand-500 border-2 border-brand-500 flex items-center justify-center text-white text-[11px] font-bold"
+      mark = "✓"
       tag = "Selected"
-      tagCls = brandTag
-      dot = "w-2 h-2 shrink-0 rounded-full bg-brand-500"
+      tagCls = "shrink-0 rounded-full bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-400"
     }
 
-    return { id: p.id, label: p.label, cls: cls, tag: tag, tagCls: tagCls, dot: dot }
+    const needs = (p.needs or []).map((id) => this.labelOf(id)).filter((x) => x)
+    return { id: p.id, label: p.label, installed: p.installed, cls: cls, box: box, mark: mark, tag: tag, tagCls: tagCls, note: needs.length > 0 ? "Needs " + needs.join(", ") : "" }
+  }
+
+  labelOf(id) {
+    const hit = this.catalog.find((c) => c.id is id)
+    return hit ? hit.label : ""
   }
 
   rebuild() {
@@ -164,8 +187,7 @@ action
     this.installedCount = this.catalog.filter((p) => p.installed).length
     this.percent = this.totalCount is 0 ? 0 : Math.round((this.installedCount / this.totalCount) * 100)
 
-    const presetBase = "block w-full text-left rounded-xl border px-4 py-3.5 transition-colors "
-    const brandTag = "shrink-0 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500"
+    const presetBase = "group relative block w-full text-left rounded-xl border px-4 py-3.5 transition-colors "
 
     this.presetRows = this.presetDefs().map((d) => {
       const known = d.ids.filter((id) => this.catalog.some((c) => c.id is id))
@@ -174,22 +196,32 @@ action
       const chosen = missing.length > 0 and missing.every((id) => this.selected.indexOf(id) >= 0)
       const pct = known.length is 0 ? 0 : Math.round(((known.length - missing.length) / known.length) * 100)
 
-      let cls = presetBase + "border-line hover:border-brand-500/40"
+      let cls = presetBase + "border-line bg-panel hover:border-zinc-400 dark:hover:border-zinc-600"
       let tag = missing.length + " to add"
-      let tagCls = "shrink-0 text-[11px] uppercase tracking-wider text-slate-500"
+      let tagCls = "shrink-0 text-[11px] font-medium text-zinc-500"
+      let barCls = "block h-full rounded-full bg-zinc-400 dark:bg-zinc-500 transition-all"
 
       if done {
-        cls = presetBase + "border-line cursor-default"
-        tag = "Ready"
-        tagCls = brandTag
+        cls = presetBase + "border-line bg-panel cursor-default"
+        tag = "✓ Ready"
+        tagCls = "shrink-0 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
+        barCls = "block h-full rounded-full bg-emerald-500 transition-all"
       } else if chosen {
-        cls = presetBase + "border-brand-500 bg-brand-500/5"
+        cls = presetBase + "border-brand-500 bg-brand-500/[0.05] ring-1 ring-brand-500/40"
         tag = "Selected"
-        tagCls = brandTag
+        tagCls = "shrink-0 text-[11px] font-semibold text-brand-700 dark:text-brand-400"
+        barCls = "block h-full rounded-full bg-brand-500 transition-all"
       }
 
-      return Object.assign({}, d, { cls: cls, tag: tag, tagCls: tagCls, bar: "width: " + pct + "%" })
+      return Object.assign({}, d, { cls: cls, tag: tag, tagCls: tagCls, barCls: barCls, bar: "width: " + pct + "%" })
     })
+
+    // Prerequisites the install adds on its own (pm2 needs Node.js, ...).
+    const depIds = this.picked.flatMap((p) => p.needs or [])
+    const extra = this.catalog
+      .filter((c) => depIds.indexOf(c.id) >= 0 and not c.installed and this.selected.indexOf(c.id) < 0)
+      .map((c) => c.label)
+    this.extrasText = extra.length > 0 ? "Also installs " + extra.join(", ") + "." : ""
 
     this.refreshActions()
   }
@@ -200,48 +232,154 @@ action
   }
 
   setTask(t) {
+    const wasBusy = this.busy
     this.task = t
     this.taskText = ""
     this.taskStep = ""
     this.taskFailed = false
+    this.taskDone = false
+    this.taskWaiting = false
     this.taskLabel = "None yet"
+    this.taskTitle = ""
+    this.taskReason = ""
+    this.taskHint = ""
     this.taskCls = ""
     this.taskDot = ""
+    this.stepText = ""
+    this.progressStyle = "width: 0%"
 
     if t {
-      this.taskText = t.packages.indexOf("upgrade") >= 0 ? "Update of installed packages" : t.packages.join(", ")
+      const upgrading = t.packages.indexOf("upgrade") >= 0
+      const names = t.packages.map((id) => this.labelOf(id) or id).join(", ")
+      this.taskText = upgrading ? "Update of installed packages" : names
       this.taskStep = t.step or ""
       this.taskFailed = t.status is "failed"
+      this.taskDone = t.status is "done"
+      this.taskWaiting = Boolean(t.waiting_for_worker)
 
-      const base = "inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider "
+      const total = Number(t.step_total or 0)
+      const no = Number(t.step_no or 0)
+      if total > 0 {
+        const shown = this.taskDone ? total : Math.max(0, this.taskFailed ? no - 1 : no - 0.5)
+        this.progressStyle = "width: " + Math.max(4, Math.round((shown / total) * 100)) + "%"
+        this.stepText = this.taskDone ? total + " of " + total + " steps" : "Step " + Math.max(no, 1) + " of " + total + (t.step ? " · " + t.step : "")
+      } else if t.step {
+        this.stepText = t.step
+      }
+
+      // The reason is the first line; a hint for common causes may follow.
+      const nl = String.fromCharCode(10)
+      const parts = String(t.error or "").split(nl)
+      this.taskReason = parts[0] or ""
+      this.taskHint = parts.slice(1).join(" ").trim()
+
+      const base = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold "
       const dot = "w-1.5 h-1.5 rounded-full "
 
       if t.status is "done" {
         this.taskLabel = "Done"
-        this.taskCls = base + "text-emerald-700 dark:text-emerald-500"
+        this.taskTitle = upgrading ? "Packages updated" : "Installed " + names
+        this.taskCls = base + "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
         this.taskDot = dot + "bg-emerald-500"
       } else if t.status is "failed" {
         this.taskLabel = "Failed"
-        this.taskCls = base + "text-rose-600 dark:text-rose-500"
+        this.taskTitle = upgrading ? "The update failed" : "Couldn't install " + names
+        this.taskCls = base + "bg-rose-500/10 text-rose-600 dark:text-rose-400"
         this.taskDot = dot + "bg-rose-500"
       } else if t.status is "running" {
-        this.taskLabel = "Working"
-        this.taskCls = base + "text-amber-600 dark:text-amber-500"
+        this.taskLabel = "Installing"
+        this.taskTitle = upgrading ? "Updating installed packages" : "Installing " + names
+        this.taskCls = base + "bg-amber-500/10 text-amber-700 dark:text-amber-400"
         this.taskDot = dot + "bg-amber-500 animate-pulse"
       } else {
         this.taskLabel = "Queued"
-        this.taskCls = base + "text-amber-600 dark:text-amber-500"
-        this.taskDot = dot + "bg-amber-500 animate-pulse"
+        this.taskTitle = upgrading ? "Update queued" : "Queued: " + names
+        this.taskCls = base + "bg-sky-500/10 text-sky-700 dark:text-sky-400"
+        this.taskDot = dot + "bg-sky-500 animate-pulse"
       }
+
+      this.setLog(String(t.log or ""))
+    } else {
+      this.logLines = []
     }
 
-    if t and (t.status is "running" or t.status is "pending") {
-      this.busy = true
-    } else {
-      this.busy = false
+    this.busy = Boolean(t and (t.status is "running" or t.status is "pending"))
+
+    // Follow the output while it runs; open it on a failure so the cause is in view.
+    if this.busy and not wasBusy {
+      this.showLog = true
+      this.logAtBottom = true
+    }
+    if this.taskFailed and wasBusy {
+      this.showLog = true
     }
 
     this.refreshActions()
+  }
+
+  // The output, one coloured row per line (the last 600 lines).
+  setLog(raw) {
+    const nl = String.fromCharCode(10)
+    const all = raw ? raw.split(nl) : []
+    const start = Math.max(0, all.length - 600)
+    this.logLines = all.slice(start).map((line, i) => {
+      const t = line.trim()
+      let cls = "text-zinc-300"
+      if t.startsWith("==>") {
+        cls = "text-sky-300 font-semibold pt-2"
+      } else if t.startsWith("✓") {
+        cls = "text-emerald-300"
+      } else if t.startsWith("✕") or t.startsWith("E:") or t.toLowerCase().startsWith("error") {
+        cls = "text-rose-300 bg-rose-500/10"
+      } else if t.startsWith("W:") or t.toLowerCase().includes("warning") {
+        cls = "text-amber-300"
+      } else if t.startsWith("$") or t.startsWith("Already installed") {
+        cls = "text-zinc-400"
+      }
+      return { n: start + i + 1, text: line is "" ? " " : line, cls: cls }
+    })
+    if this.showLog and this.logAtBottom {
+      window.setTimeout(() => this.scrollLogEnd(), 30)
+    }
+  }
+
+  clearCopied() {
+    this.logCopied = false
+  }
+
+  toggleLog() {
+    this.showLog = not this.showLog
+    if this.showLog {
+      this.logAtBottom = true
+      window.setTimeout(() => this.scrollLogEnd(), 30)
+    }
+  }
+
+  scrollLogEnd() {
+    const el = document.getElementById("pkg-log")
+    if el {
+      el.scrollTop = el.scrollHeight
+    }
+  }
+
+  onLogScroll() {
+    const el = document.getElementById("pkg-log")
+    if el {
+      this.logAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40
+    }
+  }
+
+  async copyLog() {
+    if not this.task {
+      return null
+    }
+    try {
+      await navigator.clipboard.writeText(String(this.task.log or "") + (this.task.error ? String.fromCharCode(10) + this.task.error : ""))
+      this.logCopied = true
+      window.setTimeout(() => this.clearCopied(), 1600)
+    } catch (err) {
+      return null
+    }
   }
 
   toggle(id) {
@@ -556,7 +694,7 @@ onMount
     if oldTimer {
       window.clearInterval(oldTimer)
     }
-    this.setGlobal("tylixPackagesTimer", window.setInterval(() => this.pollTask(), 3000))
+    this.setGlobal("tylixPackagesTimer", window.setInterval(() => this.pollTask(), 2000))
   }
 
 template
@@ -564,216 +702,259 @@ template
   <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
     <ServerSidebar active="packages" serverId="{{ serverId }}" />
     <div class="min-w-0">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
+    <div class="{{ selected.length > 0 ? 'max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-28 lg:pb-10' : 'max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10' }}">
 
-      <a href="{{ '/servers/server-detail?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-5 py-1">
-        <IconArrowLeft class="w-4 h-4" /> {{ serverName }}
-      </a>
+      <header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+        <div class="min-w-0">
+          <nav aria-label="Breadcrumb" class="flex items-center gap-1 min-w-0 text-[13px] text-zinc-500 mb-2">
+            <a href="/servers" class="shrink-0 rounded-md hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Servers</a>
+            <IconChevronRight class="w-3.5 h-3.5 shrink-0 text-zinc-400 dark:text-zinc-600" />
+            <a href="{{ '/servers/server-detail?id=' + serverId }}" class="min-w-0 truncate rounded-md hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">{{ serverName }}</a>
+          </nav>
+          <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">Packages</h1>
+          <p class="text-zinc-500 text-sm mt-1.5 max-w-2xl leading-relaxed">Install runtimes, databases and tools over SSH. Anything already on the server is detected and marked installed.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button type="button" onclick="{{ loadCatalog() }}" title="Check the server again" class="inline-flex items-center gap-2 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+            <IconRefresh class="w-4 h-4" /> <span class="hidden sm:inline">Re-check</span>
+          </button>
+          <button type="button" onclick="{{ askUpgrade() }}" class="{{ upgradeCls }}">
+            <IconArrowPath class="w-4 h-4" /> {{ upgradeLabel }}
+          </button>
+        </div>
+      </header>
 
       <LockedBanner />
 
-      <div class="rounded-2xl border border-line bg-panel px-5 sm:px-8 py-8 sm:py-10 mb-5">
-        <span class="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-4 max-w-full">
-          <span class="w-1.5 h-1.5 shrink-0 rounded-full bg-brand-500 animate-pulse"></span>
-          <span class="truncate">Packages on {{ serverName }}</span>
-        </span>
-        <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900 dark:text-slate-100 mb-3">
-          Get the server
-          <br class="hidden sm:block" />
-          <span class="text-brand-500">ready for any stack</span>
-        </h1>
-        <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-xl leading-relaxed">Pick a stack or choose packages one by one. Anything already on the server is marked installed, and installs run over SSH one step at a time.</p>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
-          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Installed</p>
-          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ installedCount }} <span class="text-base font-medium text-slate-500">of {{ totalCount }}</span></p>
-          <div class="mt-3 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-            <div class="h-1.5 rounded-full bg-brand-500 transition-all" style="width: {{ percent }}%"></div>
+{{#if loadError}}
+      <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] px-4 sm:px-5 py-3.5 mb-6">
+        <div class="flex items-start gap-3 min-w-0">
+          <IconExclamationTriangle class="w-5 h-5 shrink-0 mt-0.5 text-rose-500" />
+          <div class="min-w-0">
+            <p class="text-rose-600 dark:text-rose-400 text-sm font-semibold">Couldn't check what's installed</p>
+            <p class="text-zinc-600 dark:text-zinc-300 text-[13px] break-words">{{ loadError }}</p>
           </div>
         </div>
-        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none min-w-0">
-          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Selected</p>
-          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ selected.length }}</p>
-          <p class="text-slate-500 text-xs mt-3 truncate">{{ pickedText }}</p>
-        </div>
-        <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none min-w-0">
-          <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Last install</p>
-          <p class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">{{ taskLabel }}</p>
-          <p class="text-slate-500 text-xs mt-3 truncate">{{ taskText }}</p>
-        </div>
+        <button type="button" onclick="{{ loadCatalog() }}" class="shrink-0 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">Try again</button>
       </div>
+{{/if}}
 
-{{#if loadError}}
-      <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 mb-6">
-        <p class="text-rose-600 dark:text-rose-400 text-sm break-words">{{ loadError }}</p>
-        <button onclick="{{ loadCatalog() }}" class="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Try again</button>
-      </div>
+{{#if task}}
+      <section aria-live="polite" class="{{ taskFailed ? 'rounded-2xl border border-rose-500/40 bg-panel shadow-sm dark:shadow-none overflow-hidden mb-6' : 'rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden mb-6' }}">
+        <div class="px-5 sm:px-6 pt-5 pb-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0 flex items-start gap-3">
+              <span class="{{ taskFailed ? 'w-10 h-10 shrink-0 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center' : (taskDone ? 'w-10 h-10 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center' : 'w-10 h-10 shrink-0 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center') }}">
+{{#if taskFailed}}
+                <IconXCircle class="w-5 h-5" />
+{{/if}}
+{{#if taskDone}}
+                <IconCheckCircle class="w-5 h-5" />
+{{/if}}
+{{#if busy}}
+                <span class="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+{{/if}}
+              </span>
+              <div class="min-w-0">
+                <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.12em]">Last install</p>
+                <h2 class="text-zinc-900 dark:text-zinc-50 text-[15px] sm:text-base font-semibold leading-snug break-words">{{ taskTitle }}</h2>
+              </div>
+            </div>
+            <span class="{{ taskCls }}"><span class="{{ taskDot }}"></span> {{ taskLabel }}</span>
+          </div>
+
+{{#if stepText}}
+          <div class="mt-4">
+            <div class="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+              <div class="{{ taskFailed ? 'h-full rounded-full bg-rose-500 transition-all duration-500' : (taskDone ? 'h-full rounded-full bg-emerald-500 transition-all duration-500' : 'h-full rounded-full bg-brand-500 transition-all duration-500') }}" style="{{ progressStyle }}"></div>
+            </div>
+            <p class="text-zinc-500 text-xs mt-2 break-words">{{ stepText }}</p>
+          </div>
+{{/if}}
+
+{{#if busy}}
+{{#if taskWaiting}}
+          <div class="mt-4 flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3">
+            <IconExclamationTriangle class="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <p class="text-amber-800 dark:text-amber-300 text-[13px] leading-relaxed">Queued for over a minute and nothing has started. The job worker that runs installs (<span class="font-mono">tylix queue:work</span>) may not be running.</p>
+          </div>
+{{/if}}
+{{#if not taskWaiting}}
+          <p class="text-zinc-500 text-xs mt-2">This can take several minutes. You can leave this page; the install keeps running.</p>
+{{/if}}
+{{/if}}
+
+{{#if taskFailed}}
+          <div role="alert" class="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3.5">
+            <p class="text-rose-700 dark:text-rose-300 text-sm font-medium font-mono break-words leading-relaxed">{{ taskReason or "The install failed without a message." }}</p>
+{{#if taskHint}}
+            <p class="mt-2 flex gap-2 text-zinc-700 dark:text-zinc-300 text-[13px] leading-relaxed"><IconInformationCircle class="w-4 h-4 shrink-0 mt-0.5 text-zinc-400" /> <span>{{ taskHint }}</span></p>
+{{/if}}
+          </div>
+{{/if}}
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 px-5 sm:px-6 py-3 border-t border-line bg-sunken">
+          <button type="button" onclick="{{ toggleLog() }}" aria-expanded="{{ showLog ? 'true' : 'false' }}" class="inline-flex items-center gap-2 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 rounded-full px-3 hover:bg-zinc-200/60 dark:hover:bg-white/[0.05] transition-colors">
+            <IconTerminal class="w-4 h-4" /> {{ showLog ? "Hide output" : "Show output" }}
+            <span class="text-zinc-400 text-xs tabular-nums">{{ logLines.length }} lines</span>
+          </button>
+          <div class="flex items-center gap-2">
+{{#if taskFailed}}
+            <button type="button" onclick="{{ retryTask() }}" class="inline-flex items-center gap-1.5 h-9 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-400 rounded-full px-4 shadow-sm transition-colors"><IconArrowPath class="w-4 h-4" /> Retry</button>
+{{/if}}
+          </div>
+        </div>
+
+{{#if showLog}}
+        <div class="relative bg-[#0b0b0c] border-t border-line">
+          <div class="flex items-center justify-between gap-3 px-4 py-2 border-b border-white/[0.06]">
+            <span class="text-zinc-400 text-[11px] font-mono truncate">root@{{ serverName }} · install output</span>
+            <button type="button" onclick="{{ copyLog() }}" class="shrink-0 inline-flex items-center gap-1.5 h-7 rounded-md px-2 text-[11px] font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors">
+{{#if logCopied}}
+              <IconCheck class="w-3.5 h-3.5 text-emerald-400" /> Copied
+{{#else}}
+              <IconCopy class="w-3.5 h-3.5" /> Copy
+{{/if}}
+            </button>
+          </div>
+          <div id="pkg-log" onscroll="{{ onLogScroll() }}" class="max-h-[420px] overflow-auto overscroll-contain py-2 font-mono text-[12px] leading-5">
+{{#if logLines.length is 0}}
+            <p class="px-4 py-2 text-zinc-500">{{ busy ? "Waiting for output…" : "No output was recorded for this install." }}</p>
+{{/if}}
+{{#each l in logLines}}
+            <div class="flex hover:bg-white/[0.03] {{ l.cls }}">
+              <span class="w-12 shrink-0 pr-3 text-right text-zinc-600 tabular-nums select-none">{{ l.n }}</span>
+              <span class="min-w-0 flex-1 pr-4 whitespace-pre-wrap [overflow-wrap:anywhere]">{{ l.text }}</span>
+            </div>
+{{/each}}
+{{#if busy}}
+            <p class="px-4 pt-1 pl-[60px]"><span class="inline-block w-[7px] h-[13px] -mb-[2px] bg-brand-400/80 animate-pulse"></span></p>
+{{/if}}
+          </div>
+        </div>
+{{/if}}
+      </section>
 {{/if}}
 
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
 
-        <div class="min-w-0 space-y-4 sm:space-y-5">
+        <div class="min-w-0 space-y-6">
 
-{{#if task}}
-          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-            <div class="flex items-start justify-between gap-4">
+          <section class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+            <div class="flex flex-wrap items-end justify-between gap-2 px-5 sm:px-6 pt-5 pb-4 border-b border-line">
               <div class="min-w-0">
-                <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Last install</h2>
-                <p class="text-slate-500 text-xs font-mono mt-1 break-words">{{ taskText }}</p>
+                <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">Start from a stack</h2>
+                <p class="text-zinc-500 text-[13px] mt-0.5">Selects everything a stack needs that isn't on the server yet.</p>
               </div>
-              <span class="{{ taskCls }}">
-                <span class="{{ taskDot }}"></span> {{ taskLabel }}
-              </span>
+              <span class="text-zinc-500 text-xs tabular-nums">{{ installedCount }} of {{ totalCount }} packages installed</span>
             </div>
-
-{{#if busy}}
-            <div class="mt-4 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-              <div class="h-1.5 w-1/3 rounded-full bg-brand-500 animate-pulse"></div>
-            </div>
-            <p class="text-slate-500 text-xs mt-3 break-words">{{ taskStep }}</p>
-            <p class="text-slate-500 text-xs mt-1">This can take several minutes. You can leave this page; the install keeps running.</p>
-{{/if}}
-
-{{#if taskFailed}}
-            <div class="mt-4 max-h-40 overflow-auto rounded-lg bg-slate-100 dark:bg-slate-950 border border-line p-3 text-xs text-rose-600 dark:text-rose-400 font-mono whitespace-pre-wrap break-words">{{ task.error }}</div>
-            <div class="mt-4">
-              <button onclick="{{ retryTask() }}" class="w-full sm:w-auto text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Retry</button>
-            </div>
-{{/if}}
-          </section>
-{{/if}}
-
-          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-            <div class="flex items-center gap-3 mb-1">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">1</span>
-              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">What will you host?</h2>
-            </div>
-            <p class="text-slate-500 text-sm mb-4 sm:pl-10">Tap a stack to select everything it needs that isn't on the server yet.</p>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
 {{#each pr in presetRows}}
-              <button onclick="{{ applyPreset(pr.id) }}" class="{{ pr.cls }}">
+              <button type="button" onclick="{{ applyPreset(pr.id) }}" class="{{ pr.cls }}">
                 <span class="flex items-center justify-between gap-3">
-                  <span class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ pr.label }}</span>
+                  <span class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{{ pr.label }}</span>
                   <span class="{{ pr.tagCls }}">{{ pr.tag }}</span>
                 </span>
-                <span class="block text-xs text-slate-500 truncate mt-0.5">{{ pr.note }}</span>
-                <span class="block h-1 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mt-3">
-                  <span class="block h-full rounded-full bg-brand-500 transition-all" style="{{ pr.bar }}"></span>
+                <span class="block text-xs text-zinc-500 truncate mt-0.5">{{ pr.note }}</span>
+                <span class="block h-1 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden mt-3">
+                  <span class="{{ pr.barCls }}" style="{{ pr.bar }}"></span>
                 </span>
               </button>
 {{/each}}
             </div>
           </section>
 
-          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-              <div class="flex items-center gap-3">
-                <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">2</span>
-                <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Or pick packages</h2>
+          <section class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-line">
+              <div class="min-w-0">
+                <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">All packages</h2>
+                <p class="text-zinc-500 text-[13px] mt-0.5">Pick any you need. What they depend on is installed too.</p>
               </div>
-              <input
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                value="{{ query }}"
-                oninput="{{ setQuery($event.target.value) }}"
-                placeholder="Search packages"
-                class="w-full sm:w-56 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
-              />
+              <div class="relative w-full sm:w-64">
+                <IconSearch class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                <input type="search" autocomplete="off" spellcheck="false" value="{{ query }}" oninput="{{ setQuery($event.target.value) }}" placeholder="Search packages" aria-label="Search packages" class="w-full rounded-full border border-line-strong bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm pl-9 pr-4 py-2 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-colors" />
+              </div>
             </div>
 
+            <div class="grid grid-cols-1 xl:grid-cols-2">
 {{#each g in groups}}
-            <div class="mb-5 last:mb-0">
-              <div class="flex items-center justify-between mb-2.5">
-                <h3 class="text-slate-500 text-xs font-semibold uppercase tracking-wider">{{ g.name }}</h3>
-                <span class="text-slate-500 text-[11px]">{{ g.meta }}</span>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="min-w-0 border-b border-line xl:odd:border-r">
+                <div class="flex items-center justify-between gap-2 px-4 sm:px-5 pt-4 pb-1.5">
+                  <h3 class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.12em]">{{ g.name }}</h3>
+                  <span class="text-zinc-400 text-[11px] tabular-nums">{{ g.meta }}</span>
+                </div>
+                <div class="pb-2">
 {{#each r in g.items}}
-                <button onclick="{{ toggle(r.id) }}" class="{{ r.cls }}">
-                  <span class="flex items-center gap-2.5 min-w-0">
-                    <span class="{{ r.dot }}"></span>
-                    <span class="break-words min-w-0">{{ r.label }}</span>
-                  </span>
-                  <span class="{{ r.tagCls }}">{{ r.tag }}</span>
-                </button>
+                  <button type="button" role="checkbox" aria-checked="{{ r.mark ? 'true' : 'false' }}" aria-disabled="{{ r.installed ? 'true' : 'false' }}" onclick="{{ toggle(r.id) }}" class="{{ r.cls }}">
+                    <span class="{{ r.box }}">{{ r.mark }}</span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block text-sm text-zinc-900 dark:text-zinc-100 break-words">{{ r.label }}</span>
+{{#if r.note}}
+                      <span class="block text-[11px] text-zinc-500 truncate">{{ r.note }}</span>
+{{/if}}
+                    </span>
+{{#if r.tag}}
+                    <span class="{{ r.tagCls }}">{{ r.tag }}</span>
+{{/if}}
+                  </button>
 {{/each}}
+                </div>
               </div>
-            </div>
 {{/each}}
+            </div>
 
 {{#if noMatch}}
-            <p class="py-8 text-center text-slate-500 text-sm">No packages match your search.</p>
+            <p class="py-10 text-center text-zinc-500 text-sm">No packages match “{{ query }}”.</p>
 {{/if}}
-          </section>
-
-          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-            <div class="flex items-center gap-3 mb-4">
-              <span class="w-7 h-7 shrink-0 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-500 flex items-center justify-center text-xs font-bold">3</span>
-              <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Keep it up to date</h2>
-            </div>
-
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <p class="text-slate-500 text-sm min-w-0">Brings everything installed on this server up to the latest version. Services restart briefly while they update.</p>
-              <button onclick="{{ askUpgrade() }}" class="{{ upgradeCls }}">{{ upgradeLabel }}</button>
-            </div>
           </section>
 
 {{#if actionError}}
-          <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3">
+          <div role="alert" class="flex gap-3 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3">
+            <IconExclamationTriangle class="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
             <p class="text-rose-600 dark:text-rose-400 text-sm break-words">{{ actionError }}</p>
           </div>
 {{/if}}
-
-          <div class="lg:hidden sticky bottom-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur border-t border-line flex items-center justify-between gap-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
-            <div class="flex items-center gap-3 min-w-0">
-              <p class="text-slate-600 dark:text-slate-300 text-sm whitespace-nowrap">{{ selected.length }} selected</p>
-{{#if selected.length is not 0}}
-              <button onclick="{{ clearSelection() }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 py-2 transition-colors">Clear</button>
-{{/if}}
-            </div>
-            <button onclick="{{ install() }}" class="{{ installBarCls }}">{{ installLabel }}</button>
-          </div>
-
         </div>
 
-        <aside class="hidden lg:block lg:sticky lg:top-6 space-y-4">
-          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
-            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your install</h2>
-            <dl class="space-y-3 text-sm">
-              <div>
-                <dt class="text-slate-500 text-xs">Server</dt>
-                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ serverName }}</dd>
+        <aside class="hidden lg:block lg:sticky lg:top-24 space-y-4">
+          <div class="rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+            <div class="px-5 pt-5 pb-4 border-b border-line">
+              <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">To install</h2>
+              <p class="text-zinc-500 text-[13px] mt-0.5">{{ selected.length is 0 ? "Pick a stack or packages." : selected.length + (selected.length is 1 ? " package" : " packages") + " selected" }}</p>
+            </div>
+            <div class="px-5 py-4">
+{{#if picked.length is 0}}
+              <p class="text-zinc-400 text-sm">Nothing selected yet.</p>
+{{/if}}
+{{#if picked.length is not 0}}
+              <div class="flex flex-wrap gap-1.5">
+{{#each p in picked}}
+                <button type="button" onclick="{{ toggle(p.id) }}" title="Remove" class="inline-flex items-center gap-1 rounded-full border border-line-strong pl-2.5 pr-1.5 py-1 text-xs text-zinc-800 dark:text-zinc-200 hover:border-rose-500/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
+                  {{ p.label }} <IconX class="w-3 h-3 opacity-60" />
+                </button>
+{{/each}}
               </div>
-              <div>
-                <dt class="text-slate-500 text-xs">Installed</dt>
-                <dd class="text-slate-900 dark:text-slate-100">{{ installedCount }} of {{ totalCount }}</dd>
-              </div>
-              <div>
-                <dt class="text-slate-500 text-xs">Selected</dt>
-                <dd class="text-slate-900 dark:text-slate-100 break-words">{{ pickedText }}</dd>
-              </div>
-            </dl>
-
-            <div class="mt-5">
-              <button onclick="{{ install() }}" class="{{ installCls }}">{{ installLabel }}</button>
+{{#if extrasText}}
+              <p class="text-zinc-500 text-xs mt-3">{{ extrasText }}</p>
+{{/if}}
+{{/if}}
+            </div>
+            <div class="px-5 pb-5">
+              <button type="button" onclick="{{ install() }}" class="{{ installCls }}">{{ installLabel }}</button>
 {{#if selected.length is not 0}}
-              <button onclick="{{ clearSelection() }}" class="w-full mt-2 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 py-2 transition-colors">Clear selection</button>
+              <button type="button" onclick="{{ clearSelection() }}" class="w-full mt-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 py-1.5 transition-colors">Clear selection</button>
 {{/if}}
             </div>
           </div>
 
-          <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
-            <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-3">What happens next</h2>
-            <ol class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Runs over SSH, one step at a time</li>
-              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Skips anything already installed</li>
-              <li class="flex gap-2"><span class="text-brand-600 dark:text-brand-500">&#10003;</span> Keeps going if you leave the page</li>
-            </ol>
-            <p class="text-slate-500 text-xs mt-4 pt-3 border-t border-line">Installing needs the admin role. If you use two-factor, you'll be asked for a code.</p>
+          <div class="rounded-2xl border border-line bg-panel px-5 py-4 shadow-sm dark:shadow-none">
+            <ul class="space-y-2 text-[13px] text-zinc-600 dark:text-zinc-400">
+              <li class="flex gap-2"><IconCheck class="w-4 h-4 shrink-0 mt-0.5 text-emerald-500" /> Runs over SSH, one step at a time</li>
+              <li class="flex gap-2"><IconCheck class="w-4 h-4 shrink-0 mt-0.5 text-emerald-500" /> Stops at the first error and shows why</li>
+              <li class="flex gap-2"><IconCheck class="w-4 h-4 shrink-0 mt-0.5 text-emerald-500" /> Keeps going if you leave the page</li>
+            </ul>
+            <p class="text-zinc-500 text-xs mt-3 pt-3 border-t border-line">Needs the admin role. With two-factor on, you'll be asked for a code.</p>
           </div>
         </aside>
 
@@ -782,6 +963,21 @@ template
     </div>
     </div>
   </div>
+
+{{#if selected.length is not 0}}
+  <div class="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.35)] px-4 pt-3" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+    <div class="flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">{{ selected.length }} selected</p>
+        <p class="text-zinc-500 text-xs truncate">{{ extrasText or pickedText }}</p>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" onclick="{{ clearSelection() }}" class="h-11 text-sm text-zinc-500 px-3">Clear</button>
+        <button type="button" onclick="{{ install() }}" class="{{ installBarCls }}">{{ installLabel }}</button>
+      </div>
+    </div>
+  </div>
+{{/if}}
 
 {{#if confirmUpgrade}}
   <div class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-6">

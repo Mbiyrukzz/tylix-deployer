@@ -19,6 +19,9 @@ export interface ServerTaskAttributes {
     step: string;
     status: string;
     error: string;
+    log: string | null;
+    step_no: number | null;
+    step_total: number | null;
     created_at: string;
     updated_at: string;
 }
@@ -33,6 +36,9 @@ export class ServerTask extends Model {
         "step",
         "status",
         "error",
+        "log",
+        "step_no",
+        "step_total",
     ];
 
 

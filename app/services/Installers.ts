@@ -26,7 +26,12 @@ export interface InstallStep {
 
 export interface InstallResult {
     ok: boolean;
+    /** The end of the output (for logs and provision errors). Empty on success. */
     tail: string;
+    /** Everything the step printed. */
+    output: string;
+    /** One line saying why it failed, plus a hint for common causes. Empty on success. */
+    reason: string;
 }
 
 const STEP_TIMEOUT_MS = 10 * 60 * 1000;
@@ -327,20 +332,82 @@ export function installStepsFor(template: string): InstallStep[] {
 
 /**
  * Runs one step. The script travels base64-encoded so no quoting can break it,
- * and stdin is closed so no command can swallow the script.
+ * and stdin is closed so no command can swallow the script. Steps need root: a
+ * server added with another SSH user runs them through passwordless sudo.
+ * onData gets the output as it arrives.
  */
-export async function runInstallStep(target: SshTarget, step: InstallStep): Promise<InstallResult> {
+export async function runInstallStep(
+    target: SshTarget,
+    step: InstallStep,
+    onData?: (chunk: string) => void,
+): Promise<InstallResult> {
     const encoded = Buffer.from(step.script, "utf8").toString("base64");
-    const command = `bash -c "$(echo ${encoded} | base64 -d)" </dev/null 2>&1`;
+    const sudo = target.user === "root" ? "" : "sudo -n ";
+    const command = `${sudo}bash -c "$(echo ${encoded} | base64 -d)" </dev/null 2>&1`;
 
-    const result = await sshExec(target, command, STEP_TIMEOUT_MS);
-    const output = (result.stdout || result.stderr || "").trim();
+    const result = await sshExec(target, command, STEP_TIMEOUT_MS, onData ? { onData: (chunk) => onData(chunk) } : {});
+    const output = [result.stdout, result.stderr].filter((s) => s && s.trim()).join("\n").trim();
 
-    if (result.code === 0) return { ok: true, tail: "" };
+    if (result.code === 0) return { ok: true, tail: "", output, reason: "" };
 
-    // 400 chars keeps the real apt error; the job caps the whole message at 500.
+    // 400 chars keeps the real apt error for provisions, which store only this.
     const tail = output ? output.slice(-400) : "No output. The step timed out or the connection dropped.";
-    return { ok: false, tail };
+    return { ok: false, tail, output, reason: failureReason(output, result.code) };
+}
+
+// Common causes, matched against the output, with what to do about them.
+const HINTS: Array<[RegExp, string]> = [
+    [/sudo: (a password is required|a terminal is required)/i, "The SSH user needs passwordless sudo. Connect as root, or allow sudo without a password for this user."],
+    [/are you root\?|permission denied/i, "The SSH user isn't allowed to install packages. Connect as root, or give the user passwordless sudo."],
+    [/unable to locate package|has no installation candidate|package '.*' has no installation candidate/i, "The package isn't available for this server's Ubuntu release or architecture."],
+    [/could not get lock|lock-frontend|dpkg was interrupted/i, "Another apt process (often automatic updates) held the package lock. Wait a few minutes and retry."],
+    [/temporary failure resolving|could not resolve|failed to fetch|connection timed out|network is unreachable/i, "The server couldn't download packages. Check its DNS and outbound internet access."],
+    [/no space left on device/i, "The server's disk is full. Free some space and retry."],
+    [/only ubuntu images are supported/i, "Packages can only be installed on Ubuntu servers."],
+    [/unmet dependencies|held broken packages/i, "apt found conflicting packages. Run apt --fix-broken install on the server, then retry."],
+    [/gpg: |NO_PUBKEY|is not signed/i, "A package repository's signing key couldn't be added or checked."],
+    [/is not running/i, "It installed, but the service didn't start. Check its logs on the server."],
+];
+
+const ERROR_LINE = /^(E:|W: Failed|error|fatal|ERROR)|\b(failed|not found|unable to|could not|couldn't|cannot|permission denied|no such|expected|is not running|timed out)\b/i;
+
+/**
+ * The line of output that says what went wrong (apt's "E: ..." line, or the
+ * last line that reads like an error, or else the last line), with a hint
+ * for common causes. code is the exit code (124/null when it timed out).
+ */
+export function failureReason(output: string, code?: number | null): string {
+    const lines = output.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) {
+        return "The step stopped with no output: it timed out after 10 minutes or the SSH connection dropped.";
+    }
+
+    const aptError = lines.find((l) => l.startsWith("E:"));
+    const errorish = [...lines].reverse().find((l) => ERROR_LINE.test(l));
+    let line = aptError ?? errorish ?? lines[lines.length - 1];
+    if (line.length > 300) line = line.slice(0, 297) + "...";
+
+    const hint = HINTS.find(([re]) => re.test(output))?.[1];
+    const exit = code === null || code === undefined ? "" : ` (exit code ${code})`;
+    return hint ? `${line}${exit}\n${hint}` : `${line}${exit}`;
+}
+
+/**
+ * Forgets that these steps finished, so they run again. Used for packages that
+ * are missing although their marker says they were installed (removed by
+ * hand since, or a step that once ended early).
+ */
+export async function clearMarkers(target: SshTarget, stepIds: string[]): Promise<void> {
+    const safe = stepIds.filter((id) => /^[a-z0-9.\-]+$/i.test(id));
+    if (safe.length === 0) return;
+    const files = safe.map((id) => `/var/lib/tylix-deploy/${id}.done`).join(" ");
+    const sudo = target.user === "root" ? "" : "sudo -n ";
+    await sshExec(target, `${sudo}rm -f ${files}`, 30_000);
+}
+
+/** The install step a catalog package runs (its marker name). */
+export function stepIdFor(packageId: string): string | null {
+    return PACKAGES.find((p) => p.id === packageId)?.step.id ?? null;
 }
 
 // ---------------------------------------------------------------------------
