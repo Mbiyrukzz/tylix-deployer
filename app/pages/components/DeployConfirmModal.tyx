@@ -14,7 +14,7 @@ props
   onClose: Function
 
 action
-  confirm() {
+  accept() {
     this.onConfirm()
   }
 
@@ -64,7 +64,7 @@ template
 {{#if locked}}
       <button disabled title="Pay to continue" class="text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2 cursor-not-allowed select-none">{{ kind is "delete" ? "Delete" : "Cancel deployment" }}</button>
 {{#else}}
-      <button onclick="{{ confirm() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">{{ kind is "delete" ? "Delete" : "Cancel deployment" }}</button>
+      <button onclick="{{ accept() }}" class="text-sm bg-rose-500 text-white font-semibold rounded-full px-5 py-2 shadow-sm hover:bg-rose-400 transition-all">{{ kind is "delete" ? "Delete" : "Cancel deployment" }}</button>
 {{/if}}
 {{/if}}
     </div>
