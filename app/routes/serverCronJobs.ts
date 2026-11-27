@@ -14,6 +14,7 @@ import { sshExec, type SshTarget } from "../services/Ssh.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { withBillingLock } from "../services/BillingLock.js";
 import { sq, logPath, checkSchedule, installScript, removeScript, userExists } from "../services/CronFiles.js";
+import { describe, nextRuns, offsetMinutes } from "../services/CronSchedule.js";
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
 type Res = Parameters<Handler>[1];
@@ -115,7 +116,8 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
 
         const rows = ((await ServerCronJob.all()) as CronRow[])
             .filter((j) => j.server_id === server.id)
-            .sort((a, b) => a.id - b.id);
+            .sort((a, b) => a.id - b.id)
+            .map((j) => ({ ...j, schedule_text: describe(j.schedule) }));
         return res.json(rows);
     }));
 
@@ -173,19 +175,64 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
         return res.json({ output: r.stdout.trim() });
     }));
 
+    // The job's log tail plus what the console needs around it: the server's
+    // clock and timezone (cron reads the schedule in server time), when the
+    // log was last written, whether the cron daemon runs, and the next runs.
     router.get("/api/servers/:id/cron-jobs/:cid/log", write(async (req, res) => {
         const server = await ownedServer(req, res);
         if (!server) return;
         const job = await ownedJob(req, res, server);
         if (!job) return;
 
+        const lines = Math.min(Math.max(Number(req.query?.lines) || 200, 20), 2000);
+        const script = [
+            `f=${logPath(job.id)}`,
+            'echo "@@now $(date +%s)"',
+            'echo "@@tz $(date +%z) $(date +%Z)"',
+            'if [ -f "$f" ]; then echo "@@mtime $(stat -c %Y "$f" 2>/dev/null)"; echo "@@size $(stat -c %s "$f" 2>/dev/null)"; fi',
+            's=""; for u in cron crond; do s=$(systemctl is-active "$u" 2>/dev/null); [ "$s" = active ] && break; done',
+            'echo "@@cron ${s:-unknown}"',
+            'echo "@@log"',
+            `tail -n ${lines} "$f" 2>/dev/null || true`,
+        ].join("\n");
+
         const t = targetFor(server);
-        const r = await sshExec(t, asRoot(t.user, `tail -n 200 ${logPath(job.id)} 2>&1 || true`));
+        const r = await sshExec(t, asRoot(t.user, script));
         if (r.code !== 0) {
             res.status(502);
             return res.json({ error: r.stderr.trim() || "Could not read the log." });
         }
-        return res.json({ log: r.stdout.trim() || "No output yet." });
+
+        const out = r.stdout;
+        const cut = out.indexOf("@@log\n");
+        const head = cut === -1 ? out : out.slice(0, cut);
+        const log = cut === -1 ? "" : out.slice(cut + 6).replace(/\s+$/, "");
+        const meta: Record<string, string> = {};
+        for (const line of head.split("\n")) {
+            const m = /^@@(\w+) ?(.*)$/.exec(line.trim());
+            if (m) meta[m[1]] = m[2].trim();
+        }
+
+        const nowMs = Number(meta.now) > 0 ? Number(meta.now) * 1000 : Date.now();
+        const [zone = "+0000", zoneName = "UTC"] = (meta.tz || "").split(" ");
+        const offset = offsetMinutes(zone);
+        const mtime = Number(meta.mtime) || 0;
+
+        return res.json({
+            log,
+            read_at: new Date().toISOString(),
+            server_time: new Date(nowMs).toISOString(),
+            timezone: { name: zoneName, offset: zone, minutes: offset },
+            last_output_at: mtime ? new Date(mtime * 1000).toISOString() : null,
+            size: Number(meta.size) || 0,
+            cron: meta.cron || "unknown",
+            schedule: {
+                expression: job.schedule,
+                text: describe(job.schedule),
+                reboot: job.schedule === "@reboot",
+                next: nextRuns(job.schedule, nowMs, offset, 6).map((ms) => new Date(ms).toISOString()),
+            },
+        });
     }));
 
     router.delete("/api/servers/:id/cron-jobs/:cid", write(async (req, res) => {

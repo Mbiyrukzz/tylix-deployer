@@ -1,6 +1,6 @@
 page ServerCronJobs
 
-import { IconArrowLeft } from "tylix-icons"
+import { IconArrowLeft, IconClock, IconDocumentText, IconPlay, IconLockClosed } from "tylix-icons"
 
 title "Cron jobs"
 
@@ -24,10 +24,28 @@ state
   users: []
   usersError: ""
   busyId: null
-  logId: null
-  logText: ""
-  logBusy: false
   confirmId: null
+  logId: null
+  logJob: null
+  logInfo: null
+  logNow: 0
+  logText: ""
+  logLines: []
+  logShown: []
+  logTabs: []
+  logFilter: "all"
+  logErrors: 0
+  logWarns: 0
+  logLoading: false
+  logError: ""
+  logLive: true
+  logTimer: 0
+  logFetching: false
+  logAtBottom: true
+  logCopied: false
+  runBusy: false
+  runOutput: ""
+  runCode: null
 
 action
   fail(result, fallback) {
@@ -112,45 +130,292 @@ action
     this.busy = false
   }
 
-  async runNow(id) {
-    if Billing.locked {
-      return null
-    }
-    if this.busyId {
-      return null
-    }
-    this.busyId = id
-    this.error = ""
-    this.logId = id
-    this.logBusy = true
-    this.logText = ""
+  // ---- log console --------------------------------------------------------
 
-    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs/" + id + "/run", { method: "POST" })
-    if result.ok {
-      this.logText = result.data.output or "No output."
-    } else {
-      this.logText = result.data?.error or "Couldn't run the command."
+  // Colours one log line: errors, warnings and "done" lines stand out, and a
+  // leading [timestamp] is greyed. Same rules as the worker log.
+  classify(line, n) {
+    const t = line.trim()
+
+    let body = t
+    let ts = ""
+    if t.startsWith("[") {
+      const close = t.indexOf("]")
+      if close > 1 and close < 32 {
+        const inner = t.slice(1, close)
+        const looksLikeTime = "0123456789".includes(inner.charAt(0)) and (inner.includes(":") or inner.includes("-"))
+        if looksLikeTime {
+          ts = t.slice(0, close + 1)
+          body = t.slice(close + 1).trim()
+        }
+      }
     }
-    this.logBusy = false
-    this.busyId = null
+
+    const lower = body.toLowerCase()
+    const quiet = lower.includes("0 error") or lower.includes("no error") or lower.includes("without error")
+    const isErr = (lower.startsWith("failed") or lower.includes(" fail") or lower.includes("error") or lower.includes("fatal") or lower.includes("exception") or lower.includes("uncaught") or lower.startsWith("at ")) and not quiet
+    const isWarn = lower.includes("warning") or lower.includes("warn ") or lower.includes("deprecat") or lower.includes("retry") or lower.includes("timed out")
+    const isOk = lower.includes(" done") or lower.startsWith("done") or lower.includes("success") or lower.includes("processed") or lower.includes("finished") or lower.includes("completed")
+    const isRun = lower.includes("running") or lower.includes("processing")
+
+    let kind = "text"
+    let cls = "text-slate-300"
+    let rowCls = "border-transparent"
+    let icon = ""
+
+    if isErr {
+      kind = "error"
+      cls = "text-rose-300"
+      rowCls = "border-rose-500 bg-rose-500/10"
+      icon = "✕"
+    } else if isWarn {
+      kind = "warn"
+      cls = "text-amber-300"
+      rowCls = "border-amber-500/60"
+      icon = "!"
+    } else if isOk {
+      kind = "ok"
+      cls = "text-brand-400"
+      icon = "✓"
+    } else if isRun {
+      kind = "run"
+      cls = "text-sky-300"
+      icon = "›"
+    }
+
+    return { n: n, kind: kind, text: ts is "" ? (line is "" ? " " : line) : body, ts: ts, cls: cls, rowCls: rowCls, icon: icon }
+  }
+
+  parseLog(raw) {
+    if not raw {
+      return []
+    }
+    const nl = String.fromCharCode(10)
+    const cr = String.fromCharCode(13)
+    return raw.split(cr + nl).join(nl).split(cr).join(nl).split(nl).map((line, i) => this.classify(line, i + 1))
+  }
+
+  applyLogFilter() {
+    const f = this.logFilter
+    this.logShown = f is "all" ? this.logLines : this.logLines.filter((l) => l.kind is f)
+    this.logTabs = [
+      { key: "all", label: "All", count: this.logLines.length },
+      { key: "error", label: "Errors", count: this.logErrors },
+      { key: "warn", label: "Warnings", count: this.logWarns },
+      { key: "ok", label: "Done", count: this.logLines.filter((l) => l.kind is "ok").length }
+    ]
+  }
+
+  setLogFilter(key) {
+    this.logFilter = key
+    this.applyLogFilter()
+    window.setTimeout(() => this.scrollLogEnd(), 40)
+  }
+
+  scrollLogEnd() {
+    const el = document.getElementById("cron-log-scroll")
+    if el {
+      el.scrollTop = el.scrollHeight
+    }
+  }
+
+  onLogScroll() {
+    if not this.logId {
+      return null
+    }
+    const el = document.getElementById("cron-log-scroll")
+    if el {
+      this.logAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 48
+    }
+  }
+
+  jumpLogBottom() {
+    this.scrollLogEnd()
+    this.logAtBottom = true
+  }
+
+  // One read at a time; a reply for a job that is no longer open is dropped.
+  async fetchLog() {
+    const id = this.logId
+    if not id or this.logFetching {
+      return null
+    }
+    this.logFetching = true
+    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs/" + id + "/log?lines=500")
+    this.logFetching = false
+    if this.logId is not id {
+      return null
+    }
+    this.logLoading = false
+    this.logNow = Date.now()
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if not result.ok {
+      this.logError = result.data?.error or "Couldn't read the log. Retrying…"
+      return null
+    }
+
+    this.logError = ""
+    const data = result.data
+    this.logInfo = {
+      server_time: data.server_time,
+      timezone: data.timezone,
+      last_output_at: data.last_output_at,
+      size: data.size,
+      cron: data.cron,
+      schedule: data.schedule
+    }
+
+    const raw = String(data.log or "")
+    if raw is this.logText and this.logLines.length > 0 {
+      return null
+    }
+    this.logText = raw
+    this.logLines = this.parseLog(raw)
+    this.logErrors = this.logLines.filter((l) => l.kind is "error").length
+    this.logWarns = this.logLines.filter((l) => l.kind is "warn").length
+    this.applyLogFilter()
+    if this.logAtBottom {
+      window.setTimeout(() => this.scrollLogEnd(), 40)
+    }
+  }
+
+  startLogTimer() {
+    window.clearInterval(this.logTimer)
+    this.logTimer = window.setInterval(() => this.fetchLog(), 5000)
+  }
+
+  toggleLogLive() {
+    this.logLive = not this.logLive
+    if this.logLive {
+      this.logAtBottom = true
+      this.fetchLog()
+      this.startLogTimer()
+    } else {
+      window.clearInterval(this.logTimer)
+      // Keep "in 4 min" honest while paused.
+      this.logTimer = window.setInterval(() => this.tickNow(), 15000)
+    }
+  }
+
+  tickNow() {
+    this.logNow = Date.now()
   }
 
   async viewLog(id) {
-    if this.logId is id {
-      this.logId = null
-      this.logText = ""
+    const job = this.jobs.find((x) => x.id is id)
+    if not job {
       return null
     }
     this.logId = id
-    this.logBusy = true
+    this.logJob = job
+    this.logInfo = null
+    this.logNow = Date.now()
     this.logText = ""
-    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs/" + id + "/log")
-    if result.ok {
-      this.logText = result.data.log
-    } else {
-      this.logText = result.data?.error or "Couldn't read the log."
+    this.logLines = []
+    this.logFilter = "all"
+    this.logErrors = 0
+    this.logWarns = 0
+    this.logError = ""
+    this.logLoading = true
+    this.logLive = true
+    this.logAtBottom = true
+    this.logCopied = false
+    this.runOutput = ""
+    this.runCode = null
+    this.applyLogFilter()
+
+    const flux = Reflect.get(window, "__flux")
+    if flux {
+      // Leaving the page with the log open must stop the polling and give
+      // the next page its scrolling back.
+      flux.on(window, "flux:navigated", () => this.closeLog(), { once: true })
     }
-    this.logBusy = false
+    document.body.style.overflow = "hidden"
+
+    this.startLogTimer()
+    await this.fetchLog()
+  }
+
+  closeLog() {
+    window.clearInterval(this.logTimer)
+    this.logId = null
+    this.logJob = null
+    this.logInfo = null
+    document.body.style.overflow = ""
+  }
+
+  clearLogCopied() {
+    this.logCopied = false
+  }
+
+  async copyLog() {
+    try {
+      await navigator.clipboard.writeText(this.logText)
+      this.logCopied = true
+      window.setTimeout(() => this.clearLogCopied(), 1800)
+    } catch (err) {
+      this.logError = "Couldn't copy: the browser blocked the clipboard."
+    }
+  }
+
+  // Runs the command once (its output isn't added to the job's log, so the
+  // console shows it on its own above the log).
+  async runFromLog() {
+    const id = this.logId
+    if Billing.locked or not id or this.runBusy {
+      return null
+    }
+    this.runBusy = true
+    this.runOutput = ""
+    this.runCode = null
+
+    const result = await useApi("/api/servers/" + this.serverId + "/cron-jobs/" + id + "/run", { method: "POST" })
+    this.runBusy = false
+    if this.logId is not id {
+      return null
+    }
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+
+    if result.ok {
+      const nl = String.fromCharCode(10)
+      const lines = String(result.data.output or "").split(nl)
+      const last = lines.length > 0 ? lines[lines.length - 1] : ""
+      const marker = "--- exit code "
+      if last.startsWith(marker) {
+        this.runCode = Number(last.slice(marker.length))
+        lines.pop()
+      }
+      this.runOutput = lines.join(nl).trim() or "No output."
+    } else {
+      this.runCode = 1
+      this.runOutput = result.data?.error or "Couldn't run the command."
+    }
+  }
+
+  clearRun() {
+    this.runOutput = ""
+    this.runCode = null
+  }
+
+  async runNow(id) {
+    if Billing.locked or this.runBusy {
+      return null
+    }
+    await this.viewLog(id)
+    await this.runFromLog()
+  }
+
+  onKey(e) {
+    if e.key is "Escape" and this.logId {
+      this.closeLog()
+    }
   }
 
   askRemove(id) {
@@ -178,7 +443,7 @@ action
     if result.ok {
       this.confirmId = null
       if this.logId is id {
-        this.logId = null
+        this.closeLog()
       }
       await this.loadJobs()
     } else {
@@ -189,6 +454,8 @@ action
 
 onMount
   async {
+    window.addEventListener("keydown", (e) => this.onKey(e))
+    window.addEventListener("scroll", () => this.onLogScroll(), true)
     const params = new URLSearchParams(window.location.search)
     const serverId = params.get("id")
     this.serverId = serverId or ""
@@ -242,7 +509,7 @@ template
       <LockedBanner />
 
       <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Cron jobs</h1>
-      <p class="text-slate-500 text-sm mb-6">Commands that run on a schedule. Each job's output is appended to its own log on the server.</p>
+      <p class="text-slate-500 text-sm mb-6">Commands that run on a schedule. Each job's output is appended to its own log on the server. Open a job to see its log and when it runs next.</p>
 
 {{#if error}}
       <p role="alert" class="text-rose-500 text-sm mb-4">{{ error }}</p>
@@ -322,39 +589,40 @@ template
 
 {{#each c in jobs}}
         <div class="rounded-xl border border-line px-4 py-3 mb-2">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium truncate">{{ c.name }}
-                <span class="text-xs font-mono text-brand-700 dark:text-brand-500 ml-2">{{ c.schedule }}</span>
-              </p>
-              <p class="text-slate-500 text-xs font-mono truncate">{{ c.command }}</p>
-              <p class="text-slate-400 text-xs font-mono truncate">{{ c.ssh_user }}</p>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="min-w-0 flex items-start gap-3">
+              <span class="mt-0.5 w-9 h-9 shrink-0 rounded-lg border border-line bg-sunken flex items-center justify-center text-zinc-600 dark:text-zinc-300">
+                <IconClock class="w-[18px] h-[18px]" />
+              </span>
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium truncate">{{ c.name }}</p>
+                  <span class="inline-flex items-center rounded-md bg-brand-500/10 px-1.5 py-0.5 text-[11px] font-mono text-brand-700 dark:text-brand-400">{{ c.schedule }}</span>
+{{#if c.schedule_text}}
+                  <span class="text-zinc-500 text-xs">{{ c.schedule_text }}</span>
+{{/if}}
+                </div>
+                <p class="text-zinc-500 text-xs font-mono truncate mt-0.5" title="{{ c.command }}">{{ c.command }}</p>
+                <p class="text-zinc-400 text-[11px] font-mono truncate">as {{ c.ssh_user }}</p>
+              </div>
             </div>
-            <div class="flex shrink-0 items-center gap-1">
+            <div class="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
+              <button type="button" onclick="{{ viewLog(c.id) }}" class="inline-flex items-center gap-1.5 h-8 text-xs font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-3.5 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+                <IconDocumentText class="w-3.5 h-3.5" /> Log and schedule
+              </button>
 {{#if Billing.locked}}
-              <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none px-2 py-1">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                  <rect x="4" y="9" width="12" height="8" rx="2" />
-                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                </svg>
-                Run now
+              <span title="Pay to continue" class="inline-flex items-center gap-1 h-8 text-xs text-zinc-400 select-none px-2">
+                <IconLockClosed class="w-3.5 h-3.5" /> Run now
+              </span>
+              <span title="Pay to continue" class="inline-flex items-center gap-1 h-8 text-xs text-zinc-400 select-none px-2">
+                <IconLockClosed class="w-3.5 h-3.5" /> Delete
               </span>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ runNow(c.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-brand-600 px-2 py-1">Run now</button>
-{{/if}}
-              <button onclick="{{ viewLog(c.id) }}" class="text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 px-2 py-1">Log</button>
-{{#if Billing.locked}}
-              <span title="Pay to continue" class="inline-flex items-center gap-1 text-sm text-slate-400 select-none px-2 py-1">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                  <rect x="4" y="9" width="12" height="8" rx="2" />
-                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                </svg>
-                Delete
-              </span>
-{{/if}}
-{{#if not Billing.locked}}
-              <button onclick="{{ askRemove(c.id) }}" class="text-sm text-rose-600 dark:text-rose-500 hover:text-rose-500 px-2 py-1">Delete</button>
+              <button type="button" onclick="{{ runNow(c.id) }}" class="inline-flex items-center gap-1.5 h-8 text-xs font-medium text-zinc-700 dark:text-zinc-200 rounded-full px-3 hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors">
+                <IconPlay class="w-3.5 h-3.5" /> Run now
+              </button>
+              <button type="button" onclick="{{ askRemove(c.id) }}" class="h-8 text-xs font-medium text-rose-600 dark:text-rose-400 rounded-full px-3 hover:bg-rose-500/[0.06] transition-colors">Delete</button>
 {{/if}}
             </div>
           </div>
@@ -365,15 +633,6 @@ template
             <button onclick="{{ cancelRemove() }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-3 py-1.5">Cancel</button>
           </div>
 {{/if}}
-
-{{#if logId is c.id}}
-{{#if logBusy}}
-          <LoaderMark label="Loading…" size="sm" />
-{{/if}}
-{{#if not logBusy}}
-          <div class="rounded-lg bg-slate-950 text-brand-400 text-xs font-mono p-3 mt-3 overflow-x-auto max-h-72 whitespace-pre">{{ logText }}</div>
-{{/if}}
-{{/if}}
         </div>
 {{/each}}
       </div>
@@ -381,4 +640,34 @@ template
 
     </div>
     </div>
+
+{{#if logJob}}
+    <CronLogConsole
+      job="{{ logJob }}"
+      host="{{ server ? server.name : '' }}"
+      info="{{ logInfo }}"
+      now="{{ logNow }}"
+      lines="{{ logLines }}"
+      shown="{{ logShown }}"
+      tabs="{{ logTabs }}"
+      filter="{{ logFilter }}"
+      loading="{{ logLoading }}"
+      error="{{ logError }}"
+      live="{{ logLive }}"
+      atBottom="{{ logAtBottom }}"
+      copied="{{ logCopied }}"
+      errors="{{ logErrors }}"
+      warns="{{ logWarns }}"
+      running="{{ runBusy }}"
+      runOutput="{{ runOutput }}"
+      runCode="{{ runCode }}"
+      onClose="{{ closeLog }}"
+      onCopy="{{ copyLog }}"
+      onFilter="{{ setLogFilter }}"
+      onToggleLive="{{ toggleLogLive }}"
+      onJumpBottom="{{ jumpLogBottom }}"
+      onRun="{{ runFromLog }}"
+      onClearRun="{{ clearRun }}"
+    />
+{{/if}}
   </div>
