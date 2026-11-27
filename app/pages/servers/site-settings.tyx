@@ -1,5 +1,6 @@
 page SiteSettings
 
+import { IconExternalLink, IconAdjustments, IconGitBranch, IconFileCode, IconPuzzlePiece, IconCopy, IconCheck, IconPencilSquare, IconLockClosed, IconPlus } from "tylix-icons"
 
 title "Site settings"
 
@@ -20,7 +21,6 @@ state
   loading: true
   isMissing: false
   typeLabel: ""
-  statusClass: ""
   groups: []
   plugins: []
   openLog: ""
@@ -57,6 +57,10 @@ state
   nginxLineNums: "1"
   nginxLineCount: 1
   repoMessage: ""
+  tiles: []
+  showRepo: false
+  copied: ""
+  copyTimer: 0
 
 action
   global(name) {
@@ -93,78 +97,109 @@ action
     const typeHit = labels.find((l) => l[0] is site.type)
     const typeLabel = typeHit ? typeHit[1] : site.type
 
-    const row = (label, value, mono) => ({ label: label, value: (value or "") + "", mono: mono })
+    const row = (label, value, mono) => ({ key: label, label: label, value: (value or "") + "", mono: mono })
     const keep = (rows) => rows.filter((r) => r.value is not "")
+    const cap = (s) => s ? String(s).charAt(0).toUpperCase() + String(s).slice(1).replace(/_/g, " ") : ""
 
-    const sslLabel = site.ssl_mode is "letsencrypt" ? "Let's Encrypt" : (site.ssl_mode is "custom" ? "Custom certificate" : "None")
+    const sslLabel = site.ssl_mode is "letsencrypt" ? "Let's Encrypt" : (site.ssl_mode is "custom" ? "Custom certificate" : "Off")
     const deps = site.repository ? (site.install_deps ? "Yes" : "No") : ""
     const aliases = Array.isArray(site.aliases) ? site.aliases.join(", ") : ""
-
-    const pill = "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold "
-    let tone = "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-    if site.status is "ready" {
-      tone = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-    } else if site.status is "failed" {
-      tone = "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-    }
+    const runtimeSub = site.php_version ? "PHP " + site.php_version : (site.port ? "Port " + site.port : "")
+    const expires = site.ssl_expires_at ? "Expires " + this.shortDate(site.ssl_expires_at) : ""
+    const httpsSub = [cap(site.ssl_status), expires].filter((s) => s).join(" · ")
 
     this.site = site
     this.serverId = "" + site.server_id
     this.typeLabel = typeLabel
-    this.statusClass = pill + tone
     this.nginxReady = site.status is "ready"
     this.nginxFile = "/etc/nginx/sites-available/" + site.domain + ".conf"
+    this.showRepo = site.status is "ready" and site.type is not "wordpress"
+
+    this.tiles = [
+      { label: "Runtime", value: typeLabel, sub: runtimeSub, title: "" },
+      { label: "HTTPS", value: sslLabel, sub: httpsSub, title: site.ssl_expires_at or "" },
+      { label: "Last deploy", value: site.deployed_at ? this.ago(site.deployed_at) : "Never", sub: cap(site.deploy_status), title: site.deployed_at or "" },
+      { label: "Created", value: this.shortDate(site.created_at), sub: site.updated_at ? "Updated " + this.ago(site.updated_at) : "", title: site.created_at or "" }
+    ]
 
     this.groups = [
       {
         title: "General",
         rows: keep([
-          row("Type", typeLabel, false),
-          row("Status", site.status, false),
           row("Domain", site.domain, true),
           row("Aliases", aliases, true),
           row("Isolated user", site.isolated_user, true),
           row("Site folder", "/home/" + site.isolated_user + "/" + site.domain, true),
           row("PHP version", site.php_version, true),
-          row("App port", site.port, true),
-          row("Created", (site.created_at or "").slice(0, 10), false),
-          row("Last updated", (site.updated_at or "").slice(0, 10), false)
+          row("App port", site.port, true)
         ])
       },
       {
-        title: "Source",
-        rows: keep([
-          row("Repository", site.repository, true),
-          row("Branch", site.branch, true),
-          row("Install dependencies", deps, false)
-        ])
-      },
-      {
-        title: "Directories and commands",
+        title: "Build and run",
         rows: keep([
           row("Web directory", site.web_directory, true),
           row("App folder", site.app_directory, true),
           row("API folder", site.backend_directory, true),
           row("Build command", site.build_command, true),
-          row("Start command", site.start_command, true)
-        ])
-      },
-      {
-        title: "Deployment",
-        rows: keep([
-          row("Deploy status", site.deploy_status, false),
-          row("Last deployed", (site.deployed_at or "").slice(0, 19).replace("T", " "), false)
-        ])
-      },
-      {
-        title: "HTTPS",
-        rows: keep([
-          row("Method", sslLabel, false),
-          row("Status", site.ssl_status, false),
-          row("Expires", (site.ssl_expires_at or "").slice(0, 10), false)
+          row("Start command", site.start_command, true),
+          row("Install dependencies", deps, false)
         ])
       }
     ].filter((g) => g.rows.length > 0)
+  }
+
+  stamp(iso) {
+    if not iso {
+      return NaN
+    }
+    const text = String(iso)
+    const zoned = text.includes("T") ? text : text.replace(" ", "T") + "Z"
+    return Date.parse(zoned)
+  }
+
+  shortDate(iso) {
+    const t = this.stamp(iso)
+    if Number.isNaN(t) {
+      return iso ? String(iso).slice(0, 10) : ""
+    }
+    return new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }
+
+  ago(iso) {
+    const t = this.stamp(iso)
+    if Number.isNaN(t) {
+      return iso ? String(iso).slice(0, 10) : ""
+    }
+    const secs = Math.round((Date.now() - t) / 1000)
+    if secs < 60 {
+      return "Just now"
+    }
+    const mins = Math.round(secs / 60)
+    if mins < 60 {
+      return mins + " min ago"
+    }
+    const hours = Math.round(mins / 60)
+    if hours < 24 {
+      return hours + (hours is 1 ? " hour ago" : " hours ago")
+    }
+    const days = Math.round(hours / 24)
+    if days < 30 {
+      return days + (days is 1 ? " day ago" : " days ago")
+    }
+    return this.shortDate(iso)
+  }
+
+  async copy(text, key) {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch (err) {
+      return null
+    }
+    this.copied = key
+    window.clearTimeout(this.copyTimer)
+    this.copyTimer = window.setTimeout(() => {
+      this.copied = ""
+    }, 1600)
   }
 
   // SiteRepository changed (or removed) the repository: refresh the details.
@@ -764,191 +799,227 @@ template
 {{/if}}
 
 {{#if site}}
-      <SiteHeader title="Settings" description="{{ typeLabel + ' site details, the nginx config and plugins.' }}" domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
+      <SiteHeader title="Settings" description="{{ typeLabel + ' site details, its repository, the nginx config and plugins.' }}" domain="{{ site.domain }}" serverId="{{ serverId }}" siteId="{{ siteId }}">
         <SiteStatus slot="badge" status="{{ site.status }}" />
+        <div slot="actions" class="flex flex-wrap items-center gap-2 shrink-0">
+          <a href="{{ 'https://' + site.domain }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+            <IconExternalLink class="w-4 h-4" /> Visit site
+          </a>
+        </div>
       </SiteHeader>
 
       <LockedBanner />
 
-      <div class="min-w-0">
-        <div class="min-w-0 flex-1 space-y-4 sm:space-y-6">
+      <nav aria-label="On this page" class="lg:sticky lg:top-16 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-2.5 mb-4 sm:mb-6 bg-page overflow-x-auto no-scrollbar">
+        <div class="inline-flex items-center gap-1 rounded-full border border-line bg-panel p-1 shadow-sm dark:shadow-none">
+          <a href="#overview" class="shrink-0 inline-flex items-center gap-1.5 h-8 rounded-full px-3 sm:px-3.5 text-[13px] font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors"><IconAdjustments class="hidden sm:block w-4 h-4" /> Overview</a>
+{{#if showRepo}}
+          <a href="#repository" class="shrink-0 inline-flex items-center gap-1.5 h-8 rounded-full px-3 sm:px-3.5 text-[13px] font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors"><IconGitBranch class="hidden sm:block w-4 h-4" /> Repository</a>
+{{/if}}
+          <a href="#nginx" class="shrink-0 inline-flex items-center gap-1.5 h-8 rounded-full px-3 sm:px-3.5 text-[13px] font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors"><IconFileCode class="hidden sm:block w-4 h-4" /> nginx</a>
+          <a href="#plugins" class="shrink-0 inline-flex items-center gap-1.5 h-8 rounded-full px-3 sm:px-3.5 text-[13px] font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors"><IconPuzzlePiece class="hidden sm:block w-4 h-4" /> Plugins{{ activeCount ? " · " + activeCount : "" }}</a>
+        </div>
+      </nav>
 
-          <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4 sm:gap-6">
-{{#each group in groups}}
-            <section class="min-w-0 rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-              <div class="flex items-center gap-3 mb-4 sm:mb-5">
-                <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
-                <h2 class="text-slate-900 dark:text-slate-100 font-semibold">{{ group.title }}</h2>
-              </div>
-              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-{{#each row in group.rows}}
-                <div class="min-w-0">
-                  <dt class="text-slate-500 text-xs mb-1">{{ row.label }}</dt>
-{{#if row.mono}}
-                  <dd class="text-slate-900 dark:text-slate-100 text-sm font-mono break-all">{{ row.value }}</dd>
+      <div class="min-w-0 space-y-6">
+
+        <section id="overview" class="scroll-mt-24 lg:scroll-mt-32 space-y-4 sm:space-y-6">
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+{{#each t in tiles}}
+            <div title="{{ t.title }}" class="min-w-0 rounded-2xl border border-line bg-panel px-4 sm:px-5 py-4 shadow-sm dark:shadow-none">
+              <p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-[0.12em]">{{ t.label }}</p>
+              <p class="mt-1.5 text-zinc-900 dark:text-zinc-50 text-[15px] sm:text-base font-semibold tracking-tight truncate">{{ t.value }}</p>
+{{#if t.sub}}
+              <p class="mt-0.5 text-zinc-500 text-xs truncate">{{ t.sub }}</p>
 {{/if}}
-{{#if not row.mono}}
-                  <dd class="text-slate-900 dark:text-slate-100 text-sm break-words">{{ row.value }}</dd>
-{{/if}}
-                </div>
-{{/each}}
-              </dl>
-            </section>
+            </div>
 {{/each}}
           </div>
 
-{{#if site.status is "ready"}}
-{{#if site.type is not "wordpress"}}
-          <SiteRepository site="{{ site }}" message="{{ repoMessage }}" onChanged="{{ sourceChanged }}" />
-{{/if}}
-{{/if}}
-
-          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div class="min-w-0">
-                <div class="flex items-center gap-3 mb-1.5">
-                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
-                  <h2 class="text-slate-900 dark:text-slate-100 font-semibold">nginx configuration</h2>
-                </div>
-                <p class="text-slate-500 text-sm">This site's nginx config. It opens in a full-size editor so it isn't changed by accident.</p>
+          <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4 sm:gap-6 items-start">
+{{#each group in groups}}
+            <div class="min-w-0 rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+              <div class="px-5 sm:px-6 pt-5 pb-4 border-b border-line">
+                <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">{{ group.title }}</h2>
               </div>
-{{#if nginxReady}}
-              <button onclick="{{ openNginx() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm text-slate-700 dark:text-slate-200 border border-line-strong rounded-full px-5 py-2.5 sm:py-2 hover:border-brand-500/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
-                  <path d="M3 8V3h5M17 12v5h-5M3 3l5 5M17 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                Edit
-              </button>
+              <dl class="divide-y divide-line">
+{{#each row in group.rows}}
+                <div class="group/row flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 px-5 sm:px-6 py-3">
+                  <dt class="sm:w-40 shrink-0 text-zinc-500 text-[13px]">{{ row.label }}</dt>
+                  <dd class="min-w-0 flex-1 flex items-center gap-2">
+{{#if row.mono}}
+                    <span class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm font-mono break-all">{{ row.value }}</span>
+                    <button type="button" onclick="{{ copy(row.value, row.key) }}" title="Copy" aria-label="{{ 'Copy ' + row.label }}" class="shrink-0 w-8 h-8 -my-1 inline-flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] sm:opacity-0 sm:group-hover/row:opacity-100 focus:opacity-100 transition">
+{{#if copied is row.key}}
+                      <IconCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
 {{/if}}
+{{#if copied is not row.key}}
+                      <IconCopy class="w-4 h-4" />
+{{/if}}
+                    </button>
+{{/if}}
+{{#if not row.mono}}
+                    <span class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100 text-sm break-words">{{ row.value }}</span>
+{{/if}}
+                  </dd>
+                </div>
+{{/each}}
+              </dl>
             </div>
+{{/each}}
+          </div>
+        </section>
 
-{{#if not nginxReady}}
-            <p class="text-slate-500 text-sm mt-5">The config can be edited once the site has finished creating.</p>
+{{#if showRepo}}
+        <SiteRepository site="{{ site }}" message="{{ repoMessage }}" onChanged="{{ sourceChanged }}" />
 {{/if}}
 
+        <section id="nginx" class="scroll-mt-24 lg:scroll-mt-32 rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-line">
+            <div class="min-w-0">
+              <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">nginx configuration</h2>
+              <p class="text-zinc-500 text-[13px] mt-0.5">Opens in a full-size editor, tested with <span class="font-mono">nginx -t</span> before it's saved.</p>
+            </div>
 {{#if nginxReady}}
-            <p class="text-slate-500 text-xs font-mono mt-5 break-all">{{ nginxFile }}</p>
-            <p class="text-slate-500 text-xs mt-2">Just need to send an old address somewhere else? Use <a href="{{ '/servers/site-redirects?id=' + siteId }}" class="text-brand-700 dark:text-brand-500 hover:underline">Redirects</a> instead of editing the config.</p>
+            <button type="button" onclick="{{ openNginx() }}" class="shrink-0 inline-flex items-center justify-center gap-1.5 h-9 text-sm font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+              <IconPencilSquare class="w-4 h-4" /> Edit config
+            </button>
 {{/if}}
-          </section>
+          </div>
 
-          <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
-              <div class="min-w-0">
-                <div class="flex items-center gap-3 mb-1.5">
-                  <span class="w-1.5 h-5 shrink-0 rounded-full bg-brand-500"></span>
-                  <h2 class="text-slate-900 dark:text-slate-100 font-semibold">Plugins</h2>
-                </div>
-                <p class="text-slate-500 text-sm">Extras for this {{ typeLabel }} site. Each one installs over SSH, and you can remove it again.</p>
-              </div>
-{{#if Billing.locked}}
-              <button disabled title="Pay to continue" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-5 py-2.5 sm:py-2 cursor-not-allowed select-none">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                  <rect x="4" y="9" width="12" height="8" rx="2" />
-                  <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                </svg>
-                Add plugin
+          <div class="px-5 sm:px-6 py-4">
+{{#if not nginxReady}}
+            <p class="text-zinc-500 text-sm">The config can be edited once the site has finished creating.</p>
+{{/if}}
+{{#if nginxReady}}
+            <div class="flex items-center gap-2 rounded-xl border border-line bg-sunken pl-3.5 pr-1.5 py-1.5">
+              <IconFileCode class="w-4 h-4 shrink-0 text-zinc-400" />
+              <span class="min-w-0 flex-1 text-zinc-700 dark:text-zinc-300 text-[13px] font-mono truncate">{{ nginxFile }}</span>
+              <button type="button" onclick="{{ copy(nginxFile, 'nginx-file') }}" title="Copy path" aria-label="Copy the config path" class="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06] transition-colors">
+{{#if copied is "nginx-file"}}
+                <IconCheck class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+{{/if}}
+{{#if copied is not "nginx-file"}}
+                <IconCopy class="w-4 h-4" />
+{{/if}}
               </button>
+            </div>
+            <p class="text-zinc-500 text-xs mt-3">Just need to send an old address somewhere else? Use <a href="{{ '/servers/site-redirects?id=' + siteId }}" class="text-brand-700 dark:text-brand-400 font-medium hover:underline">Redirects</a> instead of editing the config.</p>
+{{/if}}
+          </div>
+        </section>
+
+        <section id="plugins" class="scroll-mt-24 lg:scroll-mt-32 rounded-2xl border border-line bg-panel shadow-sm dark:shadow-none overflow-hidden">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-line">
+            <div class="min-w-0">
+              <h2 class="text-zinc-900 dark:text-zinc-100 text-[15px] font-semibold">Plugins</h2>
+              <p class="text-zinc-500 text-[13px] mt-0.5">Extras for this {{ typeLabel }} site. Each one installs over SSH, and you can remove it again.</p>
+            </div>
+{{#if Billing.locked}}
+            <button type="button" disabled title="Pay to continue" class="shrink-0 inline-flex items-center justify-center gap-1.5 h-9 text-sm bg-zinc-200 dark:bg-zinc-800 text-zinc-500 rounded-full px-4 cursor-not-allowed select-none">
+              <IconLockClosed class="w-4 h-4" /> Add plugin
+            </button>
 {{/if}}
 {{#if not Billing.locked}}
-              <button onclick="{{ openInstaller() }}" class="shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 sm:py-2 shadow-sm hover:bg-brand-400 hover:shadow transition-all">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-                  <path d="M10 4v12M4 10h12" stroke-linecap="round" />
-                </svg>
-                Add plugin
-              </button>
+            <button type="button" onclick="{{ openInstaller() }}" class="shrink-0 inline-flex items-center justify-center gap-1.5 h-9 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 shadow-sm hover:bg-brand-400 transition-colors">
+              <IconPlus class="w-4 h-4" /> Add plugin
+            </button>
 {{/if}}
-            </div>
+          </div>
 
+          <div class="px-5 sm:px-6 py-5">
 {{#if error}}
-            <p role="alert" class="text-rose-500 text-sm mb-4 break-words">{{ error }}</p>
+            <p role="alert" class="text-rose-600 dark:text-rose-400 text-sm mb-4 break-words">{{ error }}</p>
 {{/if}}
 
 {{#if activeCount is 0}}
             <div class="rounded-xl border border-dashed border-line-strong px-4 py-8 text-center">
-              <p class="text-slate-900 dark:text-slate-100 text-sm font-medium mb-1">Nothing added yet</p>
+              <span class="mx-auto mb-3 w-11 h-11 rounded-2xl border border-line bg-sunken flex items-center justify-center text-zinc-500">
+                <IconPuzzlePiece class="w-5 h-5" />
+              </span>
+              <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium mb-1">Nothing added yet</p>
 {{#if choices.length is 0}}
-              <p class="text-slate-500 text-sm">There are no plugins for this site type.</p>
+              <p class="text-zinc-500 text-[13px]">There are no plugins for this site type.</p>
 {{/if}}
 {{#if choices.length is not 0}}
-              <p class="text-slate-500 text-sm">{{ choices.length }} available for this site. Use Add plugin to pick one.</p>
+              <p class="text-zinc-500 text-[13px]">{{ choices.length }} available for this site. Use Add plugin to pick one.</p>
 {{/if}}
             </div>
 {{/if}}
 
+{{#if activeCount is not 0}}
+            <div class="space-y-3">
 {{#each p in plugins}}
 {{#if p.shown}}
-            <div class="rounded-xl border border-line bg-slate-50 dark:bg-slate-950/40 p-4 sm:p-5 mb-3">
-              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                <div class="min-w-0 flex items-start gap-3">
-                  <span class="{{ p.tile }}">{{ p.letter }}</span>
-                  <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-                      <h3 class="text-slate-900 dark:text-slate-100 text-sm font-semibold">{{ p.name }}</h3>
-                      <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{{ p.group }}</span>
+              <div class="rounded-xl border border-line bg-sunken p-4">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                  <div class="min-w-0 flex items-start gap-3">
+                    <span class="{{ p.tile }}">{{ p.letter }}</span>
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
+                        <h3 class="text-zinc-900 dark:text-zinc-100 text-sm font-semibold">{{ p.name }}</h3>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{{ p.group }}</span>
 {{#if p.isInstalled}}
-                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
-                      </span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Installed
+                        </span>
 {{/if}}
 {{#if p.busy}}
-                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
-                      </span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Working
+                        </span>
 {{/if}}
 {{#if p.isFailed}}
-                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-                      </span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                          <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
+                        </span>
+{{/if}}
+                      </div>
+                      <p class="text-zinc-500 text-[13px] break-words">{{ p.description }}</p>
+{{#if p.portText}}
+                      <p class="text-zinc-500 text-xs mt-1">Local port <span class="font-mono">{{ p.portText }}</span></p>
 {{/if}}
                     </div>
-                    <p class="text-slate-500 text-sm break-words">{{ p.description }}</p>
-{{#if p.portText}}
-                    <p class="text-slate-500 text-xs mt-1">Local port <span class="font-mono">{{ p.portText }}</span></p>
+                  </div>
+
+                  <div class="shrink-0 flex flex-wrap items-center gap-2 sm:justify-end">
+                    <button type="button" onclick="{{ toggleLog(p.id) }}" aria-expanded="{{ openLog is p.id ? 'true' : 'false' }}" class="h-8 text-xs font-medium text-zinc-600 dark:text-zinc-300 border border-line-strong bg-panel rounded-full px-3.5 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">{{ openLog is p.id ? "Hide details" : "Details" }}</button>
+{{#if p.canAct}}
+{{#if Billing.locked}}
+                    <button type="button" disabled title="Pay to continue" class="inline-flex items-center gap-1.5 h-8 text-xs bg-zinc-200 dark:bg-zinc-800 text-zinc-500 rounded-full px-3.5 cursor-not-allowed select-none">
+                      <IconLockClosed class="w-3.5 h-3.5" /> Locked
+                    </button>
+{{/if}}
+{{#if not Billing.locked}}
+{{#if p.isFailed}}
+                    <button type="button" onclick="{{ retry(p.id, p.status) }}" class="h-8 text-xs bg-brand-500 text-white font-semibold rounded-full px-3.5 shadow-sm hover:bg-brand-400 transition-colors">Retry</button>
+{{/if}}
+                    <button type="button" onclick="{{ remove(p.id) }}" class="h-8 text-xs font-medium text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded-full px-3.5 hover:bg-rose-500/[0.06] transition-colors">Remove</button>
+{{/if}}
 {{/if}}
                   </div>
                 </div>
 
-                <div class="shrink-0 flex flex-wrap items-center gap-2 sm:justify-end">
-                  <button onclick="{{ toggleLog(p.id) }}" class="min-h-[40px] sm:min-h-0 text-xs text-slate-600 dark:text-slate-300 border border-line-strong rounded-full px-3.5 py-2 sm:py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Details</button>
-{{#if p.canAct}}
-{{#if Billing.locked}}
-                  <button disabled title="Pay to continue" class="inline-flex items-center gap-1.5 min-h-[40px] sm:min-h-0 text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-line-strong rounded-full px-4 py-2 sm:py-1.5 cursor-not-allowed select-none">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
-                      <rect x="4" y="9" width="12" height="8" rx="2" />
-                      <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" />
-                    </svg>
-                    Locked
-                  </button>
-{{/if}}
-{{#if not Billing.locked}}
-{{#if p.isFailed}}
-                  <button onclick="{{ retry(p.id, p.status) }}" class="min-h-[40px] sm:min-h-0 text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 sm:py-1.5 shadow-sm hover:bg-brand-400 transition-all">Retry</button>
-{{/if}}
-                  <button onclick="{{ remove(p.id) }}" class="min-h-[40px] sm:min-h-0 text-sm text-rose-600 dark:text-rose-500 border border-rose-500/30 rounded-full px-4 py-2 sm:py-1.5 hover:bg-rose-500/5 transition-colors">Remove</button>
-{{/if}}
-{{/if}}
-                </div>
-              </div>
-
 {{#if p.error}}
-              <p role="alert" class="text-rose-500 text-sm mt-3 break-words">{{ p.error }}</p>
+                <p role="alert" class="text-rose-600 dark:text-rose-400 text-sm mt-3 break-words">{{ p.error }}</p>
 {{/if}}
 
 {{#if openLog is p.id}}
 {{#each n in p.notes}}
-              <p class="text-slate-500 text-xs mt-3 break-words">&bull; {{ n }}</p>
+                <p class="text-zinc-500 text-xs mt-3 break-words">&bull; {{ n }}</p>
 {{/each}}
 {{#if p.log}}
-              <div class="mt-4 max-h-72 sm:max-h-80 overflow-y-auto rounded-lg bg-white dark:bg-slate-950 border border-line p-3 sm:p-4 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">{{ p.log }}</div>
+                <div class="mt-4 max-h-72 sm:max-h-80 overflow-y-auto rounded-lg bg-white dark:bg-zinc-950 border border-line p-3 sm:p-4 text-xs font-mono text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap break-words">{{ p.log }}</div>
 {{/if}}
 {{/if}}
-            </div>
+              </div>
 {{/if}}
 {{/each}}
-          </section>
+            </div>
+{{/if}}
+          </div>
+        </section>
 
-        </div>
       </div>
 
 {{#if installerOpen}}

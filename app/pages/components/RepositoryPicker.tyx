@@ -1,21 +1,39 @@
 component RepositoryPicker
 
+import { IconGithub, IconGitBranch, IconSearch, IconCheck, IconLockClosed, IconRefresh, IconPlus, IconCode } from "tylix-icons"
+
+// Pick a source-control connection, one of its repositories and a branch.
+//
+// Buttons rather than native <select>s: the lists are long, need a search,
+// and must show loading and error states. A native select has no room for
+// those and loses track of the choice whenever its options are rebuilt.
+//
+//   <RepositoryPicker connections="{{ list }}" current="{{ site }}" onChange="{{ picked }}" />
+//
+// connections: the /api/source-controls list. Leave it out and the picker
+// loads it itself. current: { source_control_id, repository, branch } to
+// start from (the site's repository when changing it). onChange gets
+// { source_control_id, repository, branch } after every choice.
+
 props
   onChange: Function
-  noneLabel: String
+  connections: any
+  current: Object
 
 state
-  connections: []
+  list: []
+  loadingConnections: false
   connectionId: ""
   repos: []
-  visible: []
   filter: ""
+  loadingRepos: false
+  reposError: ""
   repository: ""
   branches: []
   branch: ""
-  loadingRepos: false
+  defaultBranch: ""
   loadingBranches: false
-  error: ""
+  branchesError: ""
 
 action
   emit() {
@@ -27,74 +45,113 @@ action
   }
 
   async loadConnections() {
+    if Array.isArray(this.connections) {
+      this.list = this.connections
+      return null
+    }
+    this.loadingConnections = true
     const result = await useApi("/api/source-controls")
+    this.loadingConnections = false
 
     if result.status is 401 {
       window.location.href = "/login"
       return null
     }
-
     if result.ok and Array.isArray(result.data) {
-      this.connections = result.data
+      this.list = result.data
     }
   }
 
   async pickConnection(id) {
-    this.connectionId = id
-    this.repos = []
-    this.visible = []
-    this.branches = []
-    this.filter = ""
-    this.repository = ""
-    this.branch = ""
-    this.error = ""
-    this.emit()
-
-    if id is "" {
+    const key = "" + id
+    if key is this.connectionId and this.repos.length > 0 {
       return null
     }
+    this.connectionId = key
+    this.repos = []
+    this.filter = ""
+    this.reposError = ""
+    this.repository = ""
+    this.branches = []
+    this.branch = ""
+    this.branchesError = ""
+    this.emit()
+    await this.loadRepos()
+  }
 
+  async loadRepos() {
+    const id = this.connectionId
+    if not id {
+      return null
+    }
     this.loadingRepos = true
+    this.reposError = ""
     const result = await useApi("/api/source-controls/" + id + "/repositories")
+
+    // Another connection was picked while this one was loading.
+    if id is not this.connectionId {
+      return null
+    }
     this.loadingRepos = false
 
-    if result.ok and Array.isArray(result.data) {
-      this.repos = result.data
-      this.visible = result.data
-    } else {
-      this.error = result.data?.error or "Couldn't load repositories."
-    }
-  }
-
-  applyFilter(value) {
-    this.filter = value
-    const needle = value.toLowerCase()
-    this.visible = this.repos.filter((r) => r.full_name.toLowerCase().includes(needle))
-  }
-
-  async pickRepo(name) {
-    this.repository = name
-    this.branches = []
-    this.branch = ""
-    this.error = ""
-
-    if name is "" {
-      this.emit()
+    if result.status is 401 {
+      window.location.href = "/login"
       return null
     }
+    if result.ok and Array.isArray(result.data) {
+      this.repos = result.data
+    } else {
+      this.reposError = result.data?.error or "Couldn't load repositories."
+    }
+  }
 
+  shownRepos() {
+    const needle = this.filter.trim().toLowerCase()
+    const hits = needle ? this.repos.filter((r) => r.full_name.toLowerCase().includes(needle)) : this.repos
+    return hits.slice(0, 100)
+  }
+
+  matchCount() {
+    const needle = this.filter.trim().toLowerCase()
+    return needle ? this.repos.filter((r) => r.full_name.toLowerCase().includes(needle)).length : this.repos.length
+  }
+
+  async pickRepo(name, keepBranch) {
+    if name is this.repository and not keepBranch {
+      return null
+    }
     const repo = this.repos.find((r) => r.full_name is name)
-    this.branch = repo ? repo.default_branch : "main"
+    this.repository = name
+    this.defaultBranch = repo ? repo.default_branch : "main"
+    this.branch = keepBranch or this.defaultBranch
+    this.branches = []
+    this.branchesError = ""
     this.emit()
+    await this.loadBranches()
+  }
 
+  async loadBranches() {
+    const name = this.repository
+    if not name {
+      return null
+    }
     this.loadingBranches = true
+    this.branchesError = ""
     const result = await useApi("/api/source-controls/" + this.connectionId + "/branches?repo=" + encodeURIComponent(name))
+
+    if name is not this.repository {
+      return null
+    }
     this.loadingBranches = false
 
     if result.ok and Array.isArray(result.data) {
       this.branches = result.data
+      if this.branches.length > 0 and not this.branches.includes(this.branch) {
+        this.branch = this.branches.includes(this.defaultBranch) ? this.defaultBranch : this.branches[0]
+        this.emit()
+      }
     } else {
-      this.error = result.data?.error or "Couldn't load branches."
+      this.branchesError = result.data?.error or "Couldn't load branches."
     }
   }
 
@@ -103,89 +160,240 @@ action
     this.emit()
   }
 
+  changeRepo() {
+    this.repository = ""
+    this.branches = []
+    this.branch = ""
+    this.branchesError = ""
+    this.emit()
+    window.setTimeout(() => {
+      const el = document.getElementById("repo-search")
+      if el {
+        el.focus()
+      }
+    }, 50)
+  }
+
+  connectionCls(id) {
+    const base = "group flex items-center gap-3 min-w-0 w-full text-left rounded-xl border px-3.5 py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 "
+    if "" + id is this.connectionId {
+      return base + "border-brand-500 bg-brand-500/[0.06] ring-1 ring-brand-500/40"
+    }
+    return base + "border-line-strong bg-panel hover:border-zinc-400 dark:hover:border-zinc-600"
+  }
+
+  repoCls(name) {
+    const base = "flex items-center gap-3 w-full min-h-[44px] text-left px-3.5 py-2.5 text-sm transition-colors focus:outline-none focus-visible:bg-brand-500/10 "
+    if name is this.repository {
+      return base + "bg-brand-500/10 text-brand-700 dark:text-brand-400"
+    }
+    return base + "text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
+  }
+
+  branchCls(name) {
+    const base = "inline-flex items-center gap-1.5 max-w-full rounded-full border px-3 py-1.5 text-[13px] font-mono transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 "
+    if name is this.branch {
+      return base + "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-400"
+    }
+    return base + "border-line-strong text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600"
+  }
+
+  isOn(id) {
+    return "" + id is this.connectionId
+  }
+
+  stepCls(done) {
+    const base = "w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold "
+    return base + (done ? "bg-brand-500 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300")
+  }
+
 onMount
   async {
     await this.loadConnections()
+
+    const cur = this.current
+    const start = cur and cur.source_control_id ? this.list.find((c) => Number(c.id) is Number(cur.source_control_id)) : null
+    const only = this.list.length is 1 ? this.list[0] : null
+    const pick = start or only
+    if not pick {
+      return null
+    }
+
+    await this.pickConnection(pick.id)
+    if start and cur.repository and this.repos.some((r) => r.full_name is cur.repository) {
+      await this.pickRepo(cur.repository, cur.branch or "")
+    }
   }
 
 template
-  <div class="space-y-3">
+  <div class="space-y-6">
+
     <div>
-      <label for="repo-connection" class="block text-slate-500 text-xs mb-1.5">Source control</label>
-      <select
-        id="repo-connection"
-        onchange="{{ pickConnection($event.target.value) }}"
-        class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
-      >
-        <option value="">{{ noneLabel or "None (empty site)" }}</option>
-{{#each c in connections}}
-{{#if '' + c.id is connectionId}}
-        <option value="{{ c.id }}" selected>{{ c.label }} ({{ c.kind }}{{ c.username ? ' / ' + c.username : '' }})</option>
+      <div class="flex items-center gap-2.5 mb-3">
+        <span class="{{ stepCls(connectionId is not '') }}">1</span>
+        <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Connection</p>
+      </div>
+
+{{#if loadingConnections}}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div class="h-[58px] rounded-xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse"></div>
+        <div class="h-[58px] rounded-xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse"></div>
+      </div>
 {{/if}}
-{{#if '' + c.id is not connectionId}}
-        <option value="{{ c.id }}">{{ c.label }} ({{ c.kind }}{{ c.username ? ' / ' + c.username : '' }})</option>
+
+{{#if not loadingConnections}}
+{{#if list.length is 0}}
+      <div class="rounded-xl border border-dashed border-line-strong px-4 py-6 text-center">
+        <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">No GitHub or GitLab account connected</p>
+        <p class="text-zinc-500 text-[13px] mt-1">Connect one, then come back here to pick a repository.</p>
+        <a href="/source-control" class="inline-flex items-center gap-1.5 mt-4 h-9 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-400 rounded-full px-4 transition-colors">
+          <IconPlus class="w-4 h-4" /> Connect an account
+        </a>
+      </div>
 {{/if}}
+{{#if list.length is not 0}}
+      <div role="radiogroup" aria-label="Connection" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+{{#each c in list}}
+        <button type="button" role="radio" aria-checked="{{ isOn(c.id) ? 'true' : 'false' }}" onclick="{{ pickConnection(c.id) }}" class="{{ connectionCls(c.id) }}">
+          <span class="w-9 h-9 shrink-0 rounded-lg border border-line bg-sunken flex items-center justify-center text-zinc-700 dark:text-zinc-200">
+{{#if c.kind is "github"}}
+            <IconGithub class="w-[18px] h-[18px]" />
+{{/if}}
+{{#if c.kind is not "github"}}
+            <IconCode class="w-[18px] h-[18px]" />
+{{/if}}
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{{ c.label }}</span>
+            <span class="block text-xs text-zinc-500 truncate">{{ c.kind is "github" ? "GitHub" : "GitLab" }}{{ c.username ? " · " + c.username : "" }}</span>
+          </span>
+{{#if isOn(c.id)}}
+          <IconCheck class="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-400" />
+{{/if}}
+        </button>
 {{/each}}
-      </select>
+      </div>
+{{/if}}
+{{/if}}
     </div>
 
-{{#if loadingRepos}}
-    <LoaderMark label="Loading repositories…" size="sm" />
+{{#if connectionId}}
+    <div>
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="{{ stepCls(repository is not '') }}">2</span>
+          <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Repository</p>
+        </div>
+{{#if repos.length is not 0}}
+{{#if not repository}}
+        <span class="text-zinc-500 text-xs tabular-nums">{{ matchCount() }} of {{ repos.length }}</span>
+{{/if}}
+{{/if}}
+      </div>
+
+{{#if repository}}
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-brand-500 bg-brand-500/[0.06] ring-1 ring-brand-500/40 px-4 py-3">
+        <span class="min-w-0 text-sm font-mono text-brand-700 dark:text-brand-400 break-all">{{ repository }}</span>
+        <button type="button" onclick="{{ changeRepo() }}" class="shrink-0 text-xs font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-3.5 py-1.5 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">Change</button>
+      </div>
 {{/if}}
 
+{{#if not repository}}
+{{#if loadingRepos}}
+      <div class="rounded-xl border border-line overflow-hidden divide-y divide-line">
+        <div class="h-11 px-3.5 flex items-center"><span class="h-3 w-48 rounded bg-zinc-100 dark:bg-white/[0.06] animate-pulse"></span></div>
+        <div class="h-11 px-3.5 flex items-center"><span class="h-3 w-36 rounded bg-zinc-100 dark:bg-white/[0.06] animate-pulse"></span></div>
+        <div class="h-11 px-3.5 flex items-center"><span class="h-3 w-56 rounded bg-zinc-100 dark:bg-white/[0.06] animate-pulse"></span></div>
+      </div>
+      <p class="text-zinc-500 text-xs mt-2">Loading repositories…</p>
+{{/if}}
+
+{{#if reposError}}
+      <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3">
+        <p class="text-rose-600 dark:text-rose-400 text-sm break-words min-w-0">{{ reposError }}</p>
+        <button type="button" onclick="{{ loadRepos() }}" class="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-zinc-700 dark:text-zinc-200 border border-line-strong bg-panel rounded-full px-3 py-1.5 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+          <IconRefresh class="w-3.5 h-3.5" /> Try again
+        </button>
+      </div>
+{{/if}}
+
+{{#if not loadingRepos}}
+{{#if not reposError}}
+{{#if repos.length is 0}}
+      <p class="rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-zinc-500 text-sm">This account has no repositories Flux can read.</p>
+{{/if}}
 {{#if repos.length is not 0}}
-    <div>
-      <label for="repo-filter" class="block text-slate-500 text-xs mb-1.5">Repository ({{ visible.length }} of {{ repos.length }})</label>
-      <input
-        id="repo-filter"
-        type="text"
-        value="{{ filter }}"
-        oninput="{{ applyFilter($event.target.value) }}"
-        placeholder="Filter repositories…"
-        class="w-full mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
-      />
-      <select
-        id="repo-select"
-        onchange="{{ pickRepo($event.target.value) }}"
-        class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
-      >
-        <option value="">Choose a repository</option>
-{{#each r in visible}}
-{{#if r.full_name is repository}}
-        <option value="{{ r.full_name }}" selected>{{ r.full_name }}</option>
+      <div class="rounded-xl border border-line-strong overflow-hidden focus-within:border-brand-500/60 transition-colors">
+        <div class="relative border-b border-line">
+          <IconSearch class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+          <input id="repo-search" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{ filter }}" oninput="{{ filter = $event.target.value }}" placeholder="Search repositories" aria-label="Search repositories" class="w-full bg-transparent text-zinc-900 dark:text-zinc-100 text-base sm:text-sm pl-10 pr-3.5 py-3 placeholder:text-zinc-400 focus:outline-none" />
+        </div>
+        <div aria-label="Repositories" class="max-h-72 overflow-y-auto overscroll-contain divide-y divide-line">
+{{#each r in shownRepos()}}
+          <button type="button" onclick="{{ pickRepo(r.full_name, '') }}" class="{{ repoCls(r.full_name) }}">
+            <span class="min-w-0 flex-1 font-mono text-[13px] break-all">{{ r.full_name }}</span>
+{{#if r.private}}
+            <IconLockClosed class="w-3.5 h-3.5 shrink-0 text-zinc-400" />
 {{/if}}
-{{#if r.full_name is not repository}}
-        <option value="{{ r.full_name }}">{{ r.full_name }}</option>
-{{/if}}
+          </button>
 {{/each}}
-      </select>
+{{#if matchCount() is 0}}
+          <p class="px-4 py-5 text-center text-zinc-500 text-sm">No repositories match “{{ filter }}”.</p>
+{{/if}}
+        </div>
+{{#if matchCount() > 100}}
+        <p class="border-t border-line px-3.5 py-2 text-zinc-500 text-xs">Showing the first 100. Search to narrow it down.</p>
+{{/if}}
+      </div>
+{{/if}}
+{{/if}}
+{{/if}}
+{{/if}}
     </div>
 {{/if}}
 
 {{#if repository}}
     <div>
-      <label for="repo-branch" class="block text-slate-500 text-xs mb-1.5">Branch</label>
-      <select
-        id="repo-branch"
-        onchange="{{ pickBranch($event.target.value) }}"
-        class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-200 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500"
-      >
-{{#each b in branches}}
-{{#if b is branch}}
-        <option value="{{ b }}" selected>{{ b }}</option>
-{{/if}}
-{{#if b is not branch}}
-        <option value="{{ b }}">{{ b }}</option>
-{{/if}}
-{{/each}}
-      </select>
+      <div class="flex items-center gap-2.5 mb-3">
+        <span class="{{ stepCls(branch is not '') }}">3</span>
+        <p class="text-zinc-900 dark:text-zinc-100 text-sm font-medium">Branch</p>
+      </div>
+
 {{#if loadingBranches}}
-      <LoaderMark label="Loading branches…" size="sm" />
+      <div class="flex flex-wrap gap-2">
+        <span class="h-8 w-20 rounded-full bg-zinc-100 dark:bg-white/[0.06] animate-pulse"></span>
+        <span class="h-8 w-28 rounded-full bg-zinc-100 dark:bg-white/[0.06] animate-pulse"></span>
+        <span class="h-8 w-16 rounded-full bg-zinc-100 dark:bg-white/[0.06] animate-pulse"></span>
+      </div>
+{{/if}}
+
+{{#if not loadingBranches}}
+{{#if branches.length is not 0}}
+      <div role="radiogroup" aria-label="Branch" class="flex flex-wrap gap-2 max-h-44 overflow-y-auto overscroll-contain">
+{{#each b in branches}}
+        <button type="button" role="radio" aria-checked="{{ b is branch ? 'true' : 'false' }}" onclick="{{ pickBranch(b) }}" class="{{ branchCls(b) }}">
+          <IconGitBranch class="w-3.5 h-3.5 shrink-0 opacity-70" />
+          <span class="truncate">{{ b }}</span>
+{{#if b is defaultBranch}}
+          <span class="font-sans text-[10px] font-semibold uppercase tracking-wider text-zinc-500">default</span>
+{{/if}}
+        </button>
+{{/each}}
+      </div>
+{{/if}}
+{{#if branches.length is 0}}
+      <p class="text-zinc-500 text-sm">No branch list. Flux will use <span class="font-mono text-zinc-800 dark:text-zinc-200">{{ branch }}</span>.</p>
+{{/if}}
+{{#if branchesError}}
+      <div role="alert" class="flex flex-wrap items-center gap-3 mt-2">
+        <p class="text-rose-600 dark:text-rose-400 text-xs break-words">{{ branchesError }}</p>
+        <button type="button" onclick="{{ loadBranches() }}" class="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100">
+          <IconRefresh class="w-3.5 h-3.5" /> Try again
+        </button>
+      </div>
+{{/if}}
 {{/if}}
     </div>
 {{/if}}
 
-{{#if error}}
-    <p role="alert" class="text-rose-500 text-xs">{{ error }}</p>
-{{/if}}
   </div>
