@@ -450,6 +450,17 @@ action
     }
   }
 
+  // Cancel and Back return to the page you came from (with its scroll
+  // position) when you got here inside the app; opened directly, they go to
+  // the server list.
+  goBack(e) {
+    const flux = Reflect.get(window, "__flux")
+    if flux and flux.canGoBack and flux.canGoBack() {
+      e.preventDefault()
+      window.history.back()
+    }
+  }
+
 onMount
   async {
     if not Auth.user {
@@ -484,26 +495,26 @@ template
     <div class="min-w-0">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 sm:pt-10 pb-4">
 
-      <a href="/servers" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-5">
-        <IconArrowLeft class="w-4 h-4" /> Servers
-      </a>
-
-      <LockedBanner />
-
-      <div class="mb-6 sm:mb-8">
-        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Create server</h1>
-        <p class="text-slate-500 text-sm">Provision a new machine at your cloud provider, or add one you already have.</p>
-      </div>
-
-{{#if catalogError}}
-      <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 mb-6">
-        <p class="text-rose-600 dark:text-rose-400 text-sm">{{ catalogError }}</p>
-      </div>
-{{/if}}
-
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
 
         <div class="min-w-0 space-y-4 sm:space-y-5">
+
+          <div>
+            <a href="/servers" onclick="{{ goBack($event) }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-5">
+              <IconArrowLeft class="w-4 h-4" /> Back
+            </a>
+
+            <LockedBanner />
+
+            <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-1">Create server</h1>
+            <p class="text-slate-500 text-sm">Provision a new machine at your cloud provider, or add one you already have.</p>
+          </div>
+
+{{#if catalogError}}
+          <div role="alert" class="rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3">
+            <p class="text-rose-600 dark:text-rose-400 text-sm">{{ catalogError }}</p>
+          </div>
+{{/if}}
 
           <section class="rounded-2xl border border-line bg-panel p-4 sm:p-6 shadow-sm dark:shadow-none">
             <div class="flex items-center gap-3 mb-4">
@@ -856,7 +867,7 @@ template
 {{/if}}
 
           <div class="lg:hidden flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 pt-2">
-            <a href="/servers" class="text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
+            <a href="/servers" onclick="{{ goBack($event) }}" class="text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
 {{#if Billing.locked}}
             <button disabled title="Pay to continue" class="inline-flex items-center justify-center gap-1.5 min-h-[48px] text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 rounded-full px-6 py-2.5 cursor-not-allowed select-none">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4">
@@ -893,7 +904,7 @@ template
 
         </div>
 
-        <aside class="hidden lg:block lg:sticky lg:top-24">
+        <aside class="hidden lg:block lg:sticky lg:top-[6.5rem]">
           <div class="rounded-2xl border border-line bg-panel p-5 shadow-sm dark:shadow-none">
             <h2 class="text-slate-900 dark:text-slate-100 font-semibold mb-4">Your server</h2>
             <dl class="space-y-3 text-sm">
@@ -993,7 +1004,7 @@ template
 {{/if}}
 {{/if}}
 {{/if}}
-            <a href="/servers" class="block text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
+            <a href="/servers" onclick="{{ goBack($event) }}" class="block text-center text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-2.5 transition-colors">Cancel</a>
             </div>
           </div>
         </aside>

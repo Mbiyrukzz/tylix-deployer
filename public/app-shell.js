@@ -277,6 +277,11 @@
         // True inside a page that is being swapped in: the layout then
         // renders only its slot (the real shell is already on screen).
         swapping: false,
+        // True when the previous history entry is an app page reached in place,
+        // so history.back() returns to it instead of leaving the app.
+        canGoBack: function () {
+            return Boolean(history.state && history.state.fluxDepth > 0);
+        },
         navigate: function (url) {
             softNavigate(url, {});
         },
@@ -373,6 +378,9 @@
 
     var htmlCache = new Map(); // url -> { at, promise }
     var CACHE_MS = 30 * 1000;
+    // Going back reuses a page's HTML for longer: it holds the page's code,
+    // not its data (pages load that themselves), so Back/Cancel is instant.
+    var BACK_CACHE_MS = 10 * 60 * 1000;
     var navSeq = 0;
     var rendered = location.pathname + location.search;
 
@@ -380,10 +388,10 @@
         return url.pathname + url.search;
     }
 
-    function fetchHtml(url) {
+    function fetchHtml(url, maxAge) {
         var key = cacheKey(url);
         var hit = htmlCache.get(key);
-        if (hit && Date.now() - hit.at < CACHE_MS) return hit.promise;
+        if (hit && Date.now() - hit.at < (maxAge || CACHE_MS)) return hit.promise;
         var promise = N.fetch(url.href, {
             credentials: "same-origin",
             headers: { Accept: "text/html", "X-Flux-Navigation": "1" },
@@ -402,6 +410,20 @@
         if (htmlCache.size > 24) htmlCache.delete(htmlCache.keys().next().value);
         return promise;
     }
+
+    // The page that was loaded in full isn't in the cache, so Back to it would
+    // fetch it again. Its document still holds the page script, title and
+    // styles (all parsePage reads), so keep a copy of it.
+    function seedCache() {
+        if (!canSoftNav || !isAppPath(location.pathname)) return;
+        var key = location.pathname + location.search;
+        if (htmlCache.has(key)) return;
+        var html = "<!doctype html>" + document.documentElement.outerHTML;
+        if (!parsePage(html)) return;
+        htmlCache.set(key, { at: Date.now(), promise: Promise.resolve({ html: html, url: new URL(location.href) }) });
+    }
+    if (document.readyState === "loading") on(document, "DOMContentLoaded", seedCache);
+    else seedCache();
 
     function parsePage(html) {
         var parsed = new DOMParser().parseFromString(html, "text/html");
@@ -649,7 +671,7 @@
         setNavigating(true);
         if (!opts.pop) saveScroll();
 
-        fetchHtml(url)
+        fetchHtml(url, opts.pop ? BACK_CACHE_MS : CACHE_MS)
             .then(function (result) {
                 if (seq !== navSeq) return;
                 if (result.url.origin !== location.origin || !eligible(result.url)) {
@@ -662,7 +684,10 @@
 
                 var target = result.url.pathname + result.url.search + (url.hash || "");
                 if (!opts.pop) {
-                    var state = { flux: true, fluxY: 0 };
+                    // fluxDepth counts in-app pages behind this one, so a page
+                    // can tell whether Back stays in the app (__flux.canGoBack).
+                    var depth = (history.state && history.state.fluxDepth) || 0;
+                    var state = { flux: true, fluxY: 0, fluxDepth: opts.replace ? depth : depth + 1 };
                     if (opts.replace) history.replaceState(state, "", target);
                     else history.pushState(state, "", target);
                 }
