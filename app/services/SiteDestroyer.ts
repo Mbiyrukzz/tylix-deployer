@@ -16,6 +16,13 @@
  *   del_user       the isolated unix user and /home/<user> (site files, the
  *                  .run-<user>.sh runner and the git checkout live in there)
  *
+ * Imported sites (origin "import", see ServerImport) share their unix user
+ * with other sites that Flux didn't create, so they get a narrower delete:
+ *   del_webserver  only /etc/nginx/sites-available|enabled/<domain>.conf
+ *   del_ssl        the Let's Encrypt certificate for <domain>
+ *   del_files      only the folder /home/<user>/<domain>
+ * The user, its home, crontab, services and PHP-FPM pool stay.
+ *
  * Every step tolerates "already gone", so a retry after a partial failure is
  * safe. Each step is its own SSH call so the log shows where it stopped.
  *
@@ -43,6 +50,7 @@ interface SiteRow {
     domain: string;
     isolated_user: string;
     log: string;
+    origin?: string | null;
 }
 
 interface ServerRow {
@@ -143,6 +151,32 @@ for f in $(grep -lsF -e "/home/$U/" /etc/nginx/sites-enabled/* /etc/nginx/sites-
 done
 if command -v nginx >/dev/null 2>&1; then
   nginx -t 2>&1 && systemctl reload nginx 2>&1
+fi
+`;
+
+/** Imported sites: removes only this domain's nginx files (never other files of the same user). */
+const IMPORTED_WEBSERVER = String.raw`
+[ -n "$D" ] || exit 1
+rm -f "/etc/nginx/sites-enabled/$D.conf" "/etc/nginx/sites-available/$D.conf"
+rm -rf "/etc/nginx/tylix-plugins/$D"
+echo "removed the nginx site $D"
+if command -v nginx >/dev/null 2>&1; then
+  nginx -t 2>&1 && systemctl reload nginx 2>&1
+fi
+`;
+
+/** Imported sites: removes only /home/<user>/<domain>. The user and its other folders stay. */
+const IMPORTED_FILES = String.raw`
+[ -n "$U" ] && [ -n "$D" ] || exit 1
+DIR="/home/$U/$D"
+if [ -L "$DIR" ]; then
+  rm -f "$DIR"
+  echo "removed the link $DIR"
+elif [ -d "$DIR" ]; then
+  rm -rf --one-file-system "$DIR"
+  echo "removed $DIR"
+else
+  echo "$DIR is already gone"
 fi
 `;
 
@@ -286,7 +320,9 @@ export class SiteDestroyer {
                     return fail('The stored domain or user looks invalid, so server cleanup was refused. Use "Delete anyway" to remove just the record.');
                 }
 
-                if (user === server.ssh_user) {
+                const imported = site.origin === "import";
+
+                if (!imported && user === server.ssh_user) {
                     return fail('This site\'s isolated user is the same as the server\'s SSH user, so server cleanup was refused. Use "Delete anyway" to remove just the record.');
                 }
 
@@ -299,7 +335,11 @@ export class SiteDestroyer {
 
                 const vars = `U='${user}'; D='${domain}';`;
 
-                const steps: Step[] = [
+                const steps: Step[] = imported ? [
+                    { step: "del_webserver", label: "Removing the nginx site", script: IMPORTED_WEBSERVER, timeoutMs: 45_000, run: true },
+                    { step: "del_ssl", label: "Removing the certificate", script: SSL, timeoutMs: 60_000, run: true },
+                    { step: "del_files", label: "Removing the site folder", script: IMPORTED_FILES, timeoutMs: 90_000, run: true },
+                ] : [
                     { step: "del_docker", label: "Removing the container", script: DOCKER, timeoutMs: 90_000, run: site.type === "docker" },
                     { step: "del_services", label: "Stopping the app", script: SERVICES, timeoutMs: 45_000, run: true },
                     { step: "del_webserver", label: "Removing the nginx site", script: WEBSERVER, timeoutMs: 45_000, run: true },

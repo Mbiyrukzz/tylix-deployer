@@ -1,0 +1,509 @@
+page ServerImport
+
+import { IconArrowLeft } from "tylix-icons"
+
+title "Import from server"
+
+needs
+  Auth
+
+uses
+  Billing
+
+background
+  Billing
+
+state
+  serverId: ""
+  server: null
+  loading: true
+  isMissing: false
+  scanning: false
+  scanError: ""
+  scanned: false
+  scannedAt: ""
+  sites: []
+  skippedSites: []
+  dbs: []
+  skippedDbs: []
+  workers: []
+  skippedWorkers: []
+  crons: []
+  skippedCrons: []
+  mysqlNote: ""
+  phpVersions: []
+  sourceControls: []
+  typeLabels: []
+  showSkipped: false
+  importing: false
+  importError: ""
+  results: []
+  okCount: 0
+  failCount: 0
+
+action
+  labelFor(id) {
+    const hit = this.typeLabels.find((t) => t.id is id)
+    return hit ? hit.label : id
+  }
+
+  kindLabel(kind) {
+    if kind is "site" {
+      return "Site"
+    }
+    if kind is "database" {
+      return "Database"
+    }
+    if kind is "worker" {
+      return "Worker"
+    }
+    return "Cron job"
+  }
+
+  sourcesFor(kind) {
+    return this.sourceControls.filter((c) => c.kind is kind)
+  }
+
+  pickedCount() {
+    const n = (list) => list.filter((x) => x.picked).length
+    return n(this.sites) + n(this.dbs) + n(this.workers) + n(this.crons)
+  }
+
+  async startScan() {
+    if this.scanning {
+      return null
+    }
+    this.scanning = true
+    this.scanError = ""
+    this.results = []
+
+    const result = await useApi("/api/servers/" + this.serverId + "/import/scan", { method: "POST", body: {} })
+
+    this.scanning = false
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if not result.ok {
+      this.scanError = (result.data and result.data.error) or "The server couldn't be scanned."
+      return null
+    }
+
+    const data = result.data
+    this.sites = data.sites.filter((s) => s.importable).map((s) => ({
+      ...s,
+      picked: true,
+      scId: "" + s.sourceControlId,
+      httpsRemote: true,
+      typeOptions: s.types.map((t) => ({ id: t, label: this.labelFor(t) }))
+    }))
+    this.skippedSites = data.sites.filter((s) => not s.importable)
+    this.dbs = data.databases.filter((d) => d.importable).map((d) => ({ ...d, picked: true }))
+    this.skippedDbs = data.databases.filter((d) => not d.importable)
+    this.workers = data.workers.filter((w) => w.importable).map((w) => ({ ...w, picked: true }))
+    this.skippedWorkers = data.workers.filter((w) => not w.importable)
+    this.crons = data.cron.filter((c) => c.importable).map((c) => ({ ...c, picked: true }))
+    this.skippedCrons = data.cron.filter((c) => not c.importable)
+    this.phpVersions = data.phpVersions
+    this.mysqlNote = data.mysql.error
+    this.scannedAt = new Date(data.scannedAt).toLocaleTimeString()
+    this.scanned = true
+  }
+
+  togglePick(kind, key, on) {
+    const flip = (list) => list.map((x) => (x.key is key ? { ...x, picked: on } : x))
+    if kind is "site" {
+      this.sites = flip(this.sites)
+    } else if kind is "db" {
+      this.dbs = flip(this.dbs)
+    } else if kind is "worker" {
+      this.workers = flip(this.workers)
+    } else {
+      this.crons = flip(this.crons)
+    }
+  }
+
+  pickAll(on) {
+    const all = (list) => list.map((x) => ({ ...x, picked: on }))
+    this.sites = all(this.sites)
+    this.dbs = all(this.dbs)
+    this.workers = all(this.workers)
+    this.crons = all(this.crons)
+  }
+
+  setSite(key, field, value) {
+    this.sites = this.sites.map((s) => (s.key is key ? { ...s, [field]: value } : s))
+  }
+
+  toggleSkipped() {
+    this.showSkipped = not this.showSkipped
+  }
+
+  async runImport() {
+    if Billing.locked or this.importing {
+      return null
+    }
+    if this.pickedCount() is 0 {
+      this.importError = "Pick at least one thing to import."
+      return null
+    }
+
+    this.importing = true
+    this.importError = ""
+
+    const body = {
+      sites: this.sites.filter((s) => s.picked).map((s) => ({
+        key: s.key,
+        type: s.type,
+        php_version: s.phpVersion,
+        source_control_id: Number(s.scId),
+        https_remote: s.httpsRemote
+      })),
+      databases: this.dbs.filter((d) => d.picked).map((d) => d.key),
+      workers: this.workers.filter((w) => w.picked).map((w) => w.key),
+      cron: this.crons.filter((c) => c.picked).map((c) => c.key)
+    }
+
+    const result = await useApi("/api/servers/" + this.serverId + "/import", { method: "POST", body: body })
+    this.importing = false
+
+    if result.status is 401 {
+      window.location.href = "/login"
+      return null
+    }
+    if not result.ok {
+      this.importError = (result.data and result.data.error) or "The import failed."
+      return null
+    }
+
+    this.results = result.data.report.map((r) => ({
+      ...r,
+      label: this.kindLabel(r.kind),
+      link: r.ok and r.kind is "site" ? "/servers/site-detail?id=" + r.id : ""
+    }))
+    this.okCount = this.results.filter((r) => r.ok).length
+    this.failCount = this.results.length - this.okCount
+    this.scanned = false
+    window.scrollTo({ top: 0, behavior: "instant" })
+  }
+
+onMount
+  async {
+    const params = new URLSearchParams(window.location.search)
+    const serverId = params.get("id")
+    this.serverId = serverId or ""
+
+    if not serverId {
+      this.isMissing = true
+      this.loading = false
+    } else {
+      const result = await useApi("/api/servers/" + serverId)
+
+      if result.status is 401 {
+        window.location.href = "/login"
+      } else if result.ok {
+        this.server = result.data
+
+        const types = await useApi("/api/site-types")
+        if types.ok and Array.isArray(types.data) {
+          this.typeLabels = types.data.map((t) => ({ id: t.id, label: t.label }))
+        }
+
+        const sc = await useApi("/api/source-controls")
+        if sc.ok and Array.isArray(sc.data) {
+          this.sourceControls = sc.data.map((c) => ({ id: "" + c.id, label: c.label, kind: c.kind }))
+        }
+
+        this.loading = false
+        await this.startScan()
+      } else {
+        this.isMissing = true
+        this.loading = false
+      }
+    }
+  }
+
+template
+  <div class="min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[auto_1fr] bg-page transition-colors">
+{{#if serverId}}
+{{#if not isMissing}}
+    <ServerSidebar active="sites" serverId="{{ serverId }}" />
+{{/if}}
+{{/if}}
+{{#if isMissing}}
+    <div></div>
+{{/if}}
+    <div class="min-w-0">
+    <div class="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
+
+{{#if loading}}
+      <div data-page-loader="true"><LoaderMark label="Loading…" /></div>
+{{/if}}
+
+{{#if isMissing}}
+      <NotFoundCard heading="Server not found" body="It may have been deleted, or the link is wrong." link="/servers" linkLabel="Back to servers" />
+{{/if}}
+
+{{#if server}}
+      <a href="{{ '/servers/server-sites?id=' + serverId }}" class="inline-flex items-center gap-1.5 text-brand-700 dark:text-brand-500 text-sm hover:underline font-medium mb-6">
+        <IconArrowLeft class="w-4 h-4" /> Sites on {{ server.name }}
+      </a>
+
+      <LockedBanner />
+
+      <div class="mb-6">
+        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-800 dark:text-slate-200">Import from this server</h1>
+        <p class="text-slate-500 text-sm mt-1 max-w-2xl leading-relaxed">Adds what already runs here (sites, databases, Supervisor workers and cron jobs, for example from Vito) to Flux. Nothing is reinstalled, and site files stay where they are.</p>
+      </div>
+
+{{#if scanning}}
+      <div class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-8">
+        <LoaderMark label="Reading nginx, PHP-FPM, MySQL, Supervisor and crontabs…" />
+      </div>
+{{/if}}
+
+{{#if scanError}}
+      <div role="alert" class="rounded-2xl border border-rose-500/30 bg-panel p-5 sm:p-6 mb-6">
+        <h2 class="text-rose-600 dark:text-rose-400 font-semibold text-[15px] mb-1">The scan didn't finish</h2>
+        <p class="text-slate-600 dark:text-slate-400 text-sm mb-4 [overflow-wrap:anywhere]">{{ scanError }}</p>
+        <button onclick="{{ startScan() }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 hover:bg-brand-400 transition-colors">Try again</button>
+      </div>
+{{/if}}
+
+{{#if results.length is not 0}}
+      <section class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel mb-6 overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-slate-800 dark:text-slate-200 font-semibold">Import finished</h2>
+            <p class="text-slate-500 text-sm mt-0.5">{{ okCount }} imported{{ failCount ? ", " + failCount + " not imported" : "" }}</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <a href="{{ '/servers/server-sites?id=' + serverId }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-4 py-2 hover:bg-brand-400 transition-colors">Go to sites</a>
+            <button onclick="{{ startScan() }}" class="text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Scan again</button>
+          </div>
+        </div>
+        <ul class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each r in results}}
+          <li class="px-5 sm:px-6 py-3.5 flex items-start gap-3">
+{{#if r.ok}}
+            <span class="mt-1.5 w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-label="Imported"></span>
+{{/if}}
+{{#if not r.ok}}
+            <span class="mt-1.5 w-2 h-2 rounded-full bg-rose-500 shrink-0" aria-label="Not imported"></span>
+{{/if}}
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-slate-800 dark:text-slate-200 [overflow-wrap:anywhere]">
+                <span class="text-slate-500 text-xs uppercase tracking-wider font-semibold mr-1.5">{{ r.label }}</span>
+{{#if r.link}}
+                <a href="{{ r.link }}" class="font-medium hover:text-brand-700 dark:hover:text-brand-500 hover:underline">{{ r.name }}</a>
+{{/if}}
+{{#if not r.link}}
+                <span class="font-mono text-[13px]">{{ r.name }}</span>
+{{/if}}
+              </p>
+{{#if r.error}}
+              <p class="text-rose-600 dark:text-rose-400 text-sm mt-1 [overflow-wrap:anywhere]">{{ r.error }}</p>
+{{/if}}
+{{#each n in r.notes}}
+              <p class="text-slate-500 text-xs mt-1 leading-relaxed">{{ n }}</p>
+{{/each}}
+            </div>
+          </li>
+{{/each}}
+        </ul>
+      </section>
+{{/if}}
+
+{{#if scanned}}
+      <section class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel p-5 sm:p-6 mb-6">
+        <h2 class="text-slate-800 dark:text-slate-200 font-semibold text-[15px] mb-2">What importing changes on the server</h2>
+        <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1.5 leading-relaxed list-disc pl-5">
+          <li>Each site's nginx file is renamed to <span class="font-mono text-[13px]">sites-available/&lt;domain&gt;.conf</span> with the same content (the original is kept in <span class="font-mono text-[13px]">/etc/nginx/tylix-backups</span>). If <span class="font-mono text-[13px]">nginx -t</span> fails, it is put back.</li>
+          <li>PHP sites get a Flux PHP-FPM pool for their user, next to the pools already there. Nothing is restarted.</li>
+          <li>Workers are rewritten as Flux programs. The new one starts before the old one stops.</li>
+          <li>Cron lines move from the user's crontab to <span class="font-mono text-[13px]">/etc/cron.d</span>.</li>
+          <li>Databases: only the records are added.</li>
+        </ul>
+        <p class="text-slate-500 text-xs mt-3">Deleting an imported site later removes only its nginx file, certificate and folder, never its user or the other sites it shares that user with.</p>
+      </section>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <p class="text-slate-500 text-sm">Scanned at {{ scannedAt }}</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="{{ pickAll(true) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Pick all</button>
+          <button onclick="{{ pickAll(false) }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Pick none</button>
+          <button onclick="{{ startScan() }}" class="text-xs text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Scan again</button>
+        </div>
+      </div>
+
+      <section class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel mb-4 overflow-hidden">
+        <h2 class="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-[15px]">Sites <span class="text-slate-500 font-normal">({{ sites.length }})</span></h2>
+{{#if sites.length is 0}}
+        <p class="px-5 sm:px-6 py-5 text-slate-500 text-sm">No sites to import.</p>
+{{/if}}
+        <ul class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each s in sites}}
+          <li class="px-5 sm:px-6 py-4">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" checked="{{ s.picked }}" onchange="{{ togglePick('site', s.key, $event.target.checked) }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
+              <span class="min-w-0">
+                <span class="block text-slate-800 dark:text-slate-200 font-semibold [overflow-wrap:anywhere]">{{ s.domain }}</span>
+                <span class="block text-slate-500 text-xs font-mono mt-0.5 [overflow-wrap:anywhere]">{{ s.root }}{{ s.webDirectory ? "/" + s.webDirectory : "" }} · {{ s.user }}</span>
+                <span class="block text-slate-500 text-xs mt-0.5 [overflow-wrap:anywhere]">{{ s.aliases.length ? "Also " + s.aliases.join(", ") + " · " : "" }}{{ s.runtime is "php" ? "PHP " + s.phpVersion : s.runtime is "node" ? "Port " + s.port : "Static files" }}{{ s.ssl.mode is "none" ? " · No SSL" : " · SSL (" + s.ssl.mode + ")" }}</span>
+              </span>
+            </label>
+
+            <div class="mt-3 sm:pl-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="{{ 'type-' + s.key }}" class="block text-slate-500 text-xs font-medium mb-1">Type</label>
+                <select id="{{ 'type-' + s.key }}" onchange="{{ setSite(s.key, 'type', $event.target.value) }}" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40">
+{{#each t in s.typeOptions}}
+                  <option value="{{ t.id }}" selected="{{ t.id is s.type }}">{{ t.label }}</option>
+{{/each}}
+                </select>
+              </div>
+{{#if s.repository}}
+              <div>
+                <label for="{{ 'sc-' + s.key }}" class="block text-slate-500 text-xs font-medium mb-1">Deploy {{ s.repository }} ({{ s.branch or "no branch" }}) with</label>
+                <select id="{{ 'sc-' + s.key }}" onchange="{{ setSite(s.key, 'scId', $event.target.value) }}" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40">
+                  <option value="0" selected="{{ s.scId is '0' }}">Don't deploy from Flux</option>
+{{#each c in sourcesFor(s.gitHost)}}
+                  <option value="{{ c.id }}" selected="{{ c.id is s.scId }}">{{ c.label }} ({{ c.kind }})</option>
+{{/each}}
+                </select>
+              </div>
+{{/if}}
+            </div>
+
+{{#if s.remoteIsSsh}}
+{{#if s.scId is not "0"}}
+            <label class="mt-3 sm:pl-8 flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input type="checkbox" checked="{{ s.httpsRemote }}" onchange="{{ setSite(s.key, 'httpsRemote', $event.target.checked) }}" class="w-4 h-4 mt-0.5 shrink-0 accent-brand-500" />
+              <span>Switch the git remote from SSH to HTTPS, so deploys use this connection instead of the server's deploy key</span>
+            </label>
+{{/if}}
+{{/if}}
+
+{{#each n in s.notes}}
+            <p class="mt-2 sm:pl-8 text-amber-700 dark:text-amber-400 text-xs leading-relaxed">{{ n }}</p>
+{{/each}}
+          </li>
+{{/each}}
+        </ul>
+      </section>
+
+      <section class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel mb-4 overflow-hidden">
+        <h2 class="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-[15px]">Databases <span class="text-slate-500 font-normal">({{ dbs.length }})</span></h2>
+{{#if mysqlNote}}
+        <p class="px-5 sm:px-6 pt-4 text-amber-700 dark:text-amber-400 text-sm">{{ mysqlNote }}</p>
+{{/if}}
+{{#if dbs.length is 0}}
+        <p class="px-5 sm:px-6 py-5 text-slate-500 text-sm">No databases to import.</p>
+{{/if}}
+        <ul class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each d in dbs}}
+          <li class="px-5 sm:px-6 py-3.5">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" checked="{{ d.picked }}" onchange="{{ togglePick('db', d.key, $event.target.checked) }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
+              <span class="min-w-0">
+                <span class="block text-slate-800 dark:text-slate-200 font-mono text-sm [overflow-wrap:anywhere]">{{ d.name }}</span>
+                <span class="block text-slate-500 text-xs mt-0.5">{{ d.owner ? "Owner " + d.owner : "No owner Flux can manage" }} · {{ d.charset }}</span>
+              </span>
+            </label>
+{{#each n in d.notes}}
+            <p class="mt-1.5 pl-8 text-amber-700 dark:text-amber-400 text-xs leading-relaxed">{{ n }}</p>
+{{/each}}
+          </li>
+{{/each}}
+        </ul>
+      </section>
+
+      <section class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel mb-4 overflow-hidden">
+        <h2 class="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-[15px]">Workers <span class="text-slate-500 font-normal">({{ workers.length }})</span></h2>
+{{#if workers.length is 0}}
+        <p class="px-5 sm:px-6 py-5 text-slate-500 text-sm">No Supervisor programs to import.</p>
+{{/if}}
+        <ul class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each w in workers}}
+          <li class="px-5 sm:px-6 py-3.5">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" checked="{{ w.picked }}" onchange="{{ togglePick('worker', w.key, $event.target.checked) }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
+              <span class="min-w-0">
+                <span class="block text-slate-800 dark:text-slate-200 text-sm font-semibold [overflow-wrap:anywhere]">{{ w.name }}</span>
+                <span class="block text-slate-600 dark:text-slate-400 font-mono text-xs mt-0.5 [overflow-wrap:anywhere]">{{ w.command }}</span>
+                <span class="block text-slate-500 text-xs mt-0.5 [overflow-wrap:anywhere]">as {{ w.user }} in {{ w.directory }} · {{ w.processes }} {{ w.processes is 1 ? "process" : "processes" }}</span>
+              </span>
+            </label>
+          </li>
+{{/each}}
+        </ul>
+      </section>
+
+      <section class="rounded-2xl border border-slate-300 dark:border-slate-800 bg-panel mb-4 overflow-hidden">
+        <h2 class="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-[15px]">Cron jobs <span class="text-slate-500 font-normal">({{ crons.length }})</span></h2>
+{{#if crons.length is 0}}
+        <p class="px-5 sm:px-6 py-5 text-slate-500 text-sm">No crontab lines to import.</p>
+{{/if}}
+        <ul class="divide-y divide-slate-200 dark:divide-slate-800">
+{{#each c in crons}}
+          <li class="px-5 sm:px-6 py-3.5">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" checked="{{ c.picked }}" onchange="{{ togglePick('cron', c.key, $event.target.checked) }}" class="w-5 h-5 mt-0.5 shrink-0 accent-brand-500" />
+              <span class="min-w-0">
+                <span class="block text-slate-800 dark:text-slate-200 font-mono text-xs [overflow-wrap:anywhere]"><span class="text-brand-700 dark:text-brand-500">{{ c.schedule }}</span> {{ c.command }}</span>
+                <span class="block text-slate-500 text-xs mt-0.5">as {{ c.user }}</span>
+              </span>
+            </label>
+          </li>
+{{/each}}
+        </ul>
+      </section>
+
+{{#if skippedSites.length + skippedDbs.length + skippedWorkers.length + skippedCrons.length}}
+      <section class="rounded-2xl border border-dashed border-slate-400 dark:border-slate-800 bg-panel mb-6 overflow-hidden">
+        <button onclick="{{ toggleSkipped() }}" aria-expanded="{{ showSkipped }}" class="w-full text-left px-5 sm:px-6 py-3.5 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
+          {{ showSkipped ? "Hide" : "Show" }} what will be left alone ({{ skippedSites.length + skippedDbs.length + skippedWorkers.length + skippedCrons.length }})
+        </button>
+{{#if showSkipped}}
+        <ul class="divide-y divide-slate-200 dark:divide-slate-800 border-t border-slate-200 dark:border-slate-800">
+{{#each s in skippedSites}}
+          <li class="px-5 sm:px-6 py-3 text-sm"><span class="text-slate-500 text-xs uppercase tracking-wider font-semibold mr-1.5">Site</span><span class="text-slate-800 dark:text-slate-200 font-medium [overflow-wrap:anywhere]">{{ s.domain }}</span><span class="block text-slate-500 text-xs mt-0.5 [overflow-wrap:anywhere]">{{ s.reason }}</span></li>
+{{/each}}
+{{#each d in skippedDbs}}
+          <li class="px-5 sm:px-6 py-3 text-sm"><span class="text-slate-500 text-xs uppercase tracking-wider font-semibold mr-1.5">Database</span><span class="text-slate-800 dark:text-slate-200 font-mono [overflow-wrap:anywhere]">{{ d.name }}</span><span class="block text-slate-500 text-xs mt-0.5">{{ d.reason }}</span></li>
+{{/each}}
+{{#each w in skippedWorkers}}
+          <li class="px-5 sm:px-6 py-3 text-sm"><span class="text-slate-500 text-xs uppercase tracking-wider font-semibold mr-1.5">Worker</span><span class="text-slate-800 dark:text-slate-200 [overflow-wrap:anywhere]">{{ w.name }}</span><span class="block text-slate-500 text-xs mt-0.5">{{ w.reason }}</span></li>
+{{/each}}
+{{#each c in skippedCrons}}
+          <li class="px-5 sm:px-6 py-3 text-sm"><span class="text-slate-500 text-xs uppercase tracking-wider font-semibold mr-1.5">Cron</span><span class="text-slate-800 dark:text-slate-200 font-mono text-xs [overflow-wrap:anywhere]">{{ c.line }}</span><span class="block text-slate-500 text-xs mt-0.5">{{ c.reason }}</span></li>
+{{/each}}
+        </ul>
+{{/if}}
+      </section>
+{{/if}}
+
+      <div style="bottom: calc(65px + env(safe-area-inset-bottom))" class="sticky lg:!bottom-0 z-30 -mx-4 sm:mx-0 px-4 sm:px-5 py-3 sm:rounded-2xl border-t sm:border border-slate-300 dark:border-slate-800 bg-panel shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-slate-800 dark:text-slate-200 text-sm font-medium">{{ pickedCount() }} picked</p>
+{{#if importError}}
+          <p role="alert" class="text-rose-600 dark:text-rose-400 text-xs mt-0.5">{{ importError }}</p>
+{{/if}}
+{{#if importing}}
+          <p role="status" class="text-slate-500 text-xs mt-0.5">Importing… a few seconds per site.</p>
+{{/if}}
+        </div>
+{{#if Billing.locked}}
+        <button disabled title="Pay to continue" class="text-sm bg-slate-200 dark:bg-slate-800 text-slate-500 rounded-full px-5 py-2.5 cursor-not-allowed">Import</button>
+{{/if}}
+{{#if not Billing.locked}}
+        <button onclick="{{ runImport() }}" disabled="{{ importing or pickedCount() is 0 }}" class="text-sm bg-brand-500 text-white font-semibold rounded-full px-5 py-2.5 shadow-sm hover:bg-brand-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{{ importing ? "Importing…" : "Import " + pickedCount() }}</button>
+{{/if}}
+      </div>
+{{/if}}
+{{/if}}
+
+    </div>
+    </div>
+  </div>

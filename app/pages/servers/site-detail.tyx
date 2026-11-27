@@ -64,7 +64,8 @@ action
       ["del_php", "Removing the PHP pool"],
       ["del_ssl", "Removing the certificate"],
       ["del_database", "Removing the database"],
-      ["del_user", "Removing the user and files"]
+      ["del_user", "Removing the user and files"],
+      ["del_files", "Removing the site folder"]
     ]
 
     const typeHit = labels.find((l) => l[0] is site.type)
@@ -457,7 +458,12 @@ template
 {{#if canDelete}}
           <section class="rounded-2xl border border-rose-500/25 bg-panel p-5 sm:p-6">
             <h2 class="text-rose-600 dark:text-rose-400 text-[15px] font-semibold mb-1">Delete site</h2>
+{{#if site.origin is "import"}}
+            <p class="text-zinc-500 text-sm mb-4 max-w-3xl leading-relaxed">This site was imported, so deleting it removes only what is its own: its nginx site, its SSL certificate and the folder <span class="font-mono">{{ rootPath }}</span>. The user {{ site.isolated_user }}, its PHP pool, databases and any other sites it runs stay. This can't be undone.</p>
+{{/if}}
+{{#if site.origin is not "import"}}
             <p class="text-zinc-500 text-sm mb-4 max-w-3xl leading-relaxed">Permanently removes this site and everything it created on the server: the app service, the nginx site, the PHP pool, the SSL certificate, any WordPress database, the isolated user and every file under <span class="font-mono">/home/{{ site.isolated_user }}</span>. This can't be undone.</p>
+{{/if}}
 
 {{#if deleteError}}
             <p role="alert" class="text-rose-500 text-sm mb-4">{{ deleteError }}</p>

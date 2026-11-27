@@ -35,6 +35,7 @@ export interface SiteAttributes {
     ssl_error: string;
     ssl_log: string;
     ssl_expires_at: string;
+    origin: string;
     created_at: string;
     updated_at: string;
 }
@@ -75,5 +76,6 @@ export class Site extends Model {
         "ssl_error",
         "ssl_log",
         "ssl_expires_at",
+        "origin",
     ];
 }

@@ -510,7 +510,7 @@ function extractCommit(text: string): { sha: string; message: string; clean: str
 }
 
 /** Same pool file the site-creation job writes (socket name matches the nginx vhost). */
-function fpmPool(site: DeployRow): string {
+export function fpmPool(site: Pick<DeployRow, "isolated_user" | "php_version">): string {
     return `[${site.isolated_user}]
 user = ${site.isolated_user}
 group = ${site.isolated_user}
@@ -785,7 +785,11 @@ echo "Wrote $ENV_PATH"`,
         phases.push({
             title: "Checking PHP-FPM",
             script: shellScript(
-                { ...base, POOL_B64: Buffer.from(fpmPool(site), "utf8").toString("base64") },
+                {
+                    ...base,
+                    POOL_B64: Buffer.from(fpmPool(site), "utf8").toString("base64"),
+                    IMPORTED: site.origin === "import" ? "1" : "0",
+                },
                 `
 if [ ! -d "/etc/php/$PHP_VERSION/fpm" ]; then
   echo "PHP-FPM $PHP_VERSION is not installed on this server. Install PHP $PHP_VERSION from the server's Packages page, then deploy again." >&2
@@ -793,7 +797,12 @@ if [ ! -d "/etc/php/$PHP_VERSION/fpm" ]; then
 fi
 POOL="/etc/php/$PHP_VERSION/fpm/pool.d/$SITE_USER.conf"
 CREATED=0
-if [ ! -f "$POOL" ]; then
+# An imported site is served by the pool it came with (its nginx file says
+# which). Writing a pool here and restarting PHP-FPM would also restart every
+# other site on the server, so it is only reported.
+if [ ! -f "$POOL" ] && [ "$IMPORTED" = "1" ]; then
+  echo "No Flux pool for $SITE_USER; this imported site keeps using the PHP-FPM pool it came with."
+elif [ ! -f "$POOL" ]; then
   printf %s "$POOL_B64" | base64 -d | $SUDO tee "$POOL" >/dev/null
   CREATED=1
   echo "Created the PHP-FPM pool for $SITE_USER"

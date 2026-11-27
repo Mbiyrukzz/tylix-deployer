@@ -13,6 +13,7 @@ import { sshExec, type SshTarget } from "../services/Ssh.js";
 
 import { requireTeam, requireRole } from "../services/TeamScope.js";
 import { withBillingLock } from "../services/BillingLock.js";
+import { sq, logPath, checkSchedule, installScript, removeScript, userExists } from "../services/CronFiles.js";
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
 type Res = Parameters<Handler>[1];
@@ -28,15 +29,6 @@ interface CronRow {
 }
 
 const UNIX_USER = /^[a-z_][a-z0-9_-]{0,31}$/i;
-const PRESETS = ["@reboot", "@hourly", "@daily", "@weekly", "@monthly", "@yearly"];
-const FIELD = /^[0-9*\/,\-]+$/;
-const FIELD_MAX = [59, 23, 31, 12, 7]; // minute, hour, day of month, month, day of week
-
-const sq = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
-const jobName = (id: number) => `tylix-cron-${id}`;
-// No dots in the file name: Debian's cron ignores /etc/cron.d files that contain one.
-const confPath = (id: number) => `/etc/cron.d/${jobName(id)}`;
-const logPath = (id: number) => `/var/log/${jobName(id)}.log`;
 
 function targetFor(server: ServerRow): SshTarget {
     return {
@@ -75,23 +67,6 @@ async function ownedJob(req: Req, res: Res, server: ServerRow): Promise<CronRow 
     return j;
 }
 
-/** Returns the cleaned schedule, or null when it isn't a valid 5-field schedule or @preset. */
-function checkSchedule(raw: string): string | null {
-    if (PRESETS.includes(raw)) return raw;
-
-    const parts = raw.split(/\s+/);
-    if (parts.length !== 5) return null;
-
-    for (let i = 0; i < 5; i++) {
-        const part = parts[i];
-        if (!FIELD.test(part)) return null;
-        if (/\/0+(,|$)/.test(part)) return null; // a step of 0 is rejected by cron
-        for (const n of part.match(/\d+/g) ?? []) {
-            if (Number(n) > FIELD_MAX[i]) return null;
-        }
-    }
-    return parts.join(" ");
-}
 
 function validate(body: Record<string, unknown>) {
     const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -109,44 +84,6 @@ function validate(body: Record<string, unknown>) {
     if (!UNIX_USER.test(user)) return { error: "Choose a valid server user." };
 
     return { value: { name, command, user, schedule } };
-}
-
-function cronFile(id: number, j: { command: string; user: string; schedule: string }): string {
-    // % means "newline" in a crontab, so it has to be escaped. The command goes through
-    // single-quoted bash -c, so a # in it can't comment out the redirect that follows.
-    const command = j.command.replace(/%/g, "\\%");
-    return [
-        "PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin",
-        `${j.schedule} ${j.user} /bin/bash -c ${sq(command)} >> ${logPath(id)} 2>&1`,
-        "", // cron.d files must end with a newline
-    ].join("\n");
-}
-
-const NO_CRON =
-    '[ -d /etc/cron.d ] || { echo "Cron is not installed on this server. Install it first (Packages)." >&2; exit 4; }';
-const userExists = (user: string) =>
-    `id -u ${sq(user)} >/dev/null 2>&1 || { echo "User ${user} does not exist on this server." >&2; exit 3; }`;
-
-function installScript(id: number, j: { command: string; user: string; schedule: string }): string {
-    return [
-        "set -e",
-        NO_CRON,
-        userExists(j.user),
-        `cat > ${confPath(id)} <<'TYLIX_CRON_EOF'`,
-        cronFile(id, j).trimEnd(),
-        "TYLIX_CRON_EOF",
-        `chmod 644 ${confPath(id)}`,
-        `touch ${logPath(id)}`,
-        `chown ${sq(j.user)} ${logPath(id)}`,
-        // One shared logrotate rule so job logs never fill the disk.
-        "if [ -d /etc/logrotate.d ] && [ ! -f /etc/logrotate.d/tylix-cron ]; then",
-        "  printf '%s\\n' '/var/log/tylix-cron-*.log {' '  weekly' '  rotate 4' '  compress' '  missingok' '  notifempty' '  copytruncate' '}' > /etc/logrotate.d/tylix-cron",
-        "fi",
-    ].join("\n");
-}
-
-function removeScript(id: number): string {
-    return `rm -f ${confPath(id)} ${logPath(id)} ${logPath(id)}.*`;
 }
 
 /** Runs the command once, as the job's user, and always exits 0 so ssh errors stay distinguishable. */

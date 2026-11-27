@@ -224,7 +224,8 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
             const user = await ownedDbUser(req, res);
             if (!user) return;
 
-            return res.json({ password: CryptoService.decrypt(user.password) });
+            // Users adopted by the server importer may have no known password ("").
+            return res.json({ password: user.password ? CryptoService.decrypt(user.password) : "" });
         }),
     );
 
@@ -341,7 +342,7 @@ export async function routes(router: Router, { auth: baseAuth }: { auth: (handle
                 user_name: dbUser.name,
                 charset,
                 collation,
-                password: CryptoService.decrypt(dbUser.password),
+                password: dbUser.password ? CryptoService.decrypt(dbUser.password) : "",
             });
         }),
     );

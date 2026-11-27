@@ -116,6 +116,43 @@ After pulling: `npx tylix migrate` (adds `admin_impersonations`) and set
   can't receive step-up texts from inside the user's account (texting
   would go to the user). Use an authenticator app.
 
+## Importing a server (Vito and hand-built servers, Nov 2026)
+
+After pulling: `npx tylix migrate` (adds `sites.origin`).
+
+Add the server as usual (Servers → New server, SSH as root or a passwordless
+sudo user), then Sites → **Import from server**
+(`/servers/server-import?id=`). The scan is read-only; importing adopts what
+you tick and reinstalls nothing. Code: `app/services/ServerImport.ts`, routes
+`POST /api/servers/:id/import/scan` and `POST /api/servers/:id/import`.
+
+- **Sites**: offered when the nginx root is `/home/<user>/<domain>[/<web dir>]`
+  (Vito's layout), owned by that user. The nginx file is renamed to
+  `sites-available/<domain>.conf` (same content, original in
+  `/etc/nginx/tylix-backups`, rolled back if `nginx -t` fails); PHP sites get
+  Flux's pool `pool.d/<user>.conf` next to the existing ones (reload, no
+  restart). The `.env` is stored in Flux, so later deploys write it back. An
+  SSH git remote can be switched to HTTPS so deploys use the team's GitHub /
+  GitLab connection instead of the old deploy key.
+- **Shared users**: imported sites may share a user (Vito runs everything as
+  `vito`). They are stored with `origin = "import"`, and deleting one removes
+  only its nginx file, certificate and `/home/<user>/<domain>`, never the
+  user. Per-user plugins (queue, Octane, Reverb, scheduler, rate limit,
+  resource limits) are refused while the user is shared, deploys never write
+  or restart PHP-FPM pools for them, and a Node site needs a user of its own
+  (its service is `app-<user>`).
+- **Databases**: records only. Owners are the `@localhost` users with grants;
+  passwords are filled in from a site's `.env` / `wp-config.php` when the
+  user name matches, otherwise left unknown (reset it on the Databases page).
+- **Workers / cron**: rewritten as `tylix-worker-<id>` / `/etc/cron.d/tylix-cron-<id>`
+  (new one first, then the old program or crontab line is removed; old
+  Supervisor files go to `/etc/supervisor/tylix-backups`). Their file
+  builders are shared with the Workers and Cron pages
+  (`app/services/WorkerFiles.ts`, `CronFiles.ts`).
+- **Moving off Vito**: import, deploy each site once from Flux, then shut the
+  Vito panel down. Don't delete the server or its sites inside Vito: that can
+  remove files, deploy keys or (for provider servers) the VPS itself.
+
 ## App shell (Tylix Flux redesign, Nov 2026)
 
 Every Tylix page is its own document, so a plain link used to rebuild the

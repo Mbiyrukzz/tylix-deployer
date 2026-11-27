@@ -1207,6 +1207,20 @@ export interface ApiRoutes {
     response: unknown
     auth: true
   }
+  "POST /api/servers/:id/import": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
+  "POST /api/servers/:id/import/scan": {
+    params: { id: string | number }
+    query: Record<string, string | number | boolean | undefined>
+    body: Record<string, unknown>
+    response: unknown
+    auth: true
+  }
   "POST /api/servers/:id/key/reveal": {
     params: { id: string | number }
     query: Record<string, string | number | boolean | undefined>
@@ -2130,6 +2144,10 @@ export interface RouteClient {
     deleteCheck(params: ApiRoutes["GET /api/servers/:id/delete-check"]['params'], options?: RouteOptions<ApiRoutes["GET /api/servers/:id/delete-check"]['query']>): Promise<ApiResult<ApiRoutes["GET /api/servers/:id/delete-check"]['response']>>
     hostKey: {
       pin(params: ApiRoutes["POST /api/servers/:id/host-key/pin"]['params'], body?: ApiRoutes["POST /api/servers/:id/host-key/pin"]['body'], options?: RouteOptions<ApiRoutes["POST /api/servers/:id/host-key/pin"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/servers/:id/host-key/pin"]['response']>>
+    }
+    import: {
+      store(params: ApiRoutes["POST /api/servers/:id/import"]['params'], body?: ApiRoutes["POST /api/servers/:id/import"]['body'], options?: RouteOptions<ApiRoutes["POST /api/servers/:id/import"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/servers/:id/import"]['response']>>
+      scan(params: ApiRoutes["POST /api/servers/:id/import/scan"]['params'], body?: ApiRoutes["POST /api/servers/:id/import/scan"]['body'], options?: RouteOptions<ApiRoutes["POST /api/servers/:id/import/scan"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/servers/:id/import/scan"]['response']>>
     }
     key: {
       reveal(params: ApiRoutes["POST /api/servers/:id/key/reveal"]['params'], body?: ApiRoutes["POST /api/servers/:id/key/reveal"]['body'], options?: RouteOptions<ApiRoutes["POST /api/servers/:id/key/reveal"]['query']>): Promise<ApiResult<ApiRoutes["POST /api/servers/:id/key/reveal"]['response']>>

@@ -18,6 +18,7 @@ import { ServerWorker } from "../models/ServerWorker.js";
 import { CryptoService } from "../services/CryptoService.js";
 import { sshExec, type SshTarget } from "../services/Ssh.js";
 import { requireTeam, requireRole } from "../services/TeamScope.js";
+import { sq, program, logPath, NO_SUPERVISOR, installScript, removeScript } from "../services/WorkerFiles.js";
 
 type Handler = Parameters<Router["post"]>[1];
 type Req = Parameters<Handler>[0];
@@ -36,11 +37,6 @@ interface WorkerRow {
 const UNIX_USER = /^[a-z_][a-z0-9_-]{0,31}$/i;
 const DIRECTORY = /^\/[A-Za-z0-9_.\/-]*$/;
 const ACTIONS = ["start", "stop", "restart"];
-
-const sq = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
-const program = (id: number) => `tylix-worker-${id}`;
-const confPath = (id: number) => `/etc/supervisor/conf.d/${program(id)}.conf`;
-const logPath = (id: number) => `/var/log/${program(id)}.log`;
 
 function targetFor(server: ServerRow): SshTarget {
     return {
@@ -101,58 +97,6 @@ function validate(body: Record<string, unknown>) {
     return { value: { name, command, directory, user, processes } };
 }
 
-function supervisorConf(id: number, w: { command: string; directory: string; user: string; processes: number }) {
-    // % is Supervisor's interpolation character; double it so the command is taken literally.
-    const command = w.command.replace(/%/g, "%%");
-    return [
-        `[program:${program(id)}]`,
-        "process_name=%(program_name)s_%(process_num)02d",
-        `command=${command}`,
-        `directory=${w.directory}`,
-        `user=${w.user}`,
-        `numprocs=${w.processes}`,
-        "autostart=true",
-        "autorestart=true",
-        "stopasgroup=true",
-        "killasgroup=true",
-        "stopwaitsecs=3600",
-        "redirect_stderr=true",
-        `stdout_logfile=${logPath(id)}`,
-        "stdout_logfile_maxbytes=10MB",
-        "stdout_logfile_backups=3",
-    ].join("\n");
-}
-
-const NO_SUPERVISOR =
-    'command -v supervisorctl >/dev/null 2>&1 || { echo "Supervisor is not installed on this server. Install it first (Packages)." >&2; exit 4; }';
-
-function installScript(id: number, w: { command: string; directory: string; user: string; processes: number }): string {
-    return [
-        "set -e",
-        NO_SUPERVISOR,
-        `id -u ${sq(w.user)} >/dev/null 2>&1 || { echo "User ${w.user} does not exist on this server." >&2; exit 3; }`,
-        `[ -d ${sq(w.directory)} ] || { echo "Directory ${w.directory} does not exist on this server." >&2; exit 5; }`,
-        `cat > ${confPath(id)} <<'TYLIX_WORKER_EOF'`,
-        supervisorConf(id, w),
-        "TYLIX_WORKER_EOF",
-        "supervisorctl reread >/dev/null",
-        "supervisorctl update >/dev/null",
-    ].join("\n");
-}
-
-function removeScript(id: number): string {
-    return [
-        "if command -v supervisorctl >/dev/null 2>&1; then",
-        `  supervisorctl stop ${sq(program(id) + ":*")} >/dev/null 2>&1 || true`,
-        `  rm -f ${confPath(id)}`,
-        "  supervisorctl reread >/dev/null 2>&1 || true",
-        "  supervisorctl update >/dev/null 2>&1 || true",
-        "else",
-        `  rm -f ${confPath(id)}`,
-        "fi",
-        `rm -f ${logPath(id)} ${logPath(id)}.*`,
-    ].join("\n");
-}
 
 function parseStatus(out: string) {
     const map: Record<string, { running: number; total: number; states: string[] }> = {};

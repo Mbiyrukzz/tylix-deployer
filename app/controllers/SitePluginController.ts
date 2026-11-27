@@ -50,6 +50,21 @@ interface PluginRow {
 
 const STALE_MS = 20 * 60_000;
 
+/**
+ * Plugins that name a service, crontab line or nginx zone after the site's
+ * unix user. An imported site can share its user with other sites (Vito runs
+ * every site as "vito"), and two sites would then fight over the same names.
+ */
+const PER_USER_PLUGINS = ["octane", "reverb", "tylix-queue", "scheduler", "rate-limit", "resource-limits"];
+
+async function sharesUser(site: SiteRow): Promise<boolean> {
+    if (site.origin !== "import") return false;
+    const rows = (await Site.all()) as SiteRow[];
+    return rows.some(
+        (s) => s.id !== site.id && Number(s.server_id) === Number(site.server_id) && s.isolated_user === site.isolated_user,
+    );
+}
+
 async function findOwnedSite(req: TylixRequest, res: TylixResponse): Promise<SiteRow | null> {
     const teamId = requireTeam(req, res);
     if (!teamId) return null;
@@ -167,6 +182,13 @@ export class SitePluginController {
         if (!def || !def.types.includes(site.type)) {
             res.status(422);
             return res.json({ error: "That plugin isn't available for this kind of site." });
+        }
+
+        if (PER_USER_PLUGINS.includes(def.id) && (await sharesUser(site))) {
+            res.status(409);
+            return res.json({
+                error: `This site shares the user ${String(site.isolated_user)} with other sites on the server, and this plugin runs per user. Give the site its own user to use it.`,
+            });
         }
 
         const refusal = await preflight(site, def, "install");
