@@ -30,6 +30,7 @@ export interface Stats {
     disk_pct: number;
     load: number[];
     uptime: number;
+    cpus: number;
 }
 
 export type StatsResult = { ok: true; stats: Stats } | { ok: false; error: string };
@@ -38,6 +39,7 @@ const COMMAND = [
     "head -n1 /proc/stat",
     "sleep 1",
     "head -n1 /proc/stat",
+    "echo cpus=$(nproc 2>/dev/null || echo 0)",
     "grep -E '^(MemTotal|MemAvailable):' /proc/meminfo",
     "df -B1 / | tail -n1",
     "cat /proc/loadavg",
@@ -54,7 +56,7 @@ function readCpu(line: string): { total: number; idle: number } {
 
 function parseStats(stdout: string): Stats {
     const lines = stdout.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (lines.length < 7) throw new Error("Unexpected output from the server.");
+    if (lines.length < 8) throw new Error("Unexpected output from the server.");
 
     const a = readCpu(lines[0]);
     const b = readCpu(lines[1]);
@@ -76,6 +78,7 @@ function parseStats(stdout: string): Stats {
 
     const load = lines[lines.length - 2].split(/\s+/).slice(0, 3).map(Number);
     const uptime = Number(lines[lines.length - 1].split(/\s+/)[0]) || 0;
+    const cpus = Number(lines.find((l) => l.startsWith("cpus="))?.slice(5)) || 0;
 
     return {
         cpu_pct: Math.round(cpu * 10) / 10,
@@ -87,6 +90,7 @@ function parseStats(stdout: string): Stats {
         disk_pct: diskTotal > 0 ? Math.round((diskUsed / diskTotal) * 1000) / 10 : 0,
         load,
         uptime,
+        cpus,
     };
 }
 
